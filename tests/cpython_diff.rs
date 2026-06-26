@@ -2025,6 +2025,55 @@ print('fresh-bound-method-progress-unchecked', json.dumps(object(), default=hook
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_type_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook type/module/builtin identity subset",
+        name: "json-dumps-default-hook-type-identity",
+        source: r#"import json
+
+class SharedClass:
+    pass
+
+def fresh_class_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return type('FreshClass', (), {})
+        return 'fresh-class-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: SharedClass)
+except Exception as error:
+    print('shared-class-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-class-progress', json.dumps(object(), default=hook), len(calls))
+for label, hook in [
+    ('shared-module-default', lambda obj: json),
+    ('shared-builtin-default', lambda obj: len),
+    ('shared-type-default', lambda obj: list),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-class-default-unchecked', lambda obj: SharedClass),
+    ('shared-module-default-unchecked', lambda obj: json),
+    ('shared-builtin-default-unchecked', lambda obj: len),
+    ('shared-type-default-unchecked', lambda obj: list),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-class-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

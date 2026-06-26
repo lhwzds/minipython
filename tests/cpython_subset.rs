@@ -36100,6 +36100,65 @@ print('fresh-bound-method-progress-unchecked', json.dumps(object(), default=hook
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_type_identity_subset() {
+    assert_output(
+        r#"import json
+
+class SharedClass:
+    pass
+
+def fresh_class_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return type('FreshClass', (), {})
+        return 'fresh-class-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: SharedClass)
+except Exception as error:
+    print('shared-class-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-class-progress', json.dumps(object(), default=hook), len(calls))
+for label, hook in [
+    ('shared-module-default', lambda obj: json),
+    ('shared-builtin-default', lambda obj: len),
+    ('shared-type-default', lambda obj: list),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-class-default-unchecked', lambda obj: SharedClass),
+    ('shared-module-default-unchecked', lambda obj: json),
+    ('shared-builtin-default-unchecked', lambda obj: len),
+    ('shared-type-default-unchecked', lambda obj: list),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-class-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shared-class-default ValueError True True False",
+            "fresh-class-progress \"fresh-class-ok\" 2",
+            "shared-module-default ValueError True True False",
+            "shared-builtin-default ValueError True True False",
+            "shared-type-default ValueError True True False",
+            "shared-class-default-unchecked RecursionError True",
+            "shared-module-default-unchecked RecursionError True",
+            "shared-builtin-default-unchecked RecursionError True",
+            "shared-type-default-unchecked RecursionError True",
+            "fresh-class-progress-unchecked \"fresh-class-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_subset() {
     assert_output(
         "import json\nprint(json.loads(' \\t\\r\\n[1, 2, 3]\\n '))\nvalue = json.loads('{\"negzero\": -0, \"negfloat\": -0.0, \"exp\": 6.02e+23, \"small\": 1E-2}')\nprint(value['negzero'], type(value['negzero']).__name__)\nprint(value['negfloat'], type(value['negfloat']).__name__)\nprint(value['exp'])\nprint(value['small'])\nfor label, source in [('dash', '-'), ('dash-dot', '-.1'), ('dash-nan', '-NaN'), ('dot-tail', '1.'), ('exp-tail', '1e'), ('signed-exp-tail', '1e+')]:\n    try:\n        json.loads(source)\n    except ValueError as error:\n        message = str(error)\n        print(label, 'Expecting value' in message, 'Extra data' in message, 'Invalid number' in message)",

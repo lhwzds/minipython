@@ -62213,6 +62213,12 @@ struct JsonDumpsOptions {
     default_hook: Option<Value>,
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+enum JsonDumpsIdentity {
+    Heap(usize),
+    Builtin(String),
+}
+
 const JSON_DUMPS_MAX_DEPTH: usize = 250;
 const JSON_DUMPS_MAX_DEFAULT_DEPTH: usize = 100;
 
@@ -62376,7 +62382,7 @@ fn json_dumps_separator_type_name(value: &Value) -> String {
 fn json_dumps_value(
     vm: &mut Vm,
     value: &Value,
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
 ) -> Result<String, String> {
     json_dumps_value_at_depth(vm, value, active, options, 0, 0)
@@ -62385,7 +62391,7 @@ fn json_dumps_value(
 fn json_dumps_value_at_depth(
     vm: &mut Vm,
     value: &Value,
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,
@@ -62397,7 +62403,7 @@ fn json_dumps_value_at_depth(
         );
     }
     if let Some(identity) = json_dumps_container_identity(value) {
-        if !active.insert(identity) {
+        if !active.insert(identity.clone()) {
             return if options.check_circular {
                 Err("ValueError: Circular reference detected".to_string())
             } else {
@@ -62417,7 +62423,7 @@ fn json_dumps_value_at_depth(
 fn json_dumps_value_inner(
     vm: &mut Vm,
     value: &Value,
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,
@@ -62498,7 +62504,7 @@ fn json_dumps_default_value(
     vm: &mut Vm,
     value: &Value,
     hook: Value,
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,
@@ -62516,8 +62522,8 @@ fn json_dumps_default_value(
         ));
     }
     let identity = json_dumps_default_identity(value);
-    if let Some(identity) = identity {
-        if !active.insert(identity) {
+    if let Some(identity) = &identity {
+        if !active.insert(identity.clone()) {
             return if options.check_circular {
                 Err("ValueError: Circular reference detected".to_string())
             } else {
@@ -62540,48 +62546,72 @@ fn json_dumps_default_value(
         ),
         Err(error) => Err(error),
     };
-    if let Some(identity) = identity {
-        active.remove(&identity);
+    if let Some(identity) = &identity {
+        active.remove(identity);
     }
     result
 }
 
-fn json_dumps_container_identity(value: &Value) -> Option<usize> {
+fn json_dumps_container_identity(value: &Value) -> Option<JsonDumpsIdentity> {
     match value {
-        Value::List(items) => Some(Rc::as_ptr(items) as usize),
-        Value::Tuple(items) => Some(Rc::as_ptr(items) as usize),
-        Value::NamedTuple { values, .. } => Some(Rc::as_ptr(values) as usize),
-        Value::Dict(entries) | Value::Counter { entries } => Some(Rc::as_ptr(entries) as usize),
-        value if list_subclass_storage(value).is_some() => Some(Rc::as_ptr(
-            &list_subclass_storage(value).expect("list subclass storage exists after guard"),
-        ) as usize),
-        value if tuple_subclass_items(value).is_some() => Some(Rc::as_ptr(
-            &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
-        ) as usize),
-        value if dict_subclass_entries(value).is_some() => Some(Rc::as_ptr(
-            &dict_subclass_entries(value).expect("dict subclass entries exist after guard"),
-        ) as usize),
+        Value::List(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
+        Value::Tuple(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
+        Value::NamedTuple { values, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(values) as usize))
+        }
+        Value::Dict(entries) | Value::Counter { entries } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(entries) as usize))
+        }
+        value if list_subclass_storage(value).is_some() => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
+                &list_subclass_storage(value).expect("list subclass storage exists after guard"),
+            ) as usize))
+        }
+        value if tuple_subclass_items(value).is_some() => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
+                &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
+            ) as usize))
+        }
+        value if dict_subclass_entries(value).is_some() => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
+                &dict_subclass_entries(value).expect("dict subclass entries exist after guard"),
+            ) as usize))
+        }
         value if namedtuple_subclass_storage(value).is_some() => {
             let (_, values) = namedtuple_subclass_storage(value)
                 .expect("namedtuple subclass storage after guard");
-            Some(Rc::as_ptr(&values) as usize)
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(&values) as usize))
         }
         _ => None,
     }
 }
 
-fn json_dumps_default_identity(value: &Value) -> Option<usize> {
+fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
     match value {
-        Value::Instance { fields, .. } => Some(Rc::as_ptr(fields) as usize),
-        Value::Bytes(bytes) => Some(Rc::as_ptr(bytes) as usize),
-        Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize),
-        Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize),
-        Value::Set(items) => Some(Rc::as_ptr(items) as usize),
-        Value::FrozenSet(items) => Some(Rc::as_ptr(items) as usize),
-        Value::Range { identity, .. } => Some(Rc::as_ptr(identity) as usize),
-        Value::Complex { identity, .. } => Some(Rc::as_ptr(identity) as usize),
-        Value::Function { identity, .. } => Some(Rc::as_ptr(identity) as usize),
-        Value::BoundMethod { identity, .. } => Some(Rc::as_ptr(identity) as usize),
+        Value::Instance { fields, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(fields) as usize))
+        }
+        Value::Bytes(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
+        Value::ByteArray(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
+        Value::MemoryView(view) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(view) as usize)),
+        Value::Set(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
+        Value::FrozenSet(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
+        Value::Range { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::Complex { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::Function { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::BoundMethod { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::Class { attrs, .. } | Value::Module { attrs, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(attrs) as usize))
+        }
+        Value::Builtin(name) => Some(JsonDumpsIdentity::Builtin(name.clone())),
         _ => json_dumps_container_identity(value),
     }
 }
@@ -62659,7 +62689,7 @@ fn json_dumps_tuple_item_pair(values: &[Value]) -> Result<(Value, Value), String
 fn json_dumps_iterable_sequence(
     vm: &mut Vm,
     value: &Value,
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,
@@ -62679,7 +62709,7 @@ fn json_dumps_iterable_sequence(
 fn json_dumps_sequence(
     vm: &mut Vm,
     items: &[Value],
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,
@@ -62714,7 +62744,7 @@ fn json_dumps_sequence(
 fn json_dumps_dict(
     vm: &mut Vm,
     entries: &[(Value, Value)],
-    active: &mut HashSet<usize>,
+    active: &mut HashSet<JsonDumpsIdentity>,
     options: &JsonDumpsOptions,
     depth: usize,
     default_depth: usize,

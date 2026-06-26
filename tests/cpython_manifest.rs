@@ -8382,6 +8382,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
+            "cpython_json_dumps_default_hook_type_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8429,6 +8430,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
+        "cpython_json_dumps_default_hook_type_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10170,12 +10172,13 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
     }
 
     for required in [
-        "fn json_dumps_default_identity(value: &Value) -> Option<usize>",
-        "Value::Bytes(bytes) => Some(Rc::as_ptr(bytes) as usize)",
-        "Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize)",
-        "Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize)",
-        "Value::Set(items) => Some(Rc::as_ptr(items) as usize)",
-        "Value::FrozenSet(items) => Some(Rc::as_ptr(items) as usize)",
+        "fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity>",
+        "enum JsonDumpsIdentity",
+        "Value::Bytes(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize))",
+        "Value::ByteArray(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize))",
+        "Value::MemoryView(view) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(view) as usize))",
+        "Value::Set(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize))",
+        "Value::FrozenSet(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize))",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -10245,7 +10248,7 @@ fn json_dumps_default_hook_range_identity_has_focused_evidence() {
         "Range {",
         "identity: Rc<()>",
         "identity: Rc::new(())",
-        "Value::Range { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
         "Value::Range { identity, .. } => rc_plain_identity_bits(identity)",
         "Rc::ptr_eq(left_identity, right_identity)",
     ] {
@@ -10315,7 +10318,7 @@ fn json_dumps_default_hook_complex_identity_has_focused_evidence() {
     for required in [
         "Complex {",
         "identity: Rc<()>",
-        "Value::Complex { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
         "Value::Complex { identity, .. } => rc_plain_identity_bits(identity)",
     ] {
         assert!(
@@ -10384,7 +10387,7 @@ fn json_dumps_default_hook_function_identity_has_focused_evidence() {
     for required in [
         "Function {",
         "identity: Rc<()>",
-        "Value::Function { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
         "Value::Function { identity, .. } => rc_plain_identity_bits(identity)",
     ] {
         assert!(
@@ -10456,13 +10459,97 @@ fn json_dumps_default_hook_bound_method_identity_has_focused_evidence() {
     for required in [
         "BoundMethod {",
         "identity: Rc<()>",
-        "Value::BoundMethod { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
         "Value::BoundMethod {",
         "rc_plain_identity_bits(identity).hash(hasher)",
     ] {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "bound method identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_type_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_type_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_type_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook type identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook type identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook type/module/builtin identity subset"),
+        "json dumps default hook type identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "class SharedClass:",
+        "return type('FreshClass', (), {})",
+        "json.dumps(object(), default=lambda obj: SharedClass)",
+        "print('fresh-class-progress', json.dumps(object(), default=hook), len(calls))",
+        "('shared-module-default', lambda obj: json)",
+        "('shared-builtin-default', lambda obj: len)",
+        "('shared-type-default', lambda obj: list)",
+        "('shared-class-default-unchecked', lambda obj: SharedClass)",
+        "('shared-module-default-unchecked', lambda obj: json)",
+        "('shared-builtin-default-unchecked', lambda obj: len)",
+        "('shared-type-default-unchecked', lambda obj: list)",
+        "print('fresh-class-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook type identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-class-default ValueError True True False\"",
+        "\"fresh-class-progress \\\"fresh-class-ok\\\" 2\"",
+        "\"shared-module-default ValueError True True False\"",
+        "\"shared-builtin-default ValueError True True False\"",
+        "\"shared-type-default ValueError True True False\"",
+        "\"shared-class-default-unchecked RecursionError True\"",
+        "\"shared-module-default-unchecked RecursionError True\"",
+        "\"shared-builtin-default-unchecked RecursionError True\"",
+        "\"shared-type-default-unchecked RecursionError True\"",
+        "\"fresh-class-progress-unchecked \\\"fresh-class-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook type identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported class/module/builtin replacement circular detection without treating fresh classes as circular"
+            ),
+            "json docs must describe the type/module/builtin identity boundary"
+        );
+    }
+
+    for required in [
+        "enum JsonDumpsIdentity",
+        "Builtin(String)",
+        "Value::Class { attrs, .. } | Value::Module { attrs, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(attrs) as usize))",
+        "Value::Builtin(name) => Some(JsonDumpsIdentity::Builtin(name.clone()))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json dumps type identity implementation must contain `{required}`"
         );
     }
 }
