@@ -16064,6 +16064,9 @@ fn operator_inplace_helper_subset_has_focused_diff_evidence() {
         "operator.ixor(0xb, 0xc)",
         "operator.ilshift(5, 1)",
         "operator.irshift(5, 1)",
+        "operator.imatmul(1, 2)",
+        "imatmul-type",
+        "unsupported operand type(s) for @=: 'int' and 'int'",
         "operator.ipow(1, 'x')",
         "ipow-type",
         "unsupported operand type(s) for **=: 'int' and 'str'",
@@ -16130,6 +16133,9 @@ fn operator_inplace_helper_subset_has_focused_diff_evidence() {
         "operator.ixor(0xb, 0xc)",
         "operator.ilshift(5, 1)",
         "operator.irshift(5, 1)",
+        "operator.imatmul(1, 2)",
+        "imatmul-type",
+        "unsupported operand type(s) for @=: 'int' and 'int'",
         "operator.ipow(1, 'x')",
         "ipow-type",
         "unsupported operand type(s) for **=: 'int' and 'str'",
@@ -22467,6 +22473,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for %=: 'int' and 'str'",
         "value **= 'x'",
         "unsupported operand type(s) for **=: 'int' and 'str'",
+        "value @= 2",
+        "unsupported operand type(s) for @=: 'int' and 'int'",
         "value <<= 'x'",
         "unsupported operand type(s) for <<=: 'int' and 'str'",
         "value >>= 'x'",
@@ -22523,6 +22531,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for %=: 'int' and 'str'",
         "value **= 'x'",
         "unsupported operand type(s) for **=: 'int' and 'str'",
+        "value @= 2",
+        "unsupported operand type(s) for @=: 'int' and 'int'",
         "value <<= 'x'",
         "unsupported operand type(s) for <<=: 'int' and 'str'",
         "value >>= 'x'",
@@ -22568,6 +22578,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable in-place floor-divide")
                 && document.contains("catchable in-place modulo")
                 && document.contains("catchable in-place power")
+                && document.contains("catchable in-place matrix-multiply")
                 && document.contains("catchable in-place left-shift")
                 && document.contains("catchable in-place right-shift")
                 && document.contains("catchable in-place bit-or")

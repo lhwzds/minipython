@@ -5451,8 +5451,8 @@ impl Vm {
                 Instruction::InPlaceMatrixMultiply { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.in_place_matrix_multiply_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = self.in_place_matrix_multiply_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
                 }
                 Instruction::TrueDivide { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -13943,11 +13943,28 @@ impl Vm {
         left: Value,
         right: Value,
     ) -> Result<Value, String> {
-        if let Some(method) = instance_special_method(&left, "__imatmul__") {
-            return self.call_value(method, vec![right]);
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__imatmul__")? {
+            return Ok(value);
         }
 
-        self.matrix_multiply_values(left, right)
+        let original_left = left.clone();
+        let original_right = right.clone();
+        self.matrix_multiply_values(left, right).map_err(|message| {
+            let fallback = format!(
+                "TypeError: unsupported operand type(s) for @: '{}' and '{}'",
+                type_name(&original_left),
+                type_name(&original_right)
+            );
+            if message == fallback {
+                format!(
+                    "TypeError: unsupported operand type(s) for @=: '{}' and '{}'",
+                    type_name(&original_left),
+                    type_name(&original_right)
+                )
+            } else {
+                message
+            }
+        })
     }
 
     fn floor_divide_values(&mut self, left: Value, right: Value) -> Result<Value, String> {

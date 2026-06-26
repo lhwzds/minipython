@@ -24554,9 +24554,9 @@ fn cpython_augassign_operator_subset() {
     assert_output("v = 1\nv <<= 3\nprint(v)", &["8"]);
     assert_output("v = 8\nv >>= 2\nprint(v)", &["2"]);
     assert_output("v = 2\nv **= 3\nprint(v)", &["8"]);
-    assert_error(
-        "v = 1\nv @= 2",
-        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
+    assert_output(
+        "try:\n    v = 1\n    v @= 2\nexcept TypeError as error:\n    print(type(error).__name__, str(error))",
+        &["TypeError unsupported operand type(s) for @=: 'int' and 'int'"],
     );
     assert_output(
         "class M:\n    def __imatmul__(self, other):\n        self.other = other\n        return self\nm = M()\nm @= 2\nprint(m.other)",
@@ -24935,6 +24935,10 @@ fn cpython_runtime_exception_capture_subset() {
     assert_output(
         "try:\n    value = 1\n    value **= 'x'\nexcept TypeError as error:\n    print('ipow', error.__class__.__name__, str(error))",
         &["ipow TypeError unsupported operand type(s) for **=: 'int' and 'str'"],
+    );
+    assert_output(
+        "try:\n    value = 1\n    value @= 2\nexcept TypeError as error:\n    print('imatmul', error.__class__.__name__, str(error))",
+        &["imatmul TypeError unsupported operand type(s) for @=: 'int' and 'int'"],
     );
     assert_output(
         "try:\n    value = 1\n    value <<= 'x'\nexcept TypeError as error:\n    print('ilshift', error.__class__.__name__, str(error))",
@@ -45656,6 +45660,10 @@ fn cpython_operator_inplace_helper_subset() {
             "print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))\n",
             "print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))\n",
             "try:\n",
+            "    operator.imatmul(1, 2)\n",
+            "except TypeError as error:\n",
+            "    print('imatmul-type', type(error).__name__, str(error))\n",
+            "try:\n",
             "    operator.ipow(1, 'x')\n",
             "except TypeError as error:\n",
             "    print('ipow-type', type(error).__name__, str(error))\n",
@@ -45685,6 +45693,7 @@ fn cpython_operator_inplace_helper_subset() {
             "iadd",
             "7 3 10 2 2.5 1 243",
             "10 15 7 10 2",
+            "imatmul-type TypeError unsupported operand type(s) for @=: 'int' and 'int'",
             "ipow-type TypeError unsupported operand type(s) for **=: 'int' and 'str'",
             "irshift-type TypeError unsupported operand type(s) for >>=: 'int' and 'str'",
             "[1, 2, 3] [1, 2, 3] True",

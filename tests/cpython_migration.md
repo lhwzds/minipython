@@ -168,7 +168,8 @@ Completed in the builtin method TypeError capture pass:
   catchable in-place subtract `TypeError`, catchable in-place true-divide
   `TypeError`, catchable in-place floor-divide `TypeError`,
   catchable in-place modulo `TypeError`, catchable in-place power
-  `TypeError`, catchable in-place left-shift `TypeError`,
+  `TypeError`, catchable in-place matrix-multiply `TypeError`,
+  catchable in-place left-shift `TypeError`,
   catchable in-place right-shift `TypeError`, catchable in-place bit-or
   `TypeError`, catchable in-place bit-xor `TypeError`, and
   catchable in-place bit-and `TypeError`, `dict.keys`, list methods including
