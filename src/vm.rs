@@ -16811,7 +16811,7 @@ impl Vm {
     ) -> Result<Option<Value>, String> {
         match descriptor {
             Value::StaticMethod { function, .. } => return Ok(Some(*function)),
-            Value::ClassMethod { function } => {
+            Value::ClassMethod { function, .. } => {
                 return Ok(Some(Value::BoundMethod {
                     function,
                     receiver: Box::new(owner),
@@ -16886,7 +16886,7 @@ impl Vm {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("__get__() expected a classmethod receiver".to_string());
         };
-        let Value::ClassMethod { function } = descriptor.clone() else {
+        let Value::ClassMethod { function, .. } = descriptor.clone() else {
             return Err("__get__() expected a classmethod receiver".to_string());
         };
         descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
@@ -24847,7 +24847,7 @@ impl Vm {
                 let hook_error_name = copy_replace_hook_error_name(&function, class_name);
                 (*function, hook_error_name)
             }
-            Value::ClassMethod { function } => {
+            Value::ClassMethod { function, .. } => {
                 let hook_error_name = copy_replace_hook_error_name(&function, class_name);
                 (
                     Value::BoundMethod {
@@ -36383,7 +36383,7 @@ fn class_prepare_callable(metaclass: &Value) -> Option<Value> {
     };
     find_class_attr(attrs, bases, "__prepare__").map(|value| match value {
         Value::StaticMethod { function, .. } => *function,
-        Value::ClassMethod { function } => Value::BoundMethod {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
             function,
             receiver: Box::new(metaclass.clone()),
             identity: Rc::new(()),
@@ -36402,7 +36402,7 @@ fn metaclass_constructor_attr(metaclass: &Value, name: &str) -> Option<Value> {
 fn bind_metaclass_constructor_method(method: Value, receiver: Value) -> Value {
     match method {
         Value::StaticMethod { function, .. } => *function,
-        Value::ClassMethod { function } => Value::BoundMethod {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
             function,
             receiver: Box::new(receiver),
             identity: Rc::new(()),
@@ -49085,7 +49085,7 @@ fn wrap_dunder_new_as_staticmethod(attrs: &Scope) {
 fn class_new_callable(descriptor: Value, class_value: Value) -> Value {
     match descriptor {
         Value::StaticMethod { function, .. } => *function,
-        Value::ClassMethod { function } => Value::BoundMethod {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
             function,
             receiver: Box::new(class_value),
             identity: Rc::new(()),
@@ -49149,8 +49149,9 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             function: Box::new(attach_owner_class(*function, class)),
             identity,
         },
-        Value::ClassMethod { function } => Value::ClassMethod {
+        Value::ClassMethod { function, identity } => Value::ClassMethod {
             function: Box::new(attach_owner_class(*function, class)),
+            identity,
         },
         Value::Property {
             fget,
@@ -50066,7 +50067,7 @@ fn metaclass_special_method(value: &Value, method_name: &str) -> Option<Value> {
     };
     find_class_attr(&attrs, &bases, method_name).map(|method| match method {
         Value::StaticMethod { function, .. } => *function,
-        Value::ClassMethod { function } => Value::BoundMethod {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
             function,
             receiver: Box::new(value.clone()),
             identity: Rc::new(()),
@@ -55633,12 +55634,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: staticmethod has no attribute '{name}'"
             )),
         },
-        Value::ClassMethod { function } => match name {
+        Value::ClassMethod { function, identity } => match name {
             "__func__" | "__wrapped__" => Ok(*function),
             "__isabstractmethod__" => descriptor_is_abstract_method(*function),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("classmethod.__get__".to_string())),
-                receiver: Box::new(Value::ClassMethod { function }),
+                receiver: Box::new(Value::ClassMethod { function, identity }),
                 identity: Rc::new(()),
             }),
             "__name__" | "__qualname__" | "__module__" | "__doc__" | "__annotations__" => {
@@ -62613,6 +62614,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::StaticMethod { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::ClassMethod { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Super { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
@@ -63971,7 +63975,7 @@ fn is_classinfo_type(value: &Value) -> bool {
 fn singledispatch_inferred_dispatch_type(function: &Value) -> Option<Value> {
     match function {
         Value::Function { annotations, .. } => annotations.first().map(|(_, value)| value.clone()),
-        Value::StaticMethod { function, .. } | Value::ClassMethod { function } => {
+        Value::StaticMethod { function, .. } | Value::ClassMethod { function, .. } => {
             singledispatch_inferred_dispatch_type(function)
         }
         _ => None,
@@ -77604,7 +77608,7 @@ fn class_hash_method(value: &Value) -> Result<Option<Value>, String> {
     }
     Ok(Some(match method {
         Value::StaticMethod { function, .. } => *function,
-        Value::ClassMethod { function } => Value::BoundMethod {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
             function,
             receiver: Box::new(class.clone()),
             identity: Rc::new(()),
@@ -78114,7 +78118,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             "staticmethod".hash(hasher);
             hash_value_into(function, hasher)?;
         }
-        Value::ClassMethod { function } => {
+        Value::ClassMethod { function, .. } => {
             "classmethod".hash(hasher);
             hash_value_into(function, hasher)?;
         }

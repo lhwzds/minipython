@@ -1033,6 +1033,7 @@ pub enum Value {
     },
     ClassMethod {
         function: Box<Value>,
+        identity: Rc<()>,
     },
     Super {
         class: Box<Value>,
@@ -3714,9 +3715,11 @@ impl PartialEq for Value {
             | (
                 Value::ClassMethod {
                     function: left_function,
+                    ..
                 },
                 Value::ClassMethod {
                     function: right_function,
+                    ..
                 },
             ) => left_function == right_function,
             (

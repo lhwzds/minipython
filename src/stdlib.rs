@@ -2069,6 +2069,7 @@ pub(crate) fn call_classmethod_constructor(
 
     Ok(Value::ClassMethod {
         function: Box::new(function.clone()),
+        identity: Rc::new(()),
     })
 }
 

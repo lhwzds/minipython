@@ -36101,6 +36101,48 @@ print('fresh-staticmethod-progress-unchecked', json.dumps(object(), default=hook
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_classmethod_identity_subset() {
+    assert_output(
+        r#"import json
+
+def sample(cls=None):
+    return cls
+
+shared_class = classmethod(sample)
+
+def fresh_class_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return classmethod(sample)
+        return 'fresh-classmethod-ok'
+    return hook, calls
+
+print('callable', callable(shared_class))
+try:
+    json.dumps(object(), default=lambda obj: shared_class)
+except Exception as error:
+    print('shared-classmethod-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-classmethod-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_class, check_circular=False)
+except Exception as error:
+    print('shared-classmethod-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_class_then_value()
+print('fresh-classmethod-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "callable False",
+            "shared-classmethod-default ValueError True True False",
+            "fresh-classmethod-progress \"fresh-classmethod-ok\" 2",
+            "shared-classmethod-default-unchecked RecursionError True",
+            "fresh-classmethod-progress-unchecked \"fresh-classmethod-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json

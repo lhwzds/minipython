@@ -8382,6 +8382,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_dumps_default_hook_staticmethod_identity_subset",
+            "cpython_json_dumps_default_hook_classmethod_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8448,6 +8449,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_staticmethod_identity_diff_subset",
+        "cpython_json_dumps_default_hook_classmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -10508,6 +10510,85 @@ fn json_dumps_default_hook_staticmethod_identity_has_focused_evidence() {
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "staticmethod identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_classmethod_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_classmethod_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_classmethod_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook classmethod identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook classmethod identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook classmethod identity subset"),
+        "json dumps default hook classmethod identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "def sample(cls=None):",
+        "shared_class = classmethod(sample)",
+        "def fresh_class_then_value():",
+        "return classmethod(sample)",
+        "return 'fresh-classmethod-ok'",
+        "print('callable', callable(shared_class))",
+        "json.dumps(object(), default=lambda obj: shared_class)",
+        "print('fresh-classmethod-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_class, check_circular=False)",
+        "print('fresh-classmethod-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook classmethod identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"callable False\"",
+        "\"shared-classmethod-default ValueError True True False\"",
+        "\"fresh-classmethod-progress \\\"fresh-classmethod-ok\\\" 2\"",
+        "\"shared-classmethod-default-unchecked RecursionError True\"",
+        "\"fresh-classmethod-progress-unchecked \\\"fresh-classmethod-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook classmethod identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported classmethod replacement circular detection without treating fresh classmethod wrappers as circular"
+            ),
+            "json docs must describe the classmethod identity boundary"
+        );
+    }
+
+    for required in [
+        "ClassMethod {",
+        "identity: Rc<()>",
+        "Value::ClassMethod { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "identity: Rc::new(())",
+        "Value::ClassMethod { function, identity }",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "classmethod identity implementation must contain `{required}`"
         );
     }
 }
@@ -17702,7 +17783,7 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "let (method, hook_error_name) = match method {",
         "Value::StaticMethod { function, .. } => {",
         "copy_replace_hook_error_name(&function, class_name)",
-        "Value::ClassMethod { function } => {",
+        "Value::ClassMethod { function, .. } => {",
         "Value::BoundMethod {",
         "self.call_value_with_keywords(method, vec![value.clone()], keywords)",
         "qualify_copy_replace_hook_error(&message, &hook_error_name)",
