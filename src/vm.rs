@@ -27858,102 +27858,16 @@ impl Vm {
                 insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
-            "__add__" => {
-                let mut self_value = None;
-                let mut other_value = None;
-                let mut duplicate_self = false;
-                let mut duplicate_other = false;
-                let mut duplicate_keyword = None;
-                let mut unexpected_keyword = None;
-                let mut seen_keywords: Vec<String> = Vec::new();
-
-                for (index, value) in args.iter().enumerate() {
-                    match index {
-                        0 => self_value = Some(value.clone()),
-                        1 => other_value = Some(value.clone()),
-                        _ => {
-                            return Err(format!(
-                                "TypeError: Counter.__add__() takes 2 positional arguments but {} were given",
-                                args.len()
-                            ));
-                        }
-                    }
-                }
-
-                for (keyword, value) in keywords {
-                    if seen_keywords.iter().any(|seen| seen == &keyword) {
-                        duplicate_keyword.get_or_insert(keyword);
-                        continue;
-                    }
-                    seen_keywords.push(keyword.clone());
-                    match keyword.as_str() {
-                        "self" => {
-                            if self_value.is_some() {
-                                duplicate_self = true;
-                            } else {
-                                self_value = Some(value);
-                            }
-                        }
-                        "other" => {
-                            if other_value.is_some() {
-                                duplicate_other = true;
-                            } else {
-                                other_value = Some(value);
-                            }
-                        }
-                        _ => {
-                            unexpected_keyword.get_or_insert(keyword);
-                        }
-                    }
-                }
-
-                if let Some(keyword) = duplicate_keyword {
-                    return Err(format!(
-                        "TypeError: collections.Counter.__add__() got multiple values for keyword argument '{keyword}'"
-                    ));
-                }
-                if duplicate_self {
-                    return Err(
-                        "TypeError: Counter.__add__() got multiple values for argument 'self'"
-                            .to_string(),
-                    );
-                }
-                if duplicate_other {
-                    return Err(
-                        "TypeError: Counter.__add__() got multiple values for argument 'other'"
-                            .to_string(),
-                    );
-                }
-                if let Some(keyword) = unexpected_keyword {
-                    return Err(format!(
-                        "TypeError: Counter.__add__() got an unexpected keyword argument '{keyword}'"
-                    ));
-                }
-                let (left, right) = match (self_value, other_value) {
-                    (None, None) => {
-                        return Err(
-                            "TypeError: Counter.__add__() missing 2 required positional arguments: 'self' and 'other'"
-                                .to_string(),
-                        );
-                    }
-                    (None, Some(_)) => {
-                        return Err(
-                            "TypeError: Counter.__add__() missing 1 required positional argument: 'self'"
-                                .to_string(),
-                        );
-                    }
-                    (Some(_), None) => {
-                        return Err(
-                            "TypeError: Counter.__add__() missing 1 required positional argument: 'other'"
-                                .to_string(),
-                        );
-                    }
-                    (Some(left), Some(right)) => (left, right),
+            "__add__" | "__sub__" => {
+                let method = method_display_name(name);
+                let (left, right) = counter_binary_method_operands(method, args, keywords)?;
+                let Some(op) = counter_binary_op_from_method(method) else {
+                    unreachable!("counter binary method names are matched above")
                 };
-                Ok(counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Add)?
+                Ok(counter_binary_value_from_operands(&left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
-            "__sub__" | "__or__" | "__and__" | "__xor__" => {
+            "__or__" | "__and__" | "__xor__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [left, right] = args.as_slice() else {
                     return Err(format!(
@@ -78444,6 +78358,94 @@ fn counter_binary_op_from_method(name: &str) -> Option<CounterBinaryOp> {
         "__and__" => Some(CounterBinaryOp::Intersection),
         "__xor__" => Some(CounterBinaryOp::SymmetricDifference),
         _ => None,
+    }
+}
+
+fn counter_binary_method_operands(
+    method: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    let mut self_value = None;
+    let mut other_value = None;
+    let mut duplicate_self = false;
+    let mut duplicate_other = false;
+    let mut duplicate_keyword = None;
+    let mut unexpected_keyword = None;
+    let mut seen_keywords: Vec<String> = Vec::new();
+
+    for (index, value) in args.iter().enumerate() {
+        match index {
+            0 => self_value = Some(value.clone()),
+            1 => other_value = Some(value.clone()),
+            _ => {
+                return Err(format!(
+                    "TypeError: Counter.{method}() takes 2 positional arguments but {} were given",
+                    args.len()
+                ));
+            }
+        }
+    }
+
+    for (keyword, value) in keywords {
+        if seen_keywords.iter().any(|seen| seen == &keyword) {
+            duplicate_keyword.get_or_insert(keyword);
+            continue;
+        }
+        seen_keywords.push(keyword.clone());
+        match keyword.as_str() {
+            "self" => {
+                if self_value.is_some() {
+                    duplicate_self = true;
+                } else {
+                    self_value = Some(value);
+                }
+            }
+            "other" => {
+                if other_value.is_some() {
+                    duplicate_other = true;
+                } else {
+                    other_value = Some(value);
+                }
+            }
+            _ => {
+                unexpected_keyword.get_or_insert(keyword);
+            }
+        }
+    }
+
+    if let Some(keyword) = duplicate_keyword {
+        return Err(format!(
+            "TypeError: collections.Counter.{method}() got multiple values for keyword argument '{keyword}'"
+        ));
+    }
+    if duplicate_self {
+        return Err(format!(
+            "TypeError: Counter.{method}() got multiple values for argument 'self'"
+        ));
+    }
+    if duplicate_other {
+        return Err(format!(
+            "TypeError: Counter.{method}() got multiple values for argument 'other'"
+        ));
+    }
+    if let Some(keyword) = unexpected_keyword {
+        return Err(format!(
+            "TypeError: Counter.{method}() got an unexpected keyword argument '{keyword}'"
+        ));
+    }
+
+    match (self_value, other_value) {
+        (None, None) => Err(format!(
+            "TypeError: Counter.{method}() missing 2 required positional arguments: 'self' and 'other'"
+        )),
+        (None, Some(_)) => Err(format!(
+            "TypeError: Counter.{method}() missing 1 required positional argument: 'self'"
+        )),
+        (Some(_), None) => Err(format!(
+            "TypeError: Counter.{method}() missing 1 required positional argument: 'other'"
+        )),
+        (Some(left), Some(right)) => Ok((left, right)),
     }
 }
 

@@ -11070,6 +11070,8 @@ Completed in the CPython collections manifest expansion pass:
   direct `Counter.__neg__()` unary filtering and public `self` binding diagnostics,
   direct `Counter.__add__()` binary addition and public `self` / `other`
   binding diagnostics,
+  direct `Counter.__sub__()` binary subtraction and public `self` / `other`
+  binding diagnostics,
   direct `Counter.__contains__()`
   membership and dict-style argument diagnostics, direct
   `Counter.__getitem__()` zero-default lookup and dict-style argument
