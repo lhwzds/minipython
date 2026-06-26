@@ -6135,10 +6135,10 @@ errors for non-integer objects before any `__index__` conversion.
 `cpython_collections_counter_mapping_mutation_diff_subset` and
 `cpython_collections_counter_mapping_mutation_subset` add direct CPython output
 parity and runtime coverage for `pop()`, missing-key `pop(default)`, missing-key
-`pop()` preserving the original key in `KeyError.args[0]`, `setdefault()`,
-`popitem()`, empty `popitem()` preserving CPython's `KeyError(message)` string
-display, `clear()`, `clear()` descriptor-style argument diagnostics, and zero
-lookup after deletion, plus `popitem()` descriptor-style argument diagnostics.
+`pop()` preserving the original key in `KeyError.args[0]`, `pop()` descriptor-style argument diagnostics,
+`setdefault()`, `popitem()`, empty `popitem()` preserving CPython's
+`KeyError(message)` string display, `clear()`, `clear()` descriptor-style argument diagnostics,
+zero lookup after deletion, and `popitem()` descriptor-style argument diagnostics.
 `cpython_collections_counter_comparison_diff_subset` and
 `cpython_collections_counter_comparison_subset` add method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,

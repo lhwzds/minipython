@@ -27919,13 +27919,39 @@ impl Vm {
                 ))
             }
             "pop" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver, key, rest @ ..] = args.as_slice() else {
-                    return Err("pop() expected a Counter receiver".to_string());
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
+                    return Err(format!(
+                        "TypeError: dict.pop() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method dict.pop() needs an argument".to_string()
+                        );
+                    }
+                    return Err("TypeError: dict.pop() takes no keyword arguments".to_string());
+                }
+                let Some((receiver, rest)) = args.split_first() else {
+                    return Err(
+                        "TypeError: unbound method dict.pop() needs an argument".to_string()
+                    );
+                };
+                let Some((key, rest)) = rest.split_first() else {
+                    return Err("TypeError: pop expected at least 1 argument, got 0".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
-                        "pop() expected at most 2 arguments, got {}",
+                        "TypeError: pop expected at most 2 arguments, got {}",
                         rest.len() + 1
                     ));
                 }

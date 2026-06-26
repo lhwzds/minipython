@@ -15532,6 +15532,8 @@ fn cpython_collections_counter_mapping_mutation_diff_subset() {
     // CPython oracle text: unbound method dict.clear() needs an argument;
     // dict.clear() takes no keyword arguments;
     // dict.clear() got multiple values for keyword argument 'self';
+    // unbound method dict.pop() needs an argument;
+    // dict.pop() got multiple values for keyword argument 'key';
     // unbound method dict.popitem() needs an argument;
     // dict.popitem() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
@@ -15552,6 +15554,12 @@ print(key in c, value)
 c.clear()
 print(c, list(c.items()))
 for label, expr in [
+    ('pop-missing-receiver', lambda: Counter.pop()),
+    ('pop-missing-key', lambda: Counter.pop(Counter(a=2))),
+    ('pop-extra', lambda: Counter.pop(Counter(a=2), 'a', 1, 2)),
+    ('pop-self-keyword', lambda: Counter.pop(self=Counter(a=2), key='a')),
+    ('pop-bound-keyword', lambda: Counter(a=2).pop(key='a')),
+    ('pop-duplicate-key-keyword', lambda: Counter.pop(Counter(a=2), key='a', **{'key': 'b'})),
     ('clear-missing', lambda: Counter.clear()),
     ('clear-extra', lambda: Counter.clear(Counter(a=2), 1)),
     ('clear-self-keyword', lambda: Counter.clear(self=Counter(a=2))),
