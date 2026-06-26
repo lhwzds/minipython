@@ -11081,7 +11081,7 @@ Completed in the CPython collections manifest expansion pass:
   direct `Counter.__isub__()` in-place subtraction identity and public `self` /
   `other` binding diagnostics,
   absence of `Counter.__xor__` / `Counter.__ixor__` plus unsupported `^` / `^=`
-  diagnostics,
+  diagnostics, including catchable statement-form `Counter ^= Counter` `TypeError`,
   direct `Counter.__contains__()`
   membership and dict-style argument diagnostics, direct
   `Counter.__getitem__()` zero-default lookup and dict-style argument
@@ -11185,7 +11185,7 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_counter_symmetric_difference_absent_subset` and
   extended `cpython_collections_counter_public_diff_subset` for CPython 3.14's
   absence of `Counter.__xor__` / `Counter.__ixor__`, including unsupported `^`
-  and `^=` diagnostics. The older
+  and catchable statement-form unsupported `^=` diagnostics. The older
   `cpython_collections_counter_symmetric_difference_diff_subset` remains gated
   for CPython oracles that expose `Counter.__xor__`.
 - Added

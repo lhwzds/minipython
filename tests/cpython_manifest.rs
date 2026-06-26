@@ -17585,6 +17585,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.__isub__() got an unexpected keyword argument 'x'",
         "collections.Counter.__isub__() got multiple values for keyword argument 'other'",
         "hasattr(Counter, '__xor__')",
+        "ixor-statement",
         "type object 'Counter' has no attribute '__xor__'",
         "unsupported operand type(s) for ^: 'Counter' and 'Counter'",
         "unsupported operand type(s) for ^=: 'Counter' and 'Counter'",

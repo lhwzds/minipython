@@ -6133,7 +6133,7 @@ direct `Counter.__iadd__()` in-place addition identity and public `self` /
 direct `Counter.__isub__()` in-place subtraction identity and public `self` /
 `other` binding diagnostics,
 absence of `Counter.__xor__` / `Counter.__ixor__` plus unsupported `^` / `^=`
-diagnostics,
+diagnostics, including catchable statement-form `Counter ^= Counter` `TypeError`,
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,
@@ -6239,7 +6239,7 @@ Counter symmetric difference for CPython oracles that do not expose it.
 `cpython_collections_counter_symmetric_difference_absent_subset` and
 `cpython_collections_counter_public_diff_subset` now pin the CPython 3.14 public
 absence of `Counter.__xor__` / `Counter.__ixor__`, including unsupported `^` and
-`^=` diagnostics. The older gated
+catchable statement-form unsupported `^=` diagnostics. The older gated
 `cpython_collections_counter_symmetric_difference_diff_subset` remains
 feature-gated for CPython oracles that expose `Counter.__xor__`.
 

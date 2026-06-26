@@ -15621,6 +15621,13 @@ def ixor_operation():
     target = Counter(a=2)
     target ^= Counter(a=1)
     return target
+try:
+    direct_target = Counter(a=2)
+    direct_target ^= Counter(a=1)
+except TypeError as error:
+    print('ixor-statement', type(error).__name__, str(error))
+else:
+    print('ixor-statement-result', direct_target)
 for label, expr in [
     ('xor-hasattr', lambda: hasattr(Counter, '__xor__')),
     ('ixor-hasattr', lambda: hasattr(Counter, '__ixor__')),
