@@ -15378,6 +15378,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__pos__() missing 1 required positional argument: 'self';
     // Counter.__pos__() got an unexpected keyword argument 'x';
     // collections.Counter.__pos__() got multiple values for keyword argument 'self';
+    // Counter.__neg__() missing 1 required positional argument: 'self';
+    // Counter.__neg__() got an unexpected keyword argument 'x';
+    // collections.Counter.__neg__() got multiple values for keyword argument 'self';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15450,6 +15453,20 @@ for label, expr in [
     ('pos-bound-keyword', lambda: Counter(a=2).__pos__(self=Counter(a=3))),
     ('pos-duplicate-self-keyword', lambda: Counter.__pos__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('pos-duplicate-x-keyword', lambda: Counter.__pos__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('neg-direct', Counter.__neg__(Counter(a=2, b=-1, c=0)), Counter(a=2, b=-1, c=0).__neg__())
+for label, expr in [
+    ('neg-missing', lambda: Counter.__neg__()),
+    ('neg-extra', lambda: Counter.__neg__(Counter(a=2), 1)),
+    ('neg-keyword-only', lambda: Counter.__neg__(self=Counter(a=-2))),
+    ('neg-badkw', lambda: Counter.__neg__(x=1)),
+    ('neg-bound-keyword', lambda: Counter(a=-2).__neg__(self=Counter(a=-3))),
+    ('neg-duplicate-self-keyword', lambda: Counter.__neg__(self=Counter(a=-2), **{'self': Counter(a=-3)})),
+    ('neg-duplicate-x-keyword', lambda: Counter.__neg__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())

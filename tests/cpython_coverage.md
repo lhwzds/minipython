@@ -6119,6 +6119,7 @@ direct `Counter.__str__()` display and object-wrapper argument diagnostics,
 direct `Counter.__format__()` empty-format display and object-wrapper argument
 diagnostics,
 direct `Counter.__pos__()` unary filtering and public `self` binding diagnostics,
+direct `Counter.__neg__()` unary filtering and public `self` binding diagnostics,
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,
