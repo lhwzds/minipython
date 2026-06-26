@@ -37017,6 +37017,45 @@ print('fresh-async-generator-progress-unchecked', json.dumps(object(), default=h
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_list_iterator_identity_subset() {
+    assert_output(
+        r#"import json
+
+shared = iter([1])
+
+def fresh_list_iterator_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return iter([1])
+        return 'fresh-list-iterator-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-list-iterator-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_list_iterator_then_value()
+print('fresh-list-iterator-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-list-iterator-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_list_iterator_then_value()
+print('fresh-list-iterator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind list_iterator False",
+            "shared-list-iterator-default ValueError True True False",
+            "fresh-list-iterator-progress \"fresh-list-iterator-ok\" 2",
+            "shared-list-iterator-default-unchecked RecursionError True",
+            "fresh-list-iterator-progress-unchecked \"fresh-list-iterator-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_subset() {
     assert_output(
         r#"import functools
