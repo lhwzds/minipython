@@ -27485,13 +27485,97 @@ impl Vm {
                 load_subscript(receiver.clone(), key.clone())
             }
             "__missing__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [_receiver, _key] = args.as_slice() else {
+                let mut self_value = None;
+                let mut key_value = None;
+                let mut duplicate_self = false;
+                let mut duplicate_key = false;
+                let mut duplicate_keyword = None;
+                let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+
+                for (index, value) in args.iter().enumerate() {
+                    match index {
+                        0 => self_value = Some(value.clone()),
+                        1 => key_value = Some(value.clone()),
+                        _ => {
+                            return Err(format!(
+                                "TypeError: Counter.__missing__() takes 2 positional arguments but {} were given",
+                                args.len()
+                            ));
+                        }
+                    }
+                }
+
+                for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                    match keyword.as_str() {
+                        "self" => {
+                            if self_value.is_some() {
+                                duplicate_self = true;
+                            } else {
+                                self_value = Some(value);
+                            }
+                        }
+                        "key" => {
+                            if key_value.is_some() {
+                                duplicate_key = true;
+                            } else {
+                                key_value = Some(value);
+                            }
+                        }
+                        _ => {
+                            unexpected_keyword.get_or_insert(keyword);
+                        }
+                    }
+                }
+
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__missing__() expected 1 argument, got {}",
-                        method_arg_count(&args)
+                        "TypeError: collections.Counter.__missing__() got multiple values for keyword argument '{keyword}'"
                     ));
-                };
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.__missing__() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                if duplicate_key {
+                    return Err(
+                        "TypeError: Counter.__missing__() got multiple values for argument 'key'"
+                            .to_string(),
+                    );
+                }
+                if let Some(keyword) = unexpected_keyword {
+                    return Err(format!(
+                        "TypeError: Counter.__missing__() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+                match (self_value, key_value) {
+                    (None, None) => {
+                        return Err(
+                            "TypeError: Counter.__missing__() missing 2 required positional arguments: 'self' and 'key'"
+                                .to_string(),
+                        );
+                    }
+                    (None, Some(_)) => {
+                        return Err(
+                            "TypeError: Counter.__missing__() missing 1 required positional argument: 'self'"
+                                .to_string(),
+                        );
+                    }
+                    (Some(_), None) => {
+                        return Err(
+                            "TypeError: Counter.__missing__() missing 1 required positional argument: 'key'"
+                                .to_string(),
+                        );
+                    }
+                    (Some(_), Some(_)) => {}
+                }
                 Ok(Value::Number(0))
             }
             "__iter__" => {
