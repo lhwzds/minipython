@@ -6137,7 +6137,8 @@ errors for non-integer objects before any `__index__` conversion.
 parity and runtime coverage for `pop()`, missing-key `pop(default)`, missing-key
 `pop()` preserving the original key in `KeyError.args[0]`, `setdefault()`,
 `popitem()`, empty `popitem()` preserving CPython's `KeyError(message)` string
-display, `clear()`, and zero lookup after deletion.
+display, `clear()`, `clear()` descriptor-style argument diagnostics, and zero
+lookup after deletion.
 `cpython_collections_counter_comparison_diff_subset` and
 `cpython_collections_counter_comparison_subset` add method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,

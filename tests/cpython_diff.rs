@@ -15529,6 +15529,9 @@ for label, limit in [('index-only', IndexOnly()), ('string', 'x'), ('plain-objec
 
 #[test]
 fn cpython_collections_counter_mapping_mutation_diff_subset() {
+    // CPython oracle text: unbound method dict.clear() needs an argument;
+    // dict.clear() takes no keyword arguments;
+    // dict.clear() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter mapping mutation subset",
         name: "collections-counter-mapping-mutation",
@@ -15546,6 +15549,18 @@ key, value = c.popitem()
 print(key in c, value)
 c.clear()
 print(c, list(c.items()))
+for label, expr in [
+    ('clear-missing', lambda: Counter.clear()),
+    ('clear-extra', lambda: Counter.clear(Counter(a=2), 1)),
+    ('clear-self-keyword', lambda: Counter.clear(self=Counter(a=2))),
+    ('clear-bound-keyword', lambda: Counter(a=2).clear(x=1)),
+    ('clear-duplicate-self-keyword', lambda: Counter.clear(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('clear-duplicate-x-keyword', lambda: Counter.clear(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 class C(Counter):
     pass
 def show_empty_popitem(label, action):

@@ -17774,6 +17774,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.popitem(C())",
         "error.args[0] == 'popitem(): dictionary is empty'",
         "str(error) == repr(error.args[0])",
+        "Counter.clear()",
+        "Counter.clear(self=Counter(a=2))",
+        "dict.clear() got multiple values for keyword argument 'self'",
     ] {
         assert!(
             counter_mapping_mutation_diff_body.contains(required)
@@ -17815,6 +17818,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`KeyError.args[0]`",
             "empty `popitem()`",
             "`KeyError(message)` string display",
+            "`clear()` descriptor-style argument diagnostics",
         ] {
             assert!(
                 document.contains(required),
