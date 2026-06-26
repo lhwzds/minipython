@@ -8407,6 +8407,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_mappingview_identity_subset",
+            "cpython_json_dumps_default_hook_bytesio_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8493,6 +8494,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_mappingview_identity_diff_subset",
+        "cpython_json_dumps_default_hook_bytesio_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -12515,6 +12517,82 @@ fn json_dumps_default_hook_mappingview_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps mappingview identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_bytesio_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_bytesio_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_bytesio_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook BytesIO identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook BytesIO identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook io.BytesIO identity subset"),
+        "json dumps default hook BytesIO identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import io",
+        "shared = io.BytesIO(b'ab')",
+        "def fresh_bytesio_then_value():",
+        "if len(calls) <= 2:",
+        "return io.BytesIO(b'ab')",
+        "return 'fresh-bytesio-ok'",
+        "print('shape', type(shared).__name__, callable(shared), shared.getvalue())",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-bytesio-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-bytesio-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook BytesIO identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape BytesIO False b'ab'\"",
+        "\"shared-bytesio-default ValueError True True False\"",
+        "\"fresh-bytesio-progress \\\"fresh-bytesio-ok\\\" 3\"",
+        "\"shared-bytesio-default-unchecked RecursionError True\"",
+        "\"fresh-bytesio-progress-unchecked \\\"fresh-bytesio-ok\\\" 3\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook BytesIO identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported io.BytesIO replacement circular detection without treating fresh BytesIO objects as circular"
+            ),
+            "json docs must describe the BytesIO identity boundary"
+        );
+    }
+
+    for required in [
+        "pub type BytesIORef = Rc<RefCell<BytesIOState>>;",
+        "BytesIO(BytesIORef),",
+        "Value::BytesIO(bytes_io) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes_io) as usize))",
+        "Value::BytesIO(bytes_io) => Rc::as_ptr(bytes_io) as usize",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps BytesIO identity implementation must contain `{required}`"
         );
     }
 }

@@ -62657,6 +62657,7 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::Bytes(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
         Value::ByteArray(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
         Value::MemoryView(view) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(view) as usize)),
+        Value::BytesIO(bytes_io) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes_io) as usize)),
         Value::Slice { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
