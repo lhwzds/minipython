@@ -62561,6 +62561,8 @@ fn json_dumps_default_identity(value: &Value) -> Option<usize> {
         Value::Bytes(bytes) => Some(Rc::as_ptr(bytes) as usize),
         Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize),
         Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize),
+        Value::Set(items) => Some(Rc::as_ptr(items) as usize),
+        Value::FrozenSet(items) => Some(Rc::as_ptr(items) as usize),
         _ => json_dumps_container_identity(value),
     }
 }

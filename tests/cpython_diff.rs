@@ -1874,6 +1874,25 @@ for label, replacement in [
     except Exception as error:
         print(label, type(error).__name__, isinstance(error, RecursionError))
 
+shared_set = {1}
+shared_frozenset = frozenset([1])
+for label, replacement in [
+    ('shared-set-default', shared_set),
+    ('shared-frozenset-default', shared_frozenset),
+]:
+    try:
+        json.dumps(object(), default=lambda obj, replacement=replacement: replacement)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))
+for label, replacement in [
+    ('shared-set-default-unchecked', shared_set),
+    ('shared-frozenset-default-unchecked', shared_frozenset),
+]:
+    try:
+        json.dumps(object(), default=lambda obj, replacement=replacement: replacement, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))
+
 class FreshDefault:
     def __call__(self, obj):
         return object()

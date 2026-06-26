@@ -242,7 +242,8 @@ without expanding into custom encoder hooks.
 hook fallback tied to CPython public behavior for nested values, `None`, list,
 and dict replacement values, exception propagation, non-callable hooks, circular
 replacement detection, shared unsupported bytes-like replacement circular
-detection, and the documented recursion boundary.
+detection, shared unsupported set/frozenset replacement circular detection, and
+the documented recursion boundary.
 
 `cpython_json_dumps_key_coercion_subset`, backed by
 `cpython_json_dumps_key_coercion_diff_subset`, keeps the supported
@@ -304,7 +305,7 @@ file output, or locale-sensitive formatting.
 `cpython_json_dumps_default_hook_diff_subset`, keeps the supported `default` hook fallback for
 top-level and nested unsupported objects, scalar, `None`, list, and dict replacement values,
 non-callable hooks only error when used, hook exception propagation, returned-self and returned-container circular detection,
-shared unsupported bytes-like replacement circular detection, `check_circular=False` default-hook recursion boundary,
+shared unsupported bytes-like replacement circular detection, shared unsupported set/frozenset replacement circular detection, `check_circular=False` default-hook recursion boundary,
 and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
