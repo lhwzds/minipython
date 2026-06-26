@@ -24937,6 +24937,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["ilshift TypeError unsupported operand type(s) for <<=: 'int' and 'str'"],
     );
     assert_output(
+        "try:\n    value = 1\n    value >>= 'x'\nexcept TypeError as error:\n    print('irshift', error.__class__.__name__, str(error))",
+        &["irshift TypeError unsupported operand type(s) for >>=: 'int' and 'str'"],
+    );
+    assert_output(
         "try:\n    value = 1\n    value |= 'x'\nexcept TypeError as error:\n    print('ior', error.__class__.__name__, str(error))",
         &["ior TypeError unsupported operand type(s) for |=: 'int' and 'str'"],
     );
@@ -45647,6 +45651,10 @@ fn cpython_operator_inplace_helper_subset() {
             "print(operator.iconcat(c, c))\n",
             "print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))\n",
             "print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))\n",
+            "try:\n",
+            "    operator.irshift(1, 'x')\n",
+            "except TypeError as error:\n",
+            "    print('irshift-type', type(error).__name__, str(error))\n",
             "items = [1, 2]\n",
             "alias = items\n",
             "result = operator.iadd(items, [3])\n",
@@ -45669,6 +45677,7 @@ fn cpython_operator_inplace_helper_subset() {
             "iadd",
             "7 3 10 2 2.5 1 243",
             "10 15 7 10 2",
+            "irshift-type TypeError unsupported operand type(s) for >>=: 'int' and 'str'",
             "[1, 2, 3] [1, 2, 3] True",
             "[4, 5, 6] [4, 5, 6] True",
             "python",

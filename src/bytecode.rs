@@ -363,6 +363,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlaceRightShift {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     Equal {
         dst: Register,
         left: Register,
