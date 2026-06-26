@@ -8378,6 +8378,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_separators_subset",
             "cpython_json_dumps_float_spelling_subset",
             "cpython_json_dumps_default_hook_subset",
+            "cpython_json_dumps_default_hook_range_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8421,6 +8422,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_separators_diff_subset",
         "cpython_json_dumps_float_spelling_diff_subset",
         "cpython_json_dumps_default_hook_diff_subset",
+        "cpython_json_dumps_default_hook_range_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10172,6 +10174,78 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
         assert!(
             VM_SOURCE.contains(required),
             "json dumps default hook implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_range_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_range_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_range_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook range identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook range identity runtime subset evidence must exist"
+    );
+
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook range identity subset"),
+        "json dumps default hook range identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "shared_range = range(2)",
+        "('shared-range-default', lambda obj: shared_range)",
+        "('fresh-range-default', lambda obj: range(2))",
+        "('shared-range-default-unchecked', lambda obj: shared_range)",
+        "('fresh-range-default-unchecked', lambda obj: range(2))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook range identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-range-default ValueError True True False\"",
+        "\"fresh-range-default RecursionError False False True\"",
+        "\"shared-range-default-unchecked RecursionError True\"",
+        "\"fresh-range-default-unchecked RecursionError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook range identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported range replacement circular detection without treating fresh equal ranges as circular"
+            ),
+            "json docs must describe the range identity boundary"
+        );
+    }
+
+    for required in [
+        "Range {",
+        "identity: Rc<()>",
+        "identity: Rc::new(())",
+        "Value::Range { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Value::Range { identity, .. } => rc_plain_identity_bits(identity)",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "range identity implementation must contain `{required}`"
         );
     }
 }

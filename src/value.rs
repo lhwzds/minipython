@@ -671,6 +671,7 @@ pub enum Value {
         start: BigInt,
         stop: BigInt,
         step: BigInt,
+        identity: Rc<()>,
     },
     RangeIterator {
         current: BigInt,
@@ -1243,10 +1244,14 @@ impl fmt::Display for Value {
             Value::Frame { .. } => write!(f, "<frame object>"),
             Value::FrameLocalsProxy { .. } => write!(f, "<frame locals proxy object>"),
             Value::Traceback { .. } => write!(f, "<traceback object>"),
-            Value::Range { start, stop, step } if step == &BigInt::from(1) => {
+            Value::Range {
+                start, stop, step, ..
+            } if step == &BigInt::from(1) => {
                 write!(f, "range({start}, {stop})")
             }
-            Value::Range { start, stop, step } => write!(f, "range({start}, {stop}, {step})"),
+            Value::Range {
+                start, stop, step, ..
+            } => write!(f, "range({start}, {stop}, {step})"),
             Value::Slice { start, stop, step } => write!(
                 f,
                 "slice({}, {}, {})",
@@ -3049,11 +3054,13 @@ impl PartialEq for Value {
                     start: left_start,
                     stop: left_stop,
                     step: left_step,
+                    ..
                 },
                 Value::Range {
                     start: right_start,
                     stop: right_stop,
                     step: right_step,
+                    ..
                 },
             ) => left_start == right_start && left_stop == right_stop && left_step == right_step,
             (

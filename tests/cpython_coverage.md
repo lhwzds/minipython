@@ -628,6 +628,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_sort_keys_diff_subset`,
   `cpython_json_dumps_separators_diff_subset`,
   `cpython_json_dumps_default_hook_diff_subset`,
+  `cpython_json_dumps_default_hook_range_identity_diff_subset`,
   `cpython_json_dumps_float_spelling_diff_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset`,
@@ -1087,7 +1088,9 @@ Recent runtime migration notes:
   `cpython_json_dumps_separators_too_many_exact_sequence_diff_subset` /
   `cpython_json_dumps_separators_subset`,
   `cpython_json_dumps_default_hook_diff_subset` /
-  `cpython_json_dumps_default_hook_subset`, and
+  `cpython_json_dumps_default_hook_subset`,
+  `cpython_json_dumps_default_hook_range_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_range_identity_subset`, and
   `cpython_json_dumps_float_spelling_diff_subset` /
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
@@ -1232,6 +1235,9 @@ non-callable hooks only error when used, hook exception propagation, returned-se
 shared unsupported bytes-like replacement circular detection, shared unsupported set/frozenset replacement circular detection, `check_circular=False` default-hook recursion boundary,
 and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
+
+`cpython_json_dumps_default_hook_range_identity_subset`, backed by
+`cpython_json_dumps_default_hook_range_identity_diff_subset`, keeps shared unsupported range replacement circular detection without treating fresh equal ranges as circular.
 
 `cpython_json_dumps_float_spelling_subset`, backed by
 `cpython_json_dumps_float_spelling_diff_subset`, keeps `dumps()` finite float spelling for

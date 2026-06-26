@@ -1905,6 +1905,33 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_range_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook range identity subset",
+        name: "json-dumps-default-hook-range-identity",
+        source: r#"import json
+
+shared_range = range(2)
+for label, hook in [
+    ('shared-range-default', lambda obj: shared_range),
+    ('fresh-range-default', lambda obj: range(2)),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-range-default-unchecked', lambda obj: shared_range),
+    ('fresh-range-default-unchecked', lambda obj: range(2)),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

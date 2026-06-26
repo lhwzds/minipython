@@ -19001,11 +19001,13 @@ impl Vm {
                 start: BigInt::zero(),
                 stop: stop.clone(),
                 step: BigInt::from(1),
+                identity: Rc::new(()),
             }),
             [start, stop] => Ok(Value::Range {
                 start: start.clone(),
                 stop: stop.clone(),
                 step: BigInt::from(1),
+                identity: Rc::new(()),
             }),
             [start, stop, step] if step.is_zero() => {
                 let _ = (start, stop);
@@ -19015,6 +19017,7 @@ impl Vm {
                 start: start.clone(),
                 stop: stop.clone(),
                 step: step.clone(),
+                identity: Rc::new(()),
             }),
             values => Err(format!(
                 "range expected at most 3 arguments, got {}",
@@ -56034,9 +56037,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )),
             }
         }
-        Value::Range { start, stop, step } => {
-            immutable_sequence_method("range", Value::Range { start, stop, step }, name)
-        }
+        Value::Range {
+            start,
+            stop,
+            step,
+            identity,
+        } => immutable_sequence_method(
+            "range",
+            Value::Range {
+                start,
+                stop,
+                step,
+                identity,
+            },
+            name,
+        ),
         Value::List(items) => match name {
             "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
             | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
@@ -62563,6 +62578,7 @@ fn json_dumps_default_identity(value: &Value) -> Option<usize> {
         Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize),
         Value::Set(items) => Some(Rc::as_ptr(items) as usize),
         Value::FrozenSet(items) => Some(Rc::as_ptr(items) as usize),
+        Value::Range { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         _ => json_dumps_container_identity(value),
     }
 }
@@ -67036,7 +67052,9 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 index: 0,
             }))
         }
-        Value::Range { start, stop, step } => Ok(shared_iterator(Value::ReverseIterator {
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(shared_iterator(Value::ReverseIterator {
             items: range_values(&start, &stop, &step)?
                 .into_iter()
                 .map(normalize_big_int)
@@ -76402,7 +76420,9 @@ fn value_len(value: &Value) -> Result<usize, String> {
         Value::FrameLocalsProxy { locals } => Ok(locals.borrow().len()),
         Value::DictView { entries, .. } => Ok(entries.borrow().len()),
         Value::MappingView { mapping, .. } => value_len(mapping),
-        Value::Range { start, stop, step } => Ok(range_len_usize(start, stop, step)?),
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(range_len_usize(start, stop, step)?),
         value => Err(format!(
             "TypeError: object of type '{}' has no len()",
             type_name(value)
@@ -77644,6 +77664,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::ByteArray(bytes) => rc_identity_bits(bytes),
         Value::Set(items) => rc_identity_bits(items),
         Value::FrozenSet(items) => rc_plain_identity_bits(items),
+        Value::Range { identity, .. } => rc_plain_identity_bits(identity),
         Value::Dict(entries) => rc_identity_bits(entries),
         Value::OrderedDict(entries) => rc_identity_bits(entries),
         Value::Counter { entries } => rc_identity_bits(entries),
@@ -77818,7 +77839,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             "cell".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
         }
-        Value::Range { start, stop, step } => {
+        Value::Range {
+            start, stop, step, ..
+        } => {
             "range".hash(hasher);
             start.hash(hasher);
             stop.hash(hasher);
@@ -78501,7 +78524,9 @@ fn load_subscript_or_raise_key_error(
 
 fn get_iter(value: Value) -> Result<Value, String> {
     match value {
-        Value::Range { start, stop, step } => Ok(shared_iterator(Value::RangeIterator {
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(shared_iterator(Value::RangeIterator {
             current: start,
             stop,
             step,
@@ -79584,7 +79609,9 @@ fn sequence_pattern_len(value: &Value) -> Option<usize> {
         Value::UserList { data, .. } => Some(data.borrow().len()),
         Value::Tuple(items) => Some(items.len()),
         Value::NamedTuple { values, .. } => Some(values.len()),
-        Value::Range { start, stop, step } => range_len_usize(start, stop, step).ok(),
+        Value::Range {
+            start, stop, step, ..
+        } => range_len_usize(start, stop, step).ok(),
         _ => None,
     }
 }
@@ -79608,7 +79635,9 @@ fn sequence_pattern_values(value: Value) -> Result<Vec<Value>, String> {
         Value::UserList { data, .. } => Ok(data.borrow().clone()),
         Value::Tuple(items) => Ok(items.as_ref().clone()),
         Value::NamedTuple { values, .. } => Ok(values.as_ref().clone()),
-        Value::Range { start, stop, step } => Ok(range_values(&start, &stop, &step)?
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(range_values(&start, &stop, &step)?
             .into_iter()
             .map(normalize_big_int)
             .collect()),
@@ -79672,7 +79701,9 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
             .map(|byte| Value::Number(byte as i64))
             .collect()),
         Value::MemoryView(view) => memoryview_values(&view),
-        Value::Range { start, stop, step } => Ok(range_values(&start, &stop, &step)?
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(range_values(&start, &stop, &step)?
             .into_iter()
             .map(normalize_big_int)
             .collect()),
@@ -79828,13 +79859,23 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             ),
             index => array_array_item(&value, index),
         },
-        Value::Range { start, stop, step } => match index {
+        Value::Range {
+            start,
+            stop,
+            step,
+            identity,
+        } => match index {
             Value::Slice {
                 start: slice_start,
                 stop: slice_stop,
                 step: slice_step,
             } => load_slice(
-                Value::Range { start, stop, step },
+                Value::Range {
+                    start,
+                    stop,
+                    step,
+                    identity,
+                },
                 unbox_slice_part(slice_start),
                 unbox_slice_part(slice_stop),
                 unbox_slice_part(slice_step),
@@ -80700,6 +80741,7 @@ fn load_slice(
             start: range_start,
             stop: range_stop,
             step: range_step,
+            ..
         } => {
             let values = range_values(&range_start, &range_stop, &range_step)?;
             let start = slice_bound(start)?;
@@ -80722,12 +80764,14 @@ fn load_slice(
                     start: new_start,
                     stop: new_stop,
                     step: new_step,
+                    identity: Rc::new(()),
                 })
             } else {
                 Ok(Value::Range {
                     start: BigInt::zero(),
                     stop: BigInt::zero(),
                     step: BigInt::from(1),
+                    identity: Rc::new(()),
                 })
             }
         }
@@ -84561,7 +84605,9 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 "TypeError: bytearray membership requires bytes or integer left operand, got {value}"
             )),
         },
-        Value::Range { start, stop, step } => match needle {
+        Value::Range {
+            start, stop, step, ..
+        } => match needle {
             Value::Number(needle) => Ok(range_contains_integer(
                 &start,
                 &stop,
@@ -84707,6 +84753,16 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         }
         (Value::Set(left), Value::Set(right)) => Rc::ptr_eq(left, right),
         (Value::FrozenSet(left), Value::FrozenSet(right)) => Rc::ptr_eq(left, right),
+        (
+            Value::Range {
+                identity: left_identity,
+                ..
+            },
+            Value::Range {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
         (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),
         (Value::OrderedDict(left), Value::OrderedDict(right)) => Rc::ptr_eq(left, right),
         (Value::Counter { entries: left }, Value::Counter { entries: right }) => {
@@ -85162,7 +85218,9 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::CodeObject { .. } => Ok(true),
         Value::Cell { .. } => Ok(true),
         Value::Slice { .. } => Ok(true),
-        Value::Range { start, stop, step } => Ok(!range_is_exhausted(start, stop, step)),
+        Value::Range {
+            start, stop, step, ..
+        } => Ok(!range_is_exhausted(start, stop, step)),
         Value::RangeIterator { .. } => Ok(true),
         Value::ListIterator { .. } => Ok(true),
         Value::TupleIterator { .. } => Ok(true),
