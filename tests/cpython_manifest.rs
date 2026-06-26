@@ -8397,6 +8397,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_type_identity_subset",
             "cpython_json_dumps_default_hook_exception_identity_subset",
             "cpython_json_dumps_default_hook_code_identity_subset",
+            "cpython_json_dumps_default_hook_cell_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8473,6 +8474,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
         "cpython_json_dumps_default_hook_exception_identity_diff_subset",
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
+        "cpython_json_dumps_default_hook_cell_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -11703,6 +11705,84 @@ fn json_dumps_default_hook_code_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps code identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_cell_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_cell_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_cell_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook closure cell identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook closure cell identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook closure cell identity subset"),
+        "json dumps default hook closure cell identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "def make_cell(value):",
+        "return inner.__closure__[0]",
+        "shared = make_cell(1)",
+        "def fresh_cell_then_value():",
+        "return make_cell(1)",
+        "return 'fresh-cell-ok'",
+        "print('kind', type(shared).__name__ in ('cell', 'CellType'), callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-cell-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-cell-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook closure cell identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind True False\"",
+        "\"shared-cell-default ValueError True True False\"",
+        "\"fresh-cell-progress \\\"fresh-cell-ok\\\" 2\"",
+        "\"shared-cell-default-unchecked RecursionError True\"",
+        "\"fresh-cell-progress-unchecked \\\"fresh-cell-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook closure cell identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported closure cell replacement circular detection without treating fresh cells as circular"
+            ),
+            "json docs must describe the closure cell identity boundary"
+        );
+    }
+
+    for required in [
+        "Cell {",
+        "identity: Rc<()>",
+        "Value::Cell { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::Cell { identity, .. } => rc_plain_identity_bits(identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps closure cell identity implementation must contain `{required}`"
         );
     }
 }
