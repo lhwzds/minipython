@@ -15373,6 +15373,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__delitem__() missing 2 required positional arguments: 'self' and 'elem';
     // Counter.__delitem__() got multiple values for argument 'elem';
     // collections.Counter.__delitem__() got multiple values for keyword argument 'x';
+    // descriptor '__setitem__' of 'dict' object needs an argument;
+    // __setitem__ expected 2 arguments, got 3;
+    // dict.__setitem__() got multiple values for keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15426,6 +15429,27 @@ for label, expr in [
     ('delitem-duplicate-self', lambda: Counter.__delitem__(Counter(a=2), elem='a', self=Counter(a=3))),
     ('delitem-duplicate-elem', lambda: Counter.__delitem__(Counter(a=2), 'a', elem='b')),
     ('delitem-duplicate-x-keyword', lambda: Counter.__delitem__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+set_counter = Counter()
+print('setitem-direct', Counter.__setitem__(set_counter, 'a', 2), sorted(set_counter.items()))
+set_counter = Counter(a=2)
+print('setitem-replace', Counter.__setitem__(set_counter, 'a', 5), sorted(set_counter.items()))
+for label, expr in [
+    ('setitem-missing', lambda: Counter.__setitem__()),
+    ('setitem-missing-key-value', lambda: Counter.__setitem__(Counter())),
+    ('setitem-missing-value', lambda: Counter.__setitem__(Counter(), 'a')),
+    ('setitem-missing-self', lambda: Counter.__setitem__(key='a', value=1)),
+    ('setitem-bound-keyword', lambda: Counter().__setitem__(key='a', value=1)),
+    ('setitem-extra', lambda: Counter.__setitem__(Counter(), 'a', 1, 2)),
+    ('setitem-badkw', lambda: Counter.__setitem__(x=1)),
+    ('setitem-duplicate-self', lambda: Counter.__setitem__(Counter(), key='a', value=1, self=Counter())),
+    ('setitem-duplicate-key', lambda: Counter.__setitem__(Counter(), 'a', value=1, key='b')),
+    ('setitem-duplicate-value', lambda: Counter.__setitem__(Counter(), 'a', 1, value=2)),
+    ('setitem-duplicate-x-keyword', lambda: Counter.__setitem__(x=1, **{'x': 2})),
 ]:
     try:
         expr()

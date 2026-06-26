@@ -27756,10 +27756,40 @@ impl Vm {
                 Ok(Value::Number(len))
             }
             "__setitem__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver, key, value] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__setitem__() expected 2 arguments, got {}",
+                        "TypeError: dict.__setitem__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__setitem__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: wrapper __setitem__() takes no keyword arguments".to_string()
+                    );
+                }
+                let [receiver, key, value] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__setitem__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: __setitem__ expected 2 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };

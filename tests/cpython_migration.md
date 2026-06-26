@@ -11067,6 +11067,8 @@ Completed in the CPython collections manifest expansion pass:
   `Counter.__getitem__()` zero-default lookup and dict-style argument
   diagnostics, direct `Counter.__delitem__()` deletion and missing-key no-op
   behavior plus public `self` / `elem` binding diagnostics, direct
+  `Counter.__setitem__()` insertion/replacement behavior and dict-style
+  argument diagnostics, direct
   `Counter.__missing__()` zero-default behavior for Counter and non-Counter
   receivers plus public `self` / `key` binding diagnostics, the qualified
   `Counter.elements()` public arity diagnostic, `itertools.chain` return type,
