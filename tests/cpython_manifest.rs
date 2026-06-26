@@ -8400,6 +8400,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_code_identity_subset",
             "cpython_json_dumps_default_hook_cell_identity_subset",
             "cpython_json_dumps_default_hook_traceback_identity_subset",
+            "cpython_json_dumps_default_hook_frame_identity_subset",
             "cpython_json_dumps_default_hook_coroutine_identity_subset",
             "cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset",
             "cpython_json_dumps_default_hook_generator_identity_subset",
@@ -8490,6 +8491,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
         "cpython_json_dumps_default_hook_cell_identity_diff_subset",
         "cpython_json_dumps_default_hook_traceback_identity_diff_subset",
+        "cpython_json_dumps_default_hook_frame_identity_diff_subset",
         "cpython_json_dumps_default_hook_coroutine_identity_diff_subset",
         "cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset",
         "cpython_json_dumps_default_hook_generator_identity_diff_subset",
@@ -11969,6 +11971,84 @@ fn json_dumps_default_hook_traceback_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps traceback identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_frame_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_frame_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_frame_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook frame identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook frame identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook frame identity subset"),
+        "json dumps default hook frame identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import sys",
+        "shared = sys._getframe()",
+        "def make_frame():",
+        "return sys._getframe()",
+        "def fresh_frame_then_value():",
+        "if len(calls) <= 2:",
+        "return 'fresh-frame-ok'",
+        "print('shape', type(shared).__name__, callable(shared), shared is sys._getframe())",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-frame-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-frame-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook frame identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape frame False True\"",
+        "\"shared-frame-default ValueError True True False\"",
+        "\"fresh-frame-progress \\\"fresh-frame-ok\\\" 3\"",
+        "\"shared-frame-default-unchecked RecursionError True\"",
+        "\"fresh-frame-progress-unchecked \\\"fresh-frame-ok\\\" 3\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook frame identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported frame replacement circular detection without treating fresh frames as circular"
+            ),
+            "json docs must describe the frame identity boundary"
+        );
+    }
+
+    for required in [
+        "Frame {\n        fields: DictRef,\n    },",
+        "Value::Frame { fields }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(fields) as usize))",
+        "Value::Frame { fields } => rc_identity_bits(fields)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps frame identity implementation must contain `{required}`"
         );
     }
 }

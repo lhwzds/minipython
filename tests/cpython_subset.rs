@@ -36884,6 +36884,50 @@ print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_frame_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+import sys
+
+shared = sys._getframe()
+
+def make_frame():
+    return sys._getframe()
+
+def fresh_frame_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return make_frame()
+        return 'fresh-frame-ok'
+    return hook, calls
+
+print('shape', type(shared).__name__, callable(shared), shared is sys._getframe())
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-frame-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_frame_then_value()
+print('fresh-frame-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-frame-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_frame_then_value()
+print('fresh-frame-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shape frame False True",
+            "shared-frame-default ValueError True True False",
+            "fresh-frame-progress \"fresh-frame-ok\" 3",
+            "shared-frame-default-unchecked RecursionError True",
+            "fresh-frame-progress-unchecked \"fresh-frame-ok\" 3",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_coroutine_identity_subset() {
     assert_output_with_stack(
         r#"import json
