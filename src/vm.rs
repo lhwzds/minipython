@@ -27915,8 +27915,14 @@ impl Vm {
                     ));
                 };
                 let mut total = Value::Number(0);
-                for (_, count) in counter_receiver_entries(receiver)?.borrow().entries.iter() {
-                    total = add_values(total, count.clone())?;
+                let counts: Vec<Value> = counter_receiver_entries(receiver)?
+                    .borrow()
+                    .entries
+                    .iter()
+                    .map(|(_, count)| count.clone())
+                    .collect();
+                for count in counts {
+                    total = self.add_values(total, count)?;
                 }
                 Ok(total)
             }

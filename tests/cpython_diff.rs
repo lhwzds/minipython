@@ -15364,7 +15364,7 @@ c = Counter('abracadabra')
 print(c['a'], c['z'], sorted(c.items()))
 print(c.__repr__(), c.__str__(), c.__format__(''))
 print(Counter.__repr__(c), Counter.__str__(c), Counter.__format__(c, ''))
-print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
+print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
 print(Counter.__missing__(Counter(a=2), 'z'), Counter(a=2).__missing__('z'), Counter.__missing__({}, 'z'))
 try:
     c.__format__('x')
@@ -15379,6 +15379,11 @@ print(Counter.__neg__(Counter(a=2, b=-1, c=0)))
 print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
 elements = Counter({'a': 2}).elements()
 print(type(elements).__name__, iter(elements) is elements, list(elements), list(elements))
+class TotalCount:
+    def __radd__(self, other):
+        print('total-radd', other)
+        return 7
+print('total-result', Counter({'total': TotalCount()}).total())
 class IndexCount:
     def __index__(self):
         print('index-called')
