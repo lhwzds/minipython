@@ -17509,8 +17509,12 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "IndexCount",
         "list(Counter({'x': IndexCount()}).elements())",
         "'IntOnly' object cannot be interpreted as an integer",
+        "Counter.elements(self=Counter({'kw': 2}))",
+        "Counter.elements() missing 1 required positional argument: 'self'",
         "Counter.elements(Counter(a=2), 1)",
         "Counter.elements() takes 1 positional argument but 2 were given",
+        "Counter.elements() got an unexpected keyword argument 'x'",
+        "collections.Counter.elements() got multiple values for keyword argument 'self'",
     ] {
         assert!(
             counter_public_diff_body.contains(required)

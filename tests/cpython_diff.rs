@@ -15355,6 +15355,9 @@ for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: t
 #[test]
 fn cpython_collections_counter_public_diff_subset() {
     // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given;
+    // Counter.elements() missing 1 required positional argument: 'self';
+    // Counter.elements() got an unexpected keyword argument 'x';
+    // collections.Counter.elements() got multiple values for keyword argument 'self';
     // Counter.total() missing 1 required positional argument: 'self';
     // Counter.total() got an unexpected keyword argument 'x';
     // collections.Counter.total() got multiple values for keyword argument 'self';
@@ -15382,6 +15385,19 @@ print(Counter.__neg__(Counter(a=2, b=-1, c=0)))
 print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
 elements = Counter({'a': 2}).elements()
 print(type(elements).__name__, iter(elements) is elements, list(elements), list(elements))
+print('elements-self-keyword', list(Counter.elements(self=Counter({'kw': 2}))))
+for label, expr in [
+    ('elements-missing', lambda: Counter.elements()),
+    ('elements-extra', lambda: Counter.elements(Counter(a=2), 1)),
+    ('elements-badkw', lambda: Counter.elements(x=1)),
+    ('elements-duplicate-self', lambda: Counter(a=2).elements(self=Counter(a=3))),
+    ('elements-duplicate-self-keyword', lambda: Counter.elements(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('elements-duplicate-x-keyword', lambda: Counter.elements(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 class TotalCount:
     def __radd__(self, other):
         print('total-radd', other)
@@ -15414,10 +15430,6 @@ for label, count in [('int-only', IntOnly()), ('float', 1.5), ('string', '2')]:
         list(Counter({'x': count}).elements())
     except TypeError as error:
         print(label, type(error).__name__, str(error))
-try:
-    Counter.elements(Counter(a=2), 1)
-except TypeError as error:
-    print('elements-extra', type(error).__name__, str(error))
 c.update('zz')
 c.subtract({'a': 1, 'z': 3})
 print(sorted(c.items()))
