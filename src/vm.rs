@@ -27939,10 +27939,38 @@ impl Vm {
                 raise_key_error_value(self, key.clone())
             }
             "popitem" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "popitem() expected 0 arguments, got {}",
+                        "TypeError: dict.popitem() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method dict.popitem() needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err("TypeError: dict.popitem() takes no keyword arguments".to_string());
+                }
+                let [receiver] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method dict.popitem() needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: dict.popitem() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };

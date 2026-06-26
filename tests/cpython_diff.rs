@@ -15531,7 +15531,9 @@ for label, limit in [('index-only', IndexOnly()), ('string', 'x'), ('plain-objec
 fn cpython_collections_counter_mapping_mutation_diff_subset() {
     // CPython oracle text: unbound method dict.clear() needs an argument;
     // dict.clear() takes no keyword arguments;
-    // dict.clear() got multiple values for keyword argument 'self'
+    // dict.clear() got multiple values for keyword argument 'self';
+    // unbound method dict.popitem() needs an argument;
+    // dict.popitem() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter mapping mutation subset",
         name: "collections-counter-mapping-mutation",
@@ -15556,6 +15558,12 @@ for label, expr in [
     ('clear-bound-keyword', lambda: Counter(a=2).clear(x=1)),
     ('clear-duplicate-self-keyword', lambda: Counter.clear(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('clear-duplicate-x-keyword', lambda: Counter.clear(x=1, **{'x': 2})),
+    ('popitem-missing', lambda: Counter.popitem()),
+    ('popitem-extra', lambda: Counter.popitem(Counter(a=2), 1)),
+    ('popitem-self-keyword', lambda: Counter.popitem(self=Counter(a=2))),
+    ('popitem-bound-keyword', lambda: Counter(a=2).popitem(x=1)),
+    ('popitem-duplicate-self-keyword', lambda: Counter.popitem(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('popitem-duplicate-x-keyword', lambda: Counter.popitem(x=1, **{'x': 2})),
 ]:
     try:
         expr()

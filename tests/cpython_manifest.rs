@@ -17777,6 +17777,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.clear()",
         "Counter.clear(self=Counter(a=2))",
         "dict.clear() got multiple values for keyword argument 'self'",
+        "Counter.popitem()",
+        "Counter.popitem(self=Counter(a=2))",
+        "dict.popitem() got multiple values for keyword argument 'self'",
     ] {
         assert!(
             counter_mapping_mutation_diff_body.contains(required)
@@ -17819,6 +17822,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "empty `popitem()`",
             "`KeyError(message)` string display",
             "`clear()` descriptor-style argument diagnostics",
+            "`popitem()` descriptor-style argument diagnostics",
         ] {
             assert!(
                 document.contains(required),
