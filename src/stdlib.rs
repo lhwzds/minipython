@@ -2049,6 +2049,7 @@ pub(crate) fn call_staticmethod_constructor(
 
     Ok(Value::StaticMethod {
         function: Box::new(function.clone()),
+        identity: Rc::new(()),
     })
 }
 

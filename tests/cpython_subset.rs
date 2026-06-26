@@ -36059,6 +36059,48 @@ for label, hook in [
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_staticmethod_identity_subset() {
+    assert_output(
+        r#"import json
+
+def sample(obj=None):
+    return obj
+
+shared_static = staticmethod(sample)
+
+def fresh_static_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return staticmethod(sample)
+        return 'fresh-staticmethod-ok'
+    return hook, calls
+
+print('callable', callable(shared_static))
+try:
+    json.dumps(object(), default=lambda obj: shared_static)
+except Exception as error:
+    print('shared-staticmethod-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_static_then_value()
+print('fresh-staticmethod-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_static, check_circular=False)
+except Exception as error:
+    print('shared-staticmethod-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_static_then_value()
+print('fresh-staticmethod-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "callable True",
+            "shared-staticmethod-default ValueError True True False",
+            "fresh-staticmethod-progress \"fresh-staticmethod-ok\" 2",
+            "shared-staticmethod-default-unchecked RecursionError True",
+            "fresh-staticmethod-progress-unchecked \"fresh-staticmethod-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json

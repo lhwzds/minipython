@@ -1029,6 +1029,7 @@ pub enum Value {
     },
     StaticMethod {
         function: Box<Value>,
+        identity: Rc<()>,
     },
     ClassMethod {
         function: Box<Value>,
@@ -3703,9 +3704,11 @@ impl PartialEq for Value {
             (
                 Value::StaticMethod {
                     function: left_function,
+                    ..
                 },
                 Value::StaticMethod {
                     function: right_function,
+                    ..
                 },
             )
             | (
