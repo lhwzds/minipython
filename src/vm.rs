@@ -27907,15 +27907,44 @@ impl Vm {
                 Ok(default)
             }
             "total" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut self_keyword = None;
+                let mut duplicate_self = false;
+                let mut unexpected_keyword = None;
+                for (keyword, value) in keywords {
+                    if keyword != "self" {
+                        unexpected_keyword.get_or_insert(keyword);
+                    } else if !args.is_empty() || self_keyword.is_some() {
+                        duplicate_self = true;
+                    } else {
+                        self_keyword = Some(value);
+                    }
+                }
+                if let Some(keyword) = unexpected_keyword {
                     return Err(format!(
-                        "total() expected 0 arguments, got {}",
-                        method_arg_count(&args)
+                        "TypeError: Counter.total() got an unexpected keyword argument '{keyword}'"
                     ));
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.total() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                let receiver = match args.as_slice() {
+                    [] => self_keyword.ok_or_else(|| {
+                        "TypeError: Counter.total() missing 1 required positional argument: 'self'"
+                            .to_string()
+                    })?,
+                    [receiver] => receiver.clone(),
+                    _ => {
+                        return Err(format!(
+                            "TypeError: Counter.total() takes 1 positional argument but {} were given",
+                            args.len()
+                        ));
+                    }
                 };
                 let mut total = Value::Number(0);
-                let counts: Vec<Value> = counter_receiver_entries(receiver)?
+                let counts: Vec<Value> = counter_receiver_entries(&receiver)?
                     .borrow()
                     .entries
                     .iter()

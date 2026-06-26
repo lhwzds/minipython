@@ -15355,6 +15355,8 @@ for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: t
 #[test]
 fn cpython_collections_counter_public_diff_subset() {
     // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given;
+    // Counter.total() missing 1 required positional argument: 'self';
+    // Counter.total() got an unexpected keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15384,6 +15386,17 @@ class TotalCount:
         print('total-radd', other)
         return 7
 print('total-result', Counter({'total': TotalCount()}).total())
+print('total-self-keyword', Counter.total(self=Counter({'kw': 3})))
+for label, expr in [
+    ('total-missing', lambda: Counter.total()),
+    ('total-extra', lambda: Counter.total(Counter(a=2), 1)),
+    ('total-badkw', lambda: Counter.total(x=1)),
+    ('total-duplicate-self', lambda: Counter(a=2).total(self=Counter(a=3))),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 class IndexCount:
     def __index__(self):
         print('index-called')
