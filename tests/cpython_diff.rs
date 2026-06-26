@@ -2174,6 +2174,40 @@ print('fresh-partial-progress-unchecked', json.dumps(object(), default=hook, che
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_partialmethod_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook functools.partialmethod identity subset",
+        name: "json-dumps-default-hook-partialmethod-identity",
+        source: r#"import functools
+import json
+
+shared_method = functools.partialmethod(str.replace, 'a', 'b')
+
+def fresh_method_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return functools.partialmethod(str.replace, 'x', 'y')
+        return 'fresh-partialmethod-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_method)
+except Exception as error:
+    print('shared-partialmethod-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_method_then_value()
+print('fresh-partialmethod-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_method, check_circular=False)
+except Exception as error:
+    print('shared-partialmethod-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_method_then_value()
+print('fresh-partialmethod-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_lru_cache_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.lru_cache identity subset",
