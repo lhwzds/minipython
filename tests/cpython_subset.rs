@@ -36271,6 +36271,61 @@ print('fresh-field-progress-unchecked', json.dumps(object(), default=hook, check
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_dict_view_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+def exercise(label, make_view):
+    shared = make_view()
+    print(label, type(shared).__name__, callable(shared))
+
+    def fresh_view_then_value():
+        calls = []
+        def hook(obj):
+            calls.append(1)
+            if len(calls) == 1:
+                return make_view()
+            return label + '-fresh-ok'
+        return hook, calls
+
+    try:
+        json.dumps(object(), default=lambda obj: shared)
+    except Exception as error:
+        print(label + '-shared-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+    hook, calls = fresh_view_then_value()
+    print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))
+    try:
+        json.dumps(object(), default=lambda obj: shared, check_circular=False)
+    except Exception as error:
+        print(label + '-shared-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+    hook, calls = fresh_view_then_value()
+    print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))
+
+exercise('keys', lambda: {'x': 1}.keys())
+exercise('values', lambda: {'x': 1}.values())
+exercise('items', lambda: {'x': 1}.items())"#,
+        &[
+            "keys dict_keys False",
+            "keys-shared-default ValueError True True False",
+            "keys-fresh-progress \"keys-fresh-ok\" 2",
+            "keys-shared-default-unchecked RecursionError True",
+            "keys-fresh-progress-unchecked \"keys-fresh-ok\" 2",
+            "values dict_values False",
+            "values-shared-default ValueError True True False",
+            "values-fresh-progress \"values-fresh-ok\" 2",
+            "values-shared-default-unchecked RecursionError True",
+            "values-fresh-progress-unchecked \"values-fresh-ok\" 2",
+            "items dict_items False",
+            "items-shared-default ValueError True True False",
+            "items-fresh-progress \"items-fresh-ok\" 2",
+            "items-shared-default-unchecked RecursionError True",
+            "items-fresh-progress-unchecked \"items-fresh-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json

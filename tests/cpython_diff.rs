@@ -2175,6 +2175,45 @@ print('fresh-field-progress-unchecked', json.dumps(object(), default=hook, check
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_dict_view_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook dict view identity subset",
+        name: "json-dumps-default-hook-dict-view-identity",
+        source: r#"import json
+
+def exercise(label, make_view):
+    shared = make_view()
+    print(label, type(shared).__name__, callable(shared))
+
+    def fresh_view_then_value():
+        calls = []
+        def hook(obj):
+            calls.append(1)
+            if len(calls) == 1:
+                return make_view()
+            return label + '-fresh-ok'
+        return hook, calls
+
+    try:
+        json.dumps(object(), default=lambda obj: shared)
+    except Exception as error:
+        print(label + '-shared-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+    hook, calls = fresh_view_then_value()
+    print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))
+    try:
+        json.dumps(object(), default=lambda obj: shared, check_circular=False)
+    except Exception as error:
+        print(label + '-shared-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+    hook, calls = fresh_view_then_value()
+    print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))
+
+exercise('keys', lambda: {'x': 1}.keys())
+exercise('values', lambda: {'x': 1}.values())
+exercise('items', lambda: {'x': 1}.items())"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook bound method identity subset",

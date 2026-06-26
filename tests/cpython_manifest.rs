@@ -8386,6 +8386,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_property_identity_subset",
             "cpython_json_dumps_default_hook_member_descriptor_identity_subset",
             "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset",
+            "cpython_json_dumps_default_hook_dict_view_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8456,6 +8457,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_property_identity_diff_subset",
         "cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset",
         "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset",
+        "cpython_json_dumps_default_hook_dict_view_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -10836,6 +10838,96 @@ fn json_dumps_default_hook_namedtuple_field_descriptor_identity_has_focused_evid
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "namedtuple field descriptor identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_dict_view_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_dict_view_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_dict_view_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook dict view identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook dict view identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook dict view identity subset"),
+        "json dumps default hook dict view identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "def exercise(label, make_view):",
+        "shared = make_view()",
+        "print(label, type(shared).__name__, callable(shared))",
+        "def fresh_view_then_value():",
+        "return make_view()",
+        "return label + '-fresh-ok'",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+        "exercise('keys', lambda: {'x': 1}.keys())",
+        "exercise('values', lambda: {'x': 1}.values())",
+        "exercise('items', lambda: {'x': 1}.items())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook dict view identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"keys dict_keys False\"",
+        "\"keys-shared-default ValueError True True False\"",
+        "\"keys-fresh-progress \\\"keys-fresh-ok\\\" 2\"",
+        "\"keys-shared-default-unchecked RecursionError True\"",
+        "\"keys-fresh-progress-unchecked \\\"keys-fresh-ok\\\" 2\"",
+        "\"values dict_values False\"",
+        "\"values-shared-default ValueError True True False\"",
+        "\"values-fresh-progress \\\"values-fresh-ok\\\" 2\"",
+        "\"values-shared-default-unchecked RecursionError True\"",
+        "\"values-fresh-progress-unchecked \\\"values-fresh-ok\\\" 2\"",
+        "\"items dict_items False\"",
+        "\"items-shared-default ValueError True True False\"",
+        "\"items-fresh-progress \\\"items-fresh-ok\\\" 2\"",
+        "\"items-shared-default-unchecked RecursionError True\"",
+        "\"items-fresh-progress-unchecked \\\"items-fresh-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook dict view identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported dict view replacement circular detection without treating fresh dict views as circular"
+            ),
+            "json docs must describe the dict view identity boundary"
+        );
+    }
+
+    for required in [
+        "DictView {",
+        "identity: Rc<()>",
+        "Value::DictView { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "dict view identity implementation must contain `{required}`"
         );
     }
 }

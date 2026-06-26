@@ -636,6 +636,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_property_identity_diff_subset`,
   `cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset`,
   `cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_dict_view_identity_diff_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`,
   `cpython_json_dumps_default_hook_super_identity_diff_subset`,
   `cpython_json_dumps_default_hook_type_identity_diff_subset`,
@@ -1131,6 +1132,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_member_descriptor_identity_subset`,
   `cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset` /
   `cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset`,
+  `cpython_json_dumps_default_hook_dict_view_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_dict_view_identity_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset` /
   `cpython_json_dumps_default_hook_bound_method_identity_subset`,
   `cpython_json_dumps_default_hook_super_identity_diff_subset` /
@@ -1337,6 +1340,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset`, backed by
 `cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset`, keeps shared unsupported namedtuple field descriptor replacement circular detection without treating fresh namedtuple field descriptors as circular.
+
+`cpython_json_dumps_default_hook_dict_view_identity_subset`, backed by
+`cpython_json_dumps_default_hook_dict_view_identity_diff_subset`, keeps shared unsupported dict view replacement circular detection without treating fresh dict views as circular.
 
 `cpython_json_dumps_default_hook_bound_method_identity_subset`, backed by
 `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`, keeps shared unsupported bound method replacement circular detection without treating fresh bound methods as circular.

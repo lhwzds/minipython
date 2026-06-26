@@ -62652,6 +62652,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
             Rc::as_ptr(typ) as usize,
             *index,
         )),
+        Value::DictView { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Super { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
