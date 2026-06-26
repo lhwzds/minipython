@@ -15215,7 +15215,7 @@ impl Vm {
     }
 
     fn hash_key_value(&mut self, value: &Value) -> Result<Value, String> {
-        if let Value::MappingProxyObject { mapping } = value {
+        if let Value::MappingProxyObject { mapping, .. } = value {
             return self.hash_key_value(mapping);
         }
 
@@ -17266,7 +17266,7 @@ impl Vm {
             return self.load_subscript_value(target.as_ref().clone(), index);
         }
 
-        if let Value::MappingProxyObject { mapping } = object {
+        if let Value::MappingProxyObject { mapping, .. } = object {
             return self.load_subscript_value(*mapping, index);
         }
 
@@ -17840,7 +17840,7 @@ impl Vm {
             Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
             Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
             Value::MappingView { mapping, .. } => Ok(self.len_value(*mapping)? != 0),
-            Value::MappingProxyObject { mapping } => self.truth_value(*mapping),
+            Value::MappingProxyObject { mapping, .. } => self.truth_value(*mapping),
             value if counter_subclass_entries(&value).is_some() => {
                 Ok(!counter_subclass_entries(&value)
                     .expect("Counter subclass entries exist after guard")
@@ -17923,7 +17923,7 @@ impl Vm {
             Value::Deque { data, .. } => Ok(data.borrow().len()),
             Value::UserDict { data, .. } => Ok(data.borrow().len()),
             Value::MappingView { mapping, .. } => self.len_value(*mapping),
-            Value::MappingProxyObject { mapping } => self.len_value(*mapping),
+            Value::MappingProxyObject { mapping, .. } => self.len_value(*mapping),
             value => value_len(&value),
         }
     }
@@ -21970,7 +21970,7 @@ impl Vm {
                 Ok(self.set_lookup_position(&snapshot, &needle)?.is_some())
             }
             Value::FrozenSet(items) => Ok(self.set_lookup_position(&items, &needle)?.is_some()),
-            Value::MappingProxyObject { mapping } => self.contains_value(needle, *mapping),
+            Value::MappingProxyObject { mapping, .. } => self.contains_value(needle, *mapping),
             Value::MappingView { kind, mapping, .. } => {
                 self.mapping_view_contains(kind, *mapping, needle)
             }
@@ -22091,7 +22091,7 @@ impl Vm {
             Value::UserDict { data, .. } => {
                 self.call_with_exception_capture(|_| get_iter(Value::Dict(data)))
             }
-            Value::MappingProxyObject { mapping } => self.get_iter_capturing(*mapping),
+            Value::MappingProxyObject { mapping, .. } => self.get_iter_capturing(*mapping),
             Value::MappingView { kind, mapping, .. } => Ok(Ok(list_iterator_from_values(
                 self.mapping_view_values(kind, *mapping)?,
             ))),
@@ -22333,11 +22333,13 @@ impl Vm {
             [Value::Dict(entries)] | [Value::MappingProxy { entries, .. }] => {
                 Ok(mapping_proxy_value(entries.clone()))
             }
-            [Value::MappingProxyObject { mapping }] => Ok(Value::MappingProxyObject {
+            [Value::MappingProxyObject { mapping, .. }] => Ok(Value::MappingProxyObject {
                 mapping: mapping.clone(),
+                identity: Rc::new(()),
             }),
             [source] if is_mapping_proxy_source(source) => Ok(Value::MappingProxyObject {
                 mapping: Box::new(source.clone()),
+                identity: Rc::new(()),
             }),
             [] => Err(
                 "TypeError: mappingproxy() missing required argument 'mapping' (pos 1)".to_string(),
@@ -26952,7 +26954,7 @@ impl Vm {
                     Value::MappingProxy { entries, .. } => Ok(Value::String(repr_value_checked(
                         &Value::Dict(entries.clone()),
                     )?)),
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         Ok(Value::String(self.str_value(mapping)?))
                     }
                     _ => Err("mappingproxy.__str__ expected a mappingproxy receiver".to_string()),
@@ -27039,7 +27041,7 @@ impl Vm {
                 };
                 match receiver {
                     Value::MappingProxy { entries, .. } => build_dict(entries.borrow().clone()),
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         let method = self.load_attribute_value(*mapping.clone(), "copy")?;
                         self.call_value(method, Vec::new())
                     }
@@ -27067,7 +27069,7 @@ impl Vm {
                             .map(|(_, value)| value.clone())
                             .unwrap_or(default))
                     }
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         let method = self.load_attribute_value(*mapping.clone(), "get")?;
                         let mut call_args = vec![key.clone()];
                         call_args.extend(rest.iter().cloned());
@@ -27087,7 +27089,7 @@ impl Vm {
                     Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Items, entries.clone()))
                     }
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         let method = self.load_attribute_value(*mapping.clone(), "items")?;
                         self.call_value(method, Vec::new())
                     }
@@ -27105,7 +27107,7 @@ impl Vm {
                     Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Keys, entries.clone()))
                     }
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         let method = self.load_attribute_value(*mapping.clone(), "keys")?;
                         self.call_value(method, Vec::new())
                     }
@@ -27123,7 +27125,7 @@ impl Vm {
                     Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Values, entries.clone()))
                     }
-                    Value::MappingProxyObject { mapping } => {
+                    Value::MappingProxyObject { mapping, .. } => {
                         let method = self.load_attribute_value(*mapping.clone(), "values")?;
                         self.call_value(method, Vec::new())
                     }
@@ -52262,7 +52264,7 @@ fn is_async_generator_abc_value(value: &Value) -> bool {
 
 fn is_hashable_abc_value(value: &Value) -> bool {
     match value {
-        Value::MappingProxyObject { mapping } => is_hashable_abc_value(mapping),
+        Value::MappingProxyObject { mapping, .. } => is_hashable_abc_value(mapping),
         Value::MemoryView(_) => true,
         Value::Instance {
             class_attrs,
@@ -56452,6 +56454,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "mapping" if ordered => Ok(Value::MappingProxyObject {
                     mapping: Box::new(Value::OrderedDict(entries)),
+                    identity: Rc::new(()),
                 }),
                 "mapping" => Ok(mapping_proxy_value(entries)),
                 "__hash__" if kind == DictViewKind::Values => Ok(Value::BoundMethod {
@@ -56552,12 +56555,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: mappingproxy has no attribute '{name}'"
             )),
         },
-        Value::MappingProxyObject { mapping } => match name {
+        Value::MappingProxyObject { mapping, identity } => match name {
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
             | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
             | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("mappingproxy.{name}"))),
-                receiver: Box::new(Value::MappingProxyObject { mapping }),
+                receiver: Box::new(Value::MappingProxyObject { mapping, identity }),
                 identity: Rc::new(()),
             }),
             _ => Err(format!(
@@ -62700,6 +62703,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::MappingProxy { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::MappingProxyObject { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::Super { identity, .. } => {
@@ -77861,6 +77867,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::DictView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingProxy { identity, .. } => rc_plain_identity_bits(identity),
+        Value::MappingProxyObject { identity, .. } => rc_plain_identity_bits(identity),
         Value::ChainMap { maps } => maps.as_ptr() as usize as u64,
         Value::UserDict { data, .. } => rc_identity_bits(data),
         Value::SimpleNamespace { fields } => rc_identity_bits(fields),
@@ -78320,7 +78327,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::None => "None".hash(hasher),
         Value::NotImplemented => "NotImplemented".hash(hasher),
         Value::Ellipsis => "Ellipsis".hash(hasher),
-        Value::MappingProxyObject { mapping } => hash_value_into(mapping, hasher)?,
+        Value::MappingProxyObject { mapping, .. } => hash_value_into(mapping, hasher)?,
         value if dict_view_is_values_hashable_value(value) => {
             hash_value_into(&identity_hash_value(value), hasher)?
         }
@@ -78547,7 +78554,7 @@ fn is_hashable_key(value: &Value) -> bool {
                 && optional_slice_part_is_hashable(stop)
                 && optional_slice_part_is_hashable(step)
         }
-        Value::MappingProxyObject { mapping } => is_hashable_key(mapping),
+        Value::MappingProxyObject { mapping, .. } => is_hashable_key(mapping),
         value if dict_view_is_values_hashable_value(value) => true,
         Value::CmpToKey { .. }
         | Value::CmpToKeyObject { .. }
@@ -85018,6 +85025,16 @@ fn is_identical(left: &Value, right: &Value) -> bool {
                 ..
             },
             Value::MappingProxy {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
+            Value::MappingProxyObject {
+                identity: left_identity,
+                ..
+            },
+            Value::MappingProxyObject {
                 identity: right_identity,
                 ..
             },

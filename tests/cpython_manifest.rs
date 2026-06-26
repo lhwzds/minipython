@@ -8405,6 +8405,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_async_generator_identity_subset",
             "cpython_json_dumps_default_hook_list_iterator_identity_subset",
             "cpython_json_dumps_default_hook_mappingproxy_identity_subset",
+            "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8489,6 +8490,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_async_generator_identity_diff_subset",
         "cpython_json_dumps_default_hook_list_iterator_identity_diff_subset",
         "cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset",
+        "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -12343,6 +12345,90 @@ fn json_dumps_default_hook_mappingproxy_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps mappingproxy identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_custom_mappingproxy_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook custom mappingproxy identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook custom mappingproxy identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook custom mappingproxy identity subset"),
+        "json dumps default hook custom mappingproxy identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from types import MappingProxyType",
+        "class CustomMapping:",
+        "self.store = {'a': 1}",
+        "def __iter__(self):",
+        "def keys(self):",
+        "backing = CustomMapping()",
+        "shared = MappingProxyType(backing)",
+        "def fresh_custom_mappingproxy_same_backing_then_value():",
+        "if len(calls) <= 2:",
+        "return MappingProxyType(backing)",
+        "return 'fresh-custom-mappingproxy-ok'",
+        "print('kind', type(shared).__name__, callable(shared), len(shared), tuple(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-custom-mappingproxy-same-backing-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-custom-mappingproxy-same-backing-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook custom mappingproxy identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind mappingproxy False 1 ('a',)\"",
+        "\"shared-custom-mappingproxy-default ValueError True True False\"",
+        "\"fresh-custom-mappingproxy-same-backing-progress \\\"fresh-custom-mappingproxy-ok\\\" 3\"",
+        "\"shared-custom-mappingproxy-default-unchecked RecursionError True\"",
+        "\"fresh-custom-mappingproxy-same-backing-progress-unchecked \\\"fresh-custom-mappingproxy-ok\\\" 3\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook custom mappingproxy identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported custom mappingproxy replacement circular detection without treating fresh proxies over the same mapping object as circular"
+            ),
+            "json docs must describe the custom mappingproxy identity boundary"
+        );
+    }
+
+    for required in [
+        "MappingProxyObject {\n        mapping: Box<Value>,\n        identity: Rc<()>,",
+        "Value::MappingProxyObject { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::MappingProxyObject { identity, .. } => rc_plain_identity_bits(identity)",
+        "Value::MappingProxyObject {\n                identity: left_identity,",
+        "Value::MappingProxyObject {\n                identity: right_identity,",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps custom mappingproxy identity implementation must contain `{required}`"
         );
     }
 }

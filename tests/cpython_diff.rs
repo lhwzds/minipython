@@ -2884,6 +2884,56 @@ print('fresh-mappingproxy-same-backing-progress-unchecked', json.dumps(object(),
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook custom mappingproxy identity subset",
+        name: "json-dumps-default-hook-custom-mappingproxy-identity",
+        source: r#"import json
+from types import MappingProxyType
+
+class CustomMapping:
+    def __init__(self):
+        self.store = {'a': 1}
+    def __contains__(self, key):
+        return key in self.store
+    def __iter__(self):
+        return iter(self.store)
+    def __len__(self):
+        return len(self.store)
+    def __getitem__(self, key):
+        return self.store[key]
+    def keys(self):
+        return self.store.keys()
+
+backing = CustomMapping()
+shared = MappingProxyType(backing)
+
+def fresh_custom_mappingproxy_same_backing_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return MappingProxyType(backing)
+        return 'fresh-custom-mappingproxy-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared), len(shared), tuple(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-custom-mappingproxy-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_custom_mappingproxy_same_backing_then_value()
+print('fresh-custom-mappingproxy-same-backing-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-custom-mappingproxy-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_custom_mappingproxy_same_backing_then_value()
+print('fresh-custom-mappingproxy-same-backing-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.partial identity subset",

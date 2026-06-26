@@ -1807,7 +1807,7 @@ pub(crate) fn call_hash_builtin<C: StdlibContext + ?Sized>(
         ));
     };
 
-    if let Value::MappingProxyObject { mapping } = value {
+    if let Value::MappingProxyObject { mapping, .. } = value {
         return call_hash_builtin(context, vec![mapping.as_ref().clone()], Vec::new());
     }
 

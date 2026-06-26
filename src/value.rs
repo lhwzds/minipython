@@ -587,6 +587,7 @@ pub enum Value {
     },
     MappingProxyObject {
         mapping: Box<Value>,
+        identity: Rc<()>,
     },
     ChainMap {
         maps: Vec<Value>,
@@ -1203,7 +1204,7 @@ impl fmt::Display for Value {
             Value::MappingProxy { entries, .. } => {
                 write!(f, "mappingproxy({{{}}})", format_dict(&entries.borrow()))
             }
-            Value::MappingProxyObject { mapping } => write!(f, "mappingproxy({mapping})"),
+            Value::MappingProxyObject { mapping, .. } => write!(f, "mappingproxy({mapping})"),
             Value::ChainMap { maps } => {
                 let rendered = maps
                     .iter()
@@ -1873,7 +1874,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::MappingProxy { entries, .. } => {
             format!("mappingproxy({{{}}})", format_dict(&entries.borrow()))
         }
-        Value::MappingProxyObject { mapping } => format!("mappingproxy({mapping})"),
+        Value::MappingProxyObject { mapping, .. } => format!("mappingproxy({mapping})"),
         Value::ChainMap { maps } => {
             let rendered = maps
                 .iter()
@@ -3037,9 +3038,11 @@ impl PartialEq for Value {
             (
                 Value::MappingProxyObject {
                     mapping: left_mapping,
+                    ..
                 },
                 Value::MappingProxyObject {
                     mapping: right_mapping,
+                    ..
                 },
             ) => left_mapping == right_mapping,
             (Value::ChainMap { maps: left_maps }, Value::ChainMap { maps: right_maps }) => {
