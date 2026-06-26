@@ -2740,6 +2740,54 @@ print('fresh-coroutine-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook coroutine_wrapper identity subset",
+        name: "json-dumps-default-hook-coroutine-wrapper-identity",
+        source: r#"import json
+
+async def coro():
+    return 'done'
+
+shared_coro = coro()
+shared = shared_coro.__await__()
+
+def close_all(coros):
+    for c in coros:
+        c.close()
+
+def fresh_corowrapper_then_value():
+    calls = []
+    coros = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            c = coro()
+            coros.append(c)
+            return c.__await__()
+        return 'fresh-corowrapper-ok'
+    return hook, calls, coros
+
+print('shape', type(shared).__name__, callable(shared), iter(shared) is shared)
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-corowrapper-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls, coros = fresh_corowrapper_then_value()
+print('fresh-corowrapper-progress', json.dumps(object(), default=hook), len(calls))
+close_all(coros)
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-corowrapper-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls, coros = fresh_corowrapper_then_value()
+print('fresh-corowrapper-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))
+close_all(coros)
+shared_coro.close()"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_generator_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook generator identity subset",

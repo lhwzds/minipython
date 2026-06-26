@@ -36931,6 +36931,60 @@ print('fresh-coroutine-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+async def coro():
+    return 'done'
+
+shared_coro = coro()
+shared = shared_coro.__await__()
+
+def close_all(coros):
+    for c in coros:
+        c.close()
+
+def fresh_corowrapper_then_value():
+    calls = []
+    coros = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            c = coro()
+            coros.append(c)
+            return c.__await__()
+        return 'fresh-corowrapper-ok'
+    return hook, calls, coros
+
+print('shape', type(shared).__name__, callable(shared), iter(shared) is shared)
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-corowrapper-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls, coros = fresh_corowrapper_then_value()
+print('fresh-corowrapper-progress', json.dumps(object(), default=hook), len(calls))
+close_all(coros)
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-corowrapper-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls, coros = fresh_corowrapper_then_value()
+print('fresh-corowrapper-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))
+close_all(coros)
+shared_coro.close()"#,
+        &[
+            "shape coroutine_wrapper False True",
+            "shared-corowrapper-default ValueError True True False",
+            "fresh-corowrapper-progress \"fresh-corowrapper-ok\" 3",
+            "shared-corowrapper-default-unchecked RecursionError True",
+            "fresh-corowrapper-progress-unchecked \"fresh-corowrapper-ok\" 3",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_generator_identity_subset() {
     assert_output_with_stack(
         r#"import json

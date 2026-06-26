@@ -651,6 +651,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_cell_identity_diff_subset`,
   `cpython_json_dumps_default_hook_traceback_identity_diff_subset`,
   `cpython_json_dumps_default_hook_coroutine_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset`,
   `cpython_json_dumps_default_hook_generator_identity_diff_subset`,
   `cpython_json_dumps_default_hook_async_generator_identity_diff_subset`,
   `cpython_json_dumps_default_hook_list_iterator_identity_diff_subset`,
@@ -1178,6 +1179,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_traceback_identity_subset`,
   `cpython_json_dumps_default_hook_coroutine_identity_diff_subset` /
   `cpython_json_dumps_default_hook_coroutine_identity_subset`,
+  `cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset`,
   `cpython_json_dumps_default_hook_generator_identity_diff_subset` /
   `cpython_json_dumps_default_hook_generator_identity_subset`,
   `cpython_json_dumps_default_hook_async_generator_identity_diff_subset` /
@@ -1433,6 +1436,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_coroutine_identity_subset`, backed by
 `cpython_json_dumps_default_hook_coroutine_identity_diff_subset`, keeps shared unsupported coroutine replacement circular detection without treating fresh coroutines as circular.
+
+`cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset`, backed by
+`cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset`, keeps shared unsupported coroutine_wrapper replacement circular detection without treating fresh coroutine wrappers as circular.
 
 `cpython_json_dumps_default_hook_generator_identity_subset`, backed by
 `cpython_json_dumps_default_hook_generator_identity_diff_subset`, keeps shared unsupported generator replacement circular detection without treating fresh generators as circular.
