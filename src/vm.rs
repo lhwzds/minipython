@@ -5484,6 +5484,12 @@ impl Vm {
                     let value = modulo_values_with_vm(self, left, right);
                     self.write_arithmetic_result_or_raise(dst, value)?;
                 }
+                Instruction::InPlaceModulo { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let value = self.in_place_modulo_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
+                }
                 Instruction::Power { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
@@ -13959,6 +13965,22 @@ impl Vm {
             if message == unsupported_binary_operand_message("//", &original_left, &original_right)
             {
                 unsupported_binary_operand_message("//=", &original_left, &original_right)
+            } else {
+                message
+            }
+        })
+    }
+
+    fn in_place_modulo_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__imod__")? {
+            return Ok(value);
+        }
+
+        let original_left = left.clone();
+        let original_right = right.clone();
+        modulo_values_with_vm(self, left, right).map_err(|message| {
+            if message == unsupported_binary_operand_message("%", &original_left, &original_right) {
+                unsupported_binary_operand_message("%=", &original_left, &original_right)
             } else {
                 message
             }
@@ -31465,7 +31487,7 @@ impl Vm {
             }
             "imod" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                self.operator_in_place_binary_value(left, right, "__imod__", modulo_values)
+                self.in_place_modulo_values(left, right)
             }
             "imul" => {
                 let (left, right) = operator_binary_args(function, args)?;
@@ -83393,10 +83415,6 @@ fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
             )),
         },
     }
-}
-
-fn modulo_values(left: Value, right: Value) -> Result<Value, String> {
-    modulo_values_impl(None, left, right)
 }
 
 fn modulo_values_with_vm(vm: &mut Vm, left: Value, right: Value) -> Result<Value, String> {

@@ -308,6 +308,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlaceModulo {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     Power {
         dst: Register,
         left: Register,
