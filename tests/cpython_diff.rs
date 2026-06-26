@@ -15542,6 +15542,8 @@ fn cpython_collections_counter_mapping_mutation_diff_subset() {
     // dict.items() got multiple values for keyword argument 'self';
     // unbound method dict.keys() needs an argument;
     // dict.keys() got multiple values for keyword argument 'self';
+    // unbound method dict.values() needs an argument;
+    // dict.values() got multiple values for keyword argument 'self';
     // unbound method dict.popitem() needs an argument;
     // dict.popitem() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
@@ -15563,6 +15565,7 @@ c.clear()
 print(c, list(c.items()))
 print('direct-items', list(Counter.items(Counter(a=2))))
 print('direct-keys', list(Counter.keys(Counter(a=2))))
+print('direct-values', list(Counter.values(Counter(a=2))))
 for label, expr in [
     ('pop-missing-receiver', lambda: Counter.pop()),
     ('pop-missing-key', lambda: Counter.pop(Counter(a=2))),
@@ -15594,6 +15597,12 @@ for label, expr in [
     ('keys-bound-keyword', lambda: Counter(a=2).keys(x=1)),
     ('keys-duplicate-self-keyword', lambda: Counter.keys(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('keys-duplicate-x-keyword', lambda: Counter.keys(x=1, **{'x': 2})),
+    ('values-missing-receiver', lambda: Counter.values()),
+    ('values-extra', lambda: Counter.values(Counter(a=2), 1)),
+    ('values-self-keyword', lambda: Counter.values(self=Counter(a=2))),
+    ('values-bound-keyword', lambda: Counter(a=2).values(x=1)),
+    ('values-duplicate-self-keyword', lambda: Counter.values(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('values-duplicate-x-keyword', lambda: Counter.values(x=1, **{'x': 2})),
     ('clear-missing', lambda: Counter.clear()),
     ('clear-extra', lambda: Counter.clear(Counter(a=2), 1)),
     ('clear-self-keyword', lambda: Counter.clear(self=Counter(a=2))),
