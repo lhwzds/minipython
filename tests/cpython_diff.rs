@@ -2214,6 +2214,41 @@ exercise('items', lambda: {'x': 1}.items())"#,
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_deque_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook deque identity subset",
+        name: "json-dumps-default-hook-deque-identity",
+        source: r#"from collections import deque
+import json
+
+shared = deque([1])
+
+def fresh_deque_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return deque([1])
+        return 'fresh-deque-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-deque-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_deque_then_value()
+print('fresh-deque-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-deque-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_deque_then_value()
+print('fresh-deque-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook bound method identity subset",

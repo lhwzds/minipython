@@ -8387,6 +8387,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_member_descriptor_identity_subset",
             "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset",
             "cpython_json_dumps_default_hook_dict_view_identity_subset",
+            "cpython_json_dumps_default_hook_deque_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8458,6 +8459,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset",
         "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset",
         "cpython_json_dumps_default_hook_dict_view_identity_diff_subset",
+        "cpython_json_dumps_default_hook_deque_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -10928,6 +10930,84 @@ fn json_dumps_default_hook_dict_view_identity_has_focused_evidence() {
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "dict view identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_deque_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_deque_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_deque_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook deque identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook deque identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook deque identity subset"),
+        "json dumps default hook deque identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from collections import deque",
+        "shared = deque([1])",
+        "def fresh_deque_then_value():",
+        "return deque([1])",
+        "return 'fresh-deque-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-deque-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-deque-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook deque identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind deque False\"",
+        "\"shared-deque-default ValueError True True False\"",
+        "\"fresh-deque-progress \\\"fresh-deque-ok\\\" 2\"",
+        "\"shared-deque-default-unchecked RecursionError True\"",
+        "\"fresh-deque-progress-unchecked \\\"fresh-deque-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook deque identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported deque replacement circular detection without treating fresh deques as circular"
+            ),
+            "json docs must describe the deque identity boundary"
+        );
+    }
+
+    for required in [
+        "Deque {",
+        "data: ListRef",
+        "Value::Deque { data, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(data) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "deque identity implementation must contain `{required}`"
         );
     }
 }
