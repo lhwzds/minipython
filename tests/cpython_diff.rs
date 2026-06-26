@@ -15370,6 +15370,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
+    // Counter.__delitem__() missing 2 required positional arguments: 'self' and 'elem';
+    // Counter.__delitem__() got multiple values for argument 'elem';
+    // collections.Counter.__delitem__() got multiple values for keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15401,6 +15404,28 @@ for label, expr in [
     ('getitem-keyword-only', lambda: Counter.__getitem__(key='a')),
     ('getitem-bound-keyword', lambda: Counter(a=2).__getitem__(key='a')),
     ('getitem-duplicate-x-keyword', lambda: Counter.__getitem__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+del_counter = Counter(a=2)
+print('delitem-direct', Counter.__delitem__(del_counter, 'a'), sorted(del_counter.items()))
+del_counter = Counter(a=2)
+print('delitem-missing-direct', Counter.__delitem__(del_counter, 'z'), sorted(del_counter.items()))
+del_counter = Counter(a=2)
+print('delitem-keyword', Counter.__delitem__(self=del_counter, elem='a'), sorted(del_counter.items()))
+del_counter = Counter(a=2)
+print('delitem-bound-keyword', del_counter.__delitem__(elem='a'), sorted(del_counter.items()))
+for label, expr in [
+    ('delitem-all', lambda: Counter.__delitem__()),
+    ('delitem-missing-elem', lambda: Counter.__delitem__(Counter(a=2))),
+    ('delitem-missing-self', lambda: Counter.__delitem__(elem='a')),
+    ('delitem-extra', lambda: Counter.__delitem__(Counter(a=2), 'a', 1)),
+    ('delitem-badkw', lambda: Counter.__delitem__(x=1)),
+    ('delitem-duplicate-self', lambda: Counter.__delitem__(Counter(a=2), elem='a', self=Counter(a=3))),
+    ('delitem-duplicate-elem', lambda: Counter.__delitem__(Counter(a=2), 'a', elem='b')),
+    ('delitem-duplicate-x-keyword', lambda: Counter.__delitem__(x=1, **{'x': 2})),
 ]:
     try:
         expr()

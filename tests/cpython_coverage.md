@@ -6117,6 +6117,8 @@ for public method visibility through `dir(Counter)` plus direct
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,
+`Counter.__delitem__()` deletion and missing-key no-op behavior plus public
+`self` / `elem` binding diagnostics,
 `Counter.__missing__()` zero defaults on Counter and non-Counter receivers plus
 public `self` / `key` binding diagnostics,
 `Counter.elements()` `itertools.chain` return type plus count `__index__`

@@ -27492,16 +27492,100 @@ impl Vm {
                 })))
             }
             "__delitem__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver, key] = args.as_slice() else {
+                let mut self_value = None;
+                let mut elem_value = None;
+                let mut duplicate_self = false;
+                let mut duplicate_elem = false;
+                let mut duplicate_keyword = None;
+                let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+
+                for (index, value) in args.iter().enumerate() {
+                    match index {
+                        0 => self_value = Some(value.clone()),
+                        1 => elem_value = Some(value.clone()),
+                        _ => {
+                            return Err(format!(
+                                "TypeError: Counter.__delitem__() takes 2 positional arguments but {} were given",
+                                args.len()
+                            ));
+                        }
+                    }
+                }
+
+                for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                    match keyword.as_str() {
+                        "self" => {
+                            if self_value.is_some() {
+                                duplicate_self = true;
+                            } else {
+                                self_value = Some(value);
+                            }
+                        }
+                        "elem" => {
+                            if elem_value.is_some() {
+                                duplicate_elem = true;
+                            } else {
+                                elem_value = Some(value);
+                            }
+                        }
+                        _ => {
+                            unexpected_keyword.get_or_insert(keyword);
+                        }
+                    }
+                }
+
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__delitem__() expected 1 argument, got {}",
-                        method_arg_count(&args)
+                        "TypeError: collections.Counter.__delitem__() got multiple values for keyword argument '{keyword}'"
                     ));
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.__delitem__() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                if duplicate_elem {
+                    return Err(
+                        "TypeError: Counter.__delitem__() got multiple values for argument 'elem'"
+                            .to_string(),
+                    );
+                }
+                if let Some(keyword) = unexpected_keyword {
+                    return Err(format!(
+                        "TypeError: Counter.__delitem__() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+                let (receiver, elem) = match (self_value, elem_value) {
+                    (None, None) => {
+                        return Err(
+                            "TypeError: Counter.__delitem__() missing 2 required positional arguments: 'self' and 'elem'"
+                                .to_string(),
+                        );
+                    }
+                    (None, Some(_)) => {
+                        return Err(
+                            "TypeError: Counter.__delitem__() missing 1 required positional argument: 'self'"
+                                .to_string(),
+                        );
+                    }
+                    (Some(_), None) => {
+                        return Err(
+                            "TypeError: Counter.__delitem__() missing 1 required positional argument: 'elem'"
+                                .to_string(),
+                        );
+                    }
+                    (Some(receiver), Some(elem)) => (receiver, elem),
                 };
-                let entries = counter_receiver_entries(receiver)?;
-                ensure_hashable_key(key)?;
-                let _ = pop_mapping_entry(&entries, key)?;
+                let entries = counter_receiver_entries(&receiver)?;
+                ensure_hashable_key(&elem)?;
+                let _ = pop_mapping_entry(&entries, &elem)?;
                 Ok(Value::None)
             }
             "__getitem__" => {
