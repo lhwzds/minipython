@@ -62711,6 +62711,7 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::Traceback { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::Generator(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::Partial { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }

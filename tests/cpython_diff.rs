@@ -2659,6 +2659,43 @@ print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_generator_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook generator identity subset",
+        name: "json-dumps-default-hook-generator-identity",
+        source: r#"import json
+
+def gen(value):
+    yield value
+
+shared = gen(1)
+
+def fresh_generator_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return gen(1)
+        return 'fresh-generator-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-generator-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_generator_then_value()
+print('fresh-generator-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-generator-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_generator_then_value()
+print('fresh-generator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.partial identity subset",
