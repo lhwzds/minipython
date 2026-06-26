@@ -36367,6 +36367,47 @@ print('fresh-deque-progress-unchecked', json.dumps(object(), default=hook, check
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_userlist_identity_subset() {
+    assert_output_with_stack(
+        r#"from collections import UserList
+import json
+
+shared = UserList([1])
+
+def fresh_userlist_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return UserList([1])
+        return 'fresh-userlist-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-userlist-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_userlist_then_value()
+print('fresh-userlist-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-userlist-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_userlist_then_value()
+print('fresh-userlist-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind UserList False",
+            "shared-userlist-default ValueError True True False",
+            "fresh-userlist-progress \"fresh-userlist-ok\" 2",
+            "shared-userlist-default-unchecked RecursionError True",
+            "fresh-userlist-progress-unchecked \"fresh-userlist-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json
