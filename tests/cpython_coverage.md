@@ -6132,6 +6132,8 @@ direct `Counter.__iadd__()` in-place addition identity and public `self` /
 `other` binding diagnostics,
 direct `Counter.__isub__()` in-place subtraction identity and public `self` /
 `other` binding diagnostics,
+absence of `Counter.__xor__` / `Counter.__ixor__` plus unsupported `^` / `^=`
+diagnostics,
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,
@@ -6213,31 +6215,33 @@ replacement count is written back.
 coverage for `collections._count_elements()` over exact dicts, OrderedDict
 insertion order, and Counter subclasses that override `__setitem__` or `get`.
 `cpython_collections_counter_multiset_operations_subset` adds deterministic
-method-level Counter coverage for `+`, `-`, `|`, `&`, and `^` multiset
-arithmetic, direct dunder dispatch, and stripping zero/negative result counts.
+method-level Counter coverage for current CPython-supported `+`, `-`, `|`, and
+`&` multiset arithmetic, direct dunder dispatch, and stripping zero/negative
+result counts.
 `cpython_collections_counter_multiset_operations_matrix_subset` ports the
 CPython 1000-pair randomized count-formula matrix with deterministic samples,
-including `Counter.__add__`, `__sub__`, `__or__`, `__and__`, and `__xor__`
-result counts plus positive-count filtering.
+including `Counter.__add__`, `__sub__`, `__or__`, and `__and__` result counts
+plus positive-count filtering.
 `cpython_collections_counter_inplace_operations_subset` adds deterministic
 method-level Counter coverage for `__iadd__`, `__isub__`, `__ior__`, `__iand__`,
-and `__ixor__`, including result parity with binary operations and identity
-preservation through `id()`.
+including result parity with binary operations and identity preservation through
+`id()`.
 `cpython_collections_counter_inplace_operations_matrix_subset` ports the CPython
 1000-pair randomized in-place matrix with deterministic samples, checking
 regular-operation parity, receiver mutation, and identity preservation for all
-five in-place Counter operations.
+current CPython-supported in-place Counter operations.
 `cpython_collections_counter_multiset_operations_equivalent_to_set_operations_subset`
 and gated
 `cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset`
 port CPython's full 64-by-64 zero/one-count matrix equating Counter multiset
-operations and rich comparisons with regular set operations.
-`cpython_collections_counter_symmetric_difference_subset` ports CPython's full
-9^4 `Counter ^ Counter` matrix, while gated
-`cpython_collections_counter_symmetric_difference_diff_subset` keeps direct
-CPython parity evidence when the configured oracle exposes `Counter.__xor__`.
-The matrix includes elementwise absolute-difference invariants, positive
-filtering, input-order preservation, and `^=` parity.
+operations and rich comparisons with regular set operations, excluding
+Counter symmetric difference for CPython oracles that do not expose it.
+`cpython_collections_counter_symmetric_difference_absent_subset` and
+`cpython_collections_counter_public_diff_subset` now pin the CPython 3.14 public
+absence of `Counter.__xor__` / `Counter.__ixor__`, including unsupported `^` and
+`^=` diagnostics. The older gated
+`cpython_collections_counter_symmetric_difference_diff_subset` remains
+feature-gated for CPython oracles that expose `Counter.__xor__`.
 
 ## Function Parameters
 

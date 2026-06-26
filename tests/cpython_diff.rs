@@ -15399,6 +15399,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__isub__() missing 2 required positional arguments: 'self' and 'other';
     // Counter.__isub__() got an unexpected keyword argument 'x';
     // collections.Counter.__isub__() got multiple values for keyword argument 'other';
+    // type object 'Counter' has no attribute '__xor__';
+    // unsupported operand type(s) for ^: 'Counter' and 'Counter';
+    // unsupported operand type(s) for ^=: 'Counter' and 'Counter';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15613,6 +15616,24 @@ for label, expr in [
     try:
         print(label, expr())
     except TypeError as error:
+        print(label, type(error).__name__, str(error))
+def ixor_operation():
+    target = Counter(a=2)
+    target ^= Counter(a=1)
+    return target
+for label, expr in [
+    ('xor-hasattr', lambda: hasattr(Counter, '__xor__')),
+    ('ixor-hasattr', lambda: hasattr(Counter, '__ixor__')),
+    ('xor-dir', lambda: '__xor__' in dir(Counter)),
+    ('ixor-dir', lambda: '__ixor__' in dir(Counter)),
+    ('xor-getattr', lambda: getattr(Counter, '__xor__')),
+    ('ixor-getattr', lambda: getattr(Counter, '__ixor__')),
+    ('xor-op', lambda: Counter(a=2) ^ Counter(a=1)),
+    ('ixor-op', ixor_operation),
+]:
+    try:
+        print(label, expr())
+    except (AttributeError, TypeError) as error:
         print(label, type(error).__name__, str(error))
 print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
 print('contains-direct', Counter.__contains__(Counter(a=2), 'a'), Counter(a=2).__contains__('z'))

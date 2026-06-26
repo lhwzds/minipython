@@ -27867,21 +27867,6 @@ impl Vm {
                 Ok(counter_binary_value_from_operands(&left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
-            "__xor__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [left, right] = args.as_slice() else {
-                    return Err(format!(
-                        "{}() expected 1 argument, got {}",
-                        method_display_name(name),
-                        method_arg_count(&args)
-                    ));
-                };
-                let Some(op) = counter_binary_op_from_method(method_display_name(name)) else {
-                    unreachable!("counter binary method names are matched above")
-                };
-                Ok(counter_binary_value_from_operands(left, right, op)?
-                    .unwrap_or(Value::NotImplemented))
-            }
             "__iadd__" | "__isub__" => {
                 let method = method_display_name(name);
                 let (left, right) = counter_binary_method_operands(method, args, keywords)?;
@@ -27891,7 +27876,7 @@ impl Vm {
                 Ok(counter_in_place_value_from_operands(&left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
-            "__ior__" | "__iand__" | "__ixor__" => {
+            "__ior__" | "__iand__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [left, right] = args.as_slice() else {
                     return Err(format!(
@@ -29427,11 +29412,6 @@ impl Vm {
         {
             return Ok(value);
         }
-        if let Some(value) =
-            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::SymmetricDifference)?
-        {
-            return Ok(value);
-        }
         if let Some(value) = self.dict_view_iterable_set_operator_values(
             &left,
             &right,
@@ -29607,12 +29587,8 @@ impl Vm {
         if let Some(value) = self.call_in_place_special_method(&left, &right, "__ixor__")? {
             return Ok(value);
         }
-        if let Some(value) = counter_in_place_value_from_operands(
-            &left,
-            &right,
-            CounterBinaryOp::SymmetricDifference,
-        )? {
-            return Ok(value);
+        if counter_entries_if_value(&left).is_some() && counter_entries_if_value(&right).is_some() {
+            return Err(unsupported_binary_operand_message("^=", &left, &right));
         }
         match left {
             Value::Set(items) => {
@@ -49591,7 +49567,6 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__ior__",
             "__isub__",
             "__iter__",
-            "__ixor__",
             "__le__",
             "__len__",
             "__lt__",
@@ -49604,7 +49579,6 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__setitem__",
             "__str__",
             "__sub__",
-            "__xor__",
             "clear",
             "copy",
             "elements",
@@ -52943,12 +52917,10 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__sub__"
             | "__or__"
             | "__and__"
-            | "__xor__"
             | "__iadd__"
             | "__isub__"
             | "__ior__"
             | "__iand__"
-            | "__ixor__"
             | "__pos__"
             | "__neg__"
             | "__iter__"
@@ -57170,15 +57142,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
             | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
             | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__setitem__" | "__str__"
-            | "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" | "__iadd__"
-            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" | "__eq__" | "__ne__" | "__lt__"
-            | "__le__" | "__gt__" | "__ge__" | "__missing__" | "__pos__" | "__neg__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
-                    receiver: Box::new(Value::Counter { entries }),
-                    identity: Rc::new(()),
-                })
-            }
+            | "__add__" | "__sub__" | "__or__" | "__and__" | "__iadd__" | "__isub__"
+            | "__ior__" | "__iand__" | "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__"
+            | "__ge__" | "__missing__" | "__pos__" | "__neg__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                receiver: Box::new(Value::Counter { entries }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
         },
         Value::UserDict { data, attrs } => {
@@ -59185,6 +59155,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
+        Value::Builtin(function_name) if is_class_like_builtin(&function_name) => Err(format!(
+            "AttributeError: type object '{}' has no attribute '{name}'",
+            builtin_public_name(&function_name)
+        )),
         Value::Module {
             name: module_name,
             attrs,
@@ -78341,7 +78315,6 @@ enum CounterBinaryOp {
     Subtract,
     Union,
     Intersection,
-    SymmetricDifference,
 }
 
 #[derive(Clone, Copy)]
@@ -78365,7 +78338,6 @@ fn counter_binary_op_from_method(name: &str) -> Option<CounterBinaryOp> {
         "__sub__" => Some(CounterBinaryOp::Subtract),
         "__or__" => Some(CounterBinaryOp::Union),
         "__and__" => Some(CounterBinaryOp::Intersection),
-        "__xor__" => Some(CounterBinaryOp::SymmetricDifference),
         _ => None,
     }
 }
@@ -78464,7 +78436,6 @@ fn counter_in_place_op_from_method(name: &str) -> Option<CounterBinaryOp> {
         "__isub__" => Some(CounterBinaryOp::Subtract),
         "__ior__" => Some(CounterBinaryOp::Union),
         "__iand__" => Some(CounterBinaryOp::Intersection),
-        "__ixor__" => Some(CounterBinaryOp::SymmetricDifference),
         _ => None,
     }
 }
@@ -78565,14 +78536,6 @@ fn counter_binary_count(left: Value, right: Value, op: CounterBinaryOp) -> Resul
         CounterBinaryOp::Subtract => subtract_values(left, right),
         CounterBinaryOp::Union => counter_max_count(left, right),
         CounterBinaryOp::Intersection => counter_min_count(left, right),
-        CounterBinaryOp::SymmetricDifference => {
-            let difference = subtract_values(left, right)?;
-            if compare_values(difference.clone(), Value::Number(0))?.is_lt() {
-                negate_value(difference)
-            } else {
-                Ok(difference)
-            }
-        }
     }
 }
 

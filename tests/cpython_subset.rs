@@ -54539,6 +54539,24 @@ fn cpython_collections_counter_public_subset() {
             "        print(label, expr())\n",
             "    except TypeError as error:\n",
             "        print(label, type(error).__name__, str(error))\n",
+            "def ixor_operation():\n",
+            "    target = Counter(a=2)\n",
+            "    target ^= Counter(a=1)\n",
+            "    return target\n",
+            "for label, expr in [\n",
+            "    ('xor-hasattr', lambda: hasattr(Counter, '__xor__')),\n",
+            "    ('ixor-hasattr', lambda: hasattr(Counter, '__ixor__')),\n",
+            "    ('xor-dir', lambda: '__xor__' in dir(Counter)),\n",
+            "    ('ixor-dir', lambda: '__ixor__' in dir(Counter)),\n",
+            "    ('xor-getattr', lambda: getattr(Counter, '__xor__')),\n",
+            "    ('ixor-getattr', lambda: getattr(Counter, '__ixor__')),\n",
+            "    ('xor-op', lambda: Counter(a=2) ^ Counter(a=1)),\n",
+            "    ('ixor-op', ixor_operation),\n",
+            "]:\n",
+            "    try:\n",
+            "        print(label, expr())\n",
+            "    except (AttributeError, TypeError) as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
             "print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))\n",
             "print('contains-direct', Counter.__contains__(Counter(a=2), 'a'), Counter(a=2).__contains__('z'))\n",
             "for label, expr in [\n",
@@ -54835,6 +54853,14 @@ fn cpython_collections_counter_public_subset() {
             "isub-duplicate-self-keyword TypeError collections.Counter.__isub__() got multiple values for keyword argument 'self'",
             "isub-duplicate-other-keyword TypeError collections.Counter.__isub__() got multiple values for keyword argument 'other'",
             "isub-duplicate-x-keyword TypeError collections.Counter.__isub__() got multiple values for keyword argument 'x'",
+            "xor-hasattr False",
+            "ixor-hasattr False",
+            "xor-dir False",
+            "ixor-dir False",
+            "xor-getattr AttributeError type object 'Counter' has no attribute '__xor__'",
+            "ixor-getattr AttributeError type object 'Counter' has no attribute '__ixor__'",
+            "xor-op TypeError unsupported operand type(s) for ^: 'Counter' and 'Counter'",
+            "ixor-op TypeError unsupported operand type(s) for ^=: 'Counter' and 'Counter'",
             "True",
             "contains-direct True False",
             "contains-missing TypeError unbound method dict.__contains__() needs an argument",
@@ -57039,8 +57065,7 @@ fn cpython_collections_counter_order_preservation_subset() {
             "print(correctly_ordered(p - q))\n",
             "print(correctly_ordered(p | q))\n",
             "print(correctly_ordered(p & q))\n",
-            "print(correctly_ordered(p ^ q))\n",
-            "for op in ['+=', '-=', '|=', '&=', '^=', 'update', 'subtract']:\n",
+            "for op in ['+=', '-=', '|=', '&=', 'update', 'subtract']:\n",
             "    p, q = Counter(ps), Counter(qs)\n",
             "    if op == '+=':\n",
             "        p += q\n",
@@ -57050,8 +57075,6 @@ fn cpython_collections_counter_order_preservation_subset() {
             "        p |= q\n",
             "    elif op == '&=':\n",
             "        p &= q\n",
-            "    elif op == '^=':\n",
-            "        p ^= q\n",
             "    elif op == 'update':\n",
             "        p.update(q)\n",
             "    else:\n",
@@ -57068,12 +57091,10 @@ fn cpython_collections_counter_order_preservation_subset() {
             "True",
             "True",
             "True",
-            "True",
             "+= True",
             "-= True",
             "|= True",
             "&= True",
-            "^= True",
             "update True",
             "subtract True",
         ],
@@ -57162,10 +57183,9 @@ fn cpython_collections_counter_multiset_operations_subset() {
             "print(dict(p - q))\n",
             "print(dict(p | q))\n",
             "print(dict(p & q))\n",
-            "print(dict(p ^ q))\n",
             "print(Counter.__add__(p, q) == p + q, Counter.__sub__(p, q) == p - q)\n",
-            "print(Counter.__or__(p, q) == (p | q), Counter.__and__(p, q) == (p & q), Counter.__xor__(p, q) == (p ^ q))\n",
-            "for result in [p + q, p - q, p | q, p & q, p ^ q]:\n",
+            "print(Counter.__or__(p, q) == (p | q), Counter.__and__(p, q) == (p & q))\n",
+            "for result in [p + q, p - q, p | q, p & q]:\n",
             "    ok = True\n",
             "    for value in result.values():\n",
             "        if not value > 0:\n",
@@ -57178,10 +57198,8 @@ fn cpython_collections_counter_multiset_operations_subset() {
             "{'a': 2, 'e': 1, 'i': 1}",
             "{'a': 3, 'b': 2, 'e': 1, 'd': 4, 'h': 1}",
             "{'a': 1}",
-            "{'a': 2, 'b': 3, 'e': 1, 'f': 1, 'd': 4, 'h': 1, 'i': 1}",
             "True True",
-            "True True True",
-            "True",
+            "True True",
             "True",
             "True",
             "True",
@@ -57236,7 +57254,7 @@ fn cpython_collections_counter_multiset_operations_matrix_subset() {
             "    return True\n",
             "failures = 0\n",
             "elements = 'abcd'\n",
-            "ops = [('add', Counter.__add__), ('sub', Counter.__sub__), ('or', Counter.__or__), ('and', Counter.__and__), ('xor', Counter.__xor__)]\n",
+            "ops = [('add', Counter.__add__), ('sub', Counter.__sub__), ('or', Counter.__or__), ('and', Counter.__and__)]\n",
             "for i in range(1000):\n",
             "    p = random_counter(elements, -2, 4)\n",
             "    p.update(e=1, f=-1, g=0)\n",
@@ -57265,7 +57283,7 @@ fn cpython_collections_counter_inplace_operations_subset() {
             "from collections import Counter\n",
             "p = Counter(a=3, b=-1, c=0, e=1, f=-1, g=0)\n",
             "q = Counter(a=1, b=2, d=4, h=1, i=-1, j=0)\n",
-            "for op in ['+=', '-=', '|=', '&=', '^=']:\n",
+            "for op in ['+=', '-=', '|=', '&=']:\n",
             "    c = p.copy()\n",
             "    before = id(c)\n",
             "    if op == '+=':\n",
@@ -57281,8 +57299,8 @@ fn cpython_collections_counter_inplace_operations_subset() {
             "        expected = p & q\n",
             "        result = Counter.__iand__(c, q)\n",
             "    else:\n",
-            "        expected = p ^ q\n",
-            "        result = Counter.__ixor__(c, q)\n",
+            "        expected = p & q\n",
+            "        result = Counter.__iand__(c, q)\n",
             "    print(op, result == expected, c == expected, id(result) == before, id(c) == before)\n"
         ),
         &[
@@ -57290,7 +57308,6 @@ fn cpython_collections_counter_inplace_operations_subset() {
             "-= True True True True",
             "|= True True True True",
             "&= True True True True",
-            "^= True True True True",
         ],
     );
 }
@@ -57319,7 +57336,6 @@ fn cpython_collections_counter_inplace_operations_matrix_subset() {
             "    ('isub', Counter.__isub__, Counter.__sub__),\n",
             "    ('ior', Counter.__ior__, Counter.__or__),\n",
             "    ('iand', Counter.__iand__, Counter.__and__),\n",
-            "    ('ixor', Counter.__ixor__, Counter.__xor__),\n",
             "]\n",
             "for i in range(1000):\n",
             "    p = random_counter(elements, -2, 4)\n",
@@ -57347,8 +57363,9 @@ fn cpython_collections_counter_inplace_operations_matrix_subset() {
 
 // Adapted from CPython
 // Lib/test/test_collections.py::TestCounter::test_multiset_operations_equivalent_to_set_operations.
-// This ports the full 64-by-64 pair matrix for Counters whose counts are all
-// zero or one, using explicit loops instead of itertools helpers.
+// This ports the current CPython-supported 64-by-64 pair matrix for Counters
+// whose counts are all zero or one, using explicit loops instead of itertools
+// helpers.
 #[test]
 fn cpython_collections_counter_multiset_operations_equivalent_to_set_operations_subset() {
     assert_output(
@@ -57372,7 +57389,6 @@ fn cpython_collections_counter_multiset_operations_equivalent_to_set_operations_
             "        assert set(cp - cq) == (sp - sq)\n",
             "        assert set(cp | cq) == (sp | sq)\n",
             "        assert set(cp & cq) == (sp & sq)\n",
-            "        assert set(cp ^ cq) == (sp ^ sq)\n",
             "        assert (cp == cq) == (sp == sq)\n",
             "        assert (cp != cq) == (sp != sq)\n",
             "        assert (cp <= cq) == (sp <= sq)\n",
@@ -57386,44 +57402,35 @@ fn cpython_collections_counter_multiset_operations_equivalent_to_set_operations_
     );
 }
 
-// Adapted from CPython Lib/test/test_collections.py::TestCounter::test_symmetric_difference.
-// This keeps CPython's full 9^4 population matrix while spelling out the loops
-// locally instead of importing itertools.product.
+// CPython 3.14 no longer exposes Counter symmetric difference. Keep this as a
+// focused negative public-surface check instead of preserving older behavior.
 #[test]
-fn cpython_collections_counter_symmetric_difference_subset() {
+fn cpython_collections_counter_symmetric_difference_absent_subset() {
     assert_output(
         concat!(
             "from collections import Counter\n",
-            "population = (-4, -3, -2, -1, 0, 1, 2, 3, 4)\n",
-            "checked = 0\n",
-            "for a in population:\n",
-            "    for b1 in population:\n",
-            "        for b2 in population:\n",
-            "            for c in population:\n",
-            "                p = Counter(a=a, b=b1)\n",
-            "                q = Counter(b=b2, c=c)\n",
-            "                r = p ^ q\n",
-            "                for k in ('a', 'b', 'c'):\n",
-            "                    assert r[k] == max(p[k], q[k]) - min(p[k], q[k])\n",
-            "                    assert r[k] == abs(p[k] - q[k])\n",
-            "                assert r == ((p - q) | (q - p))\n",
-            "                if a >= 0 and b1 >= 0 and b2 >= 0 and c >= 0:\n",
-            "                    assert r == ((p | q) - (p & q))\n",
-            "                for value in r.values():\n",
-            "                    assert value > 0\n",
-            "                keys = list(p) + list(q)\n",
-            "                indices = []\n",
-            "                for k in r:\n",
-            "                    indices.append(keys.index(k))\n",
-            "                assert indices == sorted(indices)\n",
-            "                pp = Counter(p)\n",
-            "                qq = Counter(q)\n",
-            "                pp ^= qq\n",
-            "                assert pp == r\n",
-            "                checked += 1\n",
-            "print(checked)\n"
+            "print(hasattr(Counter, '__xor__'), hasattr(Counter, '__ixor__'))\n",
+            "for label, callback in [\n",
+            "    ('xor', lambda: Counter(a=2) ^ Counter(a=1)),\n",
+            "]:\n",
+            "    try:\n",
+            "        callback()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "def ixor_operation():\n",
+            "    target = Counter(a=2)\n",
+            "    target ^= Counter(a=1)\n",
+            "    return target\n",
+            "try:\n",
+            "    ixor_operation()\n",
+            "except TypeError as error:\n",
+            "    print('ixor', type(error).__name__, str(error))\n"
         ),
-        &["6561"],
+        &[
+            "False False",
+            "xor TypeError unsupported operand type(s) for ^: 'Counter' and 'Counter'",
+            "ixor TypeError unsupported operand type(s) for ^=: 'Counter' and 'Counter'",
+        ],
     );
 }
 
