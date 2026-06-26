@@ -8406,6 +8406,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_list_iterator_identity_subset",
             "cpython_json_dumps_default_hook_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset",
+            "cpython_json_dumps_default_hook_mappingview_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8491,6 +8492,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_list_iterator_identity_diff_subset",
         "cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset",
+        "cpython_json_dumps_default_hook_mappingview_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -12429,6 +12431,90 @@ fn json_dumps_default_hook_custom_mappingproxy_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps custom mappingproxy identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_mappingview_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_mappingview_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_mappingview_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook mappingview identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook mappingview identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/json public dumps default hook collections.abc KeysView identity subset"
+        ),
+        "json dumps default hook mappingview identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from collections.abc import KeysView",
+        "class CustomMapping:",
+        "self.store = {'a': 1}",
+        "def __contains__(self, key):",
+        "def __iter__(self):",
+        "backing = CustomMapping()",
+        "shared = KeysView(backing)",
+        "def fresh_keysview_same_mapping_then_value():",
+        "if len(calls) <= 2:",
+        "return KeysView(backing)",
+        "return 'fresh-keysview-ok'",
+        "print('shape', callable(shared), len(shared), tuple(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-keysview-same-mapping-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-keysview-same-mapping-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook mappingview identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape False 1 ('a',)\"",
+        "\"shared-keysview-default ValueError True True False\"",
+        "\"fresh-keysview-same-mapping-progress \\\"fresh-keysview-ok\\\" 3\"",
+        "\"shared-keysview-default-unchecked RecursionError True\"",
+        "\"fresh-keysview-same-mapping-progress-unchecked \\\"fresh-keysview-ok\\\" 3\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook mappingview identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported collections.abc KeysView replacement circular detection without treating fresh views over the same mapping as circular"
+            ),
+            "json docs must describe the mappingview identity boundary"
+        );
+    }
+
+    for required in [
+        "MappingView {\n        kind: DictViewKind,\n        mapping: Box<Value>,\n        identity: Rc<()>,",
+        "Value::MappingView { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::MappingView { identity, .. } => rc_plain_identity_bits(identity)",
+        "Value::MappingView {\n                kind: left_kind,",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps mappingview identity implementation must contain `{required}`"
         );
     }
 }

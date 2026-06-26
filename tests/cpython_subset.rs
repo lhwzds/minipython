@@ -37152,6 +37152,59 @@ print('fresh-custom-mappingproxy-same-backing-progress-unchecked', json.dumps(ob
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_mappingview_identity_subset() {
+    assert_output(
+        r#"import json
+from collections.abc import KeysView
+
+class CustomMapping:
+    def __init__(self):
+        self.store = {'a': 1}
+    def __contains__(self, key):
+        return key in self.store
+    def __iter__(self):
+        return iter(self.store)
+    def __len__(self):
+        return len(self.store)
+    def __getitem__(self, key):
+        return self.store[key]
+
+backing = CustomMapping()
+shared = KeysView(backing)
+
+def fresh_keysview_same_mapping_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return KeysView(backing)
+        return 'fresh-keysview-ok'
+    return hook, calls
+
+print('shape', callable(shared), len(shared), tuple(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-keysview-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_keysview_same_mapping_then_value()
+print('fresh-keysview-same-mapping-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-keysview-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_keysview_same_mapping_then_value()
+print('fresh-keysview-same-mapping-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shape False 1 ('a',)",
+            "shared-keysview-default ValueError True True False",
+            "fresh-keysview-same-mapping-progress \"fresh-keysview-ok\" 3",
+            "shared-keysview-default-unchecked RecursionError True",
+            "fresh-keysview-same-mapping-progress-unchecked \"fresh-keysview-ok\" 3",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_subset() {
     assert_output(
         r#"import functools

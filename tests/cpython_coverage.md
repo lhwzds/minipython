@@ -656,6 +656,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_list_iterator_identity_diff_subset`,
   `cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset`,
   `cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_mappingview_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset`,
@@ -1186,6 +1187,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_mappingproxy_identity_subset`,
   `cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset` /
   `cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset`,
+  `cpython_json_dumps_default_hook_mappingview_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_mappingview_identity_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset` /
   `cpython_json_dumps_default_hook_partial_identity_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset` /
@@ -1442,6 +1445,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset`, backed by
 `cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset`, keeps shared unsupported custom mappingproxy replacement circular detection without treating fresh proxies over the same mapping object as circular.
+
+`cpython_json_dumps_default_hook_mappingview_identity_subset`, backed by
+`cpython_json_dumps_default_hook_mappingview_identity_diff_subset`, keeps shared unsupported collections.abc KeysView replacement circular detection without treating fresh views over the same mapping as circular.
 
 `cpython_json_dumps_default_hook_partial_identity_subset`, backed by
 `cpython_json_dumps_default_hook_partial_identity_diff_subset`, keeps shared unsupported functools.partial replacement circular detection without treating fresh partial objects as circular.
