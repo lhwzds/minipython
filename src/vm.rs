@@ -27945,15 +27945,61 @@ impl Vm {
                 counter_unary_value(&entries, op)
             }
             "__repr__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut self_value = None;
+                let mut duplicate_self = false;
+                let mut duplicate_keyword = None;
+                let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+
+                for (index, value) in args.iter().enumerate() {
+                    match index {
+                        0 => self_value = Some(value.clone()),
+                        _ => {
+                            return Err(format!(
+                                "TypeError: Counter.__repr__() takes 1 positional argument but {} were given",
+                                args.len()
+                            ));
+                        }
+                    }
+                }
+
+                for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                    if keyword != "self" {
+                        unexpected_keyword.get_or_insert(keyword);
+                    } else if self_value.is_some() {
+                        duplicate_self = true;
+                    } else {
+                        self_value = Some(value);
+                    }
+                }
+
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__repr__() expected 0 arguments, got {}",
-                        method_arg_count(&args)
+                        "TypeError: collections.Counter.__repr__() got multiple values for keyword argument '{keyword}'"
                     ));
-                };
-                counter_receiver_entries(receiver)?;
-                Ok(Value::String(repr_value_checked(receiver)?))
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.__repr__() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                if let Some(keyword) = unexpected_keyword {
+                    return Err(format!(
+                        "TypeError: Counter.__repr__() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+                let receiver = self_value.ok_or_else(|| {
+                    "TypeError: Counter.__repr__() missing 1 required positional argument: 'self'"
+                        .to_string()
+                })?;
+                counter_receiver_entries(&receiver)?;
+                Ok(Value::String(repr_value_checked(&receiver)?))
             }
             "__str__" => {
                 reject_method_keywords(name, &keywords)?;

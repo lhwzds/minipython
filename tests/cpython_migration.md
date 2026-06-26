@@ -11062,7 +11062,8 @@ Completed in the CPython collections manifest expansion pass:
   zero lookup after deletion behavior plus `popitem()` descriptor-style argument diagnostics out of the broader Counter basics coverage.
 - Extended `cpython_collections_counter_public_diff_subset` and
   `cpython_collections_counter_public_subset` to cover supported
-  `dir(Counter)` public method visibility, direct `Counter.__contains__()`
+  `dir(Counter)` public method visibility, direct `Counter.__repr__()`
+  display and public `self` binding diagnostics, direct `Counter.__contains__()`
   membership and dict-style argument diagnostics, direct
   `Counter.__getitem__()` zero-default lookup and dict-style argument
   diagnostics, direct `Counter.__delitem__()` deletion and missing-key no-op

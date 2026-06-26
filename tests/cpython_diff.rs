@@ -15367,6 +15367,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // unbound method dict.__contains__() needs an argument;
     // dict.__contains__() takes exactly one argument (2 given);
     // dict.__contains__() got multiple values for keyword argument 'x';
+    // Counter.__repr__() missing 1 required positional argument: 'self';
+    // Counter.__repr__() got an unexpected keyword argument 'x';
+    // collections.Counter.__repr__() got multiple values for keyword argument 'self';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15390,6 +15393,19 @@ c = Counter('abracadabra')
 print(c['a'], c['z'], sorted(c.items()))
 print(c.__repr__(), c.__str__(), c.__format__(''))
 print(Counter.__repr__(c), Counter.__str__(c), Counter.__format__(c, ''))
+print('repr-keyword', Counter.__repr__(self=Counter(a=2)))
+for label, expr in [
+    ('repr-missing', lambda: Counter.__repr__()),
+    ('repr-extra', lambda: Counter.__repr__(Counter(a=2), 1)),
+    ('repr-badkw', lambda: Counter.__repr__(x=1)),
+    ('repr-bound-duplicate-self', lambda: Counter(a=2).__repr__(self=Counter(a=3))),
+    ('repr-duplicate-self-keyword', lambda: Counter.__repr__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('repr-duplicate-x-keyword', lambda: Counter.__repr__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
 print('contains-direct', Counter.__contains__(Counter(a=2), 'a'), Counter(a=2).__contains__('z'))
 for label, expr in [
