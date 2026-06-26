@@ -15698,6 +15698,8 @@ print(set(c) == set(s))"#,
 
 #[test]
 fn cpython_collections_counter_init_update_diff_subset() {
+    // CPython oracle text: Counter.__init__() missing 1 required positional argument: 'self';
+    // Counter.__init__() takes from 1 to 2 positional arguments but 3 were given.
     // CPython oracle text: Counter.update() missing 1 required positional argument: 'self';
     // Counter.update() takes from 1 to 2 positional arguments but 3 were given.
     assert_cpython_output_parity(&DiffCase {
@@ -15716,6 +15718,19 @@ try:
     Counter.__init__()
 except TypeError:
     print('TypeError')
+c = Counter()
+c.__init__(self=42)
+print(list(c.items()))
+def show_init_error(label, call):
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+show_init_error('init-missing', lambda: Counter.__init__())
+show_init_error('init-extra', lambda: Counter.__init__(Counter(), {}, {}))
+show_init_error('init-self-keyword', lambda: Counter.__init__(self=Counter(a=2)))
+show_init_error('init-iterable-keyword', lambda: Counter.__init__(iterable=Counter(a=2)))
+show_init_error('init-bound-extra', lambda: Counter().__init__({}, {}))
 c = Counter()
 c.update(self=42)
 print(list(c.items()))

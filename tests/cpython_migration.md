@@ -11089,6 +11089,11 @@ Completed in the CPython collections manifest expansion pass:
   `iterable=` keyword names as real Counter keys, `iterable=None` insertion for
   empty Counter updates, bad source inputs, too many arguments, and unbound
   method TypeErrors.
+- Extended `cpython_collections_counter_init_update_diff_subset` and
+  `cpython_collections_counter_init_update_subset` with CPython-style
+  `Counter.__init__()` receiver and positional-arity diagnostics while keeping
+  bound `__init__(self=...)` and `__init__(iterable=...)` keywords as real
+  Counter keys.
 - Updated Counter mapping update semantics so Add-mode updates into an empty
   Counter directly insert mapping values, matching CPython's
   `super().update(iterable)` fast path while keeping non-empty updates additive

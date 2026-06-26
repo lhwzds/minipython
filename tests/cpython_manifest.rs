@@ -17758,6 +17758,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_collections_counter_init_update_subset",
     );
     for required in [
+        "Counter.__init__() missing 1 required positional argument: 'self'",
+        "Counter.__init__() takes from 1 to 2 positional arguments but 3 were given",
+        "Counter.__init__(self=Counter(a=2))",
+        "Counter.__init__(iterable=Counter(a=2))",
+        "Counter().__init__({}, {})",
         "Counter.update() missing 1 required positional argument: 'self'",
         "Counter.update() takes from 1 to 2 positional arguments but 3 were given",
         "Counter.update(self=Counter(a=2))",

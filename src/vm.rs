@@ -27665,7 +27665,7 @@ impl Vm {
             "__init__" | "update" | "subtract" => {
                 let display_name = method_display_name(name);
                 let Some((receiver, rest)) = args.split_first() else {
-                    if matches!(display_name, "update" | "subtract") {
+                    if matches!(display_name, "__init__" | "update" | "subtract") {
                         return Err(format!(
                             "TypeError: Counter.{display_name}() missing 1 required positional argument: 'self'"
                         ));
@@ -27676,7 +27676,7 @@ impl Vm {
                     ));
                 };
                 if rest.len() > 1 {
-                    if matches!(display_name, "update" | "subtract") {
+                    if matches!(display_name, "__init__" | "update" | "subtract") {
                         return Err(format!(
                             "TypeError: Counter.{display_name}() takes from 1 to 2 positional arguments but {} were given",
                             args.len()
