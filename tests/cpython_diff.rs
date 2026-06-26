@@ -2619,6 +2619,46 @@ print('fresh-cell-progress-unchecked', json.dumps(object(), default=hook, check_
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_traceback_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook traceback identity subset",
+        name: "json-dumps-default-hook-traceback-identity",
+        source: r#"import json
+
+def make_traceback(label):
+    try:
+        raise RuntimeError(label)
+    except RuntimeError as error:
+        return error.__traceback__
+
+shared = make_traceback('shared')
+
+def fresh_traceback_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return make_traceback('fresh')
+        return 'fresh-traceback-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__ in ('traceback', 'TracebackType'), callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-traceback-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_traceback_then_value()
+print('fresh-traceback-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-traceback-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_traceback_then_value()
+print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.partial identity subset",

@@ -36793,6 +36793,52 @@ print('fresh-cell-progress-unchecked', json.dumps(object(), default=hook, check_
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_traceback_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+def make_traceback(label):
+    try:
+        raise RuntimeError(label)
+    except RuntimeError as error:
+        return error.__traceback__
+
+shared = make_traceback('shared')
+
+def fresh_traceback_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return make_traceback('fresh')
+        return 'fresh-traceback-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__ in ('traceback', 'TracebackType'), callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-traceback-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_traceback_then_value()
+print('fresh-traceback-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-traceback-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_traceback_then_value()
+print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind True False",
+            "shared-traceback-default ValueError True True False",
+            "fresh-traceback-progress \"fresh-traceback-ok\" 2",
+            "shared-traceback-default-unchecked RecursionError True",
+            "fresh-traceback-progress-unchecked \"fresh-traceback-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_subset() {
     assert_output(
         r#"import functools

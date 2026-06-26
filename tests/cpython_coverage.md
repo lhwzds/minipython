@@ -648,6 +648,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_exception_identity_diff_subset`,
   `cpython_json_dumps_default_hook_code_identity_diff_subset`,
   `cpython_json_dumps_default_hook_cell_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_traceback_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset`,
@@ -1162,6 +1163,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_code_identity_subset`,
   `cpython_json_dumps_default_hook_cell_identity_diff_subset` /
   `cpython_json_dumps_default_hook_cell_identity_subset`,
+  `cpython_json_dumps_default_hook_traceback_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_traceback_identity_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset` /
   `cpython_json_dumps_default_hook_partial_identity_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset` /
@@ -1394,6 +1397,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_cell_identity_subset`, backed by
 `cpython_json_dumps_default_hook_cell_identity_diff_subset`, keeps shared unsupported closure cell replacement circular detection without treating fresh cells as circular.
+
+`cpython_json_dumps_default_hook_traceback_identity_subset`, backed by
+`cpython_json_dumps_default_hook_traceback_identity_diff_subset`, keeps shared unsupported traceback replacement circular detection without treating fresh tracebacks as circular.
 
 `cpython_json_dumps_default_hook_partial_identity_subset`, backed by
 `cpython_json_dumps_default_hook_partial_identity_diff_subset`, keeps shared unsupported functools.partial replacement circular detection without treating fresh partial objects as circular.
