@@ -288,6 +288,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlaceTrueDivide {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     FloorDivide {
         dst: Register,
         left: Register,

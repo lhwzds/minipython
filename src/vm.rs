@@ -5460,6 +5460,12 @@ impl Vm {
                     let value = true_divide_values(left, right);
                     self.write_arithmetic_result_or_raise(dst, value)?;
                 }
+                Instruction::InPlaceTrueDivide { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let value = self.in_place_true_divide_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
+                }
                 Instruction::FloorDivide { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
@@ -13924,6 +13930,22 @@ impl Vm {
         }
 
         floor_divide_values(left, right)
+    }
+
+    fn in_place_true_divide_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__itruediv__")? {
+            return Ok(value);
+        }
+
+        let original_left = left.clone();
+        let original_right = right.clone();
+        true_divide_values(left, right).map_err(|message| {
+            if message == unsupported_binary_operand_message("/", &original_left, &original_right) {
+                unsupported_binary_operand_message("/=", &original_left, &original_right)
+            } else {
+                message
+            }
+        })
     }
 
     fn in_place_floor_divide_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
@@ -31468,7 +31490,7 @@ impl Vm {
             }
             "itruediv" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                self.operator_in_place_binary_value(left, right, "__itruediv__", true_divide_values)
+                self.in_place_true_divide_values(left, right)
             }
             "ixor" => {
                 let (left, right) = operator_binary_args(function, args)?;

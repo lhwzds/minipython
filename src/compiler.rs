@@ -3995,6 +3995,10 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::InPlaceMatrixMultiply { dst, left, right });
             }
+            BinaryOp::TrueDivide => {
+                self.instructions
+                    .push(Instruction::InPlaceTrueDivide { dst, left, right });
+            }
             BinaryOp::FloorDivide => {
                 self.instructions
                     .push(Instruction::InPlaceFloorDivide { dst, left, right });
@@ -10309,6 +10313,44 @@ mod tests {
                     value: Value::Number(3)
                 },
                 Instruction::InPlaceMultiply {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::StoreName {
+                    name: "x".to_string(),
+                    src: 2
+                },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_true_divide_augmented_assignment_to_in_place_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::AugAssign {
+                target: Target::Name("x".to_string()),
+                op: BinaryOp::TrueDivide,
+                value: Expr::Number(3),
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "x".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(3)
+                },
+                Instruction::InPlaceTrueDivide {
                     dst: 2,
                     left: 0,
                     right: 1
