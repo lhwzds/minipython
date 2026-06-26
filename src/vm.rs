@@ -27723,10 +27723,40 @@ impl Vm {
                 Ok(Value::Number(0))
             }
             "__iter__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__iter__() expected 0 arguments, got {}",
+                        "TypeError: dict.__iter__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__iter__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: wrapper __iter__() takes no keyword arguments".to_string()
+                    );
+                }
+                let [receiver] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__iter__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -77228,6 +77258,9 @@ fn checked_bytearray_resize_length(length: usize) -> Result<usize, String> {
 
 fn is_iterator_protocol_method(name: &str) -> bool {
     if method_display_name(name) == "__reduce__" && is_dict_view_builtin_name(name) {
+        return false;
+    }
+    if name == "Counter.__iter__" {
         return false;
     }
 

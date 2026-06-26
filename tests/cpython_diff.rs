@@ -15376,6 +15376,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // descriptor '__setitem__' of 'dict' object needs an argument;
     // __setitem__ expected 2 arguments, got 3;
     // dict.__setitem__() got multiple values for keyword argument 'x';
+    // descriptor '__iter__' of 'dict' object needs an argument;
+    // expected 0 arguments, got 1;
+    // dict.__iter__() got multiple values for keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15450,6 +15453,18 @@ for label, expr in [
     ('setitem-duplicate-key', lambda: Counter.__setitem__(Counter(), 'a', value=1, key='b')),
     ('setitem-duplicate-value', lambda: Counter.__setitem__(Counter(), 'a', 1, value=2)),
     ('setitem-duplicate-x-keyword', lambda: Counter.__setitem__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('iter-direct', list(Counter.__iter__(Counter('aba'))), list(Counter('aba').__iter__()))
+for label, expr in [
+    ('iter-missing', lambda: Counter.__iter__()),
+    ('iter-extra', lambda: Counter.__iter__(Counter(a=2), 1)),
+    ('iter-keyword-only', lambda: Counter.__iter__(self=Counter(a=2))),
+    ('iter-bound-keyword', lambda: Counter(a=2).__iter__(self=Counter(a=3))),
+    ('iter-duplicate-x-keyword', lambda: Counter.__iter__(x=1, **{'x': 2})),
 ]:
     try:
         expr()
