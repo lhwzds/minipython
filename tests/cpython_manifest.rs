@@ -10757,6 +10757,88 @@ fn json_dumps_default_hook_member_descriptor_identity_has_focused_evidence() {
 }
 
 #[test]
+fn json_dumps_default_hook_namedtuple_field_descriptor_identity_has_focused_evidence() {
+    let diff_name =
+        "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook namedtuple field descriptor identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook namedtuple field descriptor identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/json public dumps default hook namedtuple field descriptor identity subset"
+        ),
+        "json dumps default hook namedtuple field descriptor identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from collections import namedtuple",
+        "Point = namedtuple('Point', 'x')",
+        "shared_field = Point.x",
+        "def fresh_field_then_value():",
+        "Other = namedtuple('Other', 'x')",
+        "return Other.x",
+        "return 'fresh-field-ok'",
+        "print('kind', type(shared_field).__name__ in ('_tuplegetter', 'namedtuple_field_descriptor'), callable(shared_field))",
+        "json.dumps(object(), default=lambda obj: shared_field)",
+        "print('fresh-field-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_field, check_circular=False)",
+        "print('fresh-field-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook namedtuple field descriptor identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind True False\"",
+        "\"shared-field-default ValueError True True False\"",
+        "\"fresh-field-progress \\\"fresh-field-ok\\\" 2\"",
+        "\"shared-field-default-unchecked RecursionError True\"",
+        "\"fresh-field-progress-unchecked \\\"fresh-field-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook namedtuple field descriptor identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported namedtuple field descriptor replacement circular detection without treating fresh namedtuple field descriptors as circular"
+            ),
+            "json docs must describe the namedtuple field descriptor identity boundary"
+        );
+    }
+
+    for required in [
+        "NamedTupleFieldDescriptor {",
+        "Value::NamedTupleFieldDescriptor { typ, index }",
+        "JsonDumpsIdentity::HeapIndexed",
+        "Rc::as_ptr(typ) as usize",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "namedtuple field descriptor identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn json_dumps_default_hook_bound_method_identity_has_focused_evidence() {
     let diff_name = "cpython_json_dumps_default_hook_bound_method_identity_diff_subset";
     let subset_name = "cpython_json_dumps_default_hook_bound_method_identity_subset";

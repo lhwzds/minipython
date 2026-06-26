@@ -36229,6 +36229,48 @@ print('fresh-member-progress-unchecked', json.dumps(object(), default=hook, chec
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_namedtuple_field_descriptor_identity_subset() {
+    assert_output(
+        r#"from collections import namedtuple
+import json
+
+Point = namedtuple('Point', 'x')
+shared_field = Point.x
+
+def fresh_field_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            Other = namedtuple('Other', 'x')
+            return Other.x
+        return 'fresh-field-ok'
+    return hook, calls
+
+print('kind', type(shared_field).__name__ in ('_tuplegetter', 'namedtuple_field_descriptor'), callable(shared_field))
+try:
+    json.dumps(object(), default=lambda obj: shared_field)
+except Exception as error:
+    print('shared-field-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_field_then_value()
+print('fresh-field-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_field, check_circular=False)
+except Exception as error:
+    print('shared-field-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_field_then_value()
+print('fresh-field-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind True False",
+            "shared-field-default ValueError True True False",
+            "fresh-field-progress \"fresh-field-ok\" 2",
+            "shared-field-default-unchecked RecursionError True",
+            "fresh-field-progress-unchecked \"fresh-field-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json

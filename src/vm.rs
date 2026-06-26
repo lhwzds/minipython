@@ -62243,6 +62243,7 @@ struct JsonDumpsOptions {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum JsonDumpsIdentity {
     Heap(usize),
+    HeapIndexed(usize, usize),
     Builtin(String),
 }
 
@@ -62647,6 +62648,10 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::MemberDescriptor { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::NamedTupleFieldDescriptor { typ, index } => Some(JsonDumpsIdentity::HeapIndexed(
+            Rc::as_ptr(typ) as usize,
+            *index,
+        )),
         Value::Super { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
