@@ -18098,6 +18098,24 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_copying_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter copying"
     );
+    let counter_copying_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_copying_diff_subset",
+    );
+    let counter_copying_subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_collections_counter_copying_subset");
+    for required in [
+        "Counter.copy(self=Counter({'kw': 3}))",
+        "Counter.copy() missing 1 required positional argument: 'self'",
+        "Counter.copy() got an unexpected keyword argument 'x'",
+        "collections.Counter.copy() got multiple values for keyword argument 'self'",
+    ] {
+        assert!(
+            counter_copying_diff_body.contains(required)
+                && counter_copying_subset_body.contains(required),
+            "Counter copying diff and subset evidence must cover `{required}`"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_counter_order_preservation_diff_subset"),

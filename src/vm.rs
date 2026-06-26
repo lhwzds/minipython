@@ -27710,20 +27710,61 @@ impl Vm {
                 Ok(Value::None)
             }
             "copy" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut self_keyword = None;
+                let mut duplicate_self = false;
+                let mut duplicate_keyword = None;
+                let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                    if keyword != "self" {
+                        unexpected_keyword.get_or_insert(keyword);
+                    } else if !args.is_empty() || self_keyword.is_some() {
+                        duplicate_self = true;
+                    } else {
+                        self_keyword = Some(value);
+                    }
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "copy() expected 0 arguments, got {}",
-                        method_arg_count(&args)
+                        "TypeError: collections.Counter.copy() got multiple values for keyword argument '{keyword}'"
                     ));
+                }
+                if let Some(keyword) = unexpected_keyword {
+                    return Err(format!(
+                        "TypeError: Counter.copy() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.copy() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                let receiver = match args.as_slice() {
+                    [] => self_keyword.ok_or_else(|| {
+                        "TypeError: Counter.copy() missing 1 required positional argument: 'self'"
+                            .to_string()
+                    })?,
+                    [receiver] => receiver.clone(),
+                    _ => {
+                        return Err(format!(
+                            "TypeError: Counter.copy() takes 1 positional argument but {} were given",
+                            args.len()
+                        ));
+                    }
                 };
-                if counter_subclass_entries(receiver).is_some()
+                if counter_subclass_entries(&receiver).is_some()
                     && let Value::Instance {
                         class_name,
                         class_attrs,
                         class_bases,
                         ..
-                    } = receiver
+                    } = &receiver
                 {
                     let class = Value::Class {
                         name: class_name.clone(),
@@ -27736,7 +27777,7 @@ impl Vm {
                 }
                 Ok(Value::Counter {
                     entries: dict_ref_from_entries(
-                        counter_receiver_entries(receiver)?.borrow().entries.clone(),
+                        counter_receiver_entries(&receiver)?.borrow().entries.clone(),
                     )?,
                 })
             }

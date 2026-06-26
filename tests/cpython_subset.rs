@@ -56322,7 +56322,20 @@ fn cpython_collections_counter_copying_subset() {
             "update_test = Counter()\n",
             "update_test.update(words)\n",
             "check('update', update_test)\n",
-            "check('constructor', Counter(words))"
+            "check('constructor', Counter(words))\n",
+            "check('copy_self_keyword', Counter.copy(self=Counter({'kw': 3})))\n",
+            "for label, expr in [\n",
+            "    ('copy-missing', lambda: Counter.copy()),\n",
+            "    ('copy-extra', lambda: Counter.copy(Counter(a=2), 1)),\n",
+            "    ('copy-badkw', lambda: Counter.copy(x=1)),\n",
+            "    ('copy-duplicate-self', lambda: Counter(a=2).copy(self=Counter(a=3))),\n",
+            "    ('copy-duplicate-self-keyword', lambda: Counter.copy(self=Counter(a=2), **{'self': Counter(a=3)})),\n",
+            "    ('copy-duplicate-x-keyword', lambda: Counter.copy(x=1, **{'x': 2})),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
         ),
         &[
             "copy_method True False True 6",
@@ -56338,6 +56351,14 @@ fn cpython_collections_counter_copying_subset() {
             "update_independent 0 1",
             "constructor True False True 6",
             "constructor_independent 0 1",
+            "copy_self_keyword False False True 1",
+            "copy_self_keyword_independent 0 1",
+            "copy-missing TypeError Counter.copy() missing 1 required positional argument: 'self'",
+            "copy-extra TypeError Counter.copy() takes 1 positional argument but 2 were given",
+            "copy-badkw TypeError Counter.copy() got an unexpected keyword argument 'x'",
+            "copy-duplicate-self TypeError Counter.copy() got multiple values for argument 'self'",
+            "copy-duplicate-self-keyword TypeError collections.Counter.copy() got multiple values for keyword argument 'self'",
+            "copy-duplicate-x-keyword TypeError collections.Counter.copy() got multiple values for keyword argument 'x'",
         ],
     );
 }

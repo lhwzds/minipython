@@ -11099,7 +11099,9 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_counter_copying_subset`, adapted from CPython
   `TestCounter::test_copying`, covering `copy()`, `copy.copy()`,
   `copy.deepcopy()`, pickle round trips, `eval(repr(...))`, `update(words)`,
-  `Counter(words)`, type preservation, and copy independence after mutation.
+  `Counter(words)`, type preservation, copy independence after mutation, and
+  `Counter.copy()` public `self` and duplicate-keyword argument binding
+  diagnostics.
 - Added `cpython_collections_counter_order_preservation_subset`, adapted from
   CPython `TestCounter::test_order_preservation`, covering insertion-order
   preservation across Counter construction, tied counts, `elements()`, unary

@@ -15722,6 +15722,9 @@ print(c['a'], d['a'])"#,
 
 #[test]
 fn cpython_collections_counter_copying_diff_subset() {
+    // CPython oracle text: Counter.copy() missing 1 required positional argument: 'self';
+    // Counter.copy() got an unexpected keyword argument 'x';
+    // collections.Counter.copy() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter copying subset",
         name: "collections-counter-copying",
@@ -15739,7 +15742,20 @@ check('eval_repr', eval(repr(words)))
 update_test = Counter()
 update_test.update(words)
 check('update', update_test)
-check('constructor', Counter(words))"#,
+check('constructor', Counter(words))
+check('copy_self_keyword', Counter.copy(self=Counter({'kw': 3})))
+for label, expr in [
+    ('copy-missing', lambda: Counter.copy()),
+    ('copy-extra', lambda: Counter.copy(Counter(a=2), 1)),
+    ('copy-badkw', lambda: Counter.copy(x=1)),
+    ('copy-duplicate-self', lambda: Counter(a=2).copy(self=Counter(a=3))),
+    ('copy-duplicate-self-keyword', lambda: Counter.copy(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('copy-duplicate-x-keyword', lambda: Counter.copy(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 

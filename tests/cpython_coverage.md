@@ -6164,7 +6164,8 @@ copy, and copy independence for subsequent updates.
 `cpython_collections_counter_copying_subset` adds method-level Counter coverage
 for `copy()`, `copy.copy()`, `copy.deepcopy()`, pickle round trips,
 `eval(repr(...))`, `update(words)`, `Counter(words)`, type preservation, and
-copy independence after mutation.
+copy independence after mutation, plus `Counter.copy()` public `self` and
+duplicate-keyword argument binding diagnostics.
 `cpython_collections_counter_order_preservation_subset` adds method-level
 Counter coverage for insertion-order preservation across construction, equal
 counts, `elements()`, unary plus/minus, binary multiset operations, in-place
