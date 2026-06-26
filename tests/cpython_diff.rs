@@ -2252,6 +2252,40 @@ print('fresh-singledispatch-progress-unchecked', json.dumps(object(), default=ho
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_attrgetter_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook operator.attrgetter identity subset",
+        name: "json-dumps-default-hook-attrgetter-identity",
+        source: r#"import json
+import operator
+
+shared_getter = operator.attrgetter('x')
+
+def fresh_getter_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return operator.attrgetter('y')
+        return 'fresh-attrgetter-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_getter)
+except Exception as error:
+    print('shared-attrgetter-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_getter_then_value()
+print('fresh-attrgetter-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_getter, check_circular=False)
+except Exception as error:
+    print('shared-attrgetter-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_getter_then_value()
+print('fresh-attrgetter-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",
