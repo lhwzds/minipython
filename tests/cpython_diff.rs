@@ -15396,6 +15396,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__iadd__() missing 2 required positional arguments: 'self' and 'other';
     // Counter.__iadd__() got an unexpected keyword argument 'x';
     // collections.Counter.__iadd__() got multiple values for keyword argument 'other';
+    // Counter.__isub__() missing 2 required positional arguments: 'self' and 'other';
+    // Counter.__isub__() got an unexpected keyword argument 'x';
+    // collections.Counter.__isub__() got multiple values for keyword argument 'other';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15582,6 +15585,30 @@ for label, expr in [
     ('iadd-duplicate-self-keyword', lambda: Counter.__iadd__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('iadd-duplicate-other-keyword', lambda: Counter.__iadd__(other=Counter(a=2), **{'other': Counter(a=3)})),
     ('iadd-duplicate-x-keyword', lambda: Counter.__iadd__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+isub_counter = Counter(a=5, b=1)
+isub_result = Counter.__isub__(isub_counter, Counter(a=2, b=3, c=0))
+print('isub-direct', isub_result, isub_counter, isub_result is isub_counter)
+isub_counter = Counter(a=5, b=1)
+isub_result = isub_counter.__isub__(Counter(a=2, b=3))
+print('isub-bound', isub_result, isub_counter, isub_result is isub_counter)
+for label, expr in [
+    ('isub-missing', lambda: Counter.__isub__()),
+    ('isub-missing-other', lambda: Counter.__isub__(Counter(a=2))),
+    ('isub-missing-self', lambda: Counter.__isub__(other=Counter(b=3))),
+    ('isub-extra', lambda: Counter.__isub__(Counter(a=2), Counter(), 1)),
+    ('isub-keyword-only', lambda: Counter.__isub__(self=Counter(a=5, b=1), other=Counter(a=2, b=3))),
+    ('isub-badkw', lambda: Counter.__isub__(x=1)),
+    ('isub-bound-keyword', lambda: Counter(a=5, b=1).__isub__(other=Counter(a=2, b=3))),
+    ('isub-duplicate-self', lambda: Counter.__isub__(Counter(a=5), other=Counter(a=2), self=Counter(a=9))),
+    ('isub-duplicate-other', lambda: Counter.__isub__(Counter(a=5), Counter(a=2), other=Counter(c=4))),
+    ('isub-duplicate-self-keyword', lambda: Counter.__isub__(self=Counter(a=5), **{'self': Counter(a=3)})),
+    ('isub-duplicate-other-keyword', lambda: Counter.__isub__(other=Counter(a=2), **{'other': Counter(a=3)})),
+    ('isub-duplicate-x-keyword', lambda: Counter.__isub__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())
