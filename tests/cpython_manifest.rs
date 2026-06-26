@@ -17498,6 +17498,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.__missing__({}, 'z')",
         "Counter.__pos__(Counter(a=2, b=-1, c=0))",
         "Counter.__neg__(Counter(a=2, b=-1, c=0))",
+        "type(elements).__name__",
+        "iter(elements) is elements",
         "IndexCount",
         "list(Counter({'x': IndexCount()}).elements())",
         "'IntOnly' object cannot be interpreted as an integer",

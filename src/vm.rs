@@ -27748,15 +27748,20 @@ impl Vm {
                         args.len()
                     ));
                 };
-                let mut values = Vec::new();
+                let mut iterators = Vec::new();
                 let entries = counter_receiver_entries(receiver)?.borrow().entries.clone();
                 for (key, count) in entries {
                     let count = counter_count_i64(self, count)?;
                     if count > 0 {
-                        values.extend(std::iter::repeat_n(key, count as usize));
+                        iterators.push(list_iterator_from_values(
+                            std::iter::repeat_n(key, count as usize).collect(),
+                        ));
                     }
                 }
-                Ok(list_iterator_from_values(values))
+                Ok(shared_iterator(Value::ItertoolsChain {
+                    iterators,
+                    index: 0,
+                }))
             }
             "get" => {
                 reject_method_keywords(name, &keywords)?;

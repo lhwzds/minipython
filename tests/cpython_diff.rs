@@ -15377,6 +15377,8 @@ print(sorted((-Counter({'a': 2, 'b': 0, 'c': -1})).items()))
 print(Counter.__pos__(Counter(a=2, b=-1, c=0)))
 print(Counter.__neg__(Counter(a=2, b=-1, c=0)))
 print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
+elements = Counter({'a': 2}).elements()
+print(type(elements).__name__, iter(elements) is elements, list(elements), list(elements))
 class IndexCount:
     def __index__(self):
         print('index-called')

@@ -6115,7 +6115,8 @@ Reversible registration for OrderedDict and Counter plus reverse key iteration.
 `cpython_collections_counter_public_subset` adds method-level Counter coverage
 for public method visibility through `dir(Counter)` plus direct
 `Counter.__missing__()` zero defaults on Counter and non-Counter receivers,
-and `Counter.elements()` count `__index__` conversion boundaries.
+and `Counter.elements()` `itertools.chain` return type plus count `__index__`
+conversion boundaries.
 `cpython_collections_counter_init_update_subset` adds method-level Counter
 coverage for `Counter(...)` and `update()` keyword names that are real keys,
 `iterable=None` direct insertion into an empty Counter, bad sources, too many
