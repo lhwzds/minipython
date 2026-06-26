@@ -634,6 +634,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`,
   `cpython_json_dumps_default_hook_type_identity_diff_subset`,
   `cpython_json_dumps_default_hook_exception_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_code_identity_diff_subset`,
   `cpython_json_dumps_float_spelling_diff_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset`,
@@ -1105,7 +1106,9 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_type_identity_diff_subset` /
   `cpython_json_dumps_default_hook_type_identity_subset`,
   `cpython_json_dumps_default_hook_exception_identity_diff_subset` /
-  `cpython_json_dumps_default_hook_exception_identity_subset`, and
+  `cpython_json_dumps_default_hook_exception_identity_subset`,
+  `cpython_json_dumps_default_hook_code_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_code_identity_subset`, and
   `cpython_json_dumps_float_spelling_diff_subset` /
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
@@ -1268,6 +1271,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_exception_identity_subset`, backed by
 `cpython_json_dumps_default_hook_exception_identity_diff_subset`, keeps shared unsupported exception replacement circular detection without treating fresh exceptions as circular.
+
+`cpython_json_dumps_default_hook_code_identity_subset`, backed by
+`cpython_json_dumps_default_hook_code_identity_diff_subset`, keeps shared unsupported code object replacement circular detection without treating fresh code objects as circular.
 
 `cpython_json_dumps_float_spelling_subset`, backed by
 `cpython_json_dumps_float_spelling_diff_subset`, keeps `dumps()` finite float spelling for

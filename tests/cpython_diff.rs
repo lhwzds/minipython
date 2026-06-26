@@ -2107,6 +2107,39 @@ print('fresh-exception-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_code_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook code identity subset",
+        name: "json-dumps-default-hook-code-identity",
+        source: r#"import json
+
+shared_code = compile('1', '<x>', 'eval')
+
+def fresh_code_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return compile('2', '<fresh>', 'eval')
+        return 'fresh-code-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_code)
+except Exception as error:
+    print('shared-code-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_code_then_value()
+print('fresh-code-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_code, check_circular=False)
+except Exception as error:
+    print('shared-code-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_code_then_value()
+print('fresh-code-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",
