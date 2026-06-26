@@ -11074,6 +11074,8 @@ Completed in the CPython collections manifest expansion pass:
   binding diagnostics,
   direct `Counter.__or__()` binary union and public `self` / `other` binding
   diagnostics,
+  direct `Counter.__and__()` binary intersection and public `self` / `other`
+  binding diagnostics,
   direct `Counter.__contains__()`
   membership and dict-style argument diagnostics, direct
   `Counter.__getitem__()` zero-default lookup and dict-style argument

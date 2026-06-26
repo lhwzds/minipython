@@ -27858,7 +27858,7 @@ impl Vm {
                 insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
-            "__add__" | "__sub__" | "__or__" => {
+            "__add__" | "__sub__" | "__or__" | "__and__" => {
                 let method = method_display_name(name);
                 let (left, right) = counter_binary_method_operands(method, args, keywords)?;
                 let Some(op) = counter_binary_op_from_method(method) else {
@@ -27867,7 +27867,7 @@ impl Vm {
                 Ok(counter_binary_value_from_operands(&left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
-            "__and__" | "__xor__" => {
+            "__xor__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [left, right] = args.as_slice() else {
                     return Err(format!(

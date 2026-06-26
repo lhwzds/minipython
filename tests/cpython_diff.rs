@@ -15390,6 +15390,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__or__() missing 2 required positional arguments: 'self' and 'other';
     // Counter.__or__() got an unexpected keyword argument 'x';
     // collections.Counter.__or__() got multiple values for keyword argument 'other';
+    // Counter.__and__() missing 2 required positional arguments: 'self' and 'other';
+    // Counter.__and__() got an unexpected keyword argument 'x';
+    // collections.Counter.__and__() got multiple values for keyword argument 'other';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15533,6 +15536,25 @@ for label, expr in [
     ('or-duplicate-self-keyword', lambda: Counter.__or__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('or-duplicate-other-keyword', lambda: Counter.__or__(other=Counter(a=2), **{'other': Counter(a=3)})),
     ('or-duplicate-x-keyword', lambda: Counter.__or__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('and-direct', Counter.__and__(Counter(a=2, b=1, c=0), Counter(a=1, b=3, d=4)), Counter(a=2, b=1, c=0).__and__(Counter(a=1, b=3, d=4)))
+for label, expr in [
+    ('and-missing', lambda: Counter.__and__()),
+    ('and-missing-other', lambda: Counter.__and__(Counter(a=2))),
+    ('and-missing-self', lambda: Counter.__and__(other=Counter(b=3))),
+    ('and-extra', lambda: Counter.__and__(Counter(a=2), Counter(), 1)),
+    ('and-keyword-only', lambda: Counter.__and__(self=Counter(a=2, b=1), other=Counter(a=1, b=3, c=4))),
+    ('and-badkw', lambda: Counter.__and__(x=1)),
+    ('and-bound-keyword', lambda: Counter(a=2, b=1).__and__(other=Counter(a=1, b=3, c=4))),
+    ('and-duplicate-self', lambda: Counter.__and__(Counter(a=2), other=Counter(b=3), self=Counter(a=9))),
+    ('and-duplicate-other', lambda: Counter.__and__(Counter(a=2), Counter(b=3), other=Counter(c=4))),
+    ('and-duplicate-self-keyword', lambda: Counter.__and__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('and-duplicate-other-keyword', lambda: Counter.__and__(other=Counter(a=2), **{'other': Counter(a=3)})),
+    ('and-duplicate-x-keyword', lambda: Counter.__and__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())
