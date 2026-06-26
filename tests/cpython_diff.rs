@@ -15387,6 +15387,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__sub__() missing 2 required positional arguments: 'self' and 'other';
     // Counter.__sub__() got an unexpected keyword argument 'x';
     // collections.Counter.__sub__() got multiple values for keyword argument 'other';
+    // Counter.__or__() missing 2 required positional arguments: 'self' and 'other';
+    // Counter.__or__() got an unexpected keyword argument 'x';
+    // collections.Counter.__or__() got multiple values for keyword argument 'other';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15511,6 +15514,25 @@ for label, expr in [
     ('sub-duplicate-self-keyword', lambda: Counter.__sub__(self=Counter(a=5), **{'self': Counter(a=3)})),
     ('sub-duplicate-other-keyword', lambda: Counter.__sub__(other=Counter(a=2), **{'other': Counter(a=3)})),
     ('sub-duplicate-x-keyword', lambda: Counter.__sub__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('or-direct', Counter.__or__(Counter(a=2, b=1), Counter(a=1, b=3, c=4)), Counter(a=2, b=1).__or__(Counter(a=1, b=3, c=4)))
+for label, expr in [
+    ('or-missing', lambda: Counter.__or__()),
+    ('or-missing-other', lambda: Counter.__or__(Counter(a=2))),
+    ('or-missing-self', lambda: Counter.__or__(other=Counter(b=3))),
+    ('or-extra', lambda: Counter.__or__(Counter(a=2), Counter(), 1)),
+    ('or-keyword-only', lambda: Counter.__or__(self=Counter(a=2, b=1), other=Counter(a=1, b=3, c=4))),
+    ('or-badkw', lambda: Counter.__or__(x=1)),
+    ('or-bound-keyword', lambda: Counter(a=2, b=1).__or__(other=Counter(a=1, b=3, c=4))),
+    ('or-duplicate-self', lambda: Counter.__or__(Counter(a=2), other=Counter(b=3), self=Counter(a=9))),
+    ('or-duplicate-other', lambda: Counter.__or__(Counter(a=2), Counter(b=3), other=Counter(c=4))),
+    ('or-duplicate-self-keyword', lambda: Counter.__or__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('or-duplicate-other-keyword', lambda: Counter.__or__(other=Counter(a=2), **{'other': Counter(a=3)})),
+    ('or-duplicate-x-keyword', lambda: Counter.__or__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())
