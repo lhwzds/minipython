@@ -947,7 +947,8 @@ Recent runtime migration notes:
 - The bundled `collections` module also includes
   `cpython_collections_counter_subtract_unary_diff_subset` and
   `cpython_collections_counter_subtract_unary_subset`, covering CPython public
-  `Counter.subtract()` and unary plus/minus count filtering.
+  `Counter.subtract()` and unary plus/minus count filtering, including Counter
+  subclass unary results returning exact `Counter` objects.
 - The bundled `collections` module also includes
   `cpython_collections_counter_copy_subclass_diff_subset` and
   `cpython_collections_counter_copy_subclass_subset`, covering CPython public
@@ -6145,7 +6146,9 @@ coverage for `elements()`, Counter iteration, `dict(Counter(...))`,
 `dict(Counter(...).items())`, and `set(Counter(...))` conversion behavior.
 `cpython_collections_counter_subtract_unary_subset` adds method-level Counter
 coverage for `subtract()` over keyword, Counter, and iterable inputs plus
-unary `+Counter` / `-Counter` filtering of positive, zero, and negative counts.
+unary `+Counter` / `-Counter` filtering of positive, zero, and negative counts,
+including Counter subclass operands returning exact `Counter` results while
+leaving the subclass source unchanged.
 `cpython_collections_counter_repr_nonsortable_subset` adds method-level Counter
 coverage for `repr()` preserving entries whose counts are not directly
 comparable with numeric counts.

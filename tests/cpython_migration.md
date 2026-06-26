@@ -11061,7 +11061,9 @@ Completed in the CPython collections manifest expansion pass:
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
   count subtraction from keyword, Counter, and iterable sources plus unary
   `+Counter` / `-Counter` positive/negative count filtering and direct
-  `Counter.__pos__()` / `Counter.__neg__()` public dunder calls.
+  `Counter.__pos__()` / `Counter.__neg__()` public dunder calls, including
+  Counter subclass operands returning exact `Counter` results while preserving
+  the subclass source mapping.
 - Added `cpython_collections_counter_conversions_subset`, adapted from CPython
   `TestCounter::test_conversions`, covering `elements()`, Counter iteration,
   `dict(Counter(...))`, `dict(Counter(...).items())`, and `set(Counter(...))`

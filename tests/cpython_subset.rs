@@ -56140,7 +56140,13 @@ fn cpython_collections_counter_subtract_unary_subset() {
             "    print('TypeError')\n",
             "c = Counter(a=-5, b=0, c=5, d=10, e=15, g=40)\n",
             "print(dict(+c))\n",
-            "print(dict(-c))"
+            "print(dict(-c))\n",
+            "class C(Counter):\n",
+            "    pass\n",
+            "source = C(a=3, b=0, c=-2)\n",
+            "for value in [+source, -source, Counter.__pos__(source), Counter.__neg__(source)]:\n",
+            "    print(type(value).__name__, isinstance(value, C), dict(value))\n",
+            "print(type(source).__name__, dict(source))"
         ),
         &[
             "True",
@@ -56153,6 +56159,11 @@ fn cpython_collections_counter_subtract_unary_subset() {
             "TypeError",
             "{'c': 5, 'd': 10, 'e': 15, 'g': 40}",
             "{'a': 5}",
+            "Counter False {'a': 3}",
+            "Counter False {'c': 2}",
+            "Counter False {'a': 3}",
+            "Counter False {'c': 2}",
+            "C {'a': 3, 'b': 0, 'c': -2}",
         ],
     );
 }

@@ -84440,6 +84440,10 @@ fn positive_value(value: Value) -> Result<Value, String> {
         Value::Float(value) => Ok(Value::Float(value)),
         value @ Value::Complex { .. } => Ok(value),
         Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Positive),
+        value if counter_subclass_entries(&value).is_some() => counter_unary_value(
+            &counter_subclass_entries(&value).expect("Counter subclass entries exist after guard"),
+            CounterUnaryOp::Positive,
+        ),
         value => Err(unsupported_unary_operand_message("+", &value)),
     }
 }
@@ -84455,6 +84459,10 @@ fn negate_value(value: Value) -> Result<Value, String> {
         Value::Float(value) => Ok(float_value(-*value)),
         Value::Complex { real, imag, .. } => Ok(complex_value(-real, -imag)),
         Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Negative),
+        value if counter_subclass_entries(&value).is_some() => counter_unary_value(
+            &counter_subclass_entries(&value).expect("Counter subclass entries exist after guard"),
+            CounterUnaryOp::Negative,
+        ),
         value => Err(unsupported_unary_operand_message("-", &value)),
     }
 }

@@ -15642,7 +15642,13 @@ d.subtract(a=2, b=-4)
 print(sorted(d.items()))
 e = Counter(a=2)
 e.subtract(Counter(a=5, c=1))
-print(sorted(e.items()))"#,
+print(sorted(e.items()))
+class C(Counter):
+    pass
+source = C(a=3, b=0, c=-2)
+for value in [+source, -source, Counter.__pos__(source), Counter.__neg__(source)]:
+    print(type(value).__name__, isinstance(value, C), dict(value))
+print(type(source).__name__, dict(source))"#,
     });
 }
 
