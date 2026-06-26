@@ -9702,6 +9702,7 @@ except BaseException as error:
 #[test]
 fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
+    // CPython oracle text: unsupported operand type(s) for &=: 'int' and 'str'.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py runtime exception object capture subset",
         name: "runtime-exception-capture-direct",
@@ -9726,6 +9727,11 @@ try:
     1(2)
 except TypeError as error:
     print(error.__class__.__name__, str(error))
+try:
+    value = 1
+    value &= 'x'
+except TypeError as error:
+    print('iand', error.__class__.__name__, str(error))
 for label, expr in [
     ("list-iter-extra", lambda: list.__iter__([], 1)),
     ("dict-keys-extra", lambda: dict.keys({}, 1)),

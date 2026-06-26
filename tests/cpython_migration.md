@@ -164,7 +164,7 @@ Completed in the builtin method TypeError capture pass:
   method argument failures for `list.__iter__` and `dict.keys`, so those public
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
-  `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
+  `TypeError` text for catchable in-place bit-and `TypeError`, `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
   `int.bit_length`, and `float.hex`, plus `staticmethod()` / `classmethod()`
   constructor keyword rejection, `object.__repr__`, `object.__str__`,
   `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,

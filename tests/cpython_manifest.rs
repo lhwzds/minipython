@@ -6882,6 +6882,10 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if evidence == "cpython_itertools_core_diff_subset" {
         candidates.push("cpython_itertools_core_iterator_subset".to_string());
     }
+    if evidence == "cpython_collections_counter_symmetric_difference_diff_subset" {
+        candidates
+            .push("cpython_collections_counter_symmetric_difference_absent_subset".to_string());
+    }
     if evidence == "cpython_itertools_keyword_error_diff_subset" {
         candidates.push("cpython_itertools_keyword_error_subset".to_string());
     }
@@ -8332,6 +8336,7 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         .collect::<BTreeSet<_>>();
     let expected = [
         "cpython_collections_chainmap_copy_pickle_eval_identity",
+        "cpython_collections_counter_symmetric_difference_absent",
         "cpython_collections_namedtuple_pickle",
         "cpython_operator_pickle_helper",
     ]
@@ -8346,6 +8351,7 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
     for subset in [
         "cpython_operator_pickle_helper_subset",
         "cpython_collections_chainmap_copy_pickle_eval_identity_subset",
+        "cpython_collections_counter_symmetric_difference_absent_subset",
         "cpython_collections_namedtuple_pickle_subset",
     ] {
         assert!(
@@ -22437,6 +22443,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "'int' object is not callable",
+        "value &= 'x'",
+        "unsupported operand type(s) for &=: 'int' and 'str'",
         "raise NotImplementedError(\\\"todo\\\")",
         "descriptor.__get__()",
         "descriptor.__set__()",
@@ -22471,6 +22479,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "'int' object is not callable",
+        "value &= 'x'",
+        "unsupported operand type(s) for &=: 'int' and 'str'",
         "raise NotImplementedError(\"todo\")",
         "PropertyExample.__dict__['value']",
         "wrapper __get__() takes no keyword arguments",
@@ -22500,6 +22510,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("generator.throw()")
                 && document.contains("coroutine.throw()")
                 && document.contains("async_generator.athrow()")
+                && document.contains("catchable in-place bit-and")
                 && document.contains("BaseException.with_traceback()"),
             "focused runtime exception capture evidence must be documented in coverage and migration notes"
         );

@@ -5524,8 +5524,10 @@ impl Vm {
                 Instruction::InPlaceBitAnd { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.in_place_bit_and_values(left, right)?;
-                    self.write_register(dst, value);
+                    let result = self.in_place_bit_and_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::LeftShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -29681,7 +29683,19 @@ impl Vm {
                 *items.borrow_mut() = result_items;
                 Ok(left)
             }
-            left => self.bit_and_values(left, right),
+            left => {
+                let original_left = left.clone();
+                let original_right = right.clone();
+                self.bit_and_values(left, right).map_err(|message| {
+                    if message
+                        == unsupported_binary_operand_message("&", &original_left, &original_right)
+                    {
+                        unsupported_binary_operand_message("&=", &original_left, &original_right)
+                    } else {
+                        message
+                    }
+                })
+            }
         }
     }
 
