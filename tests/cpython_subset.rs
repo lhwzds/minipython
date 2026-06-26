@@ -36408,6 +36408,47 @@ print('fresh-userlist-progress-unchecked', json.dumps(object(), default=hook, ch
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_userdict_identity_subset() {
+    assert_output_with_stack(
+        r#"from collections import UserDict
+import json
+
+shared = UserDict({'x': 1})
+
+def fresh_userdict_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return UserDict({'x': 1})
+        return 'fresh-userdict-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-userdict-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_userdict_then_value()
+print('fresh-userdict-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-userdict-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_userdict_then_value()
+print('fresh-userdict-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind UserDict False",
+            "shared-userdict-default ValueError True True False",
+            "fresh-userdict-progress \"fresh-userdict-ok\" 2",
+            "shared-userdict-default-unchecked RecursionError True",
+            "fresh-userdict-progress-unchecked \"fresh-userdict-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_subset() {
     assert_output(
         r#"import json

@@ -8389,6 +8389,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_dict_view_identity_subset",
             "cpython_json_dumps_default_hook_deque_identity_subset",
             "cpython_json_dumps_default_hook_userlist_identity_subset",
+            "cpython_json_dumps_default_hook_userdict_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8462,6 +8463,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_dict_view_identity_diff_subset",
         "cpython_json_dumps_default_hook_deque_identity_diff_subset",
         "cpython_json_dumps_default_hook_userlist_identity_diff_subset",
+        "cpython_json_dumps_default_hook_userdict_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -11088,6 +11090,84 @@ fn json_dumps_default_hook_userlist_identity_has_focused_evidence() {
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "UserList identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_userdict_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_userdict_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_userdict_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook UserDict identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook UserDict identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook UserDict identity subset"),
+        "json dumps default hook UserDict identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from collections import UserDict",
+        "shared = UserDict({'x': 1})",
+        "def fresh_userdict_then_value():",
+        "return UserDict({'x': 1})",
+        "return 'fresh-userdict-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-userdict-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-userdict-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook UserDict identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind UserDict False\"",
+        "\"shared-userdict-default ValueError True True False\"",
+        "\"fresh-userdict-progress \\\"fresh-userdict-ok\\\" 2\"",
+        "\"shared-userdict-default-unchecked RecursionError True\"",
+        "\"fresh-userdict-progress-unchecked \\\"fresh-userdict-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook UserDict identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported UserDict replacement circular detection without treating fresh UserDict values as circular"
+            ),
+            "json docs must describe the UserDict identity boundary"
+        );
+    }
+
+    for required in [
+        "UserDict {",
+        "data: DictRef",
+        "Value::UserDict { data, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(data) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "UserDict identity implementation must contain `{required}`"
         );
     }
 }
