@@ -164,9 +164,9 @@ Completed in the builtin method TypeError capture pass:
   method argument failures for `list.__iter__` and `dict.keys`, so those public
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
-  `TypeError` text for catchable in-place add `TypeError`,
-  catchable in-place subtract `TypeError`, catchable in-place multiply
-  `TypeError`, catchable matrix multiply `TypeError`,
+  `TypeError` text for catchable binary add `TypeError`,
+  catchable in-place add `TypeError`, catchable in-place subtract `TypeError`,
+  catchable in-place multiply `TypeError`, catchable matrix multiply `TypeError`,
   catchable in-place true-divide `TypeError`,
   catchable in-place floor-divide `TypeError`,
   catchable in-place modulo `TypeError`, catchable in-place power

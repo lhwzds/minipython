@@ -5237,7 +5237,7 @@ fn reports_arithmetic_type_errors() {
     assert_eq!(
         run_source("x = 1\nx @= 2"),
         Err(
-            "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'"
+            "runtime error: TypeError: unsupported operand type(s) for @=: 'int' and 'int'"
                 .to_string()
         )
     );

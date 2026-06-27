@@ -5401,8 +5401,8 @@ impl Vm {
                 Instruction::Add { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.add_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = self.add_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
                 }
                 Instruction::InPlaceAdd { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
