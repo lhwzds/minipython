@@ -9705,6 +9705,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: unsupported operand type(s) for +=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for -=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for *=: 'int' and 'NoneType'.
+    // CPython oracle text: unsupported operand type(s) for @: 'int' and 'int'.
     // CPython oracle text: unsupported operand type(s) for /=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for //=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for %=: 'int' and 'str'.
@@ -9754,6 +9755,10 @@ try:
     value *= None
 except TypeError as error:
     print('imul', error.__class__.__name__, str(error))
+try:
+    1 @ 2
+except TypeError as error:
+    print('matmul', error.__class__.__name__, str(error))
 try:
     value = 1
     value /= 'x'

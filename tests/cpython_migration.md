@@ -166,7 +166,8 @@ Completed in the builtin method TypeError capture pass:
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for catchable in-place add `TypeError`,
   catchable in-place subtract `TypeError`, catchable in-place multiply
-  `TypeError`, catchable in-place true-divide `TypeError`,
+  `TypeError`, catchable matrix multiply `TypeError`,
+  catchable in-place true-divide `TypeError`,
   catchable in-place floor-divide `TypeError`,
   catchable in-place modulo `TypeError`, catchable in-place power
   `TypeError`, catchable in-place matrix-multiply `TypeError`,
@@ -3333,8 +3334,8 @@ Completed in the matrix-multiply object-protocol promotion pass:
 - Expanded `cpython_tokenize_matrix_multiply_and_ellipsis_subset` and added
   `runs_matrix_multiply_special_methods`; promoted `term` from `partial` to
   `supported` after covering `@`, `@=`, `__matmul__`, `__rmatmul__`, and
-  `__imatmul__` dispatch, while keeping unsupported builtin operand pairs as
-  runtime errors.
+  `__imatmul__` dispatch. Unsupported builtin operand pairs are now covered as
+  catchable `TypeError` objects through the runtime exception capture subset.
 
 Completed in the invalid type-scope expression pass:
 

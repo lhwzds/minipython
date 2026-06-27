@@ -22473,6 +22473,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for -=: 'int' and 'str'",
         "value *= None",
         "unsupported operand type(s) for *=: 'int' and 'NoneType'",
+        "1 @ 2",
+        "unsupported operand type(s) for @: 'int' and 'int'",
         "value /= 'x'",
         "unsupported operand type(s) for /=: 'int' and 'str'",
         "value //= 'x'",
@@ -22533,6 +22535,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for -=: 'int' and 'str'",
         "value *= None",
         "unsupported operand type(s) for *=: 'int' and 'NoneType'",
+        "1 @ 2",
+        "unsupported operand type(s) for @: 'int' and 'int'",
         "value /= 'x'",
         "unsupported operand type(s) for /=: 'int' and 'str'",
         "value //= 'x'",
@@ -22585,6 +22589,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable in-place add")
                 && document.contains("catchable in-place subtract")
                 && document.contains("catchable in-place multiply")
+                && document.contains("catchable matrix multiply")
                 && document.contains("catchable in-place true-divide")
                 && document.contains("catchable in-place floor-divide")
                 && document.contains("catchable in-place modulo")

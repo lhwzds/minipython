@@ -5445,8 +5445,8 @@ impl Vm {
                 Instruction::MatrixMultiply { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.matrix_multiply_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = self.matrix_multiply_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
                 }
                 Instruction::InPlaceMatrixMultiply { dst, left, right } => {
                     let left = self.read_register(left)?.clone();

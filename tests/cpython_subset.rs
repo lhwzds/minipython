@@ -10087,13 +10087,13 @@ fn cpython_tokenize_matrix_multiply_and_ellipsis_subset() {
         "print(...)\nprint(Ellipsis)\nprint(... is Ellipsis)",
         &["Ellipsis", "Ellipsis", "True"],
     );
-    assert_error(
-        "print(1 @ 2)",
-        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
+    assert_output(
+        "try:\n    print(1 @ 2)\nexcept TypeError as error:\n    print(type(error).__name__, str(error))",
+        &["TypeError unsupported operand type(s) for @: 'int' and 'int'"],
     );
-    assert_error(
-        "x = 1\nx @= 2",
-        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
+    assert_output(
+        "try:\n    x = 1\n    x @= 2\nexcept TypeError as error:\n    print(type(error).__name__, str(error))",
+        &["TypeError unsupported operand type(s) for @=: 'int' and 'int'"],
     );
     assert_output(
         "class M:\n    def __matmul__(self, other):\n        return 4\n    def __imatmul__(self, other):\n        self.other = other\n        return self\nm = M()\nprint(m @ m)\nm @= 42\nprint(m.other)",
@@ -24923,6 +24923,10 @@ fn cpython_runtime_exception_capture_subset() {
     assert_output(
         "try:\n    value = 1\n    value *= None\nexcept TypeError as error:\n    print('imul', error.__class__.__name__, str(error))",
         &["imul TypeError unsupported operand type(s) for *=: 'int' and 'NoneType'"],
+    );
+    assert_output(
+        "try:\n    1 @ 2\nexcept TypeError as error:\n    print('matmul', error.__class__.__name__, str(error))",
+        &["matmul TypeError unsupported operand type(s) for @: 'int' and 'int'"],
     );
     assert_output(
         "try:\n    value = 1\n    value /= 'x'\nexcept TypeError as error:\n    print('itruediv', error.__class__.__name__, str(error))",
