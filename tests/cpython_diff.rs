@@ -9704,6 +9704,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
     // CPython oracle text: unsupported operand type(s) for +: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for -: 'int' and 'str'.
+    // CPython oracle text: unsupported operand type(s) for ^: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for +=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for -=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for *=: 'int' and 'NoneType'.
@@ -9750,6 +9751,10 @@ try:
     1 - 'x'
 except TypeError as error:
     print('sub', error.__class__.__name__, str(error))
+try:
+    1 ^ 'x'
+except TypeError as error:
+    print('xor', error.__class__.__name__, str(error))
 try:
     value = 1
     value += 'x'
