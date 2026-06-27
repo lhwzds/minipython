@@ -24917,6 +24917,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["add TypeError unsupported operand type(s) for +: 'int' and 'str'"],
     );
     assert_output(
+        "try:\n    1 - 'x'\nexcept TypeError as error:\n    print('sub', error.__class__.__name__, str(error))",
+        &["sub TypeError unsupported operand type(s) for -: 'int' and 'str'"],
+    );
+    assert_output(
         "try:\n    value = 1\n    value += 'x'\nexcept TypeError as error:\n    print('iadd', error.__class__.__name__, str(error))",
         &["iadd TypeError unsupported operand type(s) for +=: 'int' and 'str'"],
     );

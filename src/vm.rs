@@ -5415,8 +5415,8 @@ impl Vm {
                 Instruction::Subtract { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.subtract_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = self.subtract_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
                 }
                 Instruction::InPlaceSubtract { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
