@@ -22469,6 +22469,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object is not callable",
         "+'x'",
         "bad operand type for unary +: 'str'",
+        "-'x'",
+        "bad operand type for unary -: 'str'",
         "1 + 'x'",
         "unsupported operand type(s) for +: 'int' and 'str'",
         "1 - 'x'",
@@ -22545,6 +22547,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object is not callable",
         "+'x'",
         "bad operand type for unary +: 'str'",
+        "-'x'",
+        "bad operand type for unary -: 'str'",
         "1 + 'x'",
         "unsupported operand type(s) for +: 'int' and 'str'",
         "1 - 'x'",
@@ -22615,6 +22619,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("coroutine.throw()")
                 && document.contains("async_generator.athrow()")
                 && document.contains("catchable unary plus")
+                && document.contains("catchable unary minus")
                 && document.contains("catchable binary add")
                 && document.contains("catchable binary subtract")
                 && document.contains("catchable binary bit-xor")

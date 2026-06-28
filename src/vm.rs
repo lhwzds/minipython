@@ -5664,7 +5664,10 @@ impl Vm {
                 }
                 Instruction::Negate { dst, src } => {
                     let value = self.read_register(src)?.clone();
-                    self.write_register(dst, negate_value(value)?);
+                    let value = negate_value(value);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::Invert { dst, src } => {
                     let value = self.read_register(src)?.clone();
