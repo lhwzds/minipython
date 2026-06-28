@@ -9703,6 +9703,7 @@ except BaseException as error:
 fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
     // CPython oracle text: name 'missing_name' is not defined.
+    // CPython oracle text: 'int' object has no attribute 'missing_attr'.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
@@ -9742,6 +9743,10 @@ try:
     missing_name
 except NameError as error:
     print('name', error.__class__.__name__, str(error))
+try:
+    (1).missing_attr
+except AttributeError as error:
+    print('attr', error.__class__.__name__, str(error))
 try:
     1[0]
 except TypeError as error:

@@ -57071,9 +57071,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "numerator" | "real" => integer_value(receiver),
             "denominator" => Ok(Value::Number(1)),
             "imag" => Ok(Value::Number(0)),
-            _ => Err(format!(
-                "AttributeError: {receiver} has no attribute '{name}'"
-            )),
+            _ => Err(missing_object_attribute_error(&receiver, name)),
         },
         Value::Float(value) => match name {
             "conjugate" | "hex" | "is_integer" | "as_integer_ratio" | "__ceil__" | "__floor__"
@@ -62725,6 +62723,13 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
 
 fn undefined_name_error(name: &str) -> String {
     format!("NameError: name '{name}' is not defined")
+}
+
+fn missing_object_attribute_error(value: &Value, name: &str) -> String {
+    format!(
+        "AttributeError: '{}' object has no attribute '{name}'",
+        type_name(value)
+    )
 }
 
 fn is_index_error_message(message: &str) -> bool {

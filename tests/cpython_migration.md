@@ -164,7 +164,8 @@ Completed in the builtin method TypeError capture pass:
   method argument failures for `list.__iter__` and `dict.keys`, so those public
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython
-  catchable missing-name `NameError` text and keyword `TypeError` text for
+  catchable missing-name `NameError` text, catchable missing integer attribute
+  `AttributeError` text, and keyword `TypeError` text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
   catchable unary minus `TypeError`,
   catchable unary invert `TypeError`,

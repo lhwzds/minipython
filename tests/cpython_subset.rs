@@ -24905,6 +24905,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["name NameError name 'missing_name' is not defined"],
     );
     assert_output(
+        "try:\n    (1).missing_attr\nexcept AttributeError as error:\n    print('attr', error.__class__.__name__, str(error))",
+        &["attr AttributeError 'int' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );

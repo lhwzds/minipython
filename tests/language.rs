@@ -6470,7 +6470,7 @@ fn rejects_invalid_expressions_in_type_scopes() {
 fn reports_attribute_errors() {
     assert_eq!(
         run_source("print((1).value)"),
-        Err("runtime error: AttributeError: 1 has no attribute 'value'".to_string())
+        Err("runtime error: AttributeError: 'int' object has no attribute 'value'".to_string())
     );
     assert_eq!(
         run_source("x = 1\nx.value = 2"),
