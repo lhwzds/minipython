@@ -22475,6 +22475,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for ^: 'int' and 'str'",
         "1 & 'x'",
         "unsupported operand type(s) for &: 'int' and 'str'",
+        "1 << 'x'",
+        "unsupported operand type(s) for <<: 'int' and 'str'",
         "value += 'x'",
         "unsupported operand type(s) for +=: 'int' and 'str'",
         "value -= 'x'",
@@ -22545,6 +22547,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for ^: 'int' and 'str'",
         "1 & 'x'",
         "unsupported operand type(s) for &: 'int' and 'str'",
+        "1 << 'x'",
+        "unsupported operand type(s) for <<: 'int' and 'str'",
         "value += 'x'",
         "unsupported operand type(s) for +=: 'int' and 'str'",
         "value -= 'x'",
@@ -22606,6 +22610,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable binary subtract")
                 && document.contains("catchable binary bit-xor")
                 && document.contains("catchable binary bit-and")
+                && document.contains("catchable binary left-shift")
                 && document.contains("catchable in-place add")
                 && document.contains("catchable in-place subtract")
                 && document.contains("catchable in-place multiply")

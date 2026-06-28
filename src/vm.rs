@@ -5554,8 +5554,10 @@ impl Vm {
                 Instruction::LeftShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = left_shift_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = left_shift_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::InPlaceLeftShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();

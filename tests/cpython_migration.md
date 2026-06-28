@@ -166,9 +166,10 @@ Completed in the builtin method TypeError capture pass:
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for catchable binary add `TypeError`,
   catchable binary subtract `TypeError`, catchable binary bit-xor `TypeError`,
-  catchable binary bit-and `TypeError`, catchable in-place add `TypeError`,
-  catchable in-place subtract `TypeError`, catchable in-place multiply
-  `TypeError`, catchable matrix multiply `TypeError`,
+  catchable binary bit-and `TypeError`, catchable binary left-shift
+  `TypeError`, catchable in-place add `TypeError`, catchable in-place subtract
+  `TypeError`, catchable in-place multiply `TypeError`,
+  catchable matrix multiply `TypeError`,
   catchable in-place true-divide `TypeError`,
   catchable in-place floor-divide `TypeError`,
   catchable in-place modulo `TypeError`, catchable in-place power
