@@ -57224,7 +57224,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 })
             }
-            _ => Err(format!("AttributeError: list has no attribute '{name}'")),
+            _ => Err(missing_type_attribute_error("list", name)),
         },
         Value::UserList { data, attrs } => {
             if name == "data" {
@@ -62726,10 +62726,11 @@ fn undefined_name_error(name: &str) -> String {
 }
 
 fn missing_object_attribute_error(value: &Value, name: &str) -> String {
-    format!(
-        "AttributeError: '{}' object has no attribute '{name}'",
-        type_name(value)
-    )
+    missing_type_attribute_error(type_name(value), name)
+}
+
+fn missing_type_attribute_error(type_name: &str, name: &str) -> String {
+    format!("AttributeError: '{type_name}' object has no attribute '{name}'")
 }
 
 fn is_index_error_message(message: &str) -> bool {
