@@ -5570,8 +5570,10 @@ impl Vm {
                 Instruction::RightShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = right_shift_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = right_shift_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::InPlaceRightShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
