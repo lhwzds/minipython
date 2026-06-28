@@ -163,9 +163,10 @@ Completed in the builtin method TypeError capture pass:
   `cpython_runtime_exception_capture_diff_subset` with representative builtin
   method argument failures for `list.__iter__` and `dict.keys`, so those public
   argument errors become catchable `TypeError` objects instead of uncaught
-  runtime error strings. Follow-up evidence now pins exact CPython keyword
-  `TypeError` text for catchable non-iterable unpack `TypeError`,
-  catchable unary plus `TypeError`, catchable unary minus `TypeError`,
+  runtime error strings. Follow-up evidence now pins exact CPython
+  catchable missing-name `NameError` text and keyword `TypeError` text for
+  catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
+  catchable unary minus `TypeError`,
   catchable unary invert `TypeError`,
   catchable binary add `TypeError`, catchable binary subtract `TypeError`,
   catchable binary bit-xor `TypeError`,

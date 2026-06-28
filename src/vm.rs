@@ -6657,7 +6657,7 @@ impl Vm {
         } else if let Some(value) = self.load_builtin_name(name)? {
             Ok(value)
         } else {
-            Err(format!("unknown name: {name}"))
+            Err(undefined_name_error(name))
         }
     }
 
@@ -6681,7 +6681,7 @@ impl Vm {
         } else if let Some(value) = self.load_builtin_name(name)? {
             Ok(value)
         } else {
-            Err(format!("unknown name: {name}"))
+            Err(undefined_name_error(name))
         }
     }
 
@@ -62678,8 +62678,6 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
         ("TypeError", message.to_string())
     } else if let Some(message) = message.strip_prefix("AttributeError: ") {
         ("AttributeError", message.to_string())
-    } else if let Some(name) = message.strip_prefix("unknown name: ") {
-        ("NameError", format!("unknown name: {name}"))
     } else if let Some((type_name, message)) = message.split_once(": ")
         && is_exception_type_name(type_name)
     {
@@ -62723,6 +62721,10 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
         exceptions: None,
         identity: Rc::new(()),
     })
+}
+
+fn undefined_name_error(name: &str) -> String {
+    format!("NameError: name '{name}' is not defined")
 }
 
 fn is_index_error_message(message: &str) -> bool {
@@ -87640,7 +87642,7 @@ mod tests {
 
         assert_eq!(
             vm.run(),
-            Err("NameError: unknown name: unknown".to_string())
+            Err("NameError: name 'unknown' is not defined".to_string())
         );
     }
 

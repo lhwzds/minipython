@@ -19187,7 +19187,7 @@ fn cpython_exec_builtin_subset() {
 fn cpython_eval_exec_builtins_mapping_subset() {
     assert_error(
         "code = compile(\"print('Hello World!')\", \"\", \"exec\")\nexec(code, {'__builtins__': {}})",
-        "runtime error: NameError: unknown name: print",
+        "runtime error: NameError: name 'print' is not defined",
     );
     assert_error(
         "code = compile(\"print('Hello World!')\", \"\", \"exec\")\nexec(code, {'__builtins__': 123})",
@@ -19199,7 +19199,7 @@ fn cpython_eval_exec_builtins_mapping_subset() {
     );
     assert_error(
         "from types import MappingProxyType\ncode = compile('superglobal', 'test', 'eval')\nns = {'__builtins__': MappingProxyType({})}\neval(code, ns)",
-        "runtime error: NameError: unknown name: superglobal",
+        "runtime error: NameError: name 'superglobal' is not defined",
     );
     assert_output(
         "class customdict(dict):\n    pass\ncode = compile('result = superglobal', 'test', 'exec')\nns = {'__builtins__': customdict({'superglobal': 1})}\nexec(code, ns)\nprint(ns['result'])",
@@ -19207,7 +19207,7 @@ fn cpython_eval_exec_builtins_mapping_subset() {
     );
     assert_error(
         "class customdict(dict):\n    pass\ncode = compile('result = superglobal', 'test', 'exec')\nexec(code, {'__builtins__': customdict()})",
-        "runtime error: NameError: unknown name: superglobal",
+        "runtime error: NameError: name 'superglobal' is not defined",
     );
     assert_error(
         "from types import MappingProxyType\ncode = compile('import foo.bar', 'test', 'exec')\nns = {'__builtins__': MappingProxyType({})}\nexec(code, ns)",
@@ -24899,6 +24899,10 @@ fn cpython_runtime_exception_capture_subset() {
     assert_output(
         "try:\n    {}[\"key\"]\nexcept KeyError as error:\n    print(error.__class__.__name__, error)",
         &["KeyError 'key'"],
+    );
+    assert_output(
+        "try:\n    missing_name\nexcept NameError as error:\n    print('name', error.__class__.__name__, str(error))",
+        &["name NameError name 'missing_name' is not defined"],
     );
     assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
@@ -31643,15 +31647,15 @@ fn cpython_grammar_del_stmt_subset() {
     );
     assert_error(
         "x = 1\ndel x\nprint(x)",
-        "runtime error: NameError: unknown name: x",
+        "runtime error: NameError: name 'x' is not defined",
     );
     assert_error(
         "x = 1\ny = 2\nz = 3\ndel x, y, (z,)\nprint(x)",
-        "runtime error: NameError: unknown name: x",
+        "runtime error: NameError: name 'x' is not defined",
     );
     assert_error(
         "x = 1\ny = 2\ndel y,\nprint(y)",
-        "runtime error: NameError: unknown name: y",
+        "runtime error: NameError: name 'y' is not defined",
     );
     assert_error(
         "items = {}\ndel items[\"missing\"]",
@@ -31671,15 +31675,15 @@ fn cpython_delete_target_helper_rules_subset() {
     assert_output("del ()\ndel []\nprint(\"empty\")", &["empty"]);
     assert_error(
         "a = 1\ndel (a)\nprint(a)",
-        "runtime error: NameError: unknown name: a",
+        "runtime error: NameError: name 'a' is not defined",
     );
     assert_error(
         "a = 1\ndel (a,)\nprint(a)",
-        "runtime error: NameError: unknown name: a",
+        "runtime error: NameError: name 'a' is not defined",
     );
     assert_error(
         "a = 1\ndel [a,]\nprint(a)",
-        "runtime error: NameError: unknown name: a",
+        "runtime error: NameError: name 'a' is not defined",
     );
     assert_output("a = 1\nb = 2\ndel (a, b)\nprint(\"tuple\")", &["tuple"]);
     assert_output("a = 1\nb = 2\ndel [a, b]\nprint(\"list\")", &["list"]);
@@ -39495,7 +39499,7 @@ fn cpython_f_string_scope_and_format_lookup_subset() {
     assert_output("value = 123\nprint(f'v:{value}')", &["v:123"]);
     assert_error(
         "print(f'v:{value}')",
-        "runtime error: NameError: unknown name: value",
+        "runtime error: NameError: name 'value' is not defined",
     );
     assert_output(
         "class O:\n    def __format__(self, spec):\n        if not spec:\n            return '*'\n        return spec\nprint(f'{O():x}', f'{O()}')",
@@ -50327,7 +50331,7 @@ fn cpython_t_string_nested_template_and_runtime_error_subset() {
     );
     assert_error(
         "print(t'Hello, {name}')",
-        "runtime error: NameError: unknown name: name",
+        "runtime error: NameError: name 'name' is not defined",
     );
 }
 

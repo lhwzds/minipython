@@ -22463,6 +22463,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "fn cpython_runtime_exception_capture_subset(",
         "[][10]",
         "{}[\\\"key\\\"]",
+        "missing_name",
+        "name 'missing_name' is not defined",
         "1[0]",
         "for item in 1",
         "a, b = 1",
@@ -22544,6 +22546,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "Lib/test/test_exceptions.py runtime exception object capture subset",
         "[][10]",
         "{}[\"key\"]",
+        "missing_name",
+        "name 'missing_name' is not defined",
         "1[0]",
         "isinstance(error, TypeError)",
         "for item in 1",
@@ -22626,6 +22630,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("generator.throw()")
                 && document.contains("coroutine.throw()")
                 && document.contains("async_generator.athrow()")
+                && document.contains("catchable missing-name")
                 && document.contains("catchable non-iterable unpack")
                 && document.contains("catchable unary plus")
                 && document.contains("catchable unary minus")

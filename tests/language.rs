@@ -5029,7 +5029,7 @@ fn deletes_list_slices() {
 fn reports_delete_errors() {
     assert_eq!(
         run_source("x = 1\ndel x\nprint(x)"),
-        Err("runtime error: NameError: unknown name: x".to_string())
+        Err("runtime error: NameError: name 'x' is not defined".to_string())
     );
     assert_eq!(
         run_source("items = [1]\ndel items[2]"),
@@ -5206,7 +5206,7 @@ fn slices_ranges() {
 fn reports_unknown_name() {
     assert_eq!(
         run_source("unknown(1)"),
-        Err("runtime error: NameError: unknown name: unknown".to_string())
+        Err("runtime error: NameError: name 'unknown' is not defined".to_string())
     );
 }
 
