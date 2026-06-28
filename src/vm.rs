@@ -5657,7 +5657,10 @@ impl Vm {
                 }
                 Instruction::Positive { dst, src } => {
                     let value = self.read_register(src)?.clone();
-                    self.write_register(dst, positive_value(value)?);
+                    let value = positive_value(value);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::Negate { dst, src } => {
                     let value = self.read_register(src)?.clone();

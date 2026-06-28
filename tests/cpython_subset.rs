@@ -24913,6 +24913,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["TypeError 'int' object is not callable"],
     );
     assert_output(
+        "try:\n    +'x'\nexcept TypeError as error:\n    print('uplus', error.__class__.__name__, str(error))",
+        &["uplus TypeError bad operand type for unary +: 'str'"],
+    );
+    assert_output(
         "try:\n    1 + 'x'\nexcept TypeError as error:\n    print('add', error.__class__.__name__, str(error))",
         &["add TypeError unsupported operand type(s) for +: 'int' and 'str'"],
     );

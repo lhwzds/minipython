@@ -112,8 +112,9 @@ Recent runtime migration notes:
   text for direct `iter()`, list construction, and `itertools.chain.from_iterable()`.
 - `cpython_runtime_exception_capture_subset`, backed by
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
-  catchable binary add `TypeError` behavior, catchable binary subtract
-  `TypeError` behavior, catchable binary bit-xor `TypeError` behavior,
+  catchable unary plus `TypeError` behavior, catchable binary add `TypeError`
+  behavior, catchable binary subtract `TypeError` behavior,
+  catchable binary bit-xor `TypeError` behavior,
   catchable binary bit-and `TypeError` behavior, catchable binary left-shift
   `TypeError` behavior, catchable binary right-shift `TypeError` behavior,
   catchable in-place add `TypeError` behavior,
