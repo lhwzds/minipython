@@ -5671,7 +5671,10 @@ impl Vm {
                 }
                 Instruction::Invert { dst, src } => {
                     let value = self.read_register(src)?.clone();
-                    self.write_register(dst, invert_value(value)?);
+                    let value = invert_value(value);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::JumpIfFalse { condition, target } => {
                     let condition = self.read_register(condition)?.clone();

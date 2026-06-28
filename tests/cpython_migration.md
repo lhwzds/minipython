@@ -165,8 +165,9 @@ Completed in the builtin method TypeError capture pass:
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for catchable unary plus `TypeError`,
-  catchable unary minus `TypeError`, catchable binary add `TypeError`,
-  catchable binary subtract `TypeError`, catchable binary bit-xor `TypeError`,
+  catchable unary minus `TypeError`, catchable unary invert `TypeError`,
+  catchable binary add `TypeError`, catchable binary subtract `TypeError`,
+  catchable binary bit-xor `TypeError`,
   catchable binary bit-and `TypeError`, catchable binary left-shift
   `TypeError`, catchable binary right-shift `TypeError`, catchable in-place add
   `TypeError`, catchable in-place subtract `TypeError`,

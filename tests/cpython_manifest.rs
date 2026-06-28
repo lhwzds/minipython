@@ -22471,6 +22471,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "bad operand type for unary +: 'str'",
         "-'x'",
         "bad operand type for unary -: 'str'",
+        "~'x'",
+        "bad operand type for unary ~: 'str'",
         "1 + 'x'",
         "unsupported operand type(s) for +: 'int' and 'str'",
         "1 - 'x'",
@@ -22549,6 +22551,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "bad operand type for unary +: 'str'",
         "-'x'",
         "bad operand type for unary -: 'str'",
+        "~'x'",
+        "bad operand type for unary ~: 'str'",
         "1 + 'x'",
         "unsupported operand type(s) for +: 'int' and 'str'",
         "1 - 'x'",
@@ -22620,6 +22624,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("async_generator.athrow()")
                 && document.contains("catchable unary plus")
                 && document.contains("catchable unary minus")
+                && document.contains("catchable unary invert")
                 && document.contains("catchable binary add")
                 && document.contains("catchable binary subtract")
                 && document.contains("catchable binary bit-xor")

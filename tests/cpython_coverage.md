@@ -113,7 +113,8 @@ Recent runtime migration notes:
 - `cpython_runtime_exception_capture_subset`, backed by
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
   catchable unary plus `TypeError` behavior, catchable unary minus `TypeError`
-  behavior, catchable binary add `TypeError` behavior,
+  behavior, catchable unary invert `TypeError` behavior,
+  catchable binary add `TypeError` behavior,
   catchable binary subtract `TypeError` behavior, catchable binary bit-xor
   `TypeError` behavior,
   catchable binary bit-and `TypeError` behavior, catchable binary left-shift
