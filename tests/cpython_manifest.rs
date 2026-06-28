@@ -22465,6 +22465,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "{}[\\\"key\\\"]",
         "1[0]",
         "for item in 1",
+        "a, b = 1",
+        "cannot unpack non-iterable int object",
         "1(2)",
         "'int' object is not callable",
         "+'x'",
@@ -22545,6 +22547,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "1[0]",
         "isinstance(error, TypeError)",
         "for item in 1",
+        "a, b = 1",
+        "cannot unpack non-iterable int object",
         "1(2)",
         "'int' object is not callable",
         "+'x'",
@@ -22622,6 +22626,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("generator.throw()")
                 && document.contains("coroutine.throw()")
                 && document.contains("async_generator.athrow()")
+                && document.contains("catchable non-iterable unpack")
                 && document.contains("catchable unary plus")
                 && document.contains("catchable unary minus")
                 && document.contains("catchable unary invert")

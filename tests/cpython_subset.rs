@@ -24909,6 +24909,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["TypeError 'int' object is not iterable"],
     );
     assert_output(
+        "try:\n    a, b = 1\nexcept TypeError as error:\n    print('unpack', error.__class__.__name__, str(error))",
+        &["unpack TypeError cannot unpack non-iterable int object"],
+    );
+    assert_output(
         "try:\n    1(2)\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 'int' object is not callable"],
     );

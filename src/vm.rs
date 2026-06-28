@@ -33541,7 +33541,7 @@ impl Vm {
     fn get_iter_for_unpack(&mut self, value: Value) -> Result<Option<Value>, String> {
         if instance_special_method_is_none(&value, "__iter__") {
             return self.runtime_result_or_raise(Err(format!(
-                "'{}' object is not iterable",
+                "TypeError: cannot unpack non-iterable {} object",
                 type_name(&value)
             )));
         }
@@ -33574,8 +33574,13 @@ impl Vm {
             return Ok(Some(get_iter(Value::List(items))?));
         }
 
+        let value_type = type_name(&value).to_string();
         match get_iter(value) {
             Ok(iterator) => Ok(Some(iterator)),
+            Err(message) if message == format!("'{value_type}' object is not iterable") => self
+                .runtime_result_or_raise(Err(format!(
+                    "TypeError: cannot unpack non-iterable {value_type} object"
+                ))),
             Err(message) => self.runtime_result_or_raise(Err(message)),
         }
     }

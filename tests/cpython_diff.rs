@@ -9702,6 +9702,7 @@ except BaseException as error:
 #[test]
 fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
+    // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
     // CPython oracle text: bad operand type for unary ~: 'str'.
@@ -9745,6 +9746,10 @@ try:
         pass
 except TypeError as error:
     print(error.__class__.__name__, isinstance(error, TypeError))
+try:
+    a, b = 1
+except TypeError as error:
+    print('unpack', error.__class__.__name__, str(error))
 try:
     1(2)
 except TypeError as error:
