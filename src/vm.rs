@@ -60876,6 +60876,7 @@ fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
         "float" => Some("(x=0, /)"),
         "frozenset" => Some("(iterable=(), /)"),
         "list" => Some("(iterable=(), /)"),
+        "memoryview" => Some("(object)"),
         "object" => Some("()"),
         "set" => Some("(iterable=(), /)"),
         "tuple" => Some("(iterable=(), /)"),

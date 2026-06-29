@@ -25062,6 +25062,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["builtin-type-getattribute-text-signature-frozenset (iterable=(), /)"],
     );
     assert_output(
+        "print('builtin-type-getattribute-text-signature-memoryview', object.__getattribute__(memoryview, '__text_signature__'))",
+        &["builtin-type-getattribute-text-signature-memoryview (object)"],
+    );
+    assert_output(
         "print('builtin-type-getattribute-text-signature-tuple', object.__getattribute__(tuple, '__text_signature__'))",
         &["builtin-type-getattribute-text-signature-tuple (iterable=(), /)"],
     );

@@ -132,6 +132,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ list type-object __text_signature__ metadata
   behavior, object.__getattribute__ set type-object __text_signature__ metadata
   behavior, object.__getattribute__ frozenset type-object __text_signature__ metadata
+  behavior, object.__getattribute__ memoryview type-object __text_signature__ metadata
   behavior, object.__getattribute__ tuple type-object __text_signature__ metadata
   behavior, object.__getattribute__ float type-object __text_signature__ metadata
   behavior, object.__getattribute__ bool type-object __text_signature__ metadata

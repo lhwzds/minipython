@@ -9743,6 +9743,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-text-signature-list (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-set (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-frozenset (iterable=(), /).
+    // CPython oracle line: builtin-type-getattribute-text-signature-memoryview (object).
     // CPython oracle line: builtin-type-getattribute-text-signature-tuple (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-float (x=0, /).
     // CPython oracle line: builtin-type-getattribute-text-signature-bool (object=False, /).
@@ -9929,6 +9930,7 @@ print('builtin-type-getattribute-text-signature-object', object.__getattribute__
 print('builtin-type-getattribute-text-signature-list', object.__getattribute__(list, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-set', object.__getattribute__(set, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-frozenset', object.__getattribute__(frozenset, '__text_signature__'))
+print('builtin-type-getattribute-text-signature-memoryview', object.__getattribute__(memoryview, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-tuple', object.__getattribute__(tuple, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-float', object.__getattribute__(float, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-bool', object.__getattribute__(bool, '__text_signature__'))
