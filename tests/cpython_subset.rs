@@ -25112,6 +25112,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "print('builtin-type-getattribute-doc-complex', repr(object.__getattribute__(complex, '__doc__')))",
+        &[
+            r#"builtin-type-getattribute-doc-complex "Create a complex number from a string or numbers.\n\nIf a string is given, parse it as a complex number.\nIf a single number is given, convert it to a complex number.\nIf the 'real' or 'imag' arguments are given, create a complex number\nwith the specified real and imaginary components.""#,
+        ],
+    );
+    assert_output(
         "print('builtin-type-getattribute-doc-frozenset', repr(object.__getattribute__(frozenset, '__doc__')))",
         &[
             "builtin-type-getattribute-doc-frozenset 'Build an immutable unordered collection of unique elements.'",
