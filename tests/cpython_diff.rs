@@ -9755,6 +9755,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-doc-range 'range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).'.
     // CPython oracle line: builtin-type-getattribute-doc-type "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type".
     // CPython oracle line: builtin-type-getattribute-doc-slice 'slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.\n\nThis is used for extended slicing (e.g. a[0:10:2]).'.
+    // CPython oracle line: builtin-type-getattribute-doc-super 'super() -> same as super(__class__, <first argument>)\nsuper(type) -> unbound super object\nsuper(type, obj) -> bound super object; requires isinstance(obj, type)\nsuper(type, type2) -> bound super object; requires\n    issubclass(type2, type)\nTypical use to call a cooperative superclass method:\nclass C(B):\n    def meth(self, arg):\n        super().meth(arg)\nThis works for class methods too:\nclass C(B):\n    @classmethod\n    def cmeth(cls, arg):\n        super().cmeth(arg)\n'.
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9933,6 +9934,7 @@ print('builtin-type-getattribute-doc-dict', repr(object.__getattribute__(dict, '
 print('builtin-type-getattribute-doc-range', repr(object.__getattribute__(range, '__doc__')))
 print('builtin-type-getattribute-doc-type', repr(object.__getattribute__(type, '__doc__')))
 print('builtin-type-getattribute-doc-slice', repr(object.__getattribute__(slice, '__doc__')))
+print('builtin-type-getattribute-doc-super', repr(object.__getattribute__(super, '__doc__')))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:
