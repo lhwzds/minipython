@@ -180,6 +180,7 @@ Completed in the builtin method TypeError capture pass:
   catchable missing bytearray attribute `AttributeError` text,
   catchable missing memoryview attribute `AttributeError` text,
   catchable missing range attribute `AttributeError` text, catchable missing user object attribute
+  `AttributeError` text, catchable missing user class attribute
   `AttributeError` text, and keyword
   `TypeError` text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,

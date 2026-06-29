@@ -9710,6 +9710,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'NoneType' object has no attribute 'missing_attr'.
     // CPython oracle text: 'object' object has no attribute 'missing_attr'.
     // CPython oracle text: 'MissingAttrExample' object has no attribute 'missing_attr'.
+    // CPython oracle text: type object 'MissingClassAttrExample' has no attribute 'missing_attr'.
     // CPython oracle text: 'list' object has no attribute 'missing_attr'.
     // CPython oracle text: 'dict' object has no attribute 'missing_attr'.
     // CPython oracle text: 'set' object has no attribute 'missing_attr'.
@@ -9789,6 +9790,12 @@ try:
     MissingAttrExample().missing_attr
 except AttributeError as error:
     print('user-object-attr', error.__class__.__name__, str(error))
+class MissingClassAttrExample:
+    pass
+try:
+    MissingClassAttrExample.missing_attr
+except AttributeError as error:
+    print('user-class-attr', error.__class__.__name__, str(error))
 try:
     [].missing_attr
 except AttributeError as error:

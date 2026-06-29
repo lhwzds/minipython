@@ -14690,7 +14690,7 @@ impl Vm {
                 }
 
                 Err(format!(
-                    "AttributeError: type object has no attribute '{name}'"
+                    "AttributeError: type object '{class_name}' has no attribute '{name}'"
                 ))
             }
             Value::Super {

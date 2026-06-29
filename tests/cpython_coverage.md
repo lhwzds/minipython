@@ -119,6 +119,7 @@ Recent runtime migration notes:
   `AttributeError` behavior, catchable missing NoneType attribute
   `AttributeError` behavior, catchable missing object attribute
   `AttributeError` behavior, catchable missing user object attribute
+  `AttributeError` behavior, catchable missing user class attribute
   `AttributeError` behavior, catchable missing list attribute `AttributeError`
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,

@@ -24935,6 +24935,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "class MissingClassAttrExample:\n    pass\ntry:\n    MissingClassAttrExample.missing_attr\nexcept AttributeError as error:\n    print('user-class-attr', error.__class__.__name__, str(error))",
+        &[
+            "user-class-attr AttributeError type object 'MissingClassAttrExample' has no attribute 'missing_attr'",
+        ],
+    );
+    assert_output(
         "try:\n    [].missing_attr\nexcept AttributeError as error:\n    print('list-attr', error.__class__.__name__, str(error))",
         &["list-attr AttributeError 'list' object has no attribute 'missing_attr'"],
     );
