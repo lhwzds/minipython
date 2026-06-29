@@ -59417,6 +59417,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(builtins_module_type_base_value(&function_name))
         }
         Value::Builtin(function_name)
+            if name == "__bases__" && is_builtins_module_type_object_name(&function_name) =>
+        {
+            Ok(builtins_module_type_bases_value(&function_name))
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
@@ -60814,6 +60819,10 @@ fn builtins_module_type_base_value(name: &str) -> Value {
         .first()
         .cloned()
         .unwrap_or(Value::None)
+}
+
+fn builtins_module_type_bases_value(name: &str) -> Value {
+    tuple_value(builtin_class_bases(name))
 }
 
 fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
