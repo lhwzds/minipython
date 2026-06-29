@@ -138,6 +138,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ bool type-object __text_signature__ metadata
   behavior, object.__getattribute__ complex type-object __text_signature__ metadata
   behavior, object.__getattribute__ deque type-object __text_signature__ metadata
+  behavior, object.__getattribute__ OrderedDict type-object __text_signature__ metadata
   behavior, object.__getattribute__ object type-object __doc__ metadata
   behavior, object.__getattribute__ list type-object __doc__ metadata
   behavior, object.__getattribute__ memoryview type-object __doc__ metadata
