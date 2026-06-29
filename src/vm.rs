@@ -59412,6 +59412,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__base__" && is_builtins_module_type_object_name(&function_name) =>
+        {
+            Ok(builtins_module_type_base_value(&function_name))
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
@@ -60802,6 +60807,13 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "object"
             | "type"
     ) || is_exception_type_name(name)
+}
+
+fn builtins_module_type_base_value(name: &str) -> Value {
+    builtin_class_bases(name)
+        .first()
+        .cloned()
+        .unwrap_or(Value::None)
 }
 
 fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {

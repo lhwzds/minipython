@@ -125,6 +125,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ builtin type-object missing attribute text
   behavior, object.__getattribute__ builtin type-object __module__ metadata
   behavior, object.__getattribute__ builtin type-object __qualname__ metadata
+  behavior, object.__getattribute__ builtin type-object __base__ metadata
   behavior, object.__getattribute__ namedtuple type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
   behavior, object.__setattr__ builtin type-object rejection

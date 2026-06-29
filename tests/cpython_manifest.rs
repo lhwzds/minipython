@@ -22513,6 +22513,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(typ, '__qualname__')",
         "builtin-type-getattribute-qualname int int",
         "builtin-type-getattribute-qualname Exception Exception",
+        "object.__getattribute__(typ, '__base__')",
+        "builtin-type-getattribute-base bool int",
+        "builtin-type-getattribute-base object None",
+        "builtin-type-getattribute-base Exception BaseException",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22665,6 +22669,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(typ, '__qualname__')",
         "builtin-type-getattribute-qualname int int",
         "builtin-type-getattribute-qualname Exception Exception",
+        "object.__getattribute__(typ, '__base__')",
+        "builtin-type-getattribute-base bool int",
+        "builtin-type-getattribute-base object None",
+        "builtin-type-getattribute-base Exception BaseException",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22785,6 +22793,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ builtin type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ builtin type-object __qualname__ metadata")
+                && document
+                    .contains("object.__getattribute__ builtin type-object __base__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )
