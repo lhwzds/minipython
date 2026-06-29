@@ -25078,6 +25078,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["builtin-type-getattribute-text-signature-bool (object=False, /)"],
     );
     assert_output(
+        "print('builtin-type-getattribute-text-signature-complex', object.__getattribute__(complex, '__text_signature__'))",
+        &["builtin-type-getattribute-text-signature-complex (real=0, imag=0)"],
+    );
+    assert_output(
         "print('builtin-type-getattribute-doc-object', repr(object.__getattribute__(object, '__doc__')))",
         &[
             r"builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'",
