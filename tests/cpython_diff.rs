@@ -9748,6 +9748,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-text-signature-bool (object=False, /).
     // CPython oracle line: builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'.
     // CPython oracle line: builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'.
+    // CPython oracle line: builtin-type-getattribute-doc-memoryview 'Create a new memoryview object which references the given object.'.
     // CPython oracle line: builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.".
     // CPython oracle line: builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'.
     // CPython oracle line: builtin-type-getattribute-doc-frozenset 'Build an immutable unordered collection of unique elements.'.
@@ -9933,6 +9934,7 @@ print('builtin-type-getattribute-text-signature-float', object.__getattribute__(
 print('builtin-type-getattribute-text-signature-bool', object.__getattribute__(bool, '__text_signature__'))
 print('builtin-type-getattribute-doc-object', repr(object.__getattribute__(object, '__doc__')))
 print('builtin-type-getattribute-doc-list', repr(object.__getattribute__(list, '__doc__')))
+print('builtin-type-getattribute-doc-memoryview', repr(object.__getattribute__(memoryview, '__doc__')))
 print('builtin-type-getattribute-doc-tuple', repr(object.__getattribute__(tuple, '__doc__')))
 print('builtin-type-getattribute-doc-float', repr(object.__getattribute__(float, '__doc__')))
 print('builtin-type-getattribute-doc-frozenset', repr(object.__getattribute__(frozenset, '__doc__')))

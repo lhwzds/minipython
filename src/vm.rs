@@ -60899,6 +60899,7 @@ fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
         "list" => Some(
             "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
         ),
+        "memoryview" => Some("Create a new memoryview object which references the given object."),
         "object" => Some(
             "The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n",
         ),

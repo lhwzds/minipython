@@ -25086,6 +25086,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "print('builtin-type-getattribute-doc-memoryview', repr(object.__getattribute__(memoryview, '__doc__')))",
+        &[
+            "builtin-type-getattribute-doc-memoryview 'Create a new memoryview object which references the given object.'",
+        ],
+    );
+    assert_output(
         "print('builtin-type-getattribute-doc-tuple', repr(object.__getattribute__(tuple, '__doc__')))",
         &[
             r#"builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.""#,

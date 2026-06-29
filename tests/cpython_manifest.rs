@@ -22534,6 +22534,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
         r"builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'",
         r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
+        "builtin-type-getattribute-doc-memoryview 'Create a new memoryview object which references the given object.'",
         r#"builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.""#,
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
         "builtin-type-getattribute-doc-frozenset 'Build an immutable unordered collection of unique elements.'",
@@ -22721,6 +22722,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
         r"builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'",
         r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
+        "builtin-type-getattribute-doc-memoryview 'Create a new memoryview object which references the given object.'",
         r#"builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.""#,
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
         "builtin-type-getattribute-doc-frozenset 'Build an immutable unordered collection of unique elements.'",
@@ -22885,6 +22887,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document.contains("object.__getattribute__ object type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ list type-object __doc__ metadata")
+                && document
+                    .contains("object.__getattribute__ memoryview type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ tuple type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ float type-object __doc__ metadata")
                 && document
