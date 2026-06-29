@@ -140,6 +140,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ bool type-object __doc__ metadata
   behavior, object.__getattribute__ int type-object __doc__ metadata
   behavior, object.__getattribute__ str type-object __doc__ metadata
+  behavior, object.__getattribute__ dict type-object __doc__ metadata
   behavior, object.__getattribute__ namedtuple type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
   behavior, object.__setattr__ builtin type-object rejection
