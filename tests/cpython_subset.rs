@@ -24937,6 +24937,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["bytes-attr AttributeError 'bytes' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    bytearray().missing_attr\nexcept AttributeError as error:\n    print('bytearray-attr', error.__class__.__name__, str(error))",
+        &["bytearray-attr AttributeError 'bytearray' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );

@@ -57130,6 +57130,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver: Box::new(Value::ByteArray(value)),
             identity: Rc::new(()),
         }),
+        Value::ByteArray(_) => Err(missing_type_attribute_error("bytearray", name)),
         Value::MemoryView(view) => match name {
             "format" => Ok(Value::String(memoryview_format(&view)?)),
             "itemsize" => Ok(Value::Number(

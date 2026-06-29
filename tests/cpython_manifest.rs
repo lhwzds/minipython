@@ -22481,6 +22481,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'str' object has no attribute 'missing_attr'",
         "b''.missing_attr",
         "'bytes' object has no attribute 'missing_attr'",
+        "bytearray().missing_attr",
+        "'bytearray' object has no attribute 'missing_attr'",
         "1[0]",
         "for item in 1",
         "a, b = 1",
@@ -22580,6 +22582,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'str' object has no attribute 'missing_attr'",
         "b''.missing_attr",
         "'bytes' object has no attribute 'missing_attr'",
+        "bytearray().missing_attr",
+        "'bytearray' object has no attribute 'missing_attr'",
         "1[0]",
         "isinstance(error, TypeError)",
         "for item in 1",
@@ -22671,6 +22675,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable missing tuple attribute")
                 && document.contains("catchable missing str attribute")
                 && document.contains("catchable missing bytes attribute")
+                && document.contains("catchable missing bytearray attribute")
                 && document.contains("catchable non-iterable unpack")
                 && document.contains("catchable unary plus")
                 && document.contains("catchable unary minus")
