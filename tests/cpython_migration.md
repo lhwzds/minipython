@@ -173,7 +173,8 @@ Completed in the builtin method TypeError capture pass:
   catchable missing str attribute `AttributeError` text,
   catchable missing bytes attribute `AttributeError` text,
   catchable missing bytearray attribute `AttributeError` text,
-  catchable missing memoryview attribute `AttributeError` text, and keyword
+  catchable missing memoryview attribute `AttributeError` text,
+  catchable missing range attribute `AttributeError` text, and keyword
   `TypeError` text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
   catchable unary minus `TypeError`,

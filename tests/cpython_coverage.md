@@ -122,6 +122,7 @@ Recent runtime migration notes:
   catchable missing bytes attribute `AttributeError` behavior,
   catchable missing bytearray attribute `AttributeError` behavior,
   catchable missing memoryview attribute `AttributeError` behavior,
+  catchable missing range attribute `AttributeError` behavior,
   catchable non-iterable unpack
   `TypeError` behavior, catchable unary plus `TypeError` behavior,
   catchable unary minus `TypeError` behavior,
