@@ -16049,7 +16049,7 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if is_type_object_value(object) {
+        if object_delattr_type_object_value(object) {
             return Err("TypeError: can't apply this __delattr__ to type object".to_string());
         }
         self.delete_attribute_without_custom_delattr(object.clone(), &name)?;
@@ -54028,6 +54028,10 @@ fn is_type_object_value(object: &Value) -> bool {
 }
 
 fn object_setattr_type_object_value(object: &Value) -> bool {
+    matches!(object, Value::NamedTupleType(_)) || is_type_object_value(object)
+}
+
+fn object_delattr_type_object_value(object: &Value) -> bool {
     matches!(object, Value::NamedTupleType(_)) || is_type_object_value(object)
 }
 

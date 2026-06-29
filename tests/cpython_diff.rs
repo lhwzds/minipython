@@ -9733,6 +9733,8 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: namedtuple-type-setattr TypeError can't apply this __setattr__ to type object.
     // CPython oracle line: namedtuple-type-setattr-preserved False.
     // CPython oracle text: can't apply this __delattr__ to type object.
+    // CPython oracle line: namedtuple-type-delattr TypeError can't apply this __delattr__ to type object.
+    // CPython oracle line: namedtuple-type-delattr-preserved False.
     // CPython oracle line: builtin-type-delattr-int TypeError can't apply this __delattr__ to type object.
     // CPython oracle line: builtin-type-delattr-preserved False False.
     // CPython oracle text: cannot unpack non-iterable int object.
@@ -9904,6 +9906,12 @@ try:
 except TypeError as error:
     print('namedtuple-type-setattr', error.__class__.__name__, str(error))
 print('namedtuple-type-setattr-preserved', hasattr(NamedTupleSetattrExample, 'created'))
+NamedTupleDelattrExample = namedtuple('NamedTupleDelattrExample', 'x y')
+try:
+    object.__delattr__(NamedTupleDelattrExample, 'missing_attr')
+except TypeError as error:
+    print('namedtuple-type-delattr', error.__class__.__name__, str(error))
+print('namedtuple-type-delattr-preserved', hasattr(NamedTupleDelattrExample, 'missing_attr'))
 class TypeDelattrExample:
     existing = 1
 for label, expr in [

@@ -129,6 +129,7 @@ Recent runtime migration notes:
   behavior, object.__setattr__ namedtuple type-object rejection
   behavior, object.__delattr__ type-object rejection
   behavior, object.__delattr__ builtin type-object rejection
+  behavior, object.__delattr__ namedtuple type-object rejection
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,
   catchable missing frozenset attribute `AttributeError` behavior,
