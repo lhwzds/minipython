@@ -197,6 +197,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ list type-object __doc__ metadata,
   object.__getattribute__ tuple type-object __doc__ metadata,
   object.__getattribute__ float type-object __doc__ metadata,
+  object.__getattribute__ frozenset type-object __doc__ metadata,
   object.__getattribute__ bool type-object __doc__ metadata,
   object.__getattribute__ int type-object __doc__ metadata,
   object.__getattribute__ str type-object __doc__ metadata,

@@ -25090,6 +25090,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "print('builtin-type-getattribute-doc-frozenset', repr(object.__getattribute__(frozenset, '__doc__')))",
+        &[
+            "builtin-type-getattribute-doc-frozenset 'Build an immutable unordered collection of unique elements.'",
+        ],
+    );
+    assert_output(
         "print('builtin-type-getattribute-doc-bool', repr(object.__getattribute__(bool, '__doc__')))",
         &[
             r"builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'",
