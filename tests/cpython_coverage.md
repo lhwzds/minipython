@@ -144,6 +144,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ range type-object __doc__ metadata
   behavior, object.__getattribute__ type type-object __doc__ metadata
   behavior, object.__getattribute__ slice type-object __doc__ metadata
+  behavior, object.__getattribute__ set type-object __doc__ metadata
   behavior, object.__getattribute__ super type-object __doc__ metadata
   behavior, object.__getattribute__ bytes type-object __doc__ metadata
   behavior, object.__getattribute__ bytearray type-object __doc__ metadata

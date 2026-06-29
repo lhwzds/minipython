@@ -60905,6 +60905,7 @@ fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
         "slice" => Some(
             "slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.\n\nThis is used for extended slicing (e.g. a[0:10:2]).",
         ),
+        "set" => Some("Build an unordered collection of unique elements."),
         "str" => Some(
             "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
         ),
