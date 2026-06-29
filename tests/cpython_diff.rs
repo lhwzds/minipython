@@ -9730,6 +9730,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-module Exception builtins.
     // CPython oracle line: collections-type-getattribute-module-counter collections.
     // CPython oracle line: collections-type-getattribute-qualname-counter Counter.
+    // CPython oracle line: collections-type-getattribute-text-signature-counter None.
     // CPython oracle line: builtin-type-getattribute-qualname int int.
     // CPython oracle line: builtin-type-getattribute-qualname Exception Exception.
     // CPython oracle line: builtin-type-getattribute-base bool int.
@@ -9923,6 +9924,7 @@ for typ in [int, object, type, Exception]:
 from collections import Counter
 print('collections-type-getattribute-module-counter', object.__getattribute__(Counter, '__module__'))
 print('collections-type-getattribute-qualname-counter', object.__getattribute__(Counter, '__qualname__'))
+print('collections-type-getattribute-text-signature-counter', object.__getattribute__(Counter, '__text_signature__'))
 for typ in [int, object, type, Exception]:
     print('builtin-type-getattribute-qualname', typ.__name__, object.__getattribute__(typ, '__qualname__'))
 for typ in [int, bool, object, type, Exception, BaseException]:
