@@ -9712,6 +9712,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'str' object has no attribute 'missing_attr'.
     // CPython oracle text: 'bytes' object has no attribute 'missing_attr'.
     // CPython oracle text: 'bytearray' object has no attribute 'missing_attr'.
+    // CPython oracle text: 'memoryview' object has no attribute 'missing_attr'.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
@@ -9787,6 +9788,10 @@ try:
     bytearray().missing_attr
 except AttributeError as error:
     print('bytearray-attr', error.__class__.__name__, str(error))
+try:
+    memoryview(b'').missing_attr
+except AttributeError as error:
+    print('memoryview-attr', error.__class__.__name__, str(error))
 try:
     1[0]
 except TypeError as error:

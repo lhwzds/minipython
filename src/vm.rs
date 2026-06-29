@@ -57175,9 +57175,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::MemoryView(view)),
                 identity: Rc::new(()),
             }),
-            _ => Err(format!(
-                "AttributeError: memoryview has no attribute '{name}'"
-            )),
+            _ => Err(missing_type_attribute_error("memoryview", name)),
         },
         Value::BytesIO(bytes_io) => {
             if let Some(value) = bytes_io.borrow().attrs.borrow().get(name).cloned() {
