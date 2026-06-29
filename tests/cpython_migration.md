@@ -185,7 +185,8 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ builtin type-object missing attribute text,
   object.__setattr__ type-object rejection,
   object.__setattr__ builtin type-object rejection,
-  object.__delattr__ type-object rejection, and keyword
+  object.__delattr__ type-object rejection,
+  object.__delattr__ builtin type-object rejection, and keyword
   `TypeError` text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
   catchable unary minus `TypeError`,

@@ -16049,7 +16049,7 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if matches!(object, Value::Class { .. }) {
+        if is_type_object_value(object) {
             return Err("TypeError: can't apply this __delattr__ to type object".to_string());
         }
         self.delete_attribute_without_custom_delattr(object.clone(), &name)?;

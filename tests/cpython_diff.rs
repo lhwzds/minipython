@@ -9730,6 +9730,8 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-preserved False False.
     // CPython oracle text: can't apply this __delattr__ to type object.
+    // CPython oracle line: builtin-type-delattr-int TypeError can't apply this __delattr__ to type object.
+    // CPython oracle line: builtin-type-delattr-preserved False False.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
@@ -9898,6 +9900,16 @@ for label, expr in [
     except TypeError as error:
         print(label, error.__class__.__name__, str(error))
 print('type-delattr-preserved', hasattr(TypeDelattrExample, 'existing'))
+for label, expr in [
+    ('builtin-type-delattr-object', lambda: object.__delattr__(object, 'missing_attr')),
+    ('builtin-type-delattr-int', lambda: object.__delattr__(int, 'missing_attr')),
+    ('builtin-type-delattr-type', lambda: object.__delattr__(type, 'missing_attr')),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+print('builtin-type-delattr-preserved', hasattr(int, 'missing_attr'), hasattr(type, 'missing_attr'))
 try:
     1[0]
 except TypeError as error:

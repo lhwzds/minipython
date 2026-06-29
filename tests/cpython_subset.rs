@@ -25021,6 +25021,15 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "for label, expr in [\n    ('builtin-type-delattr-object', lambda: object.__delattr__(object, 'missing_attr')),\n    ('builtin-type-delattr-int', lambda: object.__delattr__(int, 'missing_attr')),\n    ('builtin-type-delattr-type', lambda: object.__delattr__(type, 'missing_attr')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('builtin-type-delattr-preserved', hasattr(int, 'missing_attr'), hasattr(type, 'missing_attr'))",
+        &[
+            "builtin-type-delattr-object TypeError can't apply this __delattr__ to type object",
+            "builtin-type-delattr-int TypeError can't apply this __delattr__ to type object",
+            "builtin-type-delattr-type TypeError can't apply this __delattr__ to type object",
+            "builtin-type-delattr-preserved False False",
+        ],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );

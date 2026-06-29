@@ -22516,6 +22516,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__delattr__(TypeDelattrExample, 'existing')",
         "can't apply this __delattr__ to type object",
         "type-delattr-preserved",
+        "object.__delattr__(int, 'missing_attr')",
+        "builtin-type-delattr-int TypeError can't apply this __delattr__ to type object",
+        "builtin-type-delattr-preserved False False",
         "1[0]",
         "for item in 1",
         "a, b = 1",
@@ -22650,6 +22653,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__delattr__(TypeDelattrExample, 'existing')",
         "can't apply this __delattr__ to type object",
         "type-delattr-preserved",
+        "object.__delattr__(int, 'missing_attr')",
+        "builtin-type-delattr-int TypeError can't apply this __delattr__ to type object",
+        "builtin-type-delattr-preserved False False",
         "1[0]",
         "isinstance(error, TypeError)",
         "for item in 1",
@@ -22748,6 +22754,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__setattr__ type-object rejection")
                 && document.contains("object.__setattr__ builtin type-object rejection")
                 && document.contains("object.__delattr__ type-object rejection")
+                && document.contains("object.__delattr__ builtin type-object rejection")
                 && document.contains("catchable missing dict attribute")
                 && document.contains("catchable missing set attribute")
                 && document.contains("catchable missing frozenset attribute")
