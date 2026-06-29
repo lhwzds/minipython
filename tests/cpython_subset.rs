@@ -25102,6 +25102,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "print('builtin-type-getattribute-doc-str', repr(object.__getattribute__(str, '__doc__')))",
+        &[
+            r#"builtin-type-getattribute-doc-str "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.""#,
+        ],
+    );
+    assert_output(
         "from collections import namedtuple\nNamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')\ntry:\n    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')\nexcept AttributeError as error:\n    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))",
         &[
             "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",

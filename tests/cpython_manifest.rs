@@ -22536,6 +22536,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
         r"builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'",
         r#"builtin-type-getattribute-doc-int "int([x]) -> integer\nint(x, base=10) -> integer\n\nConvert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating-point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer\niteral.\n>>> int('0b100', base=0)\n4""#,
+        r#"builtin-type-getattribute-doc-str "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.""#,
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22711,6 +22712,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
         r"builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'",
         r#"builtin-type-getattribute-doc-int "int([x]) -> integer\nint(x, base=10) -> integer\n\nConvert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating-point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer\niteral.\n>>> int('0b100', base=0)\n4""#,
+        r#"builtin-type-getattribute-doc-str "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.""#,
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22859,6 +22861,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__getattribute__ float type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ bool type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ int type-object __doc__ metadata")
+                && document.contains("object.__getattribute__ str type-object __doc__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )
