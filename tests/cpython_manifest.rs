@@ -22528,6 +22528,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-object ()",
         "builtin-type-getattribute-text-signature-list (iterable=(), /)",
         "builtin-type-getattribute-text-signature-set (iterable=(), /)",
+        "builtin-type-getattribute-text-signature-frozenset (iterable=(), /)",
         "builtin-type-getattribute-text-signature-tuple (iterable=(), /)",
         "builtin-type-getattribute-text-signature-float (x=0, /)",
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
@@ -22714,6 +22715,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-object ()",
         "builtin-type-getattribute-text-signature-list (iterable=(), /)",
         "builtin-type-getattribute-text-signature-set (iterable=(), /)",
+        "builtin-type-getattribute-text-signature-frozenset (iterable=(), /)",
         "builtin-type-getattribute-text-signature-tuple (iterable=(), /)",
         "builtin-type-getattribute-text-signature-float (x=0, /)",
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
@@ -22868,6 +22870,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document.contains(
                     "object.__getattribute__ set type-object __text_signature__ metadata"
+                )
+                && document.contains(
+                    "object.__getattribute__ frozenset type-object __text_signature__ metadata"
                 )
                 && document.contains(
                     "object.__getattribute__ tuple type-object __text_signature__ metadata"
