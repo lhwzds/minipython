@@ -59407,6 +59407,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("builtins".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && is_builtins_module_type_object_name(&function_name) =>
+        {
+            Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
