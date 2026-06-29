@@ -9705,6 +9705,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: name 'missing_name' is not defined.
     // CPython oracle text: 'int' object has no attribute 'missing_attr'.
     // CPython oracle text: 'float' object has no attribute 'missing_attr'.
+    // CPython oracle text: 'complex' object has no attribute 'missing_attr'.
     // CPython oracle text: 'slice' object has no attribute 'missing_attr'.
     // CPython oracle text: 'NoneType' object has no attribute 'missing_attr'.
     // CPython oracle text: 'list' object has no attribute 'missing_attr'.
@@ -9764,6 +9765,10 @@ try:
     (1.5).missing_attr
 except AttributeError as error:
     print('float-attr', error.__class__.__name__, str(error))
+try:
+    (1+2j).missing_attr
+except AttributeError as error:
+    print('complex-attr', error.__class__.__name__, str(error))
 try:
     slice(1).missing_attr
 except AttributeError as error:

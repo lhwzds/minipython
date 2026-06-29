@@ -57105,9 +57105,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 "real" => Ok(float_value(*real)),
                 "imag" => Ok(float_value(*imag)),
-                _ => Err(format!(
-                    "AttributeError: {object} has no attribute '{name}'"
-                )),
+                _ => Err(missing_type_attribute_error("complex", name)),
             }
         }
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),

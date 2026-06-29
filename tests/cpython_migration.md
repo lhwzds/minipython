@@ -166,6 +166,7 @@ Completed in the builtin method TypeError capture pass:
   runtime error strings. Follow-up evidence now pins exact CPython
   catchable missing-name `NameError` text, catchable missing integer attribute
   `AttributeError` text, catchable missing float attribute
+  `AttributeError` text, catchable missing complex attribute
   `AttributeError` text, catchable missing slice attribute
   `AttributeError` text, catchable missing NoneType attribute
   `AttributeError` text, catchable missing list attribute `AttributeError`

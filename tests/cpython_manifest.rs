@@ -22469,6 +22469,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object has no attribute 'missing_attr'",
         "(1.5).missing_attr",
         "'float' object has no attribute 'missing_attr'",
+        "(1+2j).missing_attr",
+        "'complex' object has no attribute 'missing_attr'",
         "slice(1).missing_attr",
         "'slice' object has no attribute 'missing_attr'",
         "None.missing_attr",
@@ -22580,6 +22582,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object has no attribute 'missing_attr'",
         "(1.5).missing_attr",
         "'float' object has no attribute 'missing_attr'",
+        "(1+2j).missing_attr",
+        "'complex' object has no attribute 'missing_attr'",
         "slice(1).missing_attr",
         "'slice' object has no attribute 'missing_attr'",
         "None.missing_attr",
@@ -22689,6 +22693,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable missing-name")
                 && document.contains("catchable missing integer attribute")
                 && document.contains("catchable missing float attribute")
+                && document.contains("catchable missing complex attribute")
                 && document.contains("catchable missing slice attribute")
                 && document.contains("catchable missing NoneType attribute")
                 && document.contains("catchable missing list attribute")
