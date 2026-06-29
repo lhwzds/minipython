@@ -57840,9 +57840,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::FrozenSet(items)),
                 identity: Rc::new(()),
             }),
-            _ => Err(format!(
-                "AttributeError: frozenset has no attribute '{name}'"
-            )),
+            _ => Err(missing_type_attribute_error("frozenset", name)),
         },
         Value::RangeIterator {
             current,

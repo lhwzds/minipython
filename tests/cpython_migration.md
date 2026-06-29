@@ -167,7 +167,8 @@ Completed in the builtin method TypeError capture pass:
   catchable missing-name `NameError` text, catchable missing integer attribute
   `AttributeError` text, catchable missing list attribute `AttributeError`
   text, catchable missing dict attribute `AttributeError` text,
-  catchable missing set attribute `AttributeError` text, and keyword
+  catchable missing set attribute `AttributeError` text,
+  catchable missing frozenset attribute `AttributeError` text, and keyword
   `TypeError` text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
   catchable unary minus `TypeError`,
