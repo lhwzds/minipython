@@ -57090,10 +57090,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             "real" => Ok(Value::Float(value)),
             "imag" => Ok(float_value(0.0)),
-            _ => Err(format!(
-                "AttributeError: {} has no attribute '{name}'",
-                Value::Float(value.clone())
-            )),
+            _ => Err(missing_type_attribute_error("float", name)),
         },
         object @ Value::Complex { .. } => {
             let Value::Complex { real, imag, .. } = &object else {

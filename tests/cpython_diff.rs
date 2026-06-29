@@ -9704,6 +9704,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
     // CPython oracle text: name 'missing_name' is not defined.
     // CPython oracle text: 'int' object has no attribute 'missing_attr'.
+    // CPython oracle text: 'float' object has no attribute 'missing_attr'.
     // CPython oracle text: 'list' object has no attribute 'missing_attr'.
     // CPython oracle text: 'dict' object has no attribute 'missing_attr'.
     // CPython oracle text: 'set' object has no attribute 'missing_attr'.
@@ -9757,6 +9758,10 @@ try:
     (1).missing_attr
 except AttributeError as error:
     print('attr', error.__class__.__name__, str(error))
+try:
+    (1.5).missing_attr
+except AttributeError as error:
+    print('float-attr', error.__class__.__name__, str(error))
 try:
     [].missing_attr
 except AttributeError as error:

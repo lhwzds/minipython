@@ -165,6 +165,7 @@ Completed in the builtin method TypeError capture pass:
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython
   catchable missing-name `NameError` text, catchable missing integer attribute
+  `AttributeError` text, catchable missing float attribute
   `AttributeError` text, catchable missing list attribute `AttributeError`
   text, catchable missing dict attribute `AttributeError` text,
   catchable missing set attribute `AttributeError` text,

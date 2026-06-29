@@ -22467,6 +22467,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "name 'missing_name' is not defined",
         "(1).missing_attr",
         "'int' object has no attribute 'missing_attr'",
+        "(1.5).missing_attr",
+        "'float' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
         "{}.missing_attr",
@@ -22572,6 +22574,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "name 'missing_name' is not defined",
         "(1).missing_attr",
         "'int' object has no attribute 'missing_attr'",
+        "(1.5).missing_attr",
+        "'float' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
         "{}.missing_attr",
@@ -22676,6 +22680,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("async_generator.athrow()")
                 && document.contains("catchable missing-name")
                 && document.contains("catchable missing integer attribute")
+                && document.contains("catchable missing float attribute")
                 && document.contains("catchable missing list attribute")
                 && document.contains("catchable missing dict attribute")
                 && document.contains("catchable missing set attribute")
