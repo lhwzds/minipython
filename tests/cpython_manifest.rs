@@ -22507,6 +22507,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(int, 'missing_attr')",
         "builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'",
         "builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'",
+        "namedtuple('NamedTupleGetattributeExample', 'x y')",
+        "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
+        "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
@@ -22644,6 +22647,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(int, 'missing_attr')",
         "builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'",
         "builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'",
+        "namedtuple('NamedTupleGetattributeExample', 'x y')",
+        "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
+        "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
@@ -22751,6 +22757,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__getattribute__ type-object missing attribute text")
                 && document
                     .contains("object.__getattribute__ builtin type-object missing attribute text")
+                && document.contains(
+                    "object.__getattribute__ namedtuple type-object missing attribute text"
+                )
                 && document.contains("object.__setattr__ type-object rejection")
                 && document.contains("object.__setattr__ builtin type-object rejection")
                 && document.contains("object.__delattr__ type-object rejection")

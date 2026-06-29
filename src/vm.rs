@@ -54017,7 +54017,7 @@ fn object_getattribute_type_object_missing_attribute(
     let Err(message) = result else {
         return false;
     };
-    let Some(class_name) = type_object_owner_name(object) else {
+    let Some(class_name) = type_object_missing_attribute_owner_name(object) else {
         return false;
     };
     message == &format!("AttributeError: type object '{class_name}' has no attribute '{name}'")
@@ -54032,6 +54032,13 @@ fn type_object_owner_name(object: &Value) -> Option<&str> {
         Value::Class { name, .. } => Some(name.as_str()),
         Value::Builtin(name) if is_builtin_type_object_name(name) => Some(name.as_str()),
         _ => None,
+    }
+}
+
+fn type_object_missing_attribute_owner_name(object: &Value) -> Option<&str> {
+    match object {
+        Value::NamedTupleType(typ) => Some(typ.name.as_str()),
+        _ => type_object_owner_name(object),
     }
 }
 

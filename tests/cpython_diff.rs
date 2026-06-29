@@ -9726,6 +9726,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-object AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle line: builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle line: builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'.
+    // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-preserved False False.
@@ -9868,6 +9869,12 @@ for label, expr in [
         expr()
     except AttributeError as error:
         print(label, error.__class__.__name__, str(error))
+from collections import namedtuple
+NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
+try:
+    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')
+except AttributeError as error:
+    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))
 class TypeSetattrExample:
     existing = 1
 for label, expr in [

@@ -24996,6 +24996,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "from collections import namedtuple\nNamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')\ntry:\n    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')\nexcept AttributeError as error:\n    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))",
+        &[
+            "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
+        ],
+    );
+    assert_output(
         "class TypeSetattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-setattr-new', lambda: object.__setattr__(TypeSetattrExample, 'created', 2)),\n    ('type-setattr-existing', lambda: object.__setattr__(TypeSetattrExample, 'existing', 3)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-setattr-preserved', hasattr(TypeSetattrExample, 'created'), TypeSetattrExample.existing)",
         &[
             "type-setattr-new TypeError can't apply this __setattr__ to type object",
