@@ -124,6 +124,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ type-object missing attribute text
   behavior, object.__getattribute__ builtin type-object missing attribute text
   behavior, object.__getattribute__ builtin type-object __module__ metadata
+  behavior, object.__getattribute__ Counter type-object __module__ metadata
   behavior, object.__getattribute__ builtin type-object __qualname__ metadata
   behavior, object.__getattribute__ builtin type-object __base__ metadata
   behavior, object.__getattribute__ builtin type-object __bases__ metadata

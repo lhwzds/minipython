@@ -58889,6 +58889,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "OrderedDict" => {
             Ok(Value::String("collections".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "Counter" => {
+            Ok(Value::String("collections".to_string()))
+        }
         Value::Builtin(function_name) if name == "__module__" && function_name == "io.BytesIO" => {
             Ok(Value::String("_io".to_string()))
         }

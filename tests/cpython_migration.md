@@ -184,6 +184,7 @@ Completed in the builtin method TypeError capture pass:
   `AttributeError` text, object.__getattribute__ type-object missing attribute text,
   object.__getattribute__ builtin type-object missing attribute text,
   object.__getattribute__ builtin type-object __module__ metadata,
+  object.__getattribute__ Counter type-object __module__ metadata,
   object.__getattribute__ builtin type-object __qualname__ metadata,
   object.__getattribute__ builtin type-object __base__ metadata,
   object.__getattribute__ builtin type-object __bases__ metadata,
