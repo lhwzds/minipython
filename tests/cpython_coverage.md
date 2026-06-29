@@ -134,6 +134,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ float type-object __text_signature__ metadata
   behavior, object.__getattribute__ bool type-object __text_signature__ metadata
   behavior, object.__getattribute__ object type-object __doc__ metadata
+  behavior, object.__getattribute__ list type-object __doc__ metadata
   behavior, object.__getattribute__ namedtuple type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
   behavior, object.__setattr__ builtin type-object rejection

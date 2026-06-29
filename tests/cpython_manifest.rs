@@ -22531,6 +22531,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-float (x=0, /)",
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
         r"builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'",
+        r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22701,6 +22702,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-float (x=0, /)",
         "builtin-type-getattribute-text-signature-bool (object=False, /)",
         r"builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'",
+        r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22844,6 +22846,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     "object.__getattribute__ bool type-object __text_signature__ metadata"
                 )
                 && document.contains("object.__getattribute__ object type-object __doc__ metadata")
+                && document.contains("object.__getattribute__ list type-object __doc__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )
