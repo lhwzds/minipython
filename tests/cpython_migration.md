@@ -167,6 +167,7 @@ Completed in the builtin method TypeError capture pass:
   catchable missing-name `NameError` text, catchable missing integer attribute
   `AttributeError` text, catchable missing float attribute
   `AttributeError` text, catchable missing slice attribute
+  `AttributeError` text, catchable missing NoneType attribute
   `AttributeError` text, catchable missing list attribute `AttributeError`
   text, catchable missing dict attribute `AttributeError` text,
   catchable missing set attribute `AttributeError` text,

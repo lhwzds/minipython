@@ -115,6 +115,7 @@ Recent runtime migration notes:
   catchable missing-name `NameError` behavior, catchable missing integer attribute
   `AttributeError` behavior, catchable missing float attribute
   `AttributeError` behavior, catchable missing slice attribute
+  `AttributeError` behavior, catchable missing NoneType attribute
   `AttributeError` behavior, catchable missing list attribute `AttributeError`
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,

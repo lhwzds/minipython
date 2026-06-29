@@ -24917,6 +24917,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["slice-attr AttributeError 'slice' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    None.missing_attr\nexcept AttributeError as error:\n    print('none-attr', error.__class__.__name__, str(error))",
+        &["none-attr AttributeError 'NoneType' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    [].missing_attr\nexcept AttributeError as error:\n    print('list-attr', error.__class__.__name__, str(error))",
         &["list-attr AttributeError 'list' object has no attribute 'missing_attr'"],
     );

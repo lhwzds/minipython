@@ -59449,6 +59449,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .ok_or_else(|| format!("AttributeError: exception has no attribute '{name}'")),
         },
         Value::None if name == "__class__" => Ok(Value::Builtin("NoneType".to_string())),
+        Value::None => Err(missing_type_attribute_error("NoneType", name)),
         Value::NotImplemented if name == "__class__" => {
             Ok(Value::Builtin("NotImplementedType".to_string()))
         }
