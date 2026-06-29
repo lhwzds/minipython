@@ -22511,6 +22511,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-module int builtins",
         "builtin-type-getattribute-module Exception builtins",
         "collections-type-getattribute-module-counter collections",
+        "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-qualname-counter Counter",
         "collections-type-getattribute-text-signature-counter None",
         "object.__getattribute__(typ, '__qualname__')",
@@ -22708,6 +22709,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-module int builtins",
         "builtin-type-getattribute-module Exception builtins",
         "collections-type-getattribute-module-counter collections",
+        "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-qualname-counter Counter",
         "collections-type-getattribute-text-signature-counter None",
         "object.__getattribute__(typ, '__qualname__')",
@@ -22875,6 +22877,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ builtin type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ Counter type-object __module__ metadata")
+                && document
+                    .contains("object.__getattribute__ ChainMap type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ Counter type-object __qualname__ metadata")
                 && document.contains(
