@@ -60870,6 +60870,7 @@ fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
 
 fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
     match name {
+        "float" => Some("Convert a string or number to a floating-point number, if possible."),
         "list" => Some(
             "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
         ),
