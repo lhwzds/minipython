@@ -114,7 +114,8 @@ Recent runtime migration notes:
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
   catchable missing-name `NameError` behavior, catchable missing integer attribute
   `AttributeError` behavior, catchable missing list attribute `AttributeError`
-  behavior, catchable non-iterable unpack
+  behavior, catchable missing dict attribute `AttributeError` behavior,
+  catchable non-iterable unpack
   `TypeError` behavior, catchable unary plus `TypeError` behavior,
   catchable unary minus `TypeError` behavior,
   catchable unary invert `TypeError` behavior,

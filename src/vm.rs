@@ -57303,7 +57303,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::Dict(entries)),
                 identity: Rc::new(()),
             }),
-            _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
+            _ => Err(missing_type_attribute_error("dict", name)),
         },
         Value::OrderedDict(entries) => match name {
             "__doc__" => Ok(Value::String(

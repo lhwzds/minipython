@@ -22469,6 +22469,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
+        "{}.missing_attr",
+        "'dict' object has no attribute 'missing_attr'",
         "1[0]",
         "for item in 1",
         "a, b = 1",
@@ -22556,6 +22558,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'int' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
+        "{}.missing_attr",
+        "'dict' object has no attribute 'missing_attr'",
         "1[0]",
         "isinstance(error, TypeError)",
         "for item in 1",
@@ -22641,6 +22645,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable missing-name")
                 && document.contains("catchable missing integer attribute")
                 && document.contains("catchable missing list attribute")
+                && document.contains("catchable missing dict attribute")
                 && document.contains("catchable non-iterable unpack")
                 && document.contains("catchable unary plus")
                 && document.contains("catchable unary minus")
