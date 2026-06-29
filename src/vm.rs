@@ -59661,13 +59661,19 @@ fn lru_cache_builtin_method_doc(name: &str) -> &'static str {
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {
     match name {
-        "bytes" => Some(
-            "bytes(iterable_of_ints) -> bytes\n\
-bytes(string, encoding[, errors]) -> bytes\n\
-bytes(bytes_or_buffer) -> immutable copy of bytes_or_buffer\n\
-bytes(int) -> bytes object of size given by the parameter initialized with null bytes\n\
-bytes() -> empty bytes object",
-        ),
+        "bytes" => Some(concat!(
+            "bytes(iterable_of_ints) -> bytes\n",
+            "bytes(string, encoding[, errors]) -> bytes\n",
+            "bytes(bytes_or_buffer) -> immutable copy of bytes_or_buffer\n",
+            "bytes(int) -> bytes object of size given by the parameter initialized with null bytes\n",
+            "bytes() -> empty bytes object\n",
+            "\n",
+            "Construct an immutable array of bytes from:\n",
+            "  - an iterable yielding integers in range(256)\n",
+            "  - a text string encoded using the specified encoding\n",
+            "  - any object implementing the buffer API.\n",
+            "  - an integer"
+        )),
         "bytearray" => Some(
             "bytearray(iterable_of_ints) -> bytearray\n\
 bytearray(string, encoding[, errors]) -> bytearray\n\

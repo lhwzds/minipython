@@ -145,6 +145,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ type type-object __doc__ metadata
   behavior, object.__getattribute__ slice type-object __doc__ metadata
   behavior, object.__getattribute__ super type-object __doc__ metadata
+  behavior, object.__getattribute__ bytes type-object __doc__ metadata
   behavior, object.__getattribute__ namedtuple type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
   behavior, object.__setattr__ builtin type-object rejection
