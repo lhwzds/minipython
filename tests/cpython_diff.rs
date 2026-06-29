@@ -9741,6 +9741,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-text-signature-none Exception None.
     // CPython oracle line: builtin-type-getattribute-text-signature-object ().
     // CPython oracle line: builtin-type-getattribute-text-signature-list (iterable=(), /).
+    // CPython oracle line: builtin-type-getattribute-text-signature-set (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-tuple (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-float (x=0, /).
     // CPython oracle line: builtin-type-getattribute-text-signature-bool (object=False, /).
@@ -9924,6 +9925,7 @@ for typ in [int, dict, range, type, Exception]:
     print('builtin-type-getattribute-text-signature-none', typ.__name__, object.__getattribute__(typ, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-object', object.__getattribute__(object, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-list', object.__getattribute__(list, '__text_signature__'))
+print('builtin-type-getattribute-text-signature-set', object.__getattribute__(set, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-tuple', object.__getattribute__(tuple, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-float', object.__getattribute__(float, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-bool', object.__getattribute__(bool, '__text_signature__'))

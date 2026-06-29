@@ -25054,6 +25054,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["builtin-type-getattribute-text-signature-list (iterable=(), /)"],
     );
     assert_output(
+        "print('builtin-type-getattribute-text-signature-set', object.__getattribute__(set, '__text_signature__'))",
+        &["builtin-type-getattribute-text-signature-set (iterable=(), /)"],
+    );
+    assert_output(
         "print('builtin-type-getattribute-text-signature-tuple', object.__getattribute__(tuple, '__text_signature__'))",
         &["builtin-type-getattribute-text-signature-tuple (iterable=(), /)"],
     );
