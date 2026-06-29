@@ -16033,7 +16033,7 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if is_type_object_value(object) {
+        if object_setattr_type_object_value(object) {
             return Err("TypeError: can't apply this __setattr__ to type object".to_string());
         }
         self.store_attribute_without_custom_setattr(object.clone(), &name, value.clone())?;
@@ -54025,6 +54025,10 @@ fn object_getattribute_type_object_missing_attribute(
 
 fn is_type_object_value(object: &Value) -> bool {
     type_object_owner_name(object).is_some()
+}
+
+fn object_setattr_type_object_value(object: &Value) -> bool {
+    matches!(object, Value::NamedTupleType(_)) || is_type_object_value(object)
 }
 
 fn type_object_owner_name(object: &Value) -> Option<&str> {

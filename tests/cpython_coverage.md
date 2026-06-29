@@ -126,6 +126,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ namedtuple type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
   behavior, object.__setattr__ builtin type-object rejection
+  behavior, object.__setattr__ namedtuple type-object rejection
   behavior, object.__delattr__ type-object rejection
   behavior, object.__delattr__ builtin type-object rejection
   behavior, catchable missing dict attribute `AttributeError` behavior,
