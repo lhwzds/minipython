@@ -190,6 +190,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ builtin type-object None __text_signature__ metadata,
   object.__getattribute__ object type-object __text_signature__ metadata,
   object.__getattribute__ list type-object __text_signature__ metadata,
+  object.__getattribute__ tuple type-object __text_signature__ metadata,
   object.__getattribute__ namedtuple type-object missing attribute text,
   object.__setattr__ type-object rejection,
   object.__setattr__ builtin type-object rejection,
