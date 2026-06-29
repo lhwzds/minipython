@@ -9721,6 +9721,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'bytearray' object has no attribute 'missing_attr'.
     // CPython oracle text: 'memoryview' object has no attribute 'missing_attr'.
     // CPython oracle text: 'range' object has no attribute 'missing_attr'.
+    // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle text: can't apply this __delattr__ to type object.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
@@ -9837,6 +9838,17 @@ try:
     range(0).missing_attr
 except AttributeError as error:
     print('range-attr', error.__class__.__name__, str(error))
+class TypeSetattrExample:
+    existing = 1
+for label, expr in [
+    ('type-setattr-new', lambda: object.__setattr__(TypeSetattrExample, 'created', 2)),
+    ('type-setattr-existing', lambda: object.__setattr__(TypeSetattrExample, 'existing', 3)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+print('type-setattr-preserved', hasattr(TypeSetattrExample, 'created'), TypeSetattrExample.existing)
 class TypeDelattrExample:
     existing = 1
 for label, expr in [

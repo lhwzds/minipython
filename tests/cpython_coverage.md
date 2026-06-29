@@ -121,6 +121,7 @@ Recent runtime migration notes:
   `AttributeError` behavior, catchable missing user object attribute
   `AttributeError` behavior, catchable missing user class attribute
   `AttributeError` behavior, catchable missing list attribute `AttributeError`
+  behavior, object.__setattr__ type-object rejection
   behavior, object.__delattr__ type-object rejection
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,

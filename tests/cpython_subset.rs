@@ -24981,6 +24981,14 @@ fn cpython_runtime_exception_capture_subset() {
         &["range-attr AttributeError 'range' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "class TypeSetattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-setattr-new', lambda: object.__setattr__(TypeSetattrExample, 'created', 2)),\n    ('type-setattr-existing', lambda: object.__setattr__(TypeSetattrExample, 'existing', 3)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-setattr-preserved', hasattr(TypeSetattrExample, 'created'), TypeSetattrExample.existing)",
+        &[
+            "type-setattr-new TypeError can't apply this __setattr__ to type object",
+            "type-setattr-existing TypeError can't apply this __setattr__ to type object",
+            "type-setattr-preserved False 1",
+        ],
+    );
+    assert_output(
         "class TypeDelattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-delattr-missing', lambda: object.__delattr__(TypeDelattrExample, 'missing_attr')),\n    ('type-delattr-existing', lambda: object.__delattr__(TypeDelattrExample, 'existing')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-delattr-preserved', hasattr(TypeDelattrExample, 'existing'))",
         &[
             "type-delattr-missing TypeError can't apply this __delattr__ to type object",

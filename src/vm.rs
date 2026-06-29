@@ -16029,6 +16029,9 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
+        if matches!(object, Value::Class { .. }) {
+            return Err("TypeError: can't apply this __setattr__ to type object".to_string());
+        }
         self.store_attribute_without_custom_setattr(object.clone(), &name, value.clone())?;
         Ok(Value::None)
     }
