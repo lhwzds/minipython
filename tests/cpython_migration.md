@@ -202,6 +202,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ str type-object __doc__ metadata,
   object.__getattribute__ dict type-object __doc__ metadata,
   object.__getattribute__ range type-object __doc__ metadata,
+  object.__getattribute__ type type-object __doc__ metadata,
   object.__getattribute__ namedtuple type-object missing attribute text,
   object.__setattr__ type-object rejection,
   object.__setattr__ builtin type-object rejection,

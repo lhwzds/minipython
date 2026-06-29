@@ -9753,6 +9753,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-doc-str "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.".
     // CPython oracle line: builtin-type-getattribute-doc-dict "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)".
     // CPython oracle line: builtin-type-getattribute-doc-range 'range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).'.
+    // CPython oracle line: builtin-type-getattribute-doc-type "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type".
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9929,6 +9930,7 @@ print('builtin-type-getattribute-doc-int', repr(object.__getattribute__(int, '__
 print('builtin-type-getattribute-doc-str', repr(object.__getattribute__(str, '__doc__')))
 print('builtin-type-getattribute-doc-dict', repr(object.__getattribute__(dict, '__doc__')))
 print('builtin-type-getattribute-doc-range', repr(object.__getattribute__(range, '__doc__')))
+print('builtin-type-getattribute-doc-type', repr(object.__getattribute__(type, '__doc__')))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:

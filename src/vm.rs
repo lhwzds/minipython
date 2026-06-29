@@ -60895,6 +60895,9 @@ fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
         "tuple" => Some(
             "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.",
         ),
+        "type" => {
+            Some("type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type")
+        }
         _ => None,
     }
 }
