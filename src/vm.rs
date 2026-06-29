@@ -59438,6 +59438,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && builtins_module_type_doc(&function_name).is_some() =>
+        {
+            Ok(Value::String(
+                builtins_module_type_doc(&function_name)
+                    .expect("guard checked builtin type docstring")
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
@@ -60855,6 +60864,15 @@ fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
         "list" => Some("(iterable=(), /)"),
         "object" => Some("()"),
         "tuple" => Some("(iterable=(), /)"),
+        _ => None,
+    }
+}
+
+fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
+    match name {
+        "object" => Some(
+            "The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n",
+        ),
         _ => None,
     }
 }

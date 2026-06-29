@@ -9744,6 +9744,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-text-signature-tuple (iterable=(), /).
     // CPython oracle line: builtin-type-getattribute-text-signature-float (x=0, /).
     // CPython oracle line: builtin-type-getattribute-text-signature-bool (object=False, /).
+    // CPython oracle line: builtin-type-getattribute-doc-object 'The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n'.
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9911,6 +9912,7 @@ print('builtin-type-getattribute-text-signature-list', object.__getattribute__(l
 print('builtin-type-getattribute-text-signature-tuple', object.__getattribute__(tuple, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-float', object.__getattribute__(float, '__text_signature__'))
 print('builtin-type-getattribute-text-signature-bool', object.__getattribute__(bool, '__text_signature__'))
+print('builtin-type-getattribute-doc-object', repr(object.__getattribute__(object, '__doc__')))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:
