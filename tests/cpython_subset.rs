@@ -25009,6 +25009,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-type-getattribute-module-counter collections"],
     );
     assert_output(
+        "from collections import Counter\nprint('collections-type-getattribute-qualname-counter', object.__getattribute__(Counter, '__qualname__'))",
+        &["collections-type-getattribute-qualname-counter Counter"],
+    );
+    assert_output(
         "for typ in [int, object, type, Exception]:\n    print('builtin-type-getattribute-qualname', typ.__name__, object.__getattribute__(typ, '__qualname__'))",
         &[
             "builtin-type-getattribute-qualname int int",
