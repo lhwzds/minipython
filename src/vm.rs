@@ -14557,11 +14557,7 @@ impl Vm {
                     return Ok(method);
                 }
 
-                if class_name == "object" {
-                    Err(missing_type_attribute_error("object", name))
-                } else {
-                    Err(format!("AttributeError: object has no attribute '{name}'"))
-                }
+                Err(missing_type_attribute_error(class_name.as_str(), name))
             }
             Value::Class {
                 name: class_name,

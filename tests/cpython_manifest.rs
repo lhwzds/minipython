@@ -22477,6 +22477,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'NoneType' object has no attribute 'missing_attr'",
         "object().missing_attr",
         "'object' object has no attribute 'missing_attr'",
+        "MissingAttrExample().missing_attr",
+        "'MissingAttrExample' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
         "{}.missing_attr",
@@ -22592,6 +22594,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'NoneType' object has no attribute 'missing_attr'",
         "object().missing_attr",
         "'object' object has no attribute 'missing_attr'",
+        "MissingAttrExample().missing_attr",
+        "'MissingAttrExample' object has no attribute 'missing_attr'",
         "[].missing_attr",
         "'list' object has no attribute 'missing_attr'",
         "{}.missing_attr",
@@ -22701,6 +22705,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable missing slice attribute")
                 && document.contains("catchable missing NoneType attribute")
                 && document.contains("catchable missing object attribute")
+                && document.contains("catchable missing user object attribute")
                 && document.contains("catchable missing list attribute")
                 && document.contains("catchable missing dict attribute")
                 && document.contains("catchable missing set attribute")

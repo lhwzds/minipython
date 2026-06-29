@@ -24929,6 +24929,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["object-attr AttributeError 'object' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "class MissingAttrExample:\n    pass\ntry:\n    MissingAttrExample().missing_attr\nexcept AttributeError as error:\n    print('user-object-attr', error.__class__.__name__, str(error))",
+        &[
+            "user-object-attr AttributeError 'MissingAttrExample' object has no attribute 'missing_attr'",
+        ],
+    );
+    assert_output(
         "try:\n    [].missing_attr\nexcept AttributeError as error:\n    print('list-attr', error.__class__.__name__, str(error))",
         &["list-attr AttributeError 'list' object has no attribute 'missing_attr'"],
     );
@@ -31753,7 +31759,7 @@ fn cpython_delete_target_helper_rules_subset() {
     assert_output("a = 1\nb = 2\ndel [a, b]\nprint(\"list\")", &["list"]);
     assert_error(
         "class Box:\n    pass\nbox = Box()\nbox.value = 5\ndel (box.value)\nprint(box.value)",
-        "runtime error: AttributeError: object has no attribute 'value'",
+        "runtime error: AttributeError: 'Box' object has no attribute 'value'",
     );
     assert_output(
         "items = [0, 1, 2]\ndel (items[0], items[1])\nprint(items)",
