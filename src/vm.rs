@@ -57810,7 +57810,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::Set(items)),
                 identity: Rc::new(()),
             }),
-            _ => Err(format!("AttributeError: set has no attribute '{name}'")),
+            _ => Err(missing_type_attribute_error("set", name)),
         },
         Value::FrozenSet(items) => match name {
             "copy"

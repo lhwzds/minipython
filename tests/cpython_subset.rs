@@ -24917,6 +24917,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["dict-attr AttributeError 'dict' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    set().missing_attr\nexcept AttributeError as error:\n    print('set-attr', error.__class__.__name__, str(error))",
+        &["set-attr AttributeError 'set' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );
