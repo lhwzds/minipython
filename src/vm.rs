@@ -14557,7 +14557,11 @@ impl Vm {
                     return Ok(method);
                 }
 
-                Err(format!("AttributeError: object has no attribute '{name}'"))
+                if class_name == "object" {
+                    Err(missing_type_attribute_error("object", name))
+                } else {
+                    Err(format!("AttributeError: object has no attribute '{name}'"))
+                }
             }
             Value::Class {
                 name: class_name,

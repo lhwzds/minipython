@@ -169,6 +169,7 @@ Completed in the builtin method TypeError capture pass:
   `AttributeError` text, catchable missing complex attribute
   `AttributeError` text, catchable missing slice attribute
   `AttributeError` text, catchable missing NoneType attribute
+  `AttributeError` text, catchable missing object attribute
   `AttributeError` text, catchable missing list attribute `AttributeError`
   text, catchable missing dict attribute `AttributeError` text,
   catchable missing set attribute `AttributeError` text,

@@ -117,6 +117,7 @@ Recent runtime migration notes:
   `AttributeError` behavior, catchable missing complex attribute
   `AttributeError` behavior, catchable missing slice attribute
   `AttributeError` behavior, catchable missing NoneType attribute
+  `AttributeError` behavior, catchable missing object attribute
   `AttributeError` behavior, catchable missing list attribute `AttributeError`
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,
