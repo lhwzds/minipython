@@ -24981,6 +24981,14 @@ fn cpython_runtime_exception_capture_subset() {
         &["range-attr AttributeError 'range' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "class TypeDelattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-delattr-missing', lambda: object.__delattr__(TypeDelattrExample, 'missing_attr')),\n    ('type-delattr-existing', lambda: object.__delattr__(TypeDelattrExample, 'existing')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-delattr-preserved', hasattr(TypeDelattrExample, 'existing'))",
+        &[
+            "type-delattr-missing TypeError can't apply this __delattr__ to type object",
+            "type-delattr-existing TypeError can't apply this __delattr__ to type object",
+            "type-delattr-preserved True",
+        ],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );

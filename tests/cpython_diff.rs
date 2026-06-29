@@ -9721,6 +9721,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'bytearray' object has no attribute 'missing_attr'.
     // CPython oracle text: 'memoryview' object has no attribute 'missing_attr'.
     // CPython oracle text: 'range' object has no attribute 'missing_attr'.
+    // CPython oracle text: can't apply this __delattr__ to type object.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
@@ -9836,6 +9837,17 @@ try:
     range(0).missing_attr
 except AttributeError as error:
     print('range-attr', error.__class__.__name__, str(error))
+class TypeDelattrExample:
+    existing = 1
+for label, expr in [
+    ('type-delattr-missing', lambda: object.__delattr__(TypeDelattrExample, 'missing_attr')),
+    ('type-delattr-existing', lambda: object.__delattr__(TypeDelattrExample, 'existing')),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+print('type-delattr-preserved', hasattr(TypeDelattrExample, 'existing'))
 try:
     1[0]
 except TypeError as error:
