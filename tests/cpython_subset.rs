@@ -25188,6 +25188,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "from collections import OrderedDict\nprint('collections-type-getattribute-doc-ordereddict', repr(object.__getattribute__(OrderedDict, '__doc__')))",
+        &[
+            "collections-type-getattribute-doc-ordereddict 'Dictionary that remembers insertion order'",
+        ],
+    );
+    assert_output(
         "from collections import namedtuple\nNamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')\ntry:\n    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')\nexcept AttributeError as error:\n    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))",
         &[
             "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",

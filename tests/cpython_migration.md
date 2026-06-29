@@ -215,6 +215,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ super type-object __doc__ metadata,
   object.__getattribute__ bytes type-object __doc__ metadata,
   object.__getattribute__ bytearray type-object __doc__ metadata,
+  object.__getattribute__ OrderedDict type-object __doc__ metadata,
   object.__getattribute__ namedtuple type-object missing attribute text,
   object.__setattr__ type-object rejection,
   object.__setattr__ builtin type-object rejection,

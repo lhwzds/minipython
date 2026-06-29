@@ -59689,7 +59689,7 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "  - an integer"
         )),
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
-        "OrderedDict" => Some("Dictionary that remembers insertion order."),
+        "OrderedDict" => Some("Dictionary that remembers insertion order"),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         "mappingproxy" => Some("Read-only proxy of a mapping."),
         _ => None,
