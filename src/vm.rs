@@ -60876,6 +60876,9 @@ fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
         "object" => Some(
             "The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.\n",
         ),
+        "tuple" => Some(
+            "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.",
+        ),
         _ => None,
     }
 }
