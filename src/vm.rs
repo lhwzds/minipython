@@ -16017,7 +16017,17 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        self.load_attribute_without_custom_getattribute(object.clone(), &name)
+        let result = self.load_attribute_without_custom_getattribute(object.clone(), &name);
+        if let Value::Class {
+            name: class_name, ..
+        } = &object
+            && let Err(message) = &result
+            && message
+                == &format!("AttributeError: type object '{class_name}' has no attribute '{name}'")
+        {
+            return Err(missing_type_attribute_error("type", &name));
+        }
+        result
     }
 
     fn call_object_setattr(&mut self, args: Vec<Value>) -> Result<Value, String> {

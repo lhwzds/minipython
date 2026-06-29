@@ -24981,6 +24981,13 @@ fn cpython_runtime_exception_capture_subset() {
         &["range-attr AttributeError 'range' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "class TypeGetattributeExample:\n    existing = 1\nfor label, expr in [\n    ('type-getattribute-missing', lambda: object.__getattribute__(TypeGetattributeExample, 'missing_attr')),\n    ('type-getattribute-existing', lambda: object.__getattribute__(TypeGetattributeExample, 'existing')),\n]:\n    try:\n        value = expr()\n    except AttributeError as error:\n        print(label, error.__class__.__name__, str(error))\n    else:\n        print(label, 'OK', value)",
+        &[
+            "type-getattribute-missing AttributeError 'type' object has no attribute 'missing_attr'",
+            "type-getattribute-existing OK 1",
+        ],
+    );
+    assert_output(
         "class TypeSetattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-setattr-new', lambda: object.__setattr__(TypeSetattrExample, 'created', 2)),\n    ('type-setattr-existing', lambda: object.__setattr__(TypeSetattrExample, 'existing', 3)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-setattr-preserved', hasattr(TypeSetattrExample, 'created'), TypeSetattrExample.existing)",
         &[
             "type-setattr-new TypeError can't apply this __setattr__ to type object",

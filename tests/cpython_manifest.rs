@@ -22501,6 +22501,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'memoryview' object has no attribute 'missing_attr'",
         "range(0).missing_attr",
         "'range' object has no attribute 'missing_attr'",
+        "object.__getattribute__(TypeGetattributeExample, 'missing_attr')",
+        "'type' object has no attribute 'missing_attr'",
+        "type-getattribute-existing OK 1",
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
@@ -22626,6 +22629,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "'memoryview' object has no attribute 'missing_attr'",
         "range(0).missing_attr",
         "'range' object has no attribute 'missing_attr'",
+        "object.__getattribute__(TypeGetattributeExample, 'missing_attr')",
+        "'type' object has no attribute 'missing_attr'",
+        "type-getattribute-existing OK 1",
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
@@ -22724,6 +22730,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable missing user object attribute")
                 && document.contains("catchable missing user class attribute")
                 && document.contains("catchable missing list attribute")
+                && document.contains("object.__getattribute__ type-object missing attribute text")
                 && document.contains("object.__setattr__ type-object rejection")
                 && document.contains("object.__delattr__ type-object rejection")
                 && document.contains("catchable missing dict attribute")
