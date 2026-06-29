@@ -124,6 +124,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ type-object missing attribute text
   behavior, object.__getattribute__ builtin type-object missing attribute text
   behavior, object.__setattr__ type-object rejection
+  behavior, object.__setattr__ builtin type-object rejection
   behavior, object.__delattr__ type-object rejection
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,

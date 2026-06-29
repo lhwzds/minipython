@@ -16033,7 +16033,7 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if matches!(object, Value::Class { .. }) {
+        if is_type_object_value(object) {
             return Err("TypeError: can't apply this __setattr__ to type object".to_string());
         }
         self.store_attribute_without_custom_setattr(object.clone(), &name, value.clone())?;
@@ -54017,13 +54017,17 @@ fn object_getattribute_type_object_missing_attribute(
     let Err(message) = result else {
         return false;
     };
-    let Some(class_name) = type_object_missing_attribute_owner_name(object) else {
+    let Some(class_name) = type_object_owner_name(object) else {
         return false;
     };
     message == &format!("AttributeError: type object '{class_name}' has no attribute '{name}'")
 }
 
-fn type_object_missing_attribute_owner_name(object: &Value) -> Option<&str> {
+fn is_type_object_value(object: &Value) -> bool {
+    type_object_owner_name(object).is_some()
+}
+
+fn type_object_owner_name(object: &Value) -> Option<&str> {
     match object {
         Value::Class { name, .. } => Some(name.as_str()),
         Value::Builtin(name) if is_builtin_type_object_name(name) => Some(name.as_str()),

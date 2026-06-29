@@ -25004,6 +25004,15 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "for label, expr in [\n    ('builtin-type-setattr-object', lambda: object.__setattr__(object, 'created', 2)),\n    ('builtin-type-setattr-int', lambda: object.__setattr__(int, 'created', 2)),\n    ('builtin-type-setattr-type', lambda: object.__setattr__(type, 'created', 2)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('builtin-type-setattr-preserved', hasattr(int, 'created'), hasattr(type, 'created'))",
+        &[
+            "builtin-type-setattr-object TypeError can't apply this __setattr__ to type object",
+            "builtin-type-setattr-int TypeError can't apply this __setattr__ to type object",
+            "builtin-type-setattr-type TypeError can't apply this __setattr__ to type object",
+            "builtin-type-setattr-preserved False False",
+        ],
+    );
+    assert_output(
         "class TypeDelattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-delattr-missing', lambda: object.__delattr__(TypeDelattrExample, 'missing_attr')),\n    ('type-delattr-existing', lambda: object.__delattr__(TypeDelattrExample, 'existing')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-delattr-preserved', hasattr(TypeDelattrExample, 'existing'))",
         &[
             "type-delattr-missing TypeError can't apply this __delattr__ to type object",

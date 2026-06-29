@@ -22510,6 +22510,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
+        "object.__setattr__(int, 'created', 2)",
+        "builtin-type-setattr-int TypeError can't apply this __setattr__ to type object",
+        "builtin-type-setattr-preserved False False",
         "object.__delattr__(TypeDelattrExample, 'existing')",
         "can't apply this __delattr__ to type object",
         "type-delattr-preserved",
@@ -22641,6 +22644,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__setattr__(TypeSetattrExample, 'existing', 3)",
         "can't apply this __setattr__ to type object",
         "type-setattr-preserved",
+        "object.__setattr__(int, 'created', 2)",
+        "builtin-type-setattr-int TypeError can't apply this __setattr__ to type object",
+        "builtin-type-setattr-preserved False False",
         "object.__delattr__(TypeDelattrExample, 'existing')",
         "can't apply this __delattr__ to type object",
         "type-delattr-preserved",
@@ -22740,6 +22746,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document
                     .contains("object.__getattribute__ builtin type-object missing attribute text")
                 && document.contains("object.__setattr__ type-object rejection")
+                && document.contains("object.__setattr__ builtin type-object rejection")
                 && document.contains("object.__delattr__ type-object rejection")
                 && document.contains("catchable missing dict attribute")
                 && document.contains("catchable missing set attribute")
