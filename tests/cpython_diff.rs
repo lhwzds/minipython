@@ -9749,6 +9749,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.".
     // CPython oracle line: builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'.
     // CPython oracle line: builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'.
+    // CPython oracle line: builtin-type-getattribute-doc-int "int([x]) -> integer\nint(x, base=10) -> integer\n\nConvert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating-point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer\niteral.\n>>> int('0b100', base=0)\n4".
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9921,6 +9922,7 @@ print('builtin-type-getattribute-doc-list', repr(object.__getattribute__(list, '
 print('builtin-type-getattribute-doc-tuple', repr(object.__getattribute__(tuple, '__doc__')))
 print('builtin-type-getattribute-doc-float', repr(object.__getattribute__(float, '__doc__')))
 print('builtin-type-getattribute-doc-bool', repr(object.__getattribute__(bool, '__doc__')))
+print('builtin-type-getattribute-doc-int', repr(object.__getattribute__(int, '__doc__')))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:
