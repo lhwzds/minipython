@@ -60870,6 +60870,9 @@ fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
 
 fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
     match name {
+        "bool" => Some(
+            "Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.",
+        ),
         "float" => Some("Convert a string or number to a floating-point number, if possible."),
         "list" => Some(
             "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",

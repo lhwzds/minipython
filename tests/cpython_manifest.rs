@@ -22534,6 +22534,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
         r#"builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.""#,
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
+        r"builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22707,6 +22708,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r"builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'",
         r#"builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.""#,
         r"builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'",
+        r"builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22853,6 +22855,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__getattribute__ list type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ tuple type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ float type-object __doc__ metadata")
+                && document.contains("object.__getattribute__ bool type-object __doc__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )

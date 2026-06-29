@@ -9748,6 +9748,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-doc-list 'Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.'.
     // CPython oracle line: builtin-type-getattribute-doc-tuple "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.".
     // CPython oracle line: builtin-type-getattribute-doc-float 'Convert a string or number to a floating-point number, if possible.'.
+    // CPython oracle line: builtin-type-getattribute-doc-bool 'Returns True when the argument is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.'.
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9919,6 +9920,7 @@ print('builtin-type-getattribute-doc-object', repr(object.__getattribute__(objec
 print('builtin-type-getattribute-doc-list', repr(object.__getattribute__(list, '__doc__')))
 print('builtin-type-getattribute-doc-tuple', repr(object.__getattribute__(tuple, '__doc__')))
 print('builtin-type-getattribute-doc-float', repr(object.__getattribute__(float, '__doc__')))
+print('builtin-type-getattribute-doc-bool', repr(object.__getattribute__(bool, '__doc__')))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:
