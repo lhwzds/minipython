@@ -16018,13 +16018,7 @@ impl Vm {
 
         let name = attribute_name_arg(name)?;
         let result = self.load_attribute_without_custom_getattribute(object.clone(), &name);
-        if let Value::Class {
-            name: class_name, ..
-        } = &object
-            && let Err(message) = &result
-            && message
-                == &format!("AttributeError: type object '{class_name}' has no attribute '{name}'")
-        {
+        if object_getattribute_type_object_missing_attribute(&object, &name, &result) {
             return Err(missing_type_attribute_error("type", &name));
         }
         result
@@ -54013,6 +54007,28 @@ fn mapping_abc_bind_update_args(args: Vec<Value>) -> Result<(Value, Option<Value
     }
 
     Ok((receiver, rest.into_iter().next()))
+}
+
+fn object_getattribute_type_object_missing_attribute(
+    object: &Value,
+    name: &str,
+    result: &Result<Value, String>,
+) -> bool {
+    let Err(message) = result else {
+        return false;
+    };
+    let Some(class_name) = type_object_missing_attribute_owner_name(object) else {
+        return false;
+    };
+    message == &format!("AttributeError: type object '{class_name}' has no attribute '{name}'")
+}
+
+fn type_object_missing_attribute_owner_name(object: &Value) -> Option<&str> {
+    match object {
+        Value::Class { name, .. } => Some(name.as_str()),
+        Value::Builtin(name) if is_builtin_type_object_name(name) => Some(name.as_str()),
+        _ => None,
+    }
 }
 
 fn immutable_sequence_method(

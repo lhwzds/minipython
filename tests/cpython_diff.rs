@@ -9723,6 +9723,9 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'range' object has no attribute 'missing_attr'.
     // CPython oracle text: 'type' object has no attribute 'missing_attr'.
     // CPython oracle line: type-getattribute-existing OK 1.
+    // CPython oracle line: builtin-type-getattribute-object AttributeError 'type' object has no attribute 'missing_attr'.
+    // CPython oracle line: builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'.
+    // CPython oracle line: builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle text: can't apply this __delattr__ to type object.
     // CPython oracle text: cannot unpack non-iterable int object.
@@ -9852,6 +9855,15 @@ for label, expr in [
         print(label, error.__class__.__name__, str(error))
     else:
         print(label, 'OK', value)
+for label, expr in [
+    ('builtin-type-getattribute-object', lambda: object.__getattribute__(object, 'missing_attr')),
+    ('builtin-type-getattribute-int', lambda: object.__getattribute__(int, 'missing_attr')),
+    ('builtin-type-getattribute-type', lambda: object.__getattribute__(type, 'missing_attr')),
+]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, error.__class__.__name__, str(error))
 class TypeSetattrExample:
     existing = 1
 for label, expr in [

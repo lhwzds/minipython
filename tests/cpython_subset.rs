@@ -24988,6 +24988,14 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "for label, expr in [\n    ('builtin-type-getattribute-object', lambda: object.__getattribute__(object, 'missing_attr')),\n    ('builtin-type-getattribute-int', lambda: object.__getattribute__(int, 'missing_attr')),\n    ('builtin-type-getattribute-type', lambda: object.__getattribute__(type, 'missing_attr')),\n]:\n    try:\n        expr()\n    except AttributeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "builtin-type-getattribute-object AttributeError 'type' object has no attribute 'missing_attr'",
+            "builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'",
+            "builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'",
+        ],
+    );
+    assert_output(
         "class TypeSetattrExample:\n    existing = 1\nfor label, expr in [\n    ('type-setattr-new', lambda: object.__setattr__(TypeSetattrExample, 'created', 2)),\n    ('type-setattr-existing', lambda: object.__setattr__(TypeSetattrExample, 'existing', 3)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nprint('type-setattr-preserved', hasattr(TypeSetattrExample, 'created'), TypeSetattrExample.existing)",
         &[
             "type-setattr-new TypeError can't apply this __setattr__ to type object",

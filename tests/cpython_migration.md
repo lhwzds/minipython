@@ -182,6 +182,7 @@ Completed in the builtin method TypeError capture pass:
   catchable missing range attribute `AttributeError` text, catchable missing user object attribute
   `AttributeError` text, catchable missing user class attribute
   `AttributeError` text, object.__getattribute__ type-object missing attribute text,
+  object.__getattribute__ builtin type-object missing attribute text,
   object.__setattr__ type-object rejection,
   object.__delattr__ type-object rejection, and keyword
   `TypeError` text for
