@@ -54010,6 +54010,8 @@ fn immutable_sequence_method(
             receiver: Box::new(receiver),
             identity: Rc::new(()),
         })
+    } else if type_name == "tuple" {
+        Err(missing_type_attribute_error(type_name, name))
     } else {
         Err(format!(
             "AttributeError: {type_name} has no attribute '{name}'"

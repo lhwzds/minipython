@@ -9708,6 +9708,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'dict' object has no attribute 'missing_attr'.
     // CPython oracle text: 'set' object has no attribute 'missing_attr'.
     // CPython oracle text: 'frozenset' object has no attribute 'missing_attr'.
+    // CPython oracle text: 'tuple' object has no attribute 'missing_attr'.
     // CPython oracle text: cannot unpack non-iterable int object.
     // CPython oracle text: bad operand type for unary +: 'str'.
     // CPython oracle text: bad operand type for unary -: 'str'.
@@ -9767,6 +9768,10 @@ try:
     frozenset().missing_attr
 except AttributeError as error:
     print('frozenset-attr', error.__class__.__name__, str(error))
+try:
+    ().missing_attr
+except AttributeError as error:
+    print('tuple-attr', error.__class__.__name__, str(error))
 try:
     1[0]
 except TypeError as error:

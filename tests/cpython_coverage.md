@@ -117,6 +117,7 @@ Recent runtime migration notes:
   behavior, catchable missing dict attribute `AttributeError` behavior,
   catchable missing set attribute `AttributeError` behavior,
   catchable missing frozenset attribute `AttributeError` behavior,
+  catchable missing tuple attribute `AttributeError` behavior,
   catchable non-iterable unpack
   `TypeError` behavior, catchable unary plus `TypeError` behavior,
   catchable unary minus `TypeError` behavior,

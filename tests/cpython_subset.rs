@@ -24925,6 +24925,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["frozenset-attr AttributeError 'frozenset' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    ().missing_attr\nexcept AttributeError as error:\n    print('tuple-attr', error.__class__.__name__, str(error))",
+        &["tuple-attr AttributeError 'tuple' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );
