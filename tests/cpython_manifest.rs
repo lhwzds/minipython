@@ -22521,6 +22521,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-bases bool ('int',)",
         "builtin-type-getattribute-bases object ()",
         "builtin-type-getattribute-bases Exception ('BaseException',)",
+        "object.__getattribute__(typ, '__text_signature__')",
+        "builtin-type-getattribute-text-signature-none int None",
+        "builtin-type-getattribute-text-signature-none type None",
+        "builtin-type-getattribute-text-signature-none Exception None",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22681,6 +22685,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-bases bool ('int',)",
         "builtin-type-getattribute-bases object ()",
         "builtin-type-getattribute-bases Exception ('BaseException',)",
+        "object.__getattribute__(typ, '__text_signature__')",
+        "builtin-type-getattribute-text-signature-none int None",
+        "builtin-type-getattribute-text-signature-none type None",
+        "builtin-type-getattribute-text-signature-none Exception None",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22805,6 +22813,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ builtin type-object __base__ metadata")
                 && document
                     .contains("object.__getattribute__ builtin type-object __bases__ metadata")
+                && document.contains(
+                    "object.__getattribute__ builtin type-object None __text_signature__ metadata"
+                )
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )

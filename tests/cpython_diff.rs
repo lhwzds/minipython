@@ -9736,6 +9736,9 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-bases bool ('int',).
     // CPython oracle line: builtin-type-getattribute-bases object ().
     // CPython oracle line: builtin-type-getattribute-bases Exception ('BaseException',).
+    // CPython oracle line: builtin-type-getattribute-text-signature-none int None.
+    // CPython oracle line: builtin-type-getattribute-text-signature-none type None.
+    // CPython oracle line: builtin-type-getattribute-text-signature-none Exception None.
     // CPython oracle line: namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'.
     // CPython oracle text: can't apply this __setattr__ to type object.
     // CPython oracle line: builtin-type-setattr-int TypeError can't apply this __setattr__ to type object.
@@ -9896,6 +9899,8 @@ for typ in [int, bool, object, type, Exception, BaseException]:
 for typ in [int, bool, object, type, Exception, BaseException]:
     bases = object.__getattribute__(typ, '__bases__')
     print('builtin-type-getattribute-bases', typ.__name__, tuple(base.__name__ for base in bases))
+for typ in [int, dict, range, type, Exception]:
+    print('builtin-type-getattribute-text-signature-none', typ.__name__, object.__getattribute__(typ, '__text_signature__'))
 from collections import namedtuple
 NamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')
 try:

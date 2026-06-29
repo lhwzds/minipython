@@ -59422,6 +59422,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(builtins_module_type_bases_value(&function_name))
         }
         Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && builtins_module_type_none_text_signature(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
@@ -60823,6 +60829,13 @@ fn builtins_module_type_base_value(name: &str) -> Value {
 
 fn builtins_module_type_bases_value(name: &str) -> Value {
     tuple_value(builtin_class_bases(name))
+}
+
+fn builtins_module_type_none_text_signature(name: &str) -> bool {
+    matches!(
+        name,
+        "int" | "str" | "bytes" | "bytearray" | "dict" | "range" | "slice" | "super" | "type"
+    ) || is_exception_type_name(name)
 }
 
 fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
