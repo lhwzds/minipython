@@ -57060,7 +57060,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
-            _ => Err(format!("AttributeError: slice has no attribute '{name}'")),
+            _ => Err(missing_type_attribute_error("slice", name)),
         },
         receiver @ (Value::Bool(_) | Value::Number(_) | Value::BigInt(_)) => match name {
             "bit_length" | "bit_count" | "conjugate" | "as_integer_ratio" | "to_bytes"

@@ -24913,6 +24913,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["float-attr AttributeError 'float' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    slice(1).missing_attr\nexcept AttributeError as error:\n    print('slice-attr', error.__class__.__name__, str(error))",
+        &["slice-attr AttributeError 'slice' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    [].missing_attr\nexcept AttributeError as error:\n    print('list-attr', error.__class__.__name__, str(error))",
         &["list-attr AttributeError 'list' object has no attribute 'missing_attr'"],
     );
