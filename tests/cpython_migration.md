@@ -169,8 +169,9 @@ Completed in the builtin method TypeError capture pass:
   text, catchable missing dict attribute `AttributeError` text,
   catchable missing set attribute `AttributeError` text,
   catchable missing frozenset attribute `AttributeError` text,
-  catchable missing tuple attribute `AttributeError` text, and keyword
-  `TypeError` text for
+  catchable missing tuple attribute `AttributeError` text,
+  catchable missing str attribute `AttributeError` text, and keyword `TypeError`
+  text for
   catchable non-iterable unpack `TypeError`, catchable unary plus `TypeError`,
   catchable unary minus `TypeError`,
   catchable unary invert `TypeError`,

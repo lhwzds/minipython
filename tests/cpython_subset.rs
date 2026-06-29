@@ -24929,6 +24929,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["tuple-attr AttributeError 'tuple' object has no attribute 'missing_attr'"],
     );
     assert_output(
+        "try:\n    ''.missing_attr\nexcept AttributeError as error:\n    print('str-attr', error.__class__.__name__, str(error))",
+        &["str-attr AttributeError 'str' object has no attribute 'missing_attr'"],
+    );
+    assert_output(
         "try:\n    1[0]\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
         &["TypeError 1 is not subscriptable"],
     );

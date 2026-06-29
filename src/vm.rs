@@ -54010,7 +54010,7 @@ fn immutable_sequence_method(
             receiver: Box::new(receiver),
             identity: Rc::new(()),
         })
-    } else if type_name == "tuple" {
+    } else if matches!(type_name, "tuple" | "str") {
         Err(missing_type_attribute_error(type_name, name))
     } else {
         Err(format!(
