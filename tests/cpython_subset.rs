@@ -24996,6 +24996,15 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "for typ in [int, object, type, Exception]:\n    print('builtin-type-getattribute-module', typ.__name__, object.__getattribute__(typ, '__module__'))",
+        &[
+            "builtin-type-getattribute-module int builtins",
+            "builtin-type-getattribute-module object builtins",
+            "builtin-type-getattribute-module type builtins",
+            "builtin-type-getattribute-module Exception builtins",
+        ],
+    );
+    assert_output(
         "from collections import namedtuple\nNamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')\ntry:\n    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')\nexcept AttributeError as error:\n    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))",
         &[
             "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",

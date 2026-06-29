@@ -22507,6 +22507,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(int, 'missing_attr')",
         "builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'",
         "builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'",
+        "object.__getattribute__(typ, '__module__')",
+        "builtin-type-getattribute-module int builtins",
+        "builtin-type-getattribute-module Exception builtins",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22653,6 +22656,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "object.__getattribute__(int, 'missing_attr')",
         "builtin-type-getattribute-int AttributeError 'type' object has no attribute 'missing_attr'",
         "builtin-type-getattribute-type AttributeError 'type' object has no attribute 'missing_attr'",
+        "object.__getattribute__(typ, '__module__')",
+        "builtin-type-getattribute-module int builtins",
+        "builtin-type-getattribute-module Exception builtins",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22769,6 +22775,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__getattribute__ type-object missing attribute text")
                 && document
                     .contains("object.__getattribute__ builtin type-object missing attribute text")
+                && document
+                    .contains("object.__getattribute__ builtin type-object __module__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )

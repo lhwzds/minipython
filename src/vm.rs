@@ -59402,6 +59402,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("builtins".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_builtins_module_type_object_name(&function_name) =>
+        {
+            Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
         {
             Ok(Value::String(
@@ -60765,6 +60770,33 @@ fn is_builtins_builtin_function_name(name: &str) -> bool {
             | "locals"
             | "dir"
     )
+}
+
+fn is_builtins_module_type_object_name(name: &str) -> bool {
+    matches!(
+        name,
+        "int"
+            | "str"
+            | "bytes"
+            | "bytearray"
+            | "memoryview"
+            | "list"
+            | "dict"
+            | "tuple"
+            | "set"
+            | "frozenset"
+            | "float"
+            | "complex"
+            | "bool"
+            | "range"
+            | "slice"
+            | "property"
+            | "super"
+            | "staticmethod"
+            | "classmethod"
+            | "object"
+            | "type"
+    ) || is_exception_type_name(name)
 }
 
 fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
