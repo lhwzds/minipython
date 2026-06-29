@@ -60850,6 +60850,7 @@ fn builtins_module_type_none_text_signature(name: &str) -> bool {
 
 fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
     match name {
+        "bool" => Some("(object=False, /)"),
         "float" => Some("(x=0, /)"),
         "list" => Some("(iterable=(), /)"),
         "object" => Some("()"),

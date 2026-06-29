@@ -22529,6 +22529,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-list (iterable=(), /)",
         "builtin-type-getattribute-text-signature-tuple (iterable=(), /)",
         "builtin-type-getattribute-text-signature-float (x=0, /)",
+        "builtin-type-getattribute-text-signature-bool (object=False, /)",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22697,6 +22698,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "builtin-type-getattribute-text-signature-list (iterable=(), /)",
         "builtin-type-getattribute-text-signature-tuple (iterable=(), /)",
         "builtin-type-getattribute-text-signature-float (x=0, /)",
+        "builtin-type-getattribute-text-signature-bool (object=False, /)",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22835,6 +22837,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document.contains(
                     "object.__getattribute__ float type-object __text_signature__ metadata"
+                )
+                && document.contains(
+                    "object.__getattribute__ bool type-object __text_signature__ metadata"
                 )
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
