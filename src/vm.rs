@@ -60874,6 +60874,7 @@ fn builtins_module_type_text_signature(name: &str) -> Option<&'static str> {
     match name {
         "bool" => Some("(object=False, /)"),
         "complex" => Some("(real=0, imag=0)"),
+        "deque" => Some("([iterable[, maxlen]])"),
         "float" => Some("(x=0, /)"),
         "frozenset" => Some("(iterable=(), /)"),
         "list" => Some("(iterable=(), /)"),
