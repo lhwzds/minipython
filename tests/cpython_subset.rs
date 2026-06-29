@@ -25144,6 +25144,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "print('builtin-type-getattribute-doc-bytearray', repr(object.__getattribute__(bytearray, '__doc__')))",
+        &[
+            r"builtin-type-getattribute-doc-bytearray 'bytearray(iterable_of_ints) -> bytearray\nbytearray(string, encoding[, errors]) -> bytearray\nbytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer\nbytearray(int) -> bytes array of size given by the parameter initialized with null bytes\nbytearray() -> empty bytes array\n\nConstruct a mutable bytearray object from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - a bytes or a buffer object\n  - any object implementing the buffer API.\n  - an integer'",
+        ],
+    );
+    assert_output(
         "from collections import namedtuple\nNamedTupleGetattributeExample = namedtuple('NamedTupleGetattributeExample', 'x y')\ntry:\n    object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')\nexcept AttributeError as error:\n    print('namedtuple-type-getattribute', error.__class__.__name__, str(error))",
         &[
             "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",

@@ -59674,13 +59674,20 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "  - any object implementing the buffer API.\n",
             "  - an integer"
         )),
-        "bytearray" => Some(
-            "bytearray(iterable_of_ints) -> bytearray\n\
-bytearray(string, encoding[, errors]) -> bytearray\n\
-bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer\n\
-bytearray(int) -> bytes object of size given by the parameter initialized with null bytes\n\
-bytearray() -> empty bytes object",
-        ),
+        "bytearray" => Some(concat!(
+            "bytearray(iterable_of_ints) -> bytearray\n",
+            "bytearray(string, encoding[, errors]) -> bytearray\n",
+            "bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer\n",
+            "bytearray(int) -> bytes array of size given by the parameter initialized with null bytes\n",
+            "bytearray() -> empty bytes array\n",
+            "\n",
+            "Construct a mutable bytearray object from:\n",
+            "  - an iterable yielding integers in range(256)\n",
+            "  - a text string encoded using the specified encoding\n",
+            "  - a bytes or a buffer object\n",
+            "  - any object implementing the buffer API.\n",
+            "  - an integer"
+        )),
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
         "OrderedDict" => Some("Dictionary that remembers insertion order."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
