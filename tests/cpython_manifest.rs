@@ -22540,6 +22540,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r#"builtin-type-getattribute-doc-dict "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)""#,
         r"builtin-type-getattribute-doc-range 'range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).'",
         r#"builtin-type-getattribute-doc-type "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type""#,
+        r"builtin-type-getattribute-doc-slice 'slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.\n\nThis is used for extended slicing (e.g. a[0:10:2]).'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22719,6 +22720,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         r#"builtin-type-getattribute-doc-dict "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)""#,
         r"builtin-type-getattribute-doc-range 'range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).'",
         r#"builtin-type-getattribute-doc-type "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type""#,
+        r"builtin-type-getattribute-doc-slice 'slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.\n\nThis is used for extended slicing (e.g. a[0:10:2]).'",
         "namedtuple('NamedTupleGetattributeExample', 'x y')",
         "object.__getattribute__(NamedTupleGetattributeExample, 'missing_attr')",
         "namedtuple-type-getattribute AttributeError 'type' object has no attribute 'missing_attr'",
@@ -22871,6 +22873,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("object.__getattribute__ dict type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ range type-object __doc__ metadata")
                 && document.contains("object.__getattribute__ type type-object __doc__ metadata")
+                && document.contains("object.__getattribute__ slice type-object __doc__ metadata")
                 && document.contains(
                     "object.__getattribute__ namedtuple type-object missing attribute text"
                 )
