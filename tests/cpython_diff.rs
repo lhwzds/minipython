@@ -18466,7 +18466,16 @@ def show(label, thunk):
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 
 d = defaultdict(list, {'a': []})
+mp = defaultdict.__dict__
 for label, thunk in [
+    ('copy-descriptor-kind', lambda: type(defaultdict.copy).__name__),
+    ('copy-descriptor-repr', lambda: repr(defaultdict.copy)),
+    ('copy-type-dict-has', lambda: 'copy' in mp),
+    ('copy-type-dict-kind', lambda: type(mp['copy']).__name__),
+    ('copy-type-dict-repr', lambda: repr(mp['copy'])),
+    ('copy-type-dict-same', lambda: mp['copy'] is defaultdict.copy),
+    ('copy-type-dict-call', lambda: mp['copy'](d)),
+    ('copy-type-dict-factory', lambda: mp['copy'](d).default_factory is list),
     ('copy-bound', lambda: d.copy()),
     ('copy-type', lambda: defaultdict.copy(d)),
     ('copy-bound-keyword', lambda: d.copy(x=1)),

@@ -18976,6 +18976,15 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     for required in [
         "from collections import defaultdict",
+        "mp = defaultdict.__dict__",
+        "type(defaultdict.copy).__name__",
+        "repr(defaultdict.copy)",
+        "'copy' in mp",
+        "type(mp['copy']).__name__",
+        "repr(mp['copy'])",
+        "mp['copy'] is defaultdict.copy",
+        "mp['copy'](d)",
+        "mp['copy'](d).default_factory is list",
         "d.copy()",
         "defaultdict.copy(d)",
         "d.copy(x=1)",
@@ -19002,6 +19011,14 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "\"copy-descriptor-kind str 'method_descriptor'\"",
+        "\"copy-descriptor-repr str \\\"<method 'copy' of 'collections.defaultdict' objects>\\\"\"",
+        "\"copy-type-dict-has bool True\"",
+        "\"copy-type-dict-kind str 'method_descriptor'\"",
+        "\"copy-type-dict-repr str \\\"<method 'copy' of 'collections.defaultdict' objects>\\\"\"",
+        "\"copy-type-dict-same bool True\"",
+        "\"copy-type-dict-call defaultdict defaultdict(<class 'list'>, {'a': []})\"",
+        "\"copy-type-dict-factory bool True\"",
         "\"copy-bound defaultdict defaultdict(<class 'list'>, {'a': []})\"",
         "\"copy-type defaultdict defaultdict(<class 'list'>, {'a': []})\"",
         "\"copy-bound-keyword TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)\"",
@@ -19027,6 +19044,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "descriptor '{method}' for 'collections.defaultdict' objects doesn't apply",
         "defaultdict.{method}() takes no keyword arguments",
         "defaultdict.{method}() takes no arguments",
+        "Value::String(\"copy\".to_string())",
+        "method, \"__missing__\" | \"copy\"",
         "copy_default_dict(entries, default_factory)",
     ] {
         assert!(
@@ -19040,9 +19059,13 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_copy_descriptor_errors_diff_subset",
             "`defaultdict.copy()`",
             "`defaultdict.__copy__()`",
+            "`defaultdict.__dict__['copy']`",
+            "method_descriptor",
+            "mappingproxy",
             "method-descriptor self validation",
             "unbound method",
             "keyword rejection",
+            "full `defaultdict.__dict__` method-table parity",
             "pickle",
             "merge operators",
             "subclass compatibility",
@@ -19052,6 +19075,15 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
                 "defaultdict copy descriptor docs must contain `{required}`"
             );
         }
+    }
+    for required in [
+        "is_defaultdict_copy_method_descriptor",
+        "\"<method 'copy' of 'collections.defaultdict' objects>\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "defaultdict copy value display implementation must contain `{required}`"
+        );
     }
     assert!(
         row.diff_evidence
@@ -19204,7 +19236,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "\"defaultdict.__missing__\"",
         "\"__missing__\".to_string()",
-        "method == \"__missing__\"",
+        "matches!(method, \"__missing__\" | \"copy\")",
         "unbound method defaultdict.__missing__() needs an argument",
         "descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply",
         "defaultdict.__missing__() takes no keyword arguments",

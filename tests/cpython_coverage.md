@@ -1224,9 +1224,12 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset` and
   `cpython_collections_defaultdict_copy_descriptor_errors_subset`, covering
   CPython public `defaultdict.copy()` and `defaultdict.__copy__()` direct
-  method-descriptor error behavior: unbound method text, method-descriptor self
-  validation, no-extra-argument text, and keyword rejection without promoting
-  `deepcopy`, pickle, merge operators, or subclass compatibility.
+  method-descriptor error behavior: `defaultdict.copy` as a
+  `method_descriptor`, `defaultdict.__dict__['copy']` exposure through the
+  type mappingproxy, unbound method text, method-descriptor self validation,
+  no-extra-argument text, and keyword rejection without promoting full
+  `defaultdict.__dict__` method-table parity, `deepcopy`, pickle, merge
+  operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_fromkeys_diff_subset` and
   `cpython_collections_defaultdict_fromkeys_subset`, covering CPython public
@@ -4954,10 +4957,12 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset` and
   `cpython_collections_defaultdict_copy_descriptor_errors_subset`, covering
   `defaultdict.copy()` / `defaultdict.__copy__()` direct method-descriptor
-  self validation, unbound method text, extra-argument text, and keyword
-  rejection for the supported pure-memory mapping while leaving `deepcopy`,
-  pickle, merge operators, and subclass compatibility outside the supported
-  surface.
+  self validation, `defaultdict.copy` as a `method_descriptor`,
+  `defaultdict.__dict__['copy']` exposure through the type mappingproxy,
+  unbound method text, extra-argument text, and keyword rejection for the
+  supported pure-memory mapping while leaving full `defaultdict.__dict__`
+  method-table parity, `deepcopy`, pickle, merge operators, and subclass
+  compatibility outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_fromkeys_diff_subset` and
   `cpython_collections_defaultdict_fromkeys_subset`, covering

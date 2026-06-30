@@ -58865,7 +58865,7 @@ show('none-missing', lambda: n['x'])"#,
 // expanding into deepcopy, pickle, merge operators, or subclassing.
 #[test]
 fn cpython_collections_defaultdict_copy_descriptor_errors_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"from collections import defaultdict
 
 def show(label, thunk):
@@ -58876,7 +58876,16 @@ def show(label, thunk):
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 
 d = defaultdict(list, {'a': []})
+mp = defaultdict.__dict__
 for label, thunk in [
+    ('copy-descriptor-kind', lambda: type(defaultdict.copy).__name__),
+    ('copy-descriptor-repr', lambda: repr(defaultdict.copy)),
+    ('copy-type-dict-has', lambda: 'copy' in mp),
+    ('copy-type-dict-kind', lambda: type(mp['copy']).__name__),
+    ('copy-type-dict-repr', lambda: repr(mp['copy'])),
+    ('copy-type-dict-same', lambda: mp['copy'] is defaultdict.copy),
+    ('copy-type-dict-call', lambda: mp['copy'](d)),
+    ('copy-type-dict-factory', lambda: mp['copy'](d).default_factory is list),
     ('copy-bound', lambda: d.copy()),
     ('copy-type', lambda: defaultdict.copy(d)),
     ('copy-bound-keyword', lambda: d.copy(x=1)),
@@ -58898,6 +58907,14 @@ for label, thunk in [
 ]:
     show(label, thunk)"#,
         &[
+            "copy-descriptor-kind str 'method_descriptor'",
+            "copy-descriptor-repr str \"<method 'copy' of 'collections.defaultdict' objects>\"",
+            "copy-type-dict-has bool True",
+            "copy-type-dict-kind str 'method_descriptor'",
+            "copy-type-dict-repr str \"<method 'copy' of 'collections.defaultdict' objects>\"",
+            "copy-type-dict-same bool True",
+            "copy-type-dict-call defaultdict defaultdict(<class 'list'>, {'a': []})",
+            "copy-type-dict-factory bool True",
             "copy-bound defaultdict defaultdict(<class 'list'>, {'a': []})",
             "copy-type defaultdict defaultdict(<class 'list'>, {'a': []})",
             "copy-bound-keyword TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)",
@@ -58917,6 +58934,7 @@ for label, thunk in [
             "dunder-type-keyword-no-pos TypeError unbound method defaultdict.__copy__() needs an argument ('unbound method defaultdict.__copy__() needs an argument',)",
             "dunder-type-keyword-self-pos TypeError defaultdict.__copy__() takes no keyword arguments ('defaultdict.__copy__() takes no keyword arguments',)",
         ],
+        8 * 1024 * 1024,
     );
 }
 

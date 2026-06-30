@@ -11273,11 +11273,13 @@ Completed in the CPython collections manifest expansion pass:
   and `cpython_collections_defaultdict_copy_descriptor_errors_subset`, covering
   `defaultdict.copy()` and `defaultdict.__copy__()` direct method-descriptor
   error behavior for the supported pure-memory mapping: bound and type-direct
-  calls still return fresh shallow copies, while unbound method text,
-  method-descriptor self validation, no-extra-argument text, and keyword
-  rejection now match CPython public behavior. `deepcopy`, pickle/eval
-  identity, merge operators, and defaultdict subclass compatibility stay
-  outside this slice.
+  calls still return fresh shallow copies, while `defaultdict.copy` is exposed
+  as a `method_descriptor`, `defaultdict.__dict__['copy']` is available
+  through the type mappingproxy, and unbound method text, method-descriptor
+  self validation, no-extra-argument text, and keyword rejection now match
+  CPython public behavior. Full `defaultdict.__dict__` method-table parity,
+  `deepcopy`, pickle/eval identity, merge operators, and defaultdict subclass
+  compatibility stay outside this slice.
 - Added `cpython_collections_defaultdict_fromkeys_diff_subset` and
   `cpython_collections_defaultdict_fromkeys_subset`, covering
   `defaultdict.fromkeys()` on the type and through instances for the supported
