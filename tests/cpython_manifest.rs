@@ -18303,6 +18303,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'defaultdict', '__all__', '_tuplegetter', '_Link'")
             && LANGUAGE_TESTS.contains("import collections.abc as abc")
             && LANGUAGE_TESTS.contains("print('abc __all__', hasattr(abc, '__all__'))")
+            && LANGUAGE_TESTS.contains("\"abc __all__ True\"")
+            && LANGUAGE_TESTS.contains("'__all__', '__name__'")
             && LANGUAGE_TESTS.contains("dir(collections)")
             && LANGUAGE_TESTS.contains("dir(abc)"),
         "collections sandbox export test must guard collections and collections.abc module surfaces"
