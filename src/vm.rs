@@ -73653,17 +73653,30 @@ fn call_dict_method(
     }
 
     if name == "defaultdict.__missing__" {
-        reject_method_keywords(name, &keywords)?;
-        let [
-            Value::DefaultDict {
-                entries,
-                default_factory,
-            },
-            key,
-        ] = args.as_slice()
+        if args.is_empty() {
+            return Err(
+                "TypeError: unbound method defaultdict.__missing__() needs an argument".to_string(),
+            );
+        }
+        let receiver = &args[0];
+        let Value::DefaultDict {
+            entries,
+            default_factory,
+        } = receiver
         else {
             return Err(format!(
-                "__missing__() expected 1 argument, got {}",
+                "TypeError: descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: defaultdict.__missing__() takes no keyword arguments".to_string(),
+            );
+        }
+        let [_, key] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: defaultdict.__missing__() takes exactly one argument ({} given)",
                 method_arg_count(&args)
             ));
         };

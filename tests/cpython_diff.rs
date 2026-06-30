@@ -18437,6 +18437,45 @@ show('none-missing', lambda: type_basic['missing'])"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_missing_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict __missing__ public descriptor subset",
+        name: "collections-defaultdict-missing-descriptor",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list)
+print('visible', hasattr(defaultdict, '__missing__'), '__missing__' in dir(defaultdict), '__missing__' in dir(d))
+show('bound-missing', lambda: d.__missing__('x'))
+print('after-bound', repr(d), d['x'] is d['x'])
+show('type-missing', lambda: defaultdict.__missing__(d, 'y'))
+print('after-type', repr(d), d['y'] is d['y'])
+show('none-missing', lambda: defaultdict(None).__missing__('z'))
+show('noncallable-factory', lambda: defaultdict(42).__missing__('z'))
+for label, thunk in [
+    ('type-no-args', lambda: defaultdict.__missing__()),
+    ('type-no-key', lambda: defaultdict.__missing__(d)),
+    ('type-extra-key', lambda: defaultdict.__missing__(d, 'x', 'y')),
+    ('type-wrong-self', lambda: defaultdict.__missing__({}, 'x')),
+    ('type-wrong-self-no-key', lambda: defaultdict.__missing__({})),
+    ('type-wrong-self-keyword', lambda: defaultdict.__missing__({}, key='x')),
+    ('bound-no-key', lambda: d.__missing__()),
+    ('bound-extra-key', lambda: d.__missing__('x', 'y')),
+    ('bound-keyword', lambda: d.__missing__(key='x')),
+    ('type-keyword', lambda: defaultdict.__missing__(d, key='x')),
+    ('type-keyword-no-pos', lambda: defaultdict.__missing__(self=d, key='x')),
+]:
+    show(label, thunk)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_format_error_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict __format__ public behavior subset",

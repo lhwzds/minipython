@@ -58829,6 +58829,66 @@ show('none-missing', lambda: type_basic['missing'])"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict missing-key
+// behavior. This pins direct __missing__ dispatch and public method-descriptor
+// error text without promoting pickle, merge operators, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_missing_descriptor_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list)
+print('visible', hasattr(defaultdict, '__missing__'), '__missing__' in dir(defaultdict), '__missing__' in dir(d))
+show('bound-missing', lambda: d.__missing__('x'))
+print('after-bound', repr(d), d['x'] is d['x'])
+show('type-missing', lambda: defaultdict.__missing__(d, 'y'))
+print('after-type', repr(d), d['y'] is d['y'])
+show('none-missing', lambda: defaultdict(None).__missing__('z'))
+show('noncallable-factory', lambda: defaultdict(42).__missing__('z'))
+for label, thunk in [
+    ('type-no-args', lambda: defaultdict.__missing__()),
+    ('type-no-key', lambda: defaultdict.__missing__(d)),
+    ('type-extra-key', lambda: defaultdict.__missing__(d, 'x', 'y')),
+    ('type-wrong-self', lambda: defaultdict.__missing__({}, 'x')),
+    ('type-wrong-self-no-key', lambda: defaultdict.__missing__({})),
+    ('type-wrong-self-keyword', lambda: defaultdict.__missing__({}, key='x')),
+    ('bound-no-key', lambda: d.__missing__()),
+    ('bound-extra-key', lambda: d.__missing__('x', 'y')),
+    ('bound-keyword', lambda: d.__missing__(key='x')),
+    ('type-keyword', lambda: defaultdict.__missing__(d, key='x')),
+    ('type-keyword-no-pos', lambda: defaultdict.__missing__(self=d, key='x')),
+]:
+    show(label, thunk)"#,
+        &[
+            "visible True True True",
+            "bound-missing list []",
+            "after-bound defaultdict(<class 'list'>, {'x': []}) True",
+            "type-missing list []",
+            "after-type defaultdict(<class 'list'>, {'x': [], 'y': []}) True",
+            "none-missing KeyError 'z' ('z',)",
+            "noncallable-factory TypeError first argument must be callable or None ('first argument must be callable or None',)",
+            "type-no-args TypeError unbound method defaultdict.__missing__() needs an argument ('unbound method defaultdict.__missing__() needs an argument',)",
+            "type-no-key TypeError defaultdict.__missing__() takes exactly one argument (0 given) ('defaultdict.__missing__() takes exactly one argument (0 given)',)",
+            "type-extra-key TypeError defaultdict.__missing__() takes exactly one argument (2 given) ('defaultdict.__missing__() takes exactly one argument (2 given)',)",
+            "type-wrong-self TypeError descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "type-wrong-self-no-key TypeError descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "type-wrong-self-keyword TypeError descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "bound-no-key TypeError defaultdict.__missing__() takes exactly one argument (0 given) ('defaultdict.__missing__() takes exactly one argument (0 given)',)",
+            "bound-extra-key TypeError defaultdict.__missing__() takes exactly one argument (2 given) ('defaultdict.__missing__() takes exactly one argument (2 given)',)",
+            "bound-keyword TypeError defaultdict.__missing__() takes no keyword arguments ('defaultdict.__missing__() takes no keyword arguments',)",
+            "type-keyword TypeError defaultdict.__missing__() takes no keyword arguments ('defaultdict.__missing__() takes no keyword arguments',)",
+            "type-keyword-no-pos TypeError unbound method defaultdict.__missing__() needs an argument ('unbound method defaultdict.__missing__() needs an argument',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict display
 // behavior. This pins public __format__ error text only; descriptor identity,
 // pickle, merge operators, and subclassing stay outside this slice.

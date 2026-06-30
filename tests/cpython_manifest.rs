@@ -17479,6 +17479,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
             "cpython_collections_defaultdict_fromkeys_subset",
+            "cpython_collections_defaultdict_missing_descriptor_subset",
             "cpython_collections_defaultdict_format_error_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_deque_mutating_eq_subset",
@@ -18895,6 +18896,94 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict fromkeys docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_missing_descriptor_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict __missing__ descriptor behavior"
+    );
+    let defaultdict_missing_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_missing_descriptor_diff_subset",
+    );
+    let defaultdict_missing_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_missing_descriptor_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "hasattr(defaultdict, '__missing__')",
+        "'__missing__' in dir(defaultdict)",
+        "'__missing__' in dir(d)",
+        "d.__missing__('x')",
+        "defaultdict.__missing__(d, 'y')",
+        "defaultdict(None).__missing__('z')",
+        "defaultdict(42).__missing__('z')",
+        "defaultdict.__missing__()",
+        "defaultdict.__missing__(d)",
+        "defaultdict.__missing__(d, 'x', 'y')",
+        "defaultdict.__missing__({}, 'x')",
+        "defaultdict.__missing__({}, key='x')",
+        "d.__missing__(key='x')",
+        "defaultdict.__missing__(d, key='x')",
+        "defaultdict.__missing__(self=d, key='x')",
+    ] {
+        assert!(
+            defaultdict_missing_diff_body.contains(required)
+                && defaultdict_missing_subset_body.contains(required),
+            "defaultdict __missing__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True\"",
+        "\"bound-missing list []\"",
+        "\"after-bound defaultdict(<class 'list'>, {'x': []}) True\"",
+        "\"type-missing list []\"",
+        "\"after-type defaultdict(<class 'list'>, {'x': [], 'y': []}) True\"",
+        "\"none-missing KeyError 'z' ('z',)\"",
+        "\"noncallable-factory TypeError first argument must be callable or None ('first argument must be callable or None',)\"",
+        "\"type-no-args TypeError unbound method defaultdict.__missing__() needs an argument ('unbound method defaultdict.__missing__() needs an argument',)\"",
+        "\"type-no-key TypeError defaultdict.__missing__() takes exactly one argument (0 given) ('defaultdict.__missing__() takes exactly one argument (0 given)',)\"",
+        "\"type-extra-key TypeError defaultdict.__missing__() takes exactly one argument (2 given) ('defaultdict.__missing__() takes exactly one argument (2 given)',)\"",
+        "\"type-wrong-self TypeError descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\\\"descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\\\",)\"",
+        "\"bound-keyword TypeError defaultdict.__missing__() takes no keyword arguments ('defaultdict.__missing__() takes no keyword arguments',)\"",
+        "\"type-keyword-no-pos TypeError unbound method defaultdict.__missing__() needs an argument ('unbound method defaultdict.__missing__() needs an argument',)\"",
+    ] {
+        assert!(
+            defaultdict_missing_subset_body.contains(required),
+            "defaultdict __missing__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"defaultdict.__missing__\"",
+        "unbound method defaultdict.__missing__() needs an argument",
+        "descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply",
+        "defaultdict.__missing__() takes no keyword arguments",
+        "defaultdict.__missing__() takes exactly one argument",
+        "vm.load_default_dict_subscript(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict __missing__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_missing_descriptor_subset",
+            "cpython_collections_defaultdict_missing_descriptor_diff_subset",
+            "`defaultdict.__missing__()`",
+            "method-descriptor self validation",
+            "unbound method",
+            "keyword rejection",
+            "pickle",
+            "merge operators",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict __missing__ docs must contain `{required}`"
             );
         }
     }

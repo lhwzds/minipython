@@ -599,6 +599,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
   `cpython_collections_defaultdict_fromkeys_diff_subset`,
+  `cpython_collections_defaultdict_missing_descriptor_diff_subset`,
   `cpython_collections_defaultdict_format_error_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
@@ -1212,6 +1213,15 @@ Recent runtime migration notes:
   `default_factory is None`, shared explicit default values, missing-key
   `KeyError`, arity errors, and keyword rejection without promoting pickle,
   merge operators, or subclass compatibility.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_missing_descriptor_diff_subset` and
+  `cpython_collections_defaultdict_missing_descriptor_subset`, covering
+  CPython public `defaultdict.__missing__()` dispatch on instances and through
+  `defaultdict.__missing__(obj, key)`, including missing-key insertion,
+  `KeyError` for `default_factory is None`, non-callable factory errors,
+  unbound method text, method-descriptor self validation, arity text, and
+  keyword rejection without promoting pickle, merge operators, or subclass
+  compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_format_error_diff_subset` and
   `cpython_collections_defaultdict_format_error_subset`, covering CPython
@@ -4909,6 +4919,13 @@ without adding general custom encoder/decoder class support.
   `defaultdict.fromkeys()` as a pure-memory constructor that returns
   `defaultdict(None, ...)` with `default_factory is None`, preserves shared
   explicit default values, rejects keywords, and leaves pickle, merge
+  operators, and subclass compatibility outside the supported surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_missing_descriptor_diff_subset` and
+  `cpython_collections_defaultdict_missing_descriptor_subset`, covering
+  `defaultdict.__missing__()` as a pure-memory missing-key hook on bound and
+  type-direct calls, plus unbound method text, method-descriptor self
+  validation, arity text, and keyword rejection while leaving pickle, merge
   operators, and subclass compatibility outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_format_error_diff_subset` and
