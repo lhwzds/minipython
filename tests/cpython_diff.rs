@@ -18373,6 +18373,36 @@ print('original-factory', d.default_factory)"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_dunder_copy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict __copy__ public behavior subset",
+        name: "collections-defaultdict-dunder-copy",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+shared = []
+d = defaultdict(list, {'a': shared})
+print('visible', '__copy__' in dir(defaultdict), '__copy__' in dir(d))
+c = d.__copy__()
+print('inst-copy', type(c).__name__, repr(c), c is d, c.default_factory is list, c['a'] is d['a'])
+t = defaultdict.__copy__(d)
+print('type-copy', type(t).__name__, repr(t), t is d, t.default_factory is list, t['a'] is d['a'])
+c['b'].append(2)
+print('mutated', 'b' in d, sorted(c.items()))
+d.default_factory = None
+n = d.__copy__()
+print('none-copy', repr(n), n.default_factory)
+show('none-missing', lambda: n['x'])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",

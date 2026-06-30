@@ -597,6 +597,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
+  `cpython_collections_defaultdict_dunder_copy_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
@@ -1193,6 +1194,14 @@ Recent runtime migration notes:
   `copy.copy(defaultdict(...))` shallow-copy behavior: a fresh `defaultdict`
   object with the same default factory, shallow-copied mapping entries, shared
   nested values, and missing-key writes isolated to the copied mapping.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_dunder_copy_diff_subset` and
+  `cpython_collections_defaultdict_dunder_copy_subset`, covering CPython public
+  `defaultdict.__copy__()` direct `__copy__` behavior on instances and through
+  `defaultdict.__copy__(obj)`, including `dir()` visibility, fresh shallow
+  copies, shared nested values, copied default-factory state, and missing-key
+  behavior without promoting descriptor type identity, pickle, merge operators,
+  or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public
@@ -4869,6 +4878,13 @@ without adding general custom encoder/decoder class support.
   `copy.copy(defaultdict(...))` shallow-copy behavior for the supported
   pure-memory `defaultdict` mapping without promoting `deepcopy`, pickle, merge
   operators, or subclass compatibility.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_dunder_copy_diff_subset` and
+  `cpython_collections_defaultdict_dunder_copy_subset`, covering direct
+  `defaultdict.__copy__()` / `defaultdict.__copy__(obj)` shallow-copy behavior
+  and `dir()` visibility for the supported pure-memory mapping without
+  promoting descriptor type identity, `deepcopy`, pickle, merge operators, or
+  subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

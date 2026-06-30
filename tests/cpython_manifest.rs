@@ -17477,6 +17477,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_copy_module_subset",
+            "cpython_collections_defaultdict_dunder_copy_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
@@ -18706,14 +18707,28 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         .nth(1)
         .and_then(|tail| tail.split("fn copy_deepcopy_memo_from_value(").next())
         .expect("shallow copy implementation must be extractable");
+    let default_dict_copy_helper_body = VM_SOURCE
+        .split("fn copy_default_dict(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn shallow_copy_value(").next())
+        .expect("defaultdict copy helper must be extractable");
+    for required in [
+        "Value::DefaultDict",
+        "copy_default_dict(entries, default_factory)",
+    ] {
+        assert!(
+            shallow_copy_body.contains(required),
+            "defaultdict copy.copy implementation must route through `{required}`"
+        );
+    }
     for required in [
         "Value::DefaultDict",
         "entries: dict_ref_from_entries(entries.borrow().entries.clone())?",
         "default_factory: Rc::new(RefCell::new(default_factory.borrow().clone()))",
     ] {
         assert!(
-            shallow_copy_body.contains(required),
-            "defaultdict copy.copy implementation must contain `{required}`"
+            default_dict_copy_helper_body.contains(required),
+            "defaultdict copy.copy helper must contain `{required}`"
         );
     }
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
@@ -18729,6 +18744,76 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict copy.copy docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_dunder_copy_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict __copy__ behavior"
+    );
+    let defaultdict_dunder_copy_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_dunder_copy_diff_subset",
+    );
+    let defaultdict_dunder_copy_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_dunder_copy_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "'__copy__' in dir(defaultdict)",
+        "'__copy__' in dir(d)",
+        "c = d.__copy__()",
+        "defaultdict.__copy__(d)",
+        "c['b'].append(2)",
+        "d.default_factory = None",
+        "n = d.__copy__()",
+        "none-missing",
+    ] {
+        assert!(
+            defaultdict_dunder_copy_diff_body.contains(required)
+                && defaultdict_dunder_copy_subset_body.contains(required),
+            "defaultdict __copy__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True\"",
+        "\"inst-copy defaultdict defaultdict(<class 'list'>, {'a': []}) False True True\"",
+        "\"type-copy defaultdict defaultdict(<class 'list'>, {'a': []}) False True True\"",
+        "\"mutated False [('a', []), ('b', [2])]\"",
+        "\"none-copy defaultdict(None, {'a': []}) None\"",
+        "\"none-missing KeyError 'x' ('x',)\"",
+    ] {
+        assert!(
+            defaultdict_dunder_copy_subset_body.contains(required),
+            "defaultdict __copy__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn copy_default_dict(",
+        "\"defaultdict.__copy__\"",
+        "\"__copy__\"",
+        "Value::DefaultDict { .. } => names.extend(builtin_type_dir_names(\"defaultdict\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict __copy__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_dunder_copy_subset",
+            "cpython_collections_defaultdict_dunder_copy_diff_subset",
+            "`defaultdict.__copy__()`",
+            "direct `__copy__`",
+            "descriptor type identity",
+            "pickle",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict __copy__ docs must contain `{required}`"
             );
         }
     }

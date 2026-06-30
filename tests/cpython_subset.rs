@@ -58741,6 +58741,45 @@ print('original-factory', d.default_factory)"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict copying
+// behavior. This pins the supported direct __copy__ public hook without
+// expanding into descriptor type identity, deepcopy, pickle, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_dunder_copy_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+shared = []
+d = defaultdict(list, {'a': shared})
+print('visible', '__copy__' in dir(defaultdict), '__copy__' in dir(d))
+c = d.__copy__()
+print('inst-copy', type(c).__name__, repr(c), c is d, c.default_factory is list, c['a'] is d['a'])
+t = defaultdict.__copy__(d)
+print('type-copy', type(t).__name__, repr(t), t is d, t.default_factory is list, t['a'] is d['a'])
+c['b'].append(2)
+print('mutated', 'b' in d, sorted(c.items()))
+d.default_factory = None
+n = d.__copy__()
+print('none-copy', repr(n), n.default_factory)
+show('none-missing', lambda: n['x'])"#,
+        &[
+            "visible True True",
+            "inst-copy defaultdict defaultdict(<class 'list'>, {'a': []}) False True True",
+            "type-copy defaultdict defaultdict(<class 'list'>, {'a': []}) False True True",
+            "mutated False [('a', []), ('b', [2])]",
+            "none-copy defaultdict(None, {'a': []}) None",
+            "none-missing KeyError 'x' ('x',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names.
 // This ports the public module-name surface. CPython's C accelerator identity
 // comparison and descriptor behavior are tracked separately in the manifest.

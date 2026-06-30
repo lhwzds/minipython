@@ -36765,6 +36765,16 @@ fn scope_from_ast_node_attrs(node: Value) -> Result<Scope, String> {
     Ok(scope)
 }
 
+fn copy_default_dict(
+    entries: &DictRef,
+    default_factory: &Rc<RefCell<Value>>,
+) -> Result<Value, String> {
+    Ok(Value::DefaultDict {
+        entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
+        default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
+    })
+}
+
 fn shallow_copy_value(value: &Value) -> Result<Value, String> {
     match value {
         Value::String(value) => Ok(Value::IdentityString {
@@ -36821,10 +36831,7 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
         Value::DefaultDict {
             entries,
             default_factory,
-        } => Ok(Value::DefaultDict {
-            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
-            default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
-        }),
+        } => copy_default_dict(entries, default_factory),
         Value::Counter { entries } => Ok(Value::Counter {
             entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
         }),
@@ -49497,6 +49504,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         ),
         Value::Dict(_) => names.extend(builtin_type_dir_names("dict")),
         Value::OrderedDict(_) => names.extend(builtin_type_dir_names("OrderedDict")),
+        Value::DefaultDict { .. } => names.extend(builtin_type_dir_names("defaultdict")),
         Value::FrameLocalsProxy { .. } => names.extend(builtin_type_dir_names("dict")),
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
             names.extend(builtin_type_dir_names("mappingproxy"))
@@ -49861,6 +49869,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "defaultdict" => &[
             "__contains__",
+            "__copy__",
             "__delitem__",
             "__format__",
             "__getitem__",
@@ -57613,8 +57622,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             }),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__iter__"
-            | "__len__" | "__missing__" | "__setitem__" => Ok(Value::BoundMethod {
+            | "update" | "values" | "__contains__" | "__copy__" | "__delitem__" | "__getitem__"
+            | "__iter__" | "__len__" | "__missing__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("defaultdict.{name}"))),
                 receiver: Box::new(Value::DefaultDict {
                     entries,
@@ -58698,6 +58707,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "defaultdict" && name == "__missing__" =>
         {
             Ok(Value::Builtin("defaultdict.__missing__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "defaultdict" && name == "__copy__" => {
+            Ok(Value::Builtin("defaultdict.__copy__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "OrderedDict" && name == "__reversed__" =>
@@ -60891,7 +60903,9 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
 
     match type_name {
         "dict" | "OrderedDict" => is_builtin_dict_type_method(method),
-        "defaultdict" => is_builtin_dict_type_method(method) || method == "__missing__",
+        "defaultdict" => {
+            is_builtin_dict_type_method(method) || matches!(method, "__copy__" | "__missing__")
+        }
         "Counter" => is_builtin_counter_type_method(method),
         "ChainMap" => is_builtin_chain_map_type_method(method),
         "deque" => is_builtin_deque_type_method(method),
@@ -73581,7 +73595,7 @@ fn call_dict_method(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if name == "defaultdict.copy" {
+    if matches!(name, "defaultdict.copy" | "defaultdict.__copy__") {
         reject_method_keywords(name, &keywords)?;
         let [
             Value::DefaultDict {
@@ -73595,10 +73609,7 @@ fn call_dict_method(
                 method_arg_count(&args)
             ));
         };
-        return Ok(Value::DefaultDict {
-            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
-            default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
-        });
+        return copy_default_dict(entries, default_factory);
     }
 
     if name == "defaultdict.__missing__" {
