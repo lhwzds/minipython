@@ -39182,6 +39182,32 @@ fn cpython_json_loads_string_bom_message_subset() {
 }
 
 #[test]
+fn cpython_json_loads_property_name_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-object-int-key-full-text', '{1: 2}', 'Expecting property name enclosed in double quotes: line 1 column 2 (char 1)')\n",
+            "show('loads-object-leading-comma-full-text', '{,}', 'Expecting property name enclosed in double quotes: line 1 column 2 (char 1)')\n",
+            "show('loads-object-newline-int-key-full-text', '{\\n  1:2}', 'Expecting property name enclosed in double quotes: line 2 column 3 (char 4)')\n",
+            "show('loads-object-unclosed-after-comma-full-text', '{\"a\": 1,', 'Expecting property name enclosed in double quotes: line 1 column 9 (char 8)')"
+        ),
+        &[
+            "loads-object-int-key-full-text True True True",
+            "loads-object-leading-comma-full-text True True True",
+            "loads-object-newline-int-key-full-text True True True",
+            "loads-object-unclosed-after-comma-full-text True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_trailing_comma_message_subset() {
     assert_output(
         concat!(

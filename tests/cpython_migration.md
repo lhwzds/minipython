@@ -824,6 +824,10 @@ CPython public string-input UTF-8 BOM messages include line/column/char position
 `cpython_json_loads_string_bom_message_subset`, backed by
 `cpython_json_loads_string_bom_message_diff_subset`, pins those public `str(error)` / `args` values
 without adding full `JSONDecodeError` compatibility.
+CPython public object property-name messages include line/column/char positions;
+`cpython_json_loads_property_name_message_subset`, backed by
+`cpython_json_loads_property_name_message_diff_subset`, pins those public `str(error)` / `args` values
+without adding full `JSONDecodeError` compatibility.
 The CPython public trailing-comma messages for arrays and objects include line/column/char positions;
 `cpython_json_loads_trailing_comma_message_subset`, backed by
 `cpython_json_loads_trailing_comma_message_diff_subset`, pins those public `str(error)` / `args` values

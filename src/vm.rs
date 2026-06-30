@@ -63510,7 +63510,8 @@ impl<'a> JsonParser<'a> {
         loop {
             self.skip_whitespace();
             if self.peek() != Some('"') {
-                return self.error("Expecting property name enclosed in double quotes");
+                let key_pos = self.pos;
+                return self.error_at(key_pos, "Expecting property name enclosed in double quotes");
             }
             let key = self.parse_string()?;
             self.skip_whitespace();

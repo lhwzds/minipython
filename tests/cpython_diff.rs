@@ -4178,6 +4178,28 @@ show('loads-string-bom-number-full-text', chr(65279) + '1', 'Unexpected UTF-8 BO
 }
 
 #[test]
+fn cpython_json_loads_property_name_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public object property-name decode messages subset",
+        name: "json-loads-property-name-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-object-int-key-full-text', '{1: 2}', 'Expecting property name enclosed in double quotes: line 1 column 2 (char 1)')
+show('loads-object-leading-comma-full-text', '{,}', 'Expecting property name enclosed in double quotes: line 1 column 2 (char 1)')
+show('loads-object-newline-int-key-full-text', '{\n  1:2}', 'Expecting property name enclosed in double quotes: line 2 column 3 (char 4)')
+show('loads-object-unclosed-after-comma-full-text', '{"a": 1,', 'Expecting property name enclosed in double quotes: line 1 column 9 (char 8)')"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_trailing_comma_message_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public trailing comma decode messages subset",
