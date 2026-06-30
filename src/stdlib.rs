@@ -976,6 +976,13 @@ pub(crate) fn create_module(
         "collections.abc" => Ok(module_value(
             "collections.abc",
             vec![
+                (
+                    "__doc__",
+                    Value::String(
+                        "Abstract Base Classes (ABCs) for collections, according to PEP 3119.\n\nUnit tests are in test_collections.\n"
+                            .to_string(),
+                    ),
+                ),
                 ("__package__", Value::String(String::new())),
                 ("__all__", string_list_value(COLLECTIONS_ABC_ALL)),
                 ("Hashable", Value::Builtin("Hashable".to_string())),

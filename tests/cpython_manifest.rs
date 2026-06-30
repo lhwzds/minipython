@@ -22586,6 +22586,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-text-signature-mutable-set None",
         "collections-abc-all-repr ['Awaitable', 'Coroutine', 'AsyncIterable', 'AsyncIterator', 'AsyncGenerator', 'Hashable', 'Iterable', 'Iterator', 'Generator', 'Reversible', 'Sized', 'Container', 'Callable', 'Collection', 'Set', 'MutableSet', 'Mapping', 'MutableMapping', 'MappingView', 'KeysView', 'ItemsView', 'ValuesView', 'Sequence', 'MutableSequence', 'ByteString', 'Buffer']",
         "collections-abc-module-package ''",
+        "collections-abc-module-doc-repr 'Abstract Base Classes (ABCs) for collections, according to PEP 3119.\\n\\nUnit tests are in test_collections.\\n'",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23174,6 +23175,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document.contains("collections.abc module __all__ public export list")
                 && document.contains("collections.abc module __package__ metadata")
+                && document.contains("collections.abc module __doc__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document

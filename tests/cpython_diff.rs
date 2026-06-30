@@ -9797,6 +9797,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mutable-set None.
     // CPython oracle line: collections-abc-all-repr ['Awaitable', 'Coroutine', 'AsyncIterable', 'AsyncIterator', 'AsyncGenerator', 'Hashable', 'Iterable', 'Iterator', 'Generator', 'Reversible', 'Sized', 'Container', 'Callable', 'Collection', 'Set', 'MutableSet', 'Mapping', 'MutableMapping', 'MappingView', 'KeysView', 'ItemsView', 'ValuesView', 'Sequence', 'MutableSequence', 'ByteString', 'Buffer'].
     // CPython oracle line: collections-abc-module-package ''.
+    // CPython oracle line: collections-abc-module-doc-repr 'Abstract Base Classes (ABCs) for collections, according to PEP 3119.\n\nUnit tests are in test_collections.\n'.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10102,6 +10103,7 @@ print('collections-abc-type-getattribute-text-signature-mutable-set', object.__g
 import collections.abc as abc
 print('collections-abc-all-repr', repr(abc.__all__))
 print('collections-abc-module-package', repr(object.__getattribute__(abc, '__package__')))
+print('collections-abc-module-doc-repr', repr(object.__getattribute__(abc, '__doc__')))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

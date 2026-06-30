@@ -193,6 +193,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ MutableSet ABC type-object __text_signature__ metadata
   behavior, collections.abc module __all__ public export list
   behavior, collections.abc module __package__ metadata
+  behavior, collections.abc module __doc__ metadata
   behavior, object.__getattribute__ ChainMap type-object __qualname__ metadata
   behavior, object.__getattribute__ UserDict type-object __qualname__ metadata
   behavior, object.__getattribute__ UserList type-object __qualname__ metadata
