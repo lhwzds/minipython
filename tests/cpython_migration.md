@@ -242,6 +242,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ MappingView ABC type-object __doc__ metadata,
   object.__getattribute__ MappingView ABC type-object __text_signature__ metadata,
   object.__getattribute__ KeysView ABC type-object __doc__ metadata,
+  object.__getattribute__ KeysView ABC type-object __text_signature__ metadata,
   object.__getattribute__ ChainMap type-object __qualname__ metadata,
   object.__getattribute__ UserDict type-object __qualname__ metadata,
   object.__getattribute__ UserList type-object __qualname__ metadata,

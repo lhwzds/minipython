@@ -22573,6 +22573,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-mapping-view None",
         "collections-abc-type-getattribute-text-signature-mapping-view None",
         "collections-abc-type-getattribute-doc-keys-view None",
+        "collections-abc-type-getattribute-text-signature-keys-view None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22835,6 +22836,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-mapping-view None",
         "collections-abc-type-getattribute-text-signature-mapping-view None",
         "collections-abc-type-getattribute-doc-keys-view None",
+        "collections-abc-type-getattribute-text-signature-keys-view None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23130,6 +23132,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document
                     .contains("object.__getattribute__ KeysView ABC type-object __doc__ metadata")
+                && document.contains(
+                    "object.__getattribute__ KeysView ABC type-object __text_signature__ metadata"
+                )
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document
