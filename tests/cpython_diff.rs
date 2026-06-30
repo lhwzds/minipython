@@ -9756,6 +9756,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-doc-callable None.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-callable None.
     // CPython oracle line: collections-abc-type-getattribute-doc-collection None.
+    // CPython oracle line: collections-abc-type-getattribute-text-signature-collection None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9998,6 +9999,7 @@ print('collections-abc-type-getattribute-doc-callable', object.__getattribute__(
 print('collections-abc-type-getattribute-text-signature-callable', object.__getattribute__(Callable, '__text_signature__'))
 from collections.abc import Collection
 print('collections-abc-type-getattribute-doc-collection', object.__getattribute__(Collection, '__doc__'))
+print('collections-abc-type-getattribute-text-signature-collection', object.__getattribute__(Collection, '__text_signature__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
