@@ -11238,13 +11238,16 @@ Completed in the CPython collections manifest expansion pass:
   `defaultdict.__dict__['__repr__']` mappingproxy exposure, bound
   method-wrapper repr calls, `defaultdict.__getattribute__`
   wrapper_descriptor identity, `defaultdict.__dict__['__getattribute__']`
-  mappingproxy exposure, bound method-wrapper attribute reads, default-factory
-  storage, callable/`None` factory validation, keyword `default_factory`
-  treatment as a mapping item, missing-key factory insertion, `get()` not
-  invoking missing behavior, `default_factory` assignment/reset, shallow
-  `copy()`, factory exception propagation, and `json.dumps()` mapping
-  serialization. Full pickle/eval identity, merge operators, and subclass
-  compatibility stay outside the default sandbox surface.
+  mappingproxy exposure, bound method-wrapper attribute reads,
+  `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
+  `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
+  mappingproxy exposure, default-factory storage, callable/`None` factory
+  validation, keyword `default_factory` treatment as a mapping item,
+  missing-key factory insertion, `get()` not invoking missing behavior,
+  `default_factory` assignment/reset, shallow `copy()`, factory exception
+  propagation, and `json.dumps()` mapping serialization. Full pickle/eval
+  identity, merge operators, and subclass compatibility stay outside the
+  default sandbox surface.
 - Added
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`, covering

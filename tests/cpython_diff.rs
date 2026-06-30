@@ -18325,6 +18325,21 @@ for label, thunk in [
         thunk()
     except Exception as error:
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+print('type-class-getitem', hasattr(defaultdict, '__class_getitem__'), type(defaultdict.__class_getitem__).__name__)
+print('type-dict-class-getitem', '__class_getitem__' in mp, type(mp['__class_getitem__']).__name__, repr(mp['__class_getitem__']))
+alias = defaultdict.__class_getitem__(int)
+print('class-getitem-direct', repr(alias), alias.__origin__ is defaultdict, alias.__args__[0] is int)
+alias = defaultdict.__class_getitem__((str, int))
+print('class-getitem-tuple', repr(alias), alias.__origin__ is defaultdict, alias.__args__ == (str, int))
+for label, thunk in [
+    ('class-getitem-noargs', lambda: defaultdict.__class_getitem__()),
+    ('class-getitem-extra', lambda: defaultdict.__class_getitem__(int, str)),
+    ('class-getitem-keyword', lambda: defaultdict.__class_getitem__(item=int)),
+]:
+    try:
+        thunk()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)

@@ -10029,6 +10029,25 @@ impl Vm {
                     union_unhashable_count: 0,
                 })
             }
+            Value::Builtin(name) if name == "defaultdict.__class_getitem__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: defaultdict.__class_getitem__() takes no keyword arguments"
+                            .to_string(),
+                    );
+                }
+                let [item] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: defaultdict.__class_getitem__() takes exactly one argument ({} given)",
+                        args.len()
+                    ));
+                };
+                Ok(Value::GenericAlias {
+                    origin: Box::new(Value::Builtin("defaultdict".to_string())),
+                    args: generic_alias_args(item.clone()),
+                    union_unhashable_count: 0,
+                })
+            }
             Value::Builtin(name) if name == "bytes.__new__" => self.call_bytes_new(args, keywords),
             Value::Builtin(name) if name == "bytearray.__new__" => {
                 self.call_bytearray_new(args, keywords)
@@ -58736,6 +58755,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin("defaultdict.__getattribute__".to_string()))
         }
+        Value::Builtin(function_name)
+            if function_name == "defaultdict" && name == "__class_getitem__" =>
+        {
+            Ok(Value::Builtin("defaultdict.__class_getitem__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
@@ -59699,6 +59723,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("__getattribute__".to_string()),
                     Value::Builtin("defaultdict.__getattribute__".to_string()),
+                ));
+                entries.push((
+                    Value::String("__class_getitem__".to_string()),
+                    Value::Builtin(
+                        "defaultdict.__class_getitem__.classmethod_descriptor".to_string(),
+                    ),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))
@@ -61218,7 +61248,11 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
 }
 
 fn is_builtin_classmethod_descriptor_name(name: &str) -> bool {
-    name == "int.from_bytes.classmethod_descriptor"
+    matches!(
+        name,
+        "int.from_bytes.classmethod_descriptor"
+            | "defaultdict.__class_getitem__.classmethod_descriptor"
+    )
 }
 
 fn is_descriptor_get_wrapper_name(name: &str) -> bool {

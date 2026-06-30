@@ -1198,10 +1198,12 @@ Recent runtime migration notes:
   method-wrapper repr calls, `defaultdict.__getattribute__`
   wrapper_descriptor identity, `defaultdict.__dict__['__getattribute__']`
   mappingproxy exposure, and bound method-wrapper attribute reads,
-  `default_factory` read/write/reset, missing-key factory insertion, `get()`
-  not invoking missing behavior, `copy()`, constructor error boundaries,
-  factory exception propagation, and `json.dumps()` treating the supported
-  container as a dict-like mapping.
+  `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
+  `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
+  mappingproxy exposure, `default_factory` read/write/reset, missing-key
+  factory insertion, `get()` not invoking missing behavior, `copy()`,
+  constructor error boundaries, factory exception propagation, and
+  `json.dumps()` treating the supported container as a dict-like mapping.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`,
@@ -4941,9 +4943,11 @@ without adding general custom encoder/decoder class support.
   method-wrapper repr calls, `defaultdict.__getattribute__`
   wrapper_descriptor identity, `defaultdict.__dict__['__getattribute__']`
   mappingproxy exposure, bound method-wrapper attribute reads,
-  default-factory storage, missing-key insertion, non-triggering `get()`,
-  shallow `copy()`, callable/`None` factory validation, factory exceptions,
-  and JSON mapping serialization.
+  `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
+  `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
+  mappingproxy exposure, default-factory storage, missing-key insertion,
+  non-triggering `get()`, shallow `copy()`, callable/`None` factory
+  validation, factory exceptions, and JSON mapping serialization.
   Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
