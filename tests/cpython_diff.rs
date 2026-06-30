@@ -9730,6 +9730,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: builtin-type-getattribute-module Exception builtins.
     // CPython oracle line: collections-type-getattribute-module-counter collections.
     // CPython oracle line: collections-type-getattribute-module-chainmap collections.
+    // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-counter Counter.
     // CPython oracle line: collections-type-getattribute-text-signature-counter None.
     // CPython oracle line: builtin-type-getattribute-qualname int int.
@@ -9926,6 +9927,7 @@ from collections import Counter
 print('collections-type-getattribute-module-counter', object.__getattribute__(Counter, '__module__'))
 from collections import ChainMap
 print('collections-type-getattribute-module-chainmap', object.__getattribute__(ChainMap, '__module__'))
+print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-counter', object.__getattribute__(Counter, '__qualname__'))
 print('collections-type-getattribute-text-signature-counter', object.__getattribute__(Counter, '__text_signature__'))
 for typ in [int, object, type, Exception]:

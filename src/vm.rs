@@ -59068,6 +59068,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "Counter" => {
             Ok(Value::String(function_name))
         }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "ChainMap" => {
+            Ok(Value::String(function_name))
+        }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "GenericAlias" =>
         {
