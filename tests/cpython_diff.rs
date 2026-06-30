@@ -18305,6 +18305,7 @@ fn cpython_collections_defaultdict_core_diff_subset() {
         source: r#"from collections import defaultdict
 import json
 
+print('type-repr', repr(defaultdict), str(defaultdict))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)

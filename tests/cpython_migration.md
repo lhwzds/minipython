@@ -11231,6 +11231,7 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_defaultdict_core_diff_subset` and
   `cpython_collections_defaultdict_core_subset`, adapted from CPython
   `defaultdict` public behavior, covering the sandbox-safe pure-memory core:
+  `repr(defaultdict)` / `str(defaultdict)` type-object display,
   default-factory storage, callable/`None` factory validation, keyword
   `default_factory` treatment as a mapping item, missing-key factory insertion,
   `get()` not invoking missing behavior, `default_factory` assignment/reset,

@@ -2453,6 +2453,9 @@ fn builtin_type_public_name(name: &str) -> &str {
     if name.starts_with("typing.") {
         return name;
     }
+    if name == "defaultdict" {
+        return "collections.defaultdict";
+    }
     name.strip_prefix("ast.").unwrap_or(name)
 }
 

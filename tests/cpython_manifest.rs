@@ -18601,6 +18601,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     for required in [
         "from collections import defaultdict",
+        "repr(defaultdict)",
+        "str(defaultdict)",
         "defaultdict(list, {'a': [1]}, b=[2])",
         "d.get('x')",
         "d['x']",
@@ -18618,6 +18620,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "\"type-repr <class 'collections.defaultdict'> <class 'collections.defaultdict'>\"",
         "\"empty-none defaultdict defaultdict(None, {})\"",
         "\"empty-list defaultdict defaultdict(<class 'list'>, {})\"",
         "\"get-missing None False [('a', [1]), ('b', [2])]\"",
@@ -18646,12 +18649,24 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "defaultdict implementation must contain `{required}`"
         );
     }
+    for required in [
+        "fn builtin_type_public_name",
+        "name == \"defaultdict\"",
+        "\"collections.defaultdict\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "defaultdict type-object display implementation must contain `{required}`"
+        );
+    }
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_core_diff_subset",
             "pure-memory",
             "`defaultdict`",
+            "`repr(defaultdict)`",
+            "`str(defaultdict)`",
             "default-factory",
             "`json.dumps()`",
             "full defaultdict pickle/merge operators/subclass compatibility",

@@ -58649,6 +58649,7 @@ fn cpython_collections_defaultdict_core_subset() {
         r#"from collections import defaultdict
 import json
 
+print('type-repr', repr(defaultdict), str(defaultdict))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
@@ -58680,6 +58681,7 @@ try:
 except Exception as error:
     print('factory-raises', type(error).__name__, str(error), getattr(error, 'args', None))"#,
         &[
+            "type-repr <class 'collections.defaultdict'> <class 'collections.defaultdict'>",
             "empty-none defaultdict defaultdict(None, {})",
             "empty-list defaultdict defaultdict(<class 'list'>, {})",
             "factory True list",
