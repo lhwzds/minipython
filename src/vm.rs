@@ -59085,6 +59085,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::None)
         }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "Reversible" => {
+            Ok(Value::None)
+        }
         Value::Builtin(function_name)
             if is_collections_abc_type_name(&function_name)
                 && collections_abc_builtin_mixin_method(&function_name, name).is_some() =>

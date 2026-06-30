@@ -25129,6 +25129,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-collection None"],
     );
     assert_output(
+        "from collections.abc import Reversible\nprint('collections-abc-type-getattribute-doc-reversible', object.__getattribute__(Reversible, '__doc__'))",
+        &["collections-abc-type-getattribute-doc-reversible None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
