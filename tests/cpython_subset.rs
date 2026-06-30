@@ -25029,6 +25029,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-type-getattribute-text-signature-chainmap None"],
     );
     assert_output(
+        "from collections import UserDict\nprint('collections-type-getattribute-text-signature-userdict', object.__getattribute__(UserDict, '__text_signature__'))",
+        &["collections-type-getattribute-text-signature-userdict None"],
+    );
+    assert_output(
         "from collections import Counter\nprint('collections-type-getattribute-qualname-counter', object.__getattribute__(Counter, '__qualname__'))",
         &["collections-type-getattribute-qualname-counter Counter"],
     );
