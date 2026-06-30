@@ -9747,6 +9747,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-hashable None.
     // CPython oracle line: collections-abc-type-getattribute-doc-iterable None.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-iterable None.
+    // CPython oracle line: collections-abc-type-getattribute-doc-iterator None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9975,6 +9976,8 @@ print('collections-abc-type-getattribute-text-signature-hashable', object.__geta
 from collections.abc import Iterable
 print('collections-abc-type-getattribute-doc-iterable', object.__getattribute__(Iterable, '__doc__'))
 print('collections-abc-type-getattribute-text-signature-iterable', object.__getattribute__(Iterable, '__text_signature__'))
+from collections.abc import Iterator
+print('collections-abc-type-getattribute-doc-iterator', object.__getattribute__(Iterator, '__doc__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

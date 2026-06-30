@@ -143,6 +143,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ Hashable ABC type-object __text_signature__ metadata
   behavior, object.__getattribute__ Iterable ABC type-object __doc__ metadata
   behavior, object.__getattribute__ Iterable ABC type-object __text_signature__ metadata
+  behavior, object.__getattribute__ Iterator ABC type-object __doc__ metadata
   behavior, object.__getattribute__ ChainMap type-object __qualname__ metadata
   behavior, object.__getattribute__ UserDict type-object __qualname__ metadata
   behavior, object.__getattribute__ UserList type-object __qualname__ metadata
