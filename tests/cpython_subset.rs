@@ -25057,6 +25057,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-builtin-getattribute-module-count-elements _collections"],
     );
     assert_output(
+        "from collections import _count_elements\nprint('collections-builtin-getattribute-qualname-count-elements', object.__getattribute__(_count_elements, '__qualname__'))",
+        &["collections-builtin-getattribute-qualname-count-elements _count_elements"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
