@@ -1290,7 +1290,7 @@ fn functools_sandbox_subset_keeps_export_surface_explicit() {
 fn collections_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import collections\nfor name in ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '_count_elements', 'abc', 'deque', 'namedtuple']:\n    print(name, hasattr(collections, name))\nfor name in ['defaultdict', '__all__', '_tuplegetter', '_Link']:\n    print(name, hasattr(collections, name))\nprint(dir(collections))\nimport collections.abc as abc\nfor name in ['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView']:\n    print('abc', name, hasattr(abc, name))\nprint('abc __all__', hasattr(abc, '__all__'))\nprint(dir(abc))"
+            "import collections\nfor name in ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '_count_elements', 'abc', 'deque', 'defaultdict', 'namedtuple']:\n    print(name, hasattr(collections, name))\nfor name in ['__all__', '_tuplegetter', '_Link']:\n    print(name, hasattr(collections, name))\nprint(dir(collections))\nimport collections.abc as abc\nfor name in ['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView']:\n    print('abc', name, hasattr(abc, name))\nprint('abc __all__', hasattr(abc, '__all__'))\nprint(dir(abc))"
         ),
         Ok(output_lines(&[
             "ChainMap True",
@@ -1302,12 +1302,12 @@ fn collections_sandbox_subset_keeps_export_surface_explicit() {
             "_count_elements True",
             "abc True",
             "deque True",
+            "defaultdict True",
             "namedtuple True",
-            "defaultdict False",
             "__all__ False",
             "_tuplegetter False",
             "_Link False",
-            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '__name__', '_count_elements', 'abc', 'deque', 'namedtuple']",
+            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '__name__', '_count_elements', 'abc', 'defaultdict', 'deque', 'namedtuple']",
             "abc AsyncGenerator True",
             "abc AsyncIterable True",
             "abc AsyncIterator True",

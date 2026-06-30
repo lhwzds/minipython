@@ -18298,6 +18298,47 @@ print(from_userlist.data, constructed.data)"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_core_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict core public behavior subset",
+        name: "collections-defaultdict-core",
+        source: r#"from collections import defaultdict
+import json
+
+value = defaultdict()
+print('empty-none', type(value).__name__, repr(value))
+value = defaultdict(list)
+print('empty-list', type(value).__name__, repr(value))
+d = defaultdict(list, {'a': [1]}, b=[2])
+print('factory', d.default_factory is list, d.default_factory.__name__)
+print('existing', d['a'], sorted(d.items()))
+print('get-missing', d.get('x'), 'x' in d, sorted(d.items()))
+print('getitem-missing', d['x'], 'x' in d, sorted(d.items()))
+d.default_factory = int
+print('assign-factory', d.default_factory is int, d['y'])
+d.default_factory = None
+try:
+    d['z']
+except Exception as error:
+    print('none-missing', type(error).__name__, str(error), getattr(error, 'args', None))
+print('copy', repr(d.copy()), d.copy() is d)
+print('json', json.dumps(defaultdict(int, {'a': 1}), sort_keys=True))
+try:
+    defaultdict(3)
+except Exception as error:
+    print('not-callable', type(error).__name__, str(error), getattr(error, 'args', None))
+value = defaultdict(list, a=1, default_factory=int)
+print('bad-kw', type(value).__name__, repr(value))
+def boom():
+    raise ValueError('boom')
+try:
+    defaultdict(boom)['k']
+except Exception as error:
+    print('factory-raises', type(error).__name__, str(error), getattr(error, 'args', None))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",

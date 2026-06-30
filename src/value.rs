@@ -572,6 +572,10 @@ pub enum Value {
     FrozenSet(FrozenSetRef),
     Dict(DictRef),
     OrderedDict(DictRef),
+    DefaultDict {
+        entries: DictRef,
+        default_factory: Rc<RefCell<Value>>,
+    },
     ScopeDict(Scope),
     DictView {
         kind: DictViewKind,
@@ -1191,6 +1195,15 @@ impl fmt::Display for Value {
             Value::FrozenSet(items) => write!(f, "{}", format_frozen_set(items)),
             Value::Dict(entries) => write!(f, "{{{}}}", format_dict(&entries.borrow())),
             Value::OrderedDict(entries) => write!(f, "{}", format_ordered_dict(&entries.borrow())),
+            Value::DefaultDict {
+                entries,
+                default_factory,
+            } => write!(
+                f,
+                "defaultdict({}, {{{}}})",
+                format_value_repr(&default_factory.borrow()),
+                format_dict(&entries.borrow())
+            ),
             Value::ScopeDict(scope) => write!(f, "{{{}}}", format_scope_dict(scope)),
             Value::DictView {
                 kind,
@@ -1860,6 +1873,14 @@ fn format_value_repr(value: &Value) -> String {
         Value::FrozenSet(items) => format_frozen_set(items),
         Value::Dict(entries) => format!("{{{}}}", format_dict(&entries.borrow())),
         Value::OrderedDict(entries) => format_ordered_dict(&entries.borrow()),
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => format!(
+            "defaultdict({}, {{{}}})",
+            format_value_repr(&default_factory.borrow()),
+            format_dict(&entries.borrow())
+        ),
         Value::ScopeDict(scope) => format!("{{{}}}", format_scope_dict(scope)),
         Value::DictView {
             kind,
@@ -2352,6 +2373,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "ChainMap"
             | "Counter"
             | "OrderedDict"
+            | "defaultdict"
             | "UserList"
             | "UserDict"
             | "UserString"
@@ -2475,6 +2497,7 @@ fn format_generic_builtin_name(name: &str) -> String {
     match name {
         "deque" => "collections.deque".to_string(),
         "OrderedDict" => "collections.OrderedDict".to_string(),
+        "defaultdict" => "collections.defaultdict".to_string(),
         _ => name.to_string(),
     }
 }

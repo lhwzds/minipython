@@ -1597,6 +1597,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         | Value::Deque { .. }
         | Value::Dict(_)
         | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
         | Value::UserDict { .. }
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. }
@@ -1730,6 +1731,14 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         }
         Value::Dict(entries) => repr_dict_entries_checked(entries, active),
         Value::OrderedDict(entries) => repr_ordered_dict_entries_checked(entries, active),
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => {
+            let factory = repr_value_inner_checked(&default_factory.borrow(), active)?;
+            let entries = repr_dict_entries_checked(entries, active)?;
+            Ok(format!("defaultdict({factory}, {entries})"))
+        }
         Value::UserDict { data, .. } => repr_dict_entries_checked(data, active),
         Value::ScopeDict(scope) => {
             let ptr = Rc::as_ptr(scope) as usize;
@@ -2088,6 +2097,14 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
         }
         Value::Dict(entries) => repr_dict_entries(entries, active),
         Value::OrderedDict(entries) => repr_ordered_dict_entries(entries, active),
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => {
+            let factory = repr_value_inner(&default_factory.borrow(), active);
+            let entries = repr_dict_entries(entries, active);
+            format!("defaultdict({factory}, {entries})")
+        }
         Value::UserDict { data, .. } => {
             let ptr = Rc::as_ptr(data) as usize;
             if !active.insert(ptr) {
@@ -9404,6 +9421,9 @@ impl Vm {
             Value::Builtin(name) if name == "OrderedDict" => {
                 self.call_ordered_dict_constructor(args, keywords)
             }
+            Value::Builtin(name) if name == "defaultdict" => {
+                self.call_default_dict_constructor(args, keywords)
+            }
             Value::Builtin(name) if name == "Counter" => self.call_counter(args, keywords),
             Value::Builtin(name) if name == "collections.namedtuple" => {
                 self.call_namedtuple(args, keywords)
@@ -10055,6 +10075,9 @@ impl Vm {
                 call_dict_view_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("OrderedDict.") => {
+                call_dict_method(self, &name, args, keywords)
+            }
+            Value::Builtin(name) if name.starts_with("defaultdict.") => {
                 call_dict_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("set.") => {
@@ -17476,6 +17499,18 @@ impl Vm {
             return self.chain_map_get_item_for_receiver(&object, &maps, index);
         }
 
+        if let Value::DefaultDict {
+            entries,
+            default_factory,
+        } = &object
+        {
+            return self.load_default_dict_subscript(
+                entries.clone(),
+                default_factory.borrow().clone(),
+                index,
+            );
+        }
+
         if let Value::ChainMap { maps } = &object {
             let maps = maps.clone();
             return self.chain_map_get_item_for_receiver(&object, &maps, index);
@@ -17540,6 +17575,29 @@ impl Vm {
             return self.call_value(missing, vec![key]);
         }
         self.raise_runtime_exception_value(key_error_exception(key))
+    }
+
+    fn load_default_dict_subscript(
+        &mut self,
+        entries: DictRef,
+        default_factory: Value,
+        key: Value,
+    ) -> Result<Value, String> {
+        ensure_hashable_key(&key)?;
+        if let Some((_, value)) = entries
+            .borrow()
+            .iter()
+            .find(|(existing_key, _)| dict_keys_equal(existing_key, &key))
+        {
+            return Ok(value.clone());
+        }
+        if matches!(default_factory, Value::None) {
+            return self.raise_runtime_exception_value(key_error_exception(key));
+        }
+
+        let value = self.call_value(default_factory, Vec::new())?;
+        insert_live_dict_entry(&mut entries.borrow_mut(), key, value.clone())?;
+        Ok(value)
     }
 
     fn store_subscript_value(
@@ -22475,6 +22533,30 @@ impl Vm {
         build_ordered_dict(entries)
     }
 
+    fn call_default_dict_constructor(
+        &mut self,
+        mut args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let default_factory = if args.is_empty() {
+            Value::None
+        } else {
+            args.remove(0)
+        };
+        if !matches!(default_factory, Value::None) && !is_callable_value(&default_factory) {
+            return Err("TypeError: first argument must be callable or None".to_string());
+        }
+
+        let dict = self.call_dict_constructor(args, keywords)?;
+        let Value::Dict(entries) = dict else {
+            unreachable!("dict constructor returns a dict")
+        };
+        Ok(Value::DefaultDict {
+            entries,
+            default_factory: Rc::new(RefCell::new(default_factory)),
+        })
+    }
+
     fn call_mapping_proxy_constructor(
         &mut self,
         mut args: Vec<Value>,
@@ -26477,6 +26559,7 @@ impl Vm {
             &value,
             Value::Dict(_)
                 | Value::OrderedDict(_)
+                | Value::DefaultDict { .. }
                 | Value::MappingProxy { .. }
                 | Value::ScopeDict(_)
                 | Value::FrameLocalsProxy { .. }
@@ -49051,6 +49134,7 @@ fn scope_dict_direct_comparison_entries(value: &Value) -> Option<Vec<(Value, Val
         Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             Some(entries.borrow().entries.clone())
         }
+        Value::DefaultDict { entries, .. } => Some(entries.borrow().entries.clone()),
         Value::ScopeDict(scope) => Some(scope_dict_entries(scope)),
         Value::FrameLocalsProxy { locals, .. } => Some(scope_dict_entries(locals)),
         value if counter_subclass_entries(value).is_some() => Some(
@@ -49759,6 +49843,29 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "clear",
             "copy",
             "fromkeys",
+            "get",
+            "items",
+            "keys",
+            "pop",
+            "popitem",
+            "setdefault",
+            "update",
+            "values",
+        ],
+        "defaultdict" => &[
+            "__contains__",
+            "__delitem__",
+            "__format__",
+            "__getitem__",
+            "__iter__",
+            "__len__",
+            "__missing__",
+            "__repr__",
+            "__setitem__",
+            "__str__",
+            "clear",
+            "copy",
+            "default_factory",
             "get",
             "items",
             "keys",
@@ -57477,6 +57584,41 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: OrderedDict has no attribute '{name}'"
             )),
         },
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => match name {
+            "default_factory" => Ok(default_factory.borrow().clone()),
+            "__format__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__format__".to_string())),
+                receiver: Box::new(Value::DefaultDict {
+                    entries,
+                    default_factory,
+                }),
+                identity: Rc::new(()),
+            }),
+            "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("defaultdict.{name}"))),
+                receiver: Box::new(Value::DefaultDict {
+                    entries,
+                    default_factory,
+                }),
+                identity: Rc::new(()),
+            }),
+            "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__iter__"
+            | "__len__" | "__missing__" | "__setitem__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("defaultdict.{name}"))),
+                receiver: Box::new(Value::DefaultDict {
+                    entries,
+                    default_factory,
+                }),
+                identity: Rc::new(()),
+            }),
+            _ => Err(format!(
+                "AttributeError: defaultdict has no attribute '{name}'"
+            )),
+        },
         Value::Counter { entries } => match name {
             "__init__" | "clear" | "copy" | "elements" | "fromkeys" | "get" | "items" | "keys"
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
@@ -58429,6 +58571,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "OrderedDict" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "defaultdict" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
+        }
         Value::Builtin(function_name) if is_builtin_getset_descriptor_name(&function_name) => {
             match name {
                 "__class__" => Ok(Value::Builtin("getset_descriptor".to_string())),
@@ -58496,6 +58641,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "defaultdict" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "Counter" =>
         {
             Ok(Value::None)
@@ -58529,6 +58679,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "OrderedDict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("OrderedDict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "defaultdict"
+                && is_builtin_dict_type_method(name)
+                && name != "fromkeys" =>
+        {
+            Ok(Value::Builtin(format!("defaultdict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "defaultdict" && name == "__missing__" =>
+        {
+            Ok(Value::Builtin("defaultdict.__missing__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "OrderedDict" && name == "__reversed__" =>
@@ -58996,6 +59158,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "OrderedDict" => {
             Ok(Value::String("collections".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "defaultdict" => {
+            Ok(Value::String("collections".to_string()))
+        }
         Value::Builtin(function_name) if name == "__module__" && function_name == "Counter" => {
             Ok(Value::String("collections".to_string()))
         }
@@ -59179,6 +59344,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "OrderedDict" =>
+        {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "defaultdict" =>
         {
             Ok(Value::String(function_name))
         }
@@ -59899,6 +60069,7 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "  - an integer"
         )),
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
+        "defaultdict" => Some("Dictionary with a default factory for missing keys."),
         "OrderedDict" => Some("Dictionary that remembers insertion order"),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         "mappingproxy" => Some("Read-only proxy of a mapping."),
@@ -60126,6 +60297,13 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             )?;
             Ok(())
         }
+        Value::DefaultDict {
+            default_factory, ..
+        } if name == "default_factory" => {
+            *default_factory.borrow_mut() = value;
+            Ok(())
+        }
+        Value::DefaultDict { .. } => Err(default_dict_attribute_assignment_error(name)),
         Value::AstNode { attrs, .. } => {
             insert_live_dict_entry(
                 &mut attrs.borrow_mut(),
@@ -60610,6 +60788,13 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Builtin(function_name) if function_name == "deque" => {
             Err(deque_type_attribute_assignment_error(name))
         }
+        Value::DefaultDict {
+            default_factory, ..
+        } if name == "default_factory" => {
+            *default_factory.borrow_mut() = Value::None;
+            Ok(())
+        }
+        Value::DefaultDict { .. } => Err(default_dict_attribute_assignment_error(name)),
         Value::NamedTupleType(typ) if name == "__doc__" => {
             *typ.doc.borrow_mut() = String::new();
             Ok(())
@@ -60633,6 +60818,12 @@ fn deque_attribute_assignment_error(name: &str) -> String {
             "AttributeError: 'collections.deque' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn default_dict_attribute_assignment_error(name: &str) -> String {
+    format!(
+        "AttributeError: 'collections.defaultdict' object has no attribute '{name}' and no __dict__ for setting new attributes"
+    )
 }
 
 fn deque_type_attribute_assignment_error(name: &str) -> String {
@@ -60693,6 +60884,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
 
     match type_name {
         "dict" | "OrderedDict" => is_builtin_dict_type_method(method),
+        "defaultdict" => is_builtin_dict_type_method(method) || method == "__missing__",
         "Counter" => is_builtin_counter_type_method(method),
         "ChainMap" => is_builtin_chain_map_type_method(method),
         "deque" => is_builtin_deque_type_method(method),
@@ -61238,6 +61430,7 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "mappingproxy"
             | "ChainMap"
             | "Counter"
+            | "defaultdict"
             | "OrderedDict"
             | "UserList"
             | "UserDict"
@@ -62177,6 +62370,7 @@ fn type_name(value: &Value) -> &str {
         Value::FrozenSet(_) => "frozenset",
         Value::Dict(_) | Value::ScopeDict(_) => "dict",
         Value::OrderedDict(_) => "OrderedDict",
+        Value::DefaultDict { .. } => "defaultdict",
         Value::Counter { .. } => "Counter",
         Value::DictView { kind, ordered, .. } => dict_view_display_type_name(*kind, *ordered),
         Value::MappingView { kind, .. } => dict_view_type_name(*kind),
@@ -64180,16 +64374,17 @@ fn json_dumps_value_inner(
         Value::NamedTuple { values, .. } => {
             json_dumps_sequence(vm, values, active, options, depth, default_depth)
         }
-        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
-            json_dumps_dict(
-                vm,
-                &entries.borrow().entries,
-                active,
-                options,
-                depth,
-                default_depth,
-            )
-        }
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => json_dumps_dict(
+            vm,
+            &entries.borrow().entries,
+            active,
+            options,
+            depth,
+            default_depth,
+        ),
         value if counter_subclass_entries(value).is_some() => {
             let entries = json_dumps_counter_subclass_items(vm, value)?;
             json_dumps_dict(vm, &entries, active, options, depth, default_depth)
@@ -64284,9 +64479,10 @@ fn json_dumps_container_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::NamedTuple { values, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(values) as usize))
         }
-        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
-            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(entries) as usize))
-        }
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(entries) as usize)),
         value if counter_subclass_entries(value).is_some() => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
                 &counter_subclass_entries(value)
@@ -66045,6 +66241,7 @@ fn builtin_class_inherits(name: &str, target_name: &str) -> bool {
     name == target_name
         || target_name == "object"
         || (name == "Counter" && target_name == "dict")
+        || (name == "defaultdict" && target_name == "dict")
         || (name == "enum.IntEnum" && target_name == "int")
         || (name == "NodeTransformer" && target_name == "NodeVisitor")
         || (name == "bool" && target_name == "int")
@@ -68958,7 +69155,10 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 .collect(),
             index: 0,
         })),
-        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => {
             let (keys, expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (
@@ -73374,6 +73574,48 @@ fn call_dict_method(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
+    if name == "defaultdict.copy" {
+        reject_method_keywords(name, &keywords)?;
+        let [
+            Value::DefaultDict {
+                entries,
+                default_factory,
+            },
+        ] = args.as_slice()
+        else {
+            return Err(format!(
+                "copy() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        return Ok(Value::DefaultDict {
+            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
+            default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
+        });
+    }
+
+    if name == "defaultdict.__missing__" {
+        reject_method_keywords(name, &keywords)?;
+        let [
+            Value::DefaultDict {
+                entries,
+                default_factory,
+            },
+            key,
+        ] = args.as_slice()
+        else {
+            return Err(format!(
+                "__missing__() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        return vm.load_default_dict_subscript(
+            entries.clone(),
+            default_factory.borrow().clone(),
+            key.clone(),
+        );
+    }
+
     if name == "OrderedDict.move_to_end" {
         let [Value::OrderedDict(entries), key, rest @ ..] = args.as_slice() else {
             return Err(format!(
@@ -73563,6 +73805,9 @@ fn call_dict_method(
     let name = if let Some(method) = name.strip_prefix("OrderedDict.") {
         canonical_name = format!("dict.{method}");
         canonical_name.as_str()
+    } else if let Some(method) = name.strip_prefix("defaultdict.") {
+        canonical_name = format!("dict.{method}");
+        canonical_name.as_str()
     } else {
         name
     };
@@ -73640,6 +73885,16 @@ fn call_dict_method(
             };
             if let Some(entries) = dict_subclass_entries(dict) {
                 vm.load_dict_subclass_subscript(dict.clone(), entries, key.clone())
+            } else if let Value::DefaultDict {
+                entries,
+                default_factory,
+            } = dict
+            {
+                vm.load_default_dict_subscript(
+                    entries.clone(),
+                    default_factory.borrow().clone(),
+                    key.clone(),
+                )
             } else if matches!(dict, Value::Dict(_) | Value::OrderedDict(_)) {
                 load_subscript_or_raise_key_error(vm, dict.clone(), key.clone())
             } else {
@@ -74338,6 +74593,7 @@ fn dict_receiver_entries(value: &Value) -> Option<DictRef> {
         Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             Some(entries.clone())
         }
+        Value::DefaultDict { entries, .. } => Some(entries.clone()),
         Value::UserDict { data, .. } => Some(data.clone()),
         value => counter_subclass_entries(value).or_else(|| dict_subclass_entries(value)),
     }
@@ -75565,6 +75821,7 @@ fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, 
     match value {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
         | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(&scope)),
@@ -75608,6 +75865,7 @@ fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
         | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(scope)),
@@ -75662,6 +75920,7 @@ fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
     match map {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
         | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries
             .borrow()
@@ -78302,7 +78561,9 @@ fn value_len(value: &Value) -> Result<usize, String> {
             .len()),
         Value::Set(items) => Ok(items.borrow().len()),
         Value::FrozenSet(items) => Ok(items.len()),
-        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(entries.borrow().len()),
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::DefaultDict { entries, .. } => {
+            Ok(entries.borrow().len())
+        }
         Value::Counter { entries } => Ok(entries.borrow().len()),
         Value::MappingProxy { entries, .. } => Ok(entries.borrow().len()),
         value if counter_subclass_entries(value).is_some() => Ok(counter_subclass_entries(value)
@@ -79410,7 +79671,9 @@ fn mark_dict_changed(entries: &mut DictStorage) {
 
 fn dict_entries_from_mapping(value: Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
-        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(entries.borrow().clone()),
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::DefaultDict { entries, .. } => {
+            Ok(entries.borrow().clone())
+        }
         value => Err(format!("dict update source must be a dict, got {value}")),
     }
 }
@@ -79644,6 +79907,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::Range { identity, .. } => rc_plain_identity_bits(identity),
         Value::Dict(entries) => rc_identity_bits(entries),
         Value::OrderedDict(entries) => rc_identity_bits(entries),
+        Value::DefaultDict { entries, .. } => rc_identity_bits(entries),
         Value::Counter { entries } => rc_identity_bits(entries),
         Value::ScopeDict(scope) => scope_identity_bits(scope),
         Value::FrameLocalsProxy { identity, .. } => rc_plain_identity_bits(identity),
@@ -80114,6 +80378,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::Set(_)
         | Value::Dict(_)
         | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
         | Value::ScopeDict(_)
         | Value::SimpleNamespace { .. }
         | Value::DictView { .. }
@@ -80342,6 +80607,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Set(_)
         | Value::Dict(_)
         | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. }
         | Value::SimpleNamespace { .. }
@@ -80604,7 +80870,10 @@ fn get_iter(value: Value) -> Result<Value, String> {
             source: None,
             expected_len: items.len(),
         })),
-        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (entries_ref.len(), entries_ref.version)
@@ -81087,13 +81356,17 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "dict" => {
             matches!(
                 subject,
-                Value::Dict(_) | Value::Counter { .. } | Value::ScopeDict(_)
+                Value::Dict(_)
+                    | Value::DefaultDict { .. }
+                    | Value::Counter { .. }
+                    | Value::ScopeDict(_)
             ) || counter_subclass_entries(subject).is_some()
                 || dict_subclass_entries(subject).is_some()
         }
         "Counter" => {
             matches!(subject, Value::Counter { .. }) || counter_subclass_entries(subject).is_some()
         }
+        "defaultdict" => matches!(subject, Value::DefaultDict { .. }),
         "ChainMap" => matches!(subject, Value::ChainMap { .. }),
         "UserList" => matches!(subject, Value::UserList { .. }),
         "deque" => matches!(subject, Value::Deque { .. }),
@@ -82211,6 +82484,17 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
             Ok(Value::OrderedDict(entries))
         }
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => {
+            ensure_hashable_key(&index)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            Ok(Value::DefaultDict {
+                entries,
+                default_factory,
+            })
+        }
         Value::Counter { entries } => {
             ensure_hashable_key(&index)?;
             insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
@@ -82323,10 +82607,17 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::MemoryView(_) => {
             Err("TypeError: memoryview object does not support item deletion".to_string())
         }
-        object @ (Value::Dict(_) | Value::OrderedDict(_)) => {
+        object @ (Value::Dict(_) | Value::OrderedDict(_) | Value::DefaultDict { .. }) => {
             let is_ordered_dict = matches!(object, Value::OrderedDict(_));
+            let default_factory = match &object {
+                Value::DefaultDict {
+                    default_factory, ..
+                } => Some(default_factory.clone()),
+                _ => None,
+            };
             let entries = match object {
                 Value::Dict(entries) | Value::OrderedDict(entries) => entries,
+                Value::DefaultDict { entries, .. } => entries,
                 _ => unreachable!("object shape checked above"),
             };
             ensure_hashable_key(&index)?;
@@ -82340,6 +82631,11 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
                 drop(entries_borrowed);
                 if is_ordered_dict {
                     Ok(Value::OrderedDict(entries))
+                } else if let Some(default_factory) = default_factory {
+                    Ok(Value::DefaultDict {
+                        entries,
+                        default_factory,
+                    })
                 } else {
                     Ok(Value::Dict(entries))
                 }
@@ -86395,6 +86691,7 @@ fn object_direct_ne_rich_operand(value: &Value) -> bool {
             | Value::FrozenSet(_)
             | Value::Dict(_)
             | Value::OrderedDict(_)
+            | Value::DefaultDict { .. }
             | Value::Range { .. }
             | Value::Deque { .. }
             | Value::UserList { .. }
@@ -86651,7 +86948,10 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             Value::BigInt(needle) => Ok(range_contains_integer(&start, &stop, &step, &needle)),
             _ => Ok(false),
         },
-        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => {
             ensure_hashable_key(&needle)?;
             Ok(entries
                 .borrow()
@@ -86855,6 +87155,16 @@ fn is_identical(left: &Value, right: &Value) -> bool {
                 data: right_data, ..
             },
         ) => Rc::ptr_eq(left_data, right_data),
+        (
+            Value::DefaultDict {
+                entries: left_entries,
+                ..
+            },
+            Value::DefaultDict {
+                entries: right_entries,
+                ..
+            },
+        ) => Rc::ptr_eq(left_entries, right_entries),
         (
             Value::SimpleNamespace {
                 fields: left_fields,
@@ -87236,7 +87546,9 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::Tuple(items) => Ok(!items.is_empty()),
         Value::Set(items) => Ok(!items.borrow().is_empty()),
         Value::FrozenSet(items) => Ok(!items.is_empty()),
-        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(!entries.borrow().is_empty()),
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::DefaultDict { entries, .. } => {
+            Ok(!entries.borrow().is_empty())
+        }
         Value::ScopeDict(scope) => Ok(!scope.borrow().is_empty()),
         Value::FrameLocalsProxy { locals, .. } => Ok(!locals.borrow().is_empty()),
         Value::DictView { entries, .. } => Ok(!entries.borrow().is_empty()),

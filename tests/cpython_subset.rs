@@ -58640,6 +58640,63 @@ fn cpython_collections_counter_symmetric_difference_absent_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict coverage.
+// This keeps the sandbox subset to pure in-memory default factory behavior and
+// json.dumps mapping treatment, not pickle, merge operators, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_core_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+import json
+
+value = defaultdict()
+print('empty-none', type(value).__name__, repr(value))
+value = defaultdict(list)
+print('empty-list', type(value).__name__, repr(value))
+d = defaultdict(list, {'a': [1]}, b=[2])
+print('factory', d.default_factory is list, d.default_factory.__name__)
+print('existing', d['a'], sorted(d.items()))
+print('get-missing', d.get('x'), 'x' in d, sorted(d.items()))
+print('getitem-missing', d['x'], 'x' in d, sorted(d.items()))
+d.default_factory = int
+print('assign-factory', d.default_factory is int, d['y'])
+d.default_factory = None
+try:
+    d['z']
+except Exception as error:
+    print('none-missing', type(error).__name__, str(error), getattr(error, 'args', None))
+print('copy', repr(d.copy()), d.copy() is d)
+print('json', json.dumps(defaultdict(int, {'a': 1}), sort_keys=True))
+try:
+    defaultdict(3)
+except Exception as error:
+    print('not-callable', type(error).__name__, str(error), getattr(error, 'args', None))
+value = defaultdict(list, a=1, default_factory=int)
+print('bad-kw', type(value).__name__, repr(value))
+def boom():
+    raise ValueError('boom')
+try:
+    defaultdict(boom)['k']
+except Exception as error:
+    print('factory-raises', type(error).__name__, str(error), getattr(error, 'args', None))"#,
+        &[
+            "empty-none defaultdict defaultdict(None, {})",
+            "empty-list defaultdict defaultdict(<class 'list'>, {})",
+            "factory True list",
+            "existing [1] [('a', [1]), ('b', [2])]",
+            "get-missing None False [('a', [1]), ('b', [2])]",
+            "getitem-missing [] True [('a', [1]), ('b', [2]), ('x', [])]",
+            "assign-factory True 0",
+            "none-missing KeyError 'z' ('z',)",
+            "copy defaultdict(None, {'a': [1], 'b': [2], 'x': [], 'y': 0}) False",
+            "json {\"a\": 1}",
+            "not-callable TypeError first argument must be callable or None ('first argument must be callable or None',)",
+            "bad-kw defaultdict defaultdict(<class 'list'>, {'a': 1, 'default_factory': <class 'int'>})",
+            "factory-raises ValueError boom ('boom',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names.
 // This ports the public module-name surface. CPython's C accelerator identity
 // comparison and descriptor behavior are tracked separately in the manifest.

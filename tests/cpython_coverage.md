@@ -595,6 +595,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
+  `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
@@ -1178,6 +1179,13 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_copy_sharing_subset`, covering CPython public
   `ChainMap.copy()` and `copy.copy()` shallow-copy sharing behavior without
   pulling pickle/eval identity matrices into the default sandbox surface.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_core_diff_subset` and
+  `cpython_collections_defaultdict_core_subset`, covering CPython public
+  pure-memory `defaultdict` construction, `default_factory` read/write/reset,
+  missing-key factory insertion, `get()` not invoking missing behavior,
+  `copy()`, constructor error boundaries, factory exception propagation, and
+  `json.dumps()` treating the supported container as a dict-like mapping.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public
@@ -4839,6 +4847,14 @@ without adding general custom encoder/decoder class support.
   `TestChainMap::test_union_operators` semantics for ChainMap/mapping union,
   in-place union, iterable-pair update, iterable-pair rejection for `|`, and
   subclass result-type rules including `SubclassRor.__ror__ -> super()`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_core_diff_subset` and
+  `cpython_collections_defaultdict_core_subset`, covering pure-memory
+  `collections.defaultdict` mapping behavior for the sandbox surface:
+  default-factory storage, missing-key insertion, non-triggering `get()`,
+  shallow `copy()`, callable/`None` factory validation, factory exceptions,
+  and JSON mapping serialization.
+  Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

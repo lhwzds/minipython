@@ -17475,6 +17475,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
+            "cpython_collections_defaultdict_core_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
@@ -17526,6 +17527,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "performance/lifetime internals",
             "thread-safety stress",
             "pickle/eval identity matrices",
+            "full defaultdict pickle/merge operators/subclass compatibility",
             "unported ABC edge matrices",
         ],
     );
@@ -17540,6 +17542,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "performance/lifetime internals",
             "thread-safety stress",
             "pickle/eval identity matrices",
+            "full defaultdict pickle/merge operators/subclass compatibility",
             "unported ABC edge matrices",
         ] {
             assert!(
@@ -18576,10 +18579,88 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "UserString/UserDict missing subset output must pin `{required}`"
         );
     }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_core_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict core behavior"
+    );
+    let defaultdict_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_core_diff_subset",
+    );
+    let defaultdict_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_core_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "defaultdict(list, {'a': [1]}, b=[2])",
+        "d.get('x')",
+        "d['x']",
+        "d.default_factory = int",
+        "d.default_factory = None",
+        "repr(d.copy())",
+        "json.dumps(defaultdict(int, {'a': 1}), sort_keys=True)",
+        "defaultdict(3)",
+        "defaultdict(list, a=1, default_factory=int)",
+        "factory-raises",
+    ] {
+        assert!(
+            defaultdict_diff_body.contains(required) && defaultdict_subset_body.contains(required),
+            "defaultdict core diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty-none defaultdict defaultdict(None, {})\"",
+        "\"empty-list defaultdict defaultdict(<class 'list'>, {})\"",
+        "\"get-missing None False [('a', [1]), ('b', [2])]\"",
+        "\"getitem-missing [] True [('a', [1]), ('b', [2]), ('x', [])]\"",
+        "\"assign-factory True 0\"",
+        "\"none-missing KeyError 'z' ('z',)\"",
+        "\"copy defaultdict(None, {'a': [1], 'b': [2], 'x': [], 'y': 0}) False\"",
+        "\"json {\\\"a\\\": 1}\"",
+        "\"not-callable TypeError first argument must be callable or None ('first argument must be callable or None',)\"",
+        "\"bad-kw defaultdict defaultdict(<class 'list'>, {'a': 1, 'default_factory': <class 'int'>})\"",
+        "\"factory-raises ValueError boom ('boom',)\"",
+    ] {
+        assert!(
+            defaultdict_subset_body.contains(required),
+            "defaultdict core subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::DefaultDict",
+        "call_default_dict_constructor",
+        "load_default_dict_subscript",
+        "default_factory",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_core_subset",
+            "cpython_collections_defaultdict_core_diff_subset",
+            "pure-memory",
+            "`defaultdict`",
+            "default-factory",
+            "`json.dumps()`",
+            "full defaultdict pickle/merge operators/subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict docs must contain `{required}`"
+            );
+        }
+    }
 
     assert!(
         LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")
-            && LANGUAGE_TESTS.contains("'defaultdict', '__all__', '_tuplegetter', '_Link'")
+            && LANGUAGE_TESTS.contains("'deque', 'defaultdict', 'namedtuple'")
+            && LANGUAGE_TESTS.contains("'__all__', '_tuplegetter', '_Link'")
+            && LANGUAGE_TESTS.contains("\"defaultdict True\"")
             && LANGUAGE_TESTS.contains("import collections.abc as abc")
             && LANGUAGE_TESTS.contains("print('abc __all__', hasattr(abc, '__all__'))")
             && LANGUAGE_TESTS.contains("\"abc __all__ True\"")
