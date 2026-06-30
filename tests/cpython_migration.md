@@ -194,6 +194,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ namedtuple builtin __defaults__ metadata,
   object.__getattribute__ namedtuple builtin __kwdefaults__ metadata,
   object.__getattribute__ namedtuple builtin __annotations__ metadata,
+  object.__getattribute__ namedtuple builtin __doc__ first-line metadata,
   object.__getattribute__ ChainMap type-object __qualname__ metadata,
   object.__getattribute__ UserDict type-object __qualname__ metadata,
   object.__getattribute__ UserList type-object __qualname__ metadata,

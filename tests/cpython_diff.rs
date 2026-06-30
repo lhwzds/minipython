@@ -9738,6 +9738,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-builtin-getattribute-defaults-namedtuple None.
     // CPython oracle line: collections-builtin-getattribute-kwdefaults-namedtuple {'rename': False, 'defaults': None, 'module': None}.
     // CPython oracle line: collections-builtin-getattribute-annotations-namedtuple {}.
+    // CPython oracle line: collections-builtin-getattribute-doc-first-line-namedtuple Returns a new subclass of tuple with named fields.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9954,6 +9955,7 @@ print('collections-builtin-getattribute-qualname-namedtuple', object.__getattrib
 print('collections-builtin-getattribute-defaults-namedtuple', object.__getattribute__(namedtuple, '__defaults__'))
 print('collections-builtin-getattribute-kwdefaults-namedtuple', object.__getattribute__(namedtuple, '__kwdefaults__'))
 print('collections-builtin-getattribute-annotations-namedtuple', object.__getattribute__(namedtuple, '__annotations__'))
+print('collections-builtin-getattribute-doc-first-line-namedtuple', object.__getattribute__(namedtuple, '__doc__').splitlines()[0])
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

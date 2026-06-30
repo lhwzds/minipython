@@ -59342,6 +59342,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(dict_value(Vec::new()))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "collections.namedtuple" =>
+        {
+            Ok(Value::String(collections_namedtuple_doc().to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -59694,6 +59699,10 @@ fn json_builtin_doc(name: &str) -> &'static str {
         "json.dumps" => "Serialize a Python object to a JSON formatted string.",
         _ => "",
     }
+}
+
+fn collections_namedtuple_doc() -> &'static str {
+    "Returns a new subclass of tuple with named fields.\n\n>>> Point = namedtuple('Point', ['x', 'y'])\n>>> Point.__doc__                   # docstring for the new class\n'Point(x, y)'\n>>> p = Point(11, y=22)             # instantiate with positional args or keywords\n>>> p[0] + p[1]                     # indexable like a plain tuple\n33\n>>> x, y = p                        # unpack like a regular tuple\n>>> x, y\n(11, 22)\n>>> p.x + p.y                       # fields also accessible by name\n33\n>>> d = p._asdict()                 # convert to a dictionary\n>>> d['x']\n11\n>>> Point(**d)                      # convert from a dictionary\nPoint(x=11, y=22)\n>>> p._replace(x=100)               # _replace() is like str.replace() but targets named fields\nPoint(x=100, y=22)\n\n"
 }
 
 fn json_builtin_kwdefaults(name: &str) -> Value {
