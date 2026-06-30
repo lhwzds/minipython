@@ -27721,6 +27721,64 @@ fn types_class_creation_init_subclass_keyword_error_subset_has_focused_diff_evid
 }
 
 #[test]
+fn types_class_creation_init_subclass_return_value_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_class_creation_init_subclass_return_value_subset",
+    );
+    for required in [
+        "def __init_subclass__(cls):",
+        "return 42",
+        "except BaseException as error:",
+        "print('ok', C.__name__, issubclass(C, Base))",
+        "ok C True",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types class creation __init_subclass__ return-value subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_class_creation_init_subclass_return_value_diff_subset",
+    );
+    for required in [
+        "CPython class creation __init_subclass__ return-value ignored subset",
+        "name: \"types-class-creation-init-subclass-return-value\"",
+        "def __init_subclass__(cls):",
+        "return 42",
+        "print('ok', C.__name__, issubclass(C, Base))",
+    ] {
+        assert!(
+            diff.contains(required),
+            "types class creation __init_subclass__ return-value CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("self.call_value_with_keywords(\n            bind_method(init_subclass"),
+        "class construction must call user-defined __init_subclass__ hooks"
+    );
+    assert!(
+        !VM_SOURCE.contains("TypeError: __init_subclass__() should return None"),
+        "class construction must not reject non-None __init_subclass__ return values"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_class_creation_init_subclass_return_value_subset")
+                && document.contains(
+                    "cpython_types_class_creation_init_subclass_return_value_diff_subset"
+                )
+                && document.contains("return values")
+                && document.contains("ignored"),
+            "types class creation __init_subclass__ return-value evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
@@ -27770,6 +27828,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_class_creation_metaclass_derivation_subset",
             "cpython_types_class_creation_one_argument_type_subset",
             "cpython_types_class_creation_init_subclass_keyword_error_subset",
+            "cpython_types_class_creation_init_subclass_return_value_subset",
             "cpython_types_coroutine_public_subset",
             "cpython_types_coroutine_async_def_subset",
             "cpython_types_coroutine_generator_wrapper_subset",
@@ -27825,6 +27884,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_metaclass_new_error_diff_subset",
         "cpython_types_class_creation_subclass_inherited_slot_update_diff_subset",
         "cpython_types_class_creation_init_subclass_keyword_error_diff_subset",
+        "cpython_types_class_creation_init_subclass_return_value_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_mro_entries_multiple_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",

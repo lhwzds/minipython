@@ -12479,16 +12479,12 @@ impl Vm {
             ));
         };
 
-        let result = self.call_value_with_keywords(
+        self.call_value_with_keywords(
             bind_method(init_subclass, class_value.clone()),
             Vec::new(),
             keywords,
         )?;
-        if matches!(result, Value::None) {
-            Ok(Value::None)
-        } else {
-            Err("__init_subclass__() should return None".to_string())
-        }
+        Ok(Value::None)
     }
 
     fn call_class(

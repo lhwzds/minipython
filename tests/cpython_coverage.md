@@ -483,6 +483,7 @@ Recent runtime migration notes:
   `cpython_types_class_creation_metaclass_new_error_diff_subset`,
   `cpython_types_class_creation_subclass_inherited_slot_update_diff_subset`,
   `cpython_types_class_creation_init_subclass_keyword_error_diff_subset`,
+  `cpython_types_class_creation_init_subclass_return_value_diff_subset`,
   `cpython_types_class_creation_new_class_resolve_bases_diff_subset`,
   `cpython_types_class_creation_mro_entries_core_diff_subset`,
   `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
@@ -4975,6 +4976,12 @@ without adding general custom encoder/decoder class support.
   `C.__init_subclass__() takes no keyword arguments`, for object, int, and list
   bases. Direct output parity is guarded by
   `cpython_types_class_creation_init_subclass_keyword_error_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_class_creation_init_subclass_return_value_subset`, covering
+  non-`None` return values from user-defined `__init_subclass__`: once the hook
+  call succeeds, CPython ignores the returned value and the class is created.
+  Direct output parity is guarded by
+  `cpython_types_class_creation_init_subclass_return_value_diff_subset`.
 - `Lib/test/test_types.py::ClassCreationTests` is now method-audited as
   `ported` in `tests/cpython_test_manifest.md`; all 25 current CPython methods
   have Rust evidence covering the public class-creation helper, metaclass,

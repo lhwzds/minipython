@@ -14100,6 +14100,24 @@ fn cpython_types_class_creation_init_subclass_keyword_error_diff_subset() {
 }
 
 #[test]
+fn cpython_types_class_creation_init_subclass_return_value_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython class creation __init_subclass__ return-value ignored subset",
+        name: "types-class-creation-init-subclass-return-value",
+        source: r#"class Base:
+    def __init_subclass__(cls):
+        return 42
+try:
+    class C(Base):
+        pass
+except BaseException as error:
+    print('error', type(error).__name__, str(error), error.args)
+else:
+    print('ok', C.__name__, issubclass(C, Base))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
