@@ -60749,6 +60749,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
                 .to_string(),
         )),
         ("ByteString", "__text_signature__") => Some(Value::None),
+        ("Buffer", "__doc__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
