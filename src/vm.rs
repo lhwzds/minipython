@@ -16938,6 +16938,11 @@ impl Vm {
             return Err("TypeError: __get__(None, None) is invalid".to_string());
         }
 
+        if name == "default_factory" && owner_name == "collections.defaultdict" {
+            return default_dict_default_factory_descriptor_value(&object)
+                .map(|factory| factory.borrow().clone());
+        }
+
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         fields
             .borrow()
@@ -16958,6 +16963,11 @@ impl Vm {
         else {
             unreachable!("member_descriptor_set is only called with member descriptor values");
         };
+        if name == "default_factory" && owner_name == "collections.defaultdict" {
+            let default_factory = default_dict_default_factory_descriptor_value(&object)?;
+            *default_factory.borrow_mut() = value;
+            return Ok(());
+        }
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         fields.borrow_mut().insert(name, value);
         Ok(())
@@ -16970,6 +16980,11 @@ impl Vm {
         else {
             unreachable!("member_descriptor_delete is only called with member descriptor values");
         };
+        if name == "default_factory" && owner_name == "collections.defaultdict" {
+            let default_factory = default_dict_default_factory_descriptor_value(&object)?;
+            *default_factory.borrow_mut() = Value::None;
+            return Ok(());
+        }
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         if fields.borrow_mut().remove(&name).is_some() {
             Ok(())
@@ -50769,6 +50784,29 @@ fn class_inherits_weakref(bases: &[Value]) -> Result<bool, String> {
     })
 }
 
+fn default_dict_default_factory_descriptor() -> Value {
+    Value::MemberDescriptor {
+        name: "default_factory".to_string(),
+        owner_name: "collections.defaultdict".to_string(),
+        identity: Rc::new(()),
+    }
+}
+
+fn default_dict_default_factory_descriptor_value(
+    object: &Value,
+) -> Result<Rc<RefCell<Value>>, String> {
+    let Value::DefaultDict {
+        default_factory, ..
+    } = object
+    else {
+        return Err(format!(
+            "TypeError: descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a '{}' object",
+            type_name(object)
+        ));
+    };
+    Ok(default_factory.clone())
+}
+
 fn member_descriptor_fields(object: &Value, name: &str, owner_name: &str) -> Result<Scope, String> {
     let Value::Instance {
         class_name,
@@ -58612,6 +58650,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "defaultdict" && name == "fromkeys" => {
             Ok(Value::Builtin("defaultdict.fromkeys".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "defaultdict" && name == "default_factory" =>
+        {
+            Ok(default_dict_default_factory_descriptor())
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))

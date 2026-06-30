@@ -58697,6 +58697,61 @@ except Exception as error:
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict default_factory
+// behavior. This pins the public type-level member_descriptor for
+// default_factory without promoting pickle, merge operators, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_default_factory_descriptor_subset() {
+    assert_output_with_stack(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list)
+for label, thunk in [
+    ('has-type', lambda: hasattr(defaultdict, 'default_factory')),
+    ('dir-type', lambda: 'default_factory' in dir(defaultdict)),
+    ('type-attr', lambda: defaultdict.default_factory),
+    ('descriptor-type', lambda: type(defaultdict.default_factory).__name__),
+    ('descriptor-repr', lambda: repr(defaultdict.default_factory)),
+    ('desc-get-noargs', lambda: defaultdict.default_factory.__get__()),
+    ('desc-get-none', lambda: defaultdict.default_factory.__get__(None, defaultdict)),
+    ('desc-get-inst', lambda: defaultdict.default_factory.__get__(d, defaultdict)),
+    ('desc-get-wrong', lambda: defaultdict.default_factory.__get__({}, dict)),
+    ('desc-set-noargs', lambda: defaultdict.default_factory.__set__()),
+    ('desc-set-inst', lambda: defaultdict.default_factory.__set__(d, int)),
+    ('after-set', lambda: d.default_factory),
+    ('desc-delete-inst', lambda: defaultdict.default_factory.__delete__(d)),
+    ('after-delete', lambda: d.default_factory),
+    ('desc-delete-wrong', lambda: defaultdict.default_factory.__delete__({})),
+]:
+    show(label, thunk)"#,
+        &[
+            "has-type bool True",
+            "dir-type bool True",
+            "type-attr member_descriptor <member 'default_factory' of 'collections.defaultdict' objects>",
+            "descriptor-type str 'member_descriptor'",
+            "descriptor-repr str \"<member 'default_factory' of 'collections.defaultdict' objects>\"",
+            "desc-get-noargs TypeError __get__ expected at least 1 argument, got 0 ('__get__ expected at least 1 argument, got 0',)",
+            "desc-get-none member_descriptor <member 'default_factory' of 'collections.defaultdict' objects>",
+            "desc-get-inst type <class 'list'>",
+            "desc-get-wrong TypeError descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "desc-set-noargs TypeError __set__ expected 2 arguments, got 0 ('__set__ expected 2 arguments, got 0',)",
+            "desc-set-inst NoneType None",
+            "after-set type <class 'int'>",
+            "desc-delete-inst NoneType None",
+            "after-delete NoneType None",
+            "desc-delete-wrong TypeError descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+        ],
+        8 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict copying
 // behavior. This keeps the slice to copy.copy() shallow-copy semantics, not
 // deepcopy, pickle, merge operators, or defaultdict subclassing.

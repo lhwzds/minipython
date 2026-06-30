@@ -596,6 +596,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
+  `cpython_collections_defaultdict_default_factory_descriptor_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
   `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset`,
@@ -1192,6 +1193,14 @@ Recent runtime migration notes:
   missing-key factory insertion, `get()` not invoking missing behavior,
   `copy()`, constructor error boundaries, factory exception propagation, and
   `json.dumps()` treating the supported container as a dict-like mapping.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
+  `cpython_collections_defaultdict_default_factory_descriptor_subset`,
+  covering CPython public `defaultdict.default_factory` type-level
+  `member_descriptor` behavior: type lookup and repr, `__get__` / `__set__` /
+  `__delete__` on the supported pure-memory mapping, method-descriptor self
+  validation, and descriptor arity text without promoting pickle, merge
+  operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering CPython public
@@ -4908,6 +4917,13 @@ without adding general custom encoder/decoder class support.
   shallow `copy()`, callable/`None` factory validation, factory exceptions,
   and JSON mapping serialization.
   Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
+  `cpython_collections_defaultdict_default_factory_descriptor_subset`,
+  covering `defaultdict.default_factory` as a public `member_descriptor` with
+  `__get__` / `__set__` / `__delete__` behavior, method-descriptor self
+  validation, descriptor repr, and descriptor arity text while leaving pickle,
+  merge operators, and subclass compatibility outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering

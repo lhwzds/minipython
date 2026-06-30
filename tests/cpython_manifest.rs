@@ -17476,6 +17476,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
+            "cpython_collections_defaultdict_default_factory_descriptor_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
             "cpython_collections_defaultdict_copy_descriptor_errors_subset",
@@ -18658,6 +18659,93 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_default_factory_descriptor_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict default_factory descriptor behavior"
+    );
+    let defaultdict_factory_descriptor_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_default_factory_descriptor_diff_subset",
+    );
+    let defaultdict_factory_descriptor_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_default_factory_descriptor_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "hasattr(defaultdict, 'default_factory')",
+        "'default_factory' in dir(defaultdict)",
+        "defaultdict.default_factory",
+        "type(defaultdict.default_factory).__name__",
+        "repr(defaultdict.default_factory)",
+        "defaultdict.default_factory.__get__()",
+        "defaultdict.default_factory.__get__(None, defaultdict)",
+        "defaultdict.default_factory.__get__(d, defaultdict)",
+        "defaultdict.default_factory.__get__({}, dict)",
+        "defaultdict.default_factory.__set__()",
+        "defaultdict.default_factory.__set__(d, int)",
+        "defaultdict.default_factory.__delete__(d)",
+        "defaultdict.default_factory.__delete__({})",
+    ] {
+        assert!(
+            defaultdict_factory_descriptor_diff_body.contains(required)
+                && defaultdict_factory_descriptor_subset_body.contains(required),
+            "defaultdict default_factory descriptor diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"has-type bool True\"",
+        "\"dir-type bool True\"",
+        "\"type-attr member_descriptor <member 'default_factory' of 'collections.defaultdict' objects>\"",
+        "\"descriptor-type str 'member_descriptor'\"",
+        "\"descriptor-repr str \\\"<member 'default_factory' of 'collections.defaultdict' objects>\\\"\"",
+        "\"desc-get-noargs TypeError __get__ expected at least 1 argument, got 0 ('__get__ expected at least 1 argument, got 0',)\"",
+        "\"desc-get-none member_descriptor <member 'default_factory' of 'collections.defaultdict' objects>\"",
+        "\"desc-get-inst type <class 'list'>\"",
+        "\"desc-get-wrong TypeError descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\\\"descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\\\",)\"",
+        "\"desc-set-noargs TypeError __set__ expected 2 arguments, got 0 ('__set__ expected 2 arguments, got 0',)\"",
+        "\"desc-set-inst NoneType None\"",
+        "\"after-set type <class 'int'>\"",
+        "\"desc-delete-inst NoneType None\"",
+        "\"after-delete NoneType None\"",
+        "\"desc-delete-wrong TypeError descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\\\"descriptor 'default_factory' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\\\",)\"",
+    ] {
+        assert!(
+            defaultdict_factory_descriptor_subset_body.contains(required),
+            "defaultdict default_factory descriptor subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn default_dict_default_factory_descriptor(",
+        "\"collections.defaultdict\"",
+        "default_dict_default_factory_descriptor_value(&object)",
+        "function_name == \"defaultdict\" && name == \"default_factory\"",
+        "Value::MemberDescriptor",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict default_factory descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_default_factory_descriptor_subset",
+            "cpython_collections_defaultdict_default_factory_descriptor_diff_subset",
+            "`defaultdict.default_factory`",
+            "member_descriptor",
+            "`__get__` / `__set__` / `__delete__`",
+            "method-descriptor self validation",
+            "pickle",
+            "merge operators",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict default_factory descriptor docs must contain `{required}`"
             );
         }
     }

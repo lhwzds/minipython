@@ -18339,6 +18339,42 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_collections_defaultdict_default_factory_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict default_factory member descriptor subset",
+        name: "collections-defaultdict-default-factory-descriptor",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list)
+for label, thunk in [
+    ('has-type', lambda: hasattr(defaultdict, 'default_factory')),
+    ('dir-type', lambda: 'default_factory' in dir(defaultdict)),
+    ('type-attr', lambda: defaultdict.default_factory),
+    ('descriptor-type', lambda: type(defaultdict.default_factory).__name__),
+    ('descriptor-repr', lambda: repr(defaultdict.default_factory)),
+    ('desc-get-noargs', lambda: defaultdict.default_factory.__get__()),
+    ('desc-get-none', lambda: defaultdict.default_factory.__get__(None, defaultdict)),
+    ('desc-get-inst', lambda: defaultdict.default_factory.__get__(d, defaultdict)),
+    ('desc-get-wrong', lambda: defaultdict.default_factory.__get__({}, dict)),
+    ('desc-set-noargs', lambda: defaultdict.default_factory.__set__()),
+    ('desc-set-inst', lambda: defaultdict.default_factory.__set__(d, int)),
+    ('after-set', lambda: d.default_factory),
+    ('desc-delete-inst', lambda: defaultdict.default_factory.__delete__(d)),
+    ('after-delete', lambda: d.default_factory),
+    ('desc-delete-wrong', lambda: defaultdict.default_factory.__delete__({})),
+]:
+    show(label, thunk)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_copy_module_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict copy.copy public behavior subset",
