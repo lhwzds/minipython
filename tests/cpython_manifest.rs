@@ -27666,6 +27666,61 @@ fn types_union_forward_ref_pins_typevar_repr() {
 }
 
 #[test]
+fn types_class_creation_init_subclass_keyword_error_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_class_creation_init_subclass_keyword_error_subset",
+    );
+    for required in [
+        "class C(base, flag=1):",
+        "base.__name__",
+        "C.__init_subclass__() takes no keyword arguments",
+        "error.args",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types class creation __init_subclass__ keyword subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_class_creation_init_subclass_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py class-statement keyword error owner subset",
+        "name: \"types-class-creation-init-subclass-keyword-error\"",
+        "class C(base, flag=1):",
+        "print(base.__name__, type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            diff.contains(required),
+            "types class creation __init_subclass__ keyword CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("TypeError: {name}.__init_subclass__() takes no keyword arguments"),
+        "class construction must report the newly created class owner for object.__init_subclass__ keyword errors"
+    );
+    assert!(
+        !VM_SOURCE.contains("TypeError: object.__init_subclass__() takes no keyword arguments"),
+        "class construction must not hard-code object as the public keyword-error owner"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_class_creation_init_subclass_keyword_error_subset")
+                && document.contains(
+                    "cpython_types_class_creation_init_subclass_keyword_error_diff_subset"
+                )
+                && document.contains("C.__init_subclass__() takes no keyword arguments"),
+            "types class creation __init_subclass__ keyword evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
@@ -27714,6 +27769,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_class_creation_non_type_metaclass_derivation_subset",
             "cpython_types_class_creation_metaclass_derivation_subset",
             "cpython_types_class_creation_one_argument_type_subset",
+            "cpython_types_class_creation_init_subclass_keyword_error_subset",
             "cpython_types_coroutine_public_subset",
             "cpython_types_coroutine_async_def_subset",
             "cpython_types_coroutine_generator_wrapper_subset",
@@ -27768,6 +27824,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_get_original_bases_diff_subset",
         "cpython_types_class_creation_metaclass_new_error_diff_subset",
         "cpython_types_class_creation_subclass_inherited_slot_update_diff_subset",
+        "cpython_types_class_creation_init_subclass_keyword_error_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_mro_entries_multiple_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",

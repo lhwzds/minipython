@@ -12466,7 +12466,7 @@ impl Vm {
         class_value: &Value,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let Value::Class { bases, .. } = class_value else {
+        let Value::Class { name, bases, .. } = class_value else {
             return Ok(Value::None);
         };
 
@@ -12474,9 +12474,9 @@ impl Vm {
             if keywords.is_empty() {
                 return Ok(Value::None);
             }
-            return Err(
-                "TypeError: object.__init_subclass__() takes no keyword arguments".to_string(),
-            );
+            return Err(format!(
+                "TypeError: {name}.__init_subclass__() takes no keyword arguments"
+            ));
         };
 
         let result = self.call_value_with_keywords(

@@ -53994,6 +53994,28 @@ fn cpython_types_class_creation_subclass_inherited_slot_update_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py class-statement keyword handling.
+// Class-header keywords that reach object.__init_subclass__ report the newly
+// created class owner in the public TypeError message.
+#[test]
+fn cpython_types_class_creation_init_subclass_keyword_error_subset() {
+    assert_output(
+        concat!(
+            "for base in [object, int, list]:\n",
+            "    try:\n",
+            "        class C(base, flag=1):\n",
+            "            pass\n",
+            "    except TypeError as error:\n",
+            "        print(base.__name__, type(error).__name__, str(error), error.args)"
+        ),
+        &[
+            "object TypeError C.__init_subclass__() takes no keyword arguments ('C.__init_subclass__() takes no keyword arguments',)",
+            "int TypeError C.__init_subclass__() takes no keyword arguments ('C.__init_subclass__() takes no keyword arguments',)",
+            "list TypeError C.__init_subclass__() takes no keyword arguments ('C.__init_subclass__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests. MiniPython
 // covers the exact-dict MappingProxyType path here; dict subclasses and
 // ChainMap remain a later object-model slice.

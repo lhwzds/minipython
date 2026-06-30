@@ -14086,6 +14086,20 @@ print(d[None] is None)"#,
 }
 
 #[test]
+fn cpython_types_class_creation_init_subclass_keyword_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py class-statement keyword error owner subset",
+        name: "types-class-creation-init-subclass-keyword-error",
+        source: r#"for base in [object, int, list]:
+    try:
+        class C(base, flag=1):
+            pass
+    except TypeError as error:
+        print(base.__name__, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
