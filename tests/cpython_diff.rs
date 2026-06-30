@@ -4106,6 +4106,8 @@ for label, data, text in [
 show('loads-trailing-data', lambda: json.loads('{} []'))
 show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
 show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))
+show_message('loads-array-trailing-comma-text', lambda: json.loads('[1,]'), "Illegal trailing comma before end of array: line 1 column 3 (char 2)")
+show_message('loads-object-trailing-comma-text', lambda: json.loads('{"a": 1,}'), "Illegal trailing comma before end of object: line 1 column 8 (char 7)")
 show('loads-missing-colon', lambda: json.loads('{"a" 1}'))
 show_message('loads-missing-colon-text', lambda: json.loads('{"a" 1}'), "Expecting ':' delimiter")
 show_message('loads-array-missing-comma-text', lambda: json.loads('[1 2]'), "Expecting ',' delimiter")
@@ -4152,6 +4154,26 @@ Cycle = namedtuple('Cycle', 'items')
 cycle_namedtuple = Cycle(items)
 items.append(cycle_namedtuple)
 show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_trailing_comma_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public trailing comma decode messages subset",
+        name: "json-loads-trailing-comma-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-array-trailing-comma-text', '[1,]', 'Illegal trailing comma before end of array: line 1 column 3 (char 2)')
+show('loads-object-trailing-comma-text', '{"a": 1,}', 'Illegal trailing comma before end of object: line 1 column 8 (char 7)')"#,
     });
 }
 

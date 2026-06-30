@@ -9085,6 +9085,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_string_error_boundary_diff_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ),
+        (
+            "cpython_json_loads_trailing_comma_message_diff_subset",
+            "cpython_json_loads_trailing_comma_message_subset",
+        ),
     ] {
         assert!(
             CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
@@ -9111,6 +9115,11 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "loads-odd-trailing-nul",
         "loads-trailing-data",
         "loads-array-trailing-comma",
+        "loads-object-trailing-comma",
+        "loads-array-trailing-comma-text",
+        "loads-object-trailing-comma-text",
+        "Illegal trailing comma before end of array: line 1 column 3 (char 2)",
+        "Illegal trailing comma before end of object: line 1 column 8 (char 7)",
         "loads-leading-zero-extra",
         "Extra data",
         "loads-missing-colon-text",
@@ -9132,6 +9141,18 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "json error-boundary diff and subset evidence must both cover `{required}`"
         );
     }
+
+    for required in [
+        "Illegal trailing comma before end of array",
+        "Illegal trailing comma before end of object",
+        "fn error_at",
+        "fn line_column",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json parser implementation must include trailing-comma location evidence `{required}`"
+        );
+    }
 }
 
 #[test]
@@ -9144,6 +9165,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_string_error_boundary_diff_subset",
             "cpython_json_loads_string_error_boundary_subset",
+        ),
+        (
+            "cpython_json_loads_trailing_comma_message_diff_subset",
+            "cpython_json_loads_trailing_comma_message_subset",
         ),
     ];
 
@@ -9171,6 +9196,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "loads-trailing-data",
         "loads-array-trailing-comma",
         "loads-object-trailing-comma",
+        "loads-array-trailing-comma-text",
+        "loads-object-trailing-comma-text",
+        "Illegal trailing comma before end of array: line 1 column 3 (char 2)",
+        "Illegal trailing comma before end of object: line 1 column 8 (char 7)",
         "loads-missing-colon-text",
         "loads-array-missing-comma-text",
         "loads-object-missing-comma-text",
@@ -9213,6 +9242,8 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-odd-leading-nul True False True\"",
         "\"loads-odd-trailing-nul True False True\"",
         "\"loads-leading-zero-extra True\"",
+        "\"loads-array-trailing-comma-text True True True\"",
+        "\"loads-object-trailing-comma-text True True True\"",
         "\"loads-missing-colon-text True\"",
         "\"loads-array-missing-comma-text True\"",
         "\"loads-object-missing-comma-text True\"",
@@ -9245,6 +9276,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "invalid UTF-8 byte input and string-input UTF-8 BOM rejection",
             "odd-length NUL-containing byte input falls through to JSON parser errors",
             "structural JSON parse failures including trailing data and trailing commas",
+            "CPython public trailing-comma messages for arrays and objects include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

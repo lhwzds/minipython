@@ -1773,6 +1773,10 @@ invalid UTF-8 byte input and string-input UTF-8 BOM rejection, structural JSON p
 odd-length NUL-containing byte input falls through to JSON parser errors,
 unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview,
 and circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers.
+The CPython public trailing-comma messages for arrays and objects include line/column/char positions;
+`cpython_json_loads_trailing_comma_message_subset`, backed by
+`cpython_json_loads_trailing_comma_message_diff_subset`, pins those public `str(error)` / `args` values
+without adding full `JSONDecodeError` compatibility.
 `cpython_json_loads_string_error_boundary_subset`, backed by
 `cpython_json_loads_string_error_boundary_diff_subset`, keeps the `loads()` string escape/control-character error boundary for
 bad escapes, short Unicode escapes, non-hex Unicode escapes, raw newline, and raw tab,

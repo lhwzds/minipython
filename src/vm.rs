@@ -63523,7 +63523,12 @@ impl<'a> JsonParser<'a> {
             if self.consume_if('}') {
                 break;
             }
+            let comma_pos = self.pos;
             self.expect_char_with_message(',', "Expecting ',' delimiter")?;
+            self.skip_whitespace();
+            if self.peek() == Some('}') {
+                return self.error_at(comma_pos, "Illegal trailing comma before end of object");
+            }
         }
         self.apply_object_hooks(entries, pairs)
     }
@@ -63542,7 +63547,12 @@ impl<'a> JsonParser<'a> {
             if self.consume_if(']') {
                 break;
             }
+            let comma_pos = self.pos;
             self.expect_char_with_message(',', "Expecting ',' delimiter")?;
+            self.skip_whitespace();
+            if self.peek() == Some(']') {
+                return self.error_at(comma_pos, "Illegal trailing comma before end of array");
+            }
         }
         Ok(list_value(values))
     }
@@ -63788,6 +63798,27 @@ impl<'a> JsonParser<'a> {
 
     fn error<T>(&self, message: &str) -> Result<T, String> {
         Err(format!("ValueError: {message} in json.loads() subset"))
+    }
+
+    fn error_at<T>(&self, pos: usize, message: &str) -> Result<T, String> {
+        let (line, column) = self.line_column(pos);
+        Err(format!(
+            "ValueError: {message}: line {line} column {column} (char {pos})"
+        ))
+    }
+
+    fn line_column(&self, pos: usize) -> (usize, usize) {
+        let mut line = 1;
+        let mut column = 1;
+        for ch in self.chars.iter().take(pos) {
+            if *ch == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
+        (line, column)
     }
 }
 
