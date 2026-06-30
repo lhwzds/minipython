@@ -25271,6 +25271,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-doc-values-view None"],
     );
     assert_output(
+        "from collections.abc import ValuesView\nprint('collections-abc-type-getattribute-text-signature-values-view', object.__getattribute__(ValuesView, '__text_signature__'))",
+        &["collections-abc-type-getattribute-text-signature-values-view None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );

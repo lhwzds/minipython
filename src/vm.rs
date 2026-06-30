@@ -60780,6 +60780,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
         ("ItemsView", "__doc__") => Some(Value::None),
         ("ItemsView", "__text_signature__") => Some(Value::None),
         ("ValuesView", "__doc__") => Some(Value::None),
+        ("ValuesView", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
