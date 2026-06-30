@@ -27819,7 +27819,7 @@ fn types_class_creation_init_subclass_unexpected_keyword_owner_subset_has_focuse
         "class construction must retain the __init_subclass__ defining owner"
     );
     assert!(
-        VM_SOURCE.contains("qualify_init_subclass_keyword_error"),
+        VM_SOURCE.contains("qualify_init_subclass_call_error"),
         "class construction must qualify user-defined __init_subclass__ keyword errors"
     );
 
@@ -27832,6 +27832,65 @@ fn types_class_creation_init_subclass_unexpected_keyword_owner_subset_has_focuse
             ) && document
                 .contains("Base.__init_subclass__() got an unexpected keyword argument 'flag'"),
             "types class creation __init_subclass__ unexpected-keyword owner evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_class_creation_init_subclass_missing_required_owner_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_class_creation_init_subclass_missing_required_owner_subset",
+    );
+    for required in [
+        "def __init_subclass__(cls, flag):",
+        "class Direct(Base):",
+        "class Inherited(Child):",
+        "Base.__init_subclass__() missing 1 required positional argument: 'flag'",
+        "error.args",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types class creation __init_subclass__ missing-required owner subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset",
+    );
+    for required in [
+        "CPython class creation __init_subclass__ missing required owner subset",
+        "name: \"types-class-creation-init-subclass-missing-required-owner\"",
+        "class Direct(Base):",
+        "class Inherited(Child):",
+        "print('inherited', type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            diff.contains(required),
+            "types class creation __init_subclass__ missing-required owner CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("find_base_attr_by_mro_with_owner(bases, \"__init_subclass__\")"),
+        "class construction must retain the __init_subclass__ defining owner"
+    );
+    assert!(
+        VM_SOURCE.contains("missing 1 required positional argument: {parameter}"),
+        "class construction must report CPython-style missing required __init_subclass__ arguments"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(
+                "cpython_types_class_creation_init_subclass_missing_required_owner_subset"
+            ) && document.contains(
+                "cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset"
+            ) && document.contains(
+                "Base.__init_subclass__() missing 1 required positional argument: 'flag'"
+            ),
+            "types class creation __init_subclass__ missing-required owner evidence must be documented in coverage and migration notes"
         );
     }
 }
@@ -27888,6 +27947,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_class_creation_init_subclass_keyword_error_subset",
             "cpython_types_class_creation_init_subclass_return_value_subset",
             "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset",
+            "cpython_types_class_creation_init_subclass_missing_required_owner_subset",
             "cpython_types_coroutine_public_subset",
             "cpython_types_coroutine_async_def_subset",
             "cpython_types_coroutine_generator_wrapper_subset",
@@ -27945,6 +28005,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_init_subclass_keyword_error_diff_subset",
         "cpython_types_class_creation_init_subclass_return_value_diff_subset",
         "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset",
+        "cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_mro_entries_multiple_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",

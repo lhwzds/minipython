@@ -485,6 +485,7 @@ Recent runtime migration notes:
   `cpython_types_class_creation_init_subclass_keyword_error_diff_subset`,
   `cpython_types_class_creation_init_subclass_return_value_diff_subset`,
   `cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset`,
+  `cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset`,
   `cpython_types_class_creation_new_class_resolve_bases_diff_subset`,
   `cpython_types_class_creation_mro_entries_core_diff_subset`,
   `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
@@ -4991,6 +4992,14 @@ without adding general custom encoder/decoder class support.
   `Base.__init_subclass__() got an unexpected keyword argument 'flag'`.
   Direct output parity is guarded by
   `cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_class_creation_init_subclass_missing_required_owner_subset`,
+  covering missing required arguments in user-defined `__init_subclass__`
+  hooks: the public `TypeError` reports the hook's defining class and CPython's
+  positional-argument wording, including inherited hooks, such as
+  `Base.__init_subclass__() missing 1 required positional argument: 'flag'`.
+  Direct output parity is guarded by
+  `cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset`.
 - `Lib/test/test_types.py::ClassCreationTests` is now method-audited as
   `ported` in `tests/cpython_test_manifest.md`; all 25 current CPython methods
   have Rust evidence covering the public class-creation helper, metaclass,

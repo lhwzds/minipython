@@ -12486,7 +12486,7 @@ impl Vm {
             Vec::new(),
             keywords,
         )
-        .map_err(|message| qualify_init_subclass_keyword_error(message, &init_subclass_owner))?;
+        .map_err(|message| qualify_init_subclass_call_error(message, &init_subclass_owner))?;
         Ok(Value::None)
     }
 
@@ -50207,21 +50207,30 @@ fn find_base_attr_by_mro_with_owner(bases: &[Value], name: &str) -> Option<(Valu
     })
 }
 
-fn qualify_init_subclass_keyword_error(message: String, owner: &Value) -> String {
-    let rest = message
-        .strip_prefix("TypeError: __init_subclass__() got an unexpected keyword argument ")
-        .or_else(|| {
-            message.strip_prefix("__init_subclass__() got an unexpected keyword argument ")
-        });
-    let Some(rest) = rest else {
-        return message;
-    };
-
+fn qualify_init_subclass_call_error(message: String, owner: &Value) -> String {
     let Value::Class { name, .. } = owner else {
         return message;
     };
 
-    format!("TypeError: {name}.__init_subclass__() got an unexpected keyword argument {rest}")
+    if let Some(rest) = message
+        .strip_prefix("TypeError: __init_subclass__() got an unexpected keyword argument ")
+        .or_else(|| message.strip_prefix("__init_subclass__() got an unexpected keyword argument "))
+    {
+        return format!(
+            "TypeError: {name}.__init_subclass__() got an unexpected keyword argument {rest}"
+        );
+    }
+
+    if let Some(parameter) = message
+        .strip_prefix("TypeError: __init_subclass__() missing required argument ")
+        .or_else(|| message.strip_prefix("__init_subclass__() missing required argument "))
+    {
+        return format!(
+            "TypeError: {name}.__init_subclass__() missing 1 required positional argument: {parameter}"
+        );
+    }
+
+    message
 }
 
 fn attach_owner_class_to_members(class: &Value) {

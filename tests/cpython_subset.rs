@@ -54067,6 +54067,36 @@ fn cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset() 
     );
 }
 
+// Adapted from CPython class creation public behavior. Missing required
+// arguments in user-defined __init_subclass__ hooks report the defining class.
+#[test]
+fn cpython_types_class_creation_init_subclass_missing_required_owner_subset() {
+    assert_output(
+        concat!(
+            "class Base:\n",
+            "    def __init_subclass__(cls, flag):\n",
+            "        pass\n",
+            "try:\n",
+            "    class Direct(Base):\n",
+            "        pass\n",
+            "except TypeError as error:\n",
+            "    print('direct', type(error).__name__, str(error), error.args)\n",
+            "\n",
+            "class Child(Base, flag=1):\n",
+            "    pass\n",
+            "try:\n",
+            "    class Inherited(Child):\n",
+            "        pass\n",
+            "except TypeError as error:\n",
+            "    print('inherited', type(error).__name__, str(error), error.args)"
+        ),
+        &[
+            "direct TypeError Base.__init_subclass__() missing 1 required positional argument: 'flag' (\"Base.__init_subclass__() missing 1 required positional argument: 'flag'\",)",
+            "inherited TypeError Base.__init_subclass__() missing 1 required positional argument: 'flag' (\"Base.__init_subclass__() missing 1 required positional argument: 'flag'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests. MiniPython
 // covers the exact-dict MappingProxyType path here; dict subclasses and
 // ChainMap remain a later object-model slice.
