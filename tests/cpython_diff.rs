@@ -9744,6 +9744,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-builtin-getattribute-doc-count-elements Count elements in the iterable, updating the mapping.
     // CPython oracle line: collections-builtin-getattribute-text-signature-count-elements ($module, mapping, iterable, /).
     // CPython oracle line: collections-abc-type-getattribute-doc-hashable None.
+    // CPython oracle line: collections-abc-type-getattribute-text-signature-hashable None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9968,6 +9969,7 @@ print('collections-builtin-getattribute-doc-count-elements', object.__getattribu
 print('collections-builtin-getattribute-text-signature-count-elements', object.__getattribute__(_count_elements, '__text_signature__'))
 from collections.abc import Hashable
 print('collections-abc-type-getattribute-doc-hashable', object.__getattribute__(Hashable, '__doc__'))
+print('collections-abc-type-getattribute-text-signature-hashable', object.__getattribute__(Hashable, '__text_signature__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

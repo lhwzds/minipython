@@ -25077,6 +25077,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-doc-hashable None"],
     );
     assert_output(
+        "from collections.abc import Hashable\nprint('collections-abc-type-getattribute-text-signature-hashable', object.__getattribute__(Hashable, '__text_signature__'))",
+        &["collections-abc-type-getattribute-text-signature-hashable None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
