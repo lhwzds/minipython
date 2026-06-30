@@ -25147,6 +25147,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-sequence None"],
     );
     assert_output(
+        "from collections.abc import MutableSequence\nprint('collections-abc-type-getattribute-doc-mutable-sequence-repr', repr(object.__getattribute__(MutableSequence, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-mutable-sequence-repr 'All the operations on a read-write sequence.\n\nConcrete subclasses must provide __new__ or __init__,\n__getitem__, __setitem__, __delitem__, __len__, and insert().\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );

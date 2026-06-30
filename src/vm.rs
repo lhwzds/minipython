@@ -60739,6 +60739,10 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
                 .to_string(),
         )),
         ("Sequence", "__text_signature__") => Some(Value::None),
+        ("MutableSequence", "__doc__") => Some(Value::String(
+            "All the operations on a read-write sequence.\n\nConcrete subclasses must provide __new__ or __init__,\n__getitem__, __setitem__, __delitem__, __len__, and insert().\n"
+                .to_string(),
+        )),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
