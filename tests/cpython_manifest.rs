@@ -22563,6 +22563,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-async-iterator None",
         "collections-abc-type-getattribute-text-signature-async-iterator None",
         "collections-abc-type-getattribute-doc-async-generator None",
+        "collections-abc-type-getattribute-text-signature-async-generator None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22815,6 +22816,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-async-iterator None",
         "collections-abc-type-getattribute-text-signature-async-iterator None",
         "collections-abc-type-getattribute-doc-async-generator None",
+        "collections-abc-type-getattribute-text-signature-async-generator None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23083,6 +23085,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document.contains(
                     "object.__getattribute__ AsyncGenerator ABC type-object __doc__ metadata"
+                )
+                && document.contains(
+                    "object.__getattribute__ AsyncGenerator ABC type-object __text_signature__ metadata"
                 )
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")

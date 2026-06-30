@@ -60760,6 +60760,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
         ("AsyncIterator", "__doc__") => Some(Value::None),
         ("AsyncIterator", "__text_signature__") => Some(Value::None),
         ("AsyncGenerator", "__doc__") => Some(Value::None),
+        ("AsyncGenerator", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
