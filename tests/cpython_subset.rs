@@ -39160,6 +39160,28 @@ fn cpython_json_loads_dumps_error_boundary_subset() {
 }
 
 #[test]
+fn cpython_json_loads_string_bom_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-string-bom-object-full-text', chr(65279) + '{}', 'Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)')\n",
+            "show('loads-string-bom-number-full-text', chr(65279) + '1', 'Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)')"
+        ),
+        &[
+            "loads-string-bom-object-full-text True True True",
+            "loads-string-bom-number-full-text True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_trailing_comma_message_subset() {
     assert_output(
         concat!(

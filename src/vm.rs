@@ -63451,7 +63451,7 @@ impl<'a> JsonParser<'a> {
 
     fn parse(&mut self) -> Result<Value, String> {
         if self.peek() == Some('\u{feff}') {
-            return self.error("Unexpected UTF-8 BOM (decode using utf-8-sig)");
+            return self.error_at(0, "Unexpected UTF-8 BOM (decode using utf-8-sig)");
         }
         self.skip_whitespace();
         let value = self.parse_value()?;

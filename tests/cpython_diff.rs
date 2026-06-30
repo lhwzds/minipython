@@ -4158,6 +4158,26 @@ show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
 }
 
 #[test]
+fn cpython_json_loads_string_bom_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public string-input BOM decode messages subset",
+        name: "json-loads-string-bom-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-string-bom-object-full-text', chr(65279) + '{}', 'Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)')
+show('loads-string-bom-number-full-text', chr(65279) + '1', 'Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)')"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_trailing_comma_message_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public trailing comma decode messages subset",
