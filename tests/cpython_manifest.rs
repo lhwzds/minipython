@@ -22571,6 +22571,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-mutable-mapping-repr 'A MutableMapping is a generic container for associating\\nkey/value pairs.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __getitem__, __setitem__, __delitem__,\\n__iter__, and __len__.\\n'",
         "collections-abc-type-getattribute-text-signature-mutable-mapping None",
         "collections-abc-type-getattribute-doc-mapping-view None",
+        "collections-abc-type-getattribute-text-signature-mapping-view None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22831,6 +22832,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-mutable-mapping-repr 'A MutableMapping is a generic container for associating\\nkey/value pairs.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __getitem__, __setitem__, __delitem__,\\n__iter__, and __len__.\\n'",
         "collections-abc-type-getattribute-text-signature-mutable-mapping None",
         "collections-abc-type-getattribute-doc-mapping-view None",
+        "collections-abc-type-getattribute-text-signature-mapping-view None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23121,6 +23123,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document
                     .contains("object.__getattribute__ MappingView ABC type-object __doc__ metadata")
+                && document.contains(
+                    "object.__getattribute__ MappingView ABC type-object __text_signature__ metadata"
+                )
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document

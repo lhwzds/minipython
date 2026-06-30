@@ -60774,6 +60774,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
         )),
         ("MutableMapping", "__text_signature__") => Some(Value::None),
         ("MappingView", "__doc__") => Some(Value::None),
+        ("MappingView", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
