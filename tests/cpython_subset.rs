@@ -25207,6 +25207,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-async-iterator None"],
     );
     assert_output(
+        "from collections.abc import AsyncGenerator\nprint('collections-abc-type-getattribute-doc-async-generator', object.__getattribute__(AsyncGenerator, '__doc__'))",
+        &["collections-abc-type-getattribute-doc-async-generator None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
