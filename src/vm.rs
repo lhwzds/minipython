@@ -60768,6 +60768,10 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
                 .to_string(),
         )),
         ("Mapping", "__text_signature__") => Some(Value::None),
+        ("MutableMapping", "__doc__") => Some(Value::String(
+            "A MutableMapping is a generic container for associating\nkey/value pairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __setitem__, __delitem__,\n__iter__, and __len__.\n"
+                .to_string(),
+        )),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",

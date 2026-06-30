@@ -25233,6 +25233,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-mapping None"],
     );
     assert_output(
+        "from collections.abc import MutableMapping\nprint('collections-abc-type-getattribute-doc-mutable-mapping-repr', repr(object.__getattribute__(MutableMapping, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-mutable-mapping-repr 'A MutableMapping is a generic container for associating\nkey/value pairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __setitem__, __delitem__,\n__iter__, and __len__.\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
