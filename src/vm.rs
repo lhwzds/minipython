@@ -59090,6 +59090,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "UserDict" => {
             Ok(Value::String(function_name))
         }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "UserList" => {
+            Ok(Value::String(function_name))
+        }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "GenericAlias" =>
         {
