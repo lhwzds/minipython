@@ -59328,6 +59328,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("_count_elements".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "collections._count_elements" =>
+        {
+            Ok(Value::String(
+                "Count elements in the iterable, updating the mapping".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "collections.namedtuple" =>
         {
             Ok(Value::String("namedtuple".to_string()))

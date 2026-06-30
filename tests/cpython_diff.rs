@@ -9741,6 +9741,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-builtin-getattribute-doc-first-line-namedtuple Returns a new subclass of tuple with named fields.
     // CPython oracle line: collections-builtin-getattribute-module-count-elements _collections.
     // CPython oracle line: collections-builtin-getattribute-qualname-count-elements _count_elements.
+    // CPython oracle line: collections-builtin-getattribute-doc-count-elements Count elements in the iterable, updating the mapping.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9961,6 +9962,7 @@ print('collections-builtin-getattribute-doc-first-line-namedtuple', object.__get
 from collections import _count_elements
 print('collections-builtin-getattribute-module-count-elements', object.__getattribute__(_count_elements, '__module__'))
 print('collections-builtin-getattribute-qualname-count-elements', object.__getattribute__(_count_elements, '__qualname__'))
+print('collections-builtin-getattribute-doc-count-elements', object.__getattribute__(_count_elements, '__doc__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
