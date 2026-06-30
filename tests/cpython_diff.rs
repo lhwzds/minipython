@@ -4267,6 +4267,27 @@ show('raw-tab', '"a\tb"')"#,
 }
 
 #[test]
+fn cpython_json_loads_invalid_escape_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public invalid escape decode messages subset",
+        name: "json-loads-invalid-escape-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-invalid-q-escape-full-text', '"\\q"', 'Invalid \\escape: line 1 column 2 (char 1)')
+show('loads-array-invalid-escape-full-text', '["\\q"]', 'Invalid \\escape: line 1 column 3 (char 2)')
+show('loads-object-invalid-escape-full-text', '{"a":"\\q"}', 'Invalid \\escape: line 1 column 7 (char 6)')"#,
+    });
+}
+
+#[test]
 fn cpython_math_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py public pure-memory core subset",

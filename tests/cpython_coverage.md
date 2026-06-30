@@ -1793,6 +1793,10 @@ without adding full `JSONDecodeError` compatibility.
 `cpython_json_loads_string_error_boundary_diff_subset`, keeps the `loads()` string escape/control-character error boundary for
 bad escapes, short Unicode escapes, non-hex Unicode escapes, raw newline, and raw tab,
 without adding full `JSONDecodeError` compatibility or host-backed serialization.
+CPython public invalid-escape messages include line/column/char positions;
+`cpython_json_loads_invalid_escape_message_subset`, backed by
+`cpython_json_loads_invalid_escape_message_diff_subset`, pins those public `str(error)` / `args` values
+without adding full `JSONDecodeError` compatibility.
 
 `cpython_json_loads_escape_and_duplicate_key_subset`, backed by
 `cpython_json_loads_escape_and_duplicate_key_diff_subset`, keeps `loads()` escape and duplicate-key parsing for

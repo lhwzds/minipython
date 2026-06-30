@@ -39287,6 +39287,30 @@ fn cpython_json_loads_string_error_boundary_subset() {
     );
 }
 
+#[test]
+fn cpython_json_loads_invalid_escape_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-invalid-q-escape-full-text', '\"\\\\q\"', 'Invalid \\\\escape: line 1 column 2 (char 1)')\n",
+            "show('loads-array-invalid-escape-full-text', '[\"\\\\q\"]', 'Invalid \\\\escape: line 1 column 3 (char 2)')\n",
+            "show('loads-object-invalid-escape-full-text', '{\"a\":\"\\\\q\"}', 'Invalid \\\\escape: line 1 column 7 (char 6)')"
+        ),
+        &[
+            "loads-invalid-q-escape-full-text True True True",
+            "loads-array-invalid-escape-full-text True True True",
+            "loads-object-invalid-escape-full-text True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray

@@ -63567,7 +63567,10 @@ impl<'a> JsonParser<'a> {
             };
             match ch {
                 '"' => return Ok(value),
-                '\\' => value.push_str(&self.parse_escape()?),
+                '\\' => {
+                    let backslash_pos = self.pos.saturating_sub(1);
+                    value.push_str(&self.parse_escape(backslash_pos)?);
+                }
                 ch if self.strict && ch <= '\u{1f}' => {
                     return self.error("Invalid control character");
                 }
@@ -63576,7 +63579,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn parse_escape(&mut self) -> Result<String, String> {
+    fn parse_escape(&mut self, backslash_pos: usize) -> Result<String, String> {
         let Some(ch) = self.next() else {
             return self.error("Invalid escape");
         };
@@ -63590,7 +63593,7 @@ impl<'a> JsonParser<'a> {
             'r' => Ok("\r".to_string()),
             't' => Ok("\t".to_string()),
             'u' => self.parse_unicode_escape(),
-            _ => self.error("Invalid escape"),
+            _ => self.error_at(backslash_pos, "Invalid \\escape"),
         }
     }
 
