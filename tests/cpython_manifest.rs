@@ -22553,6 +22553,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-bytestring-repr 'Deprecated ABC serving as a common supertype of ``bytes`` and ``bytearray``.\\n\\nThis ABC is scheduled for removal in Python 3.17.\\nUse ``isinstance(obj, collections.abc.Buffer)`` to test if ``obj``\\nimplements the buffer protocol at runtime. For use in type annotations,\\neither use ``Buffer`` or a union that explicitly specifies the types your\\ncode supports (e.g., ``bytes | bytearray | memoryview``).\\n'",
         "collections-abc-type-getattribute-text-signature-bytestring None",
         "collections-abc-type-getattribute-doc-buffer None",
+        "collections-abc-type-getattribute-text-signature-buffer None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22795,6 +22796,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-doc-bytestring-repr 'Deprecated ABC serving as a common supertype of ``bytes`` and ``bytearray``.\\n\\nThis ABC is scheduled for removal in Python 3.17.\\nUse ``isinstance(obj, collections.abc.Buffer)`` to test if ``obj``\\nimplements the buffer protocol at runtime. For use in type annotations,\\neither use ``Buffer`` or a union that explicitly specifies the types your\\ncode supports (e.g., ``bytes | bytearray | memoryview``).\\n'",
         "collections-abc-type-getattribute-text-signature-bytestring None",
         "collections-abc-type-getattribute-doc-buffer None",
+        "collections-abc-type-getattribute-text-signature-buffer None",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23036,6 +23038,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 )
                 && document
                     .contains("object.__getattribute__ Buffer ABC type-object __doc__ metadata")
+                && document.contains(
+                    "object.__getattribute__ Buffer ABC type-object __text_signature__ metadata"
+                )
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document
