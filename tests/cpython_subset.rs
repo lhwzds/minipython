@@ -58780,6 +58780,55 @@ show('none-missing', lambda: n['x'])"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict construction
+// behavior. This pins defaultdict.fromkeys() as a pure-memory mapping
+// constructor, without promoting merge operators, pickle, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_fromkeys_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+        if isinstance(value, defaultdict):
+            print(label + '-factory', value.default_factory)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+print('visible', hasattr(defaultdict, 'fromkeys'), 'fromkeys' in dir(defaultdict), hasattr(defaultdict(), 'fromkeys'), 'fromkeys' in dir(defaultdict()))
+type_basic = defaultdict.fromkeys(['a', 'b'])
+print('type-basic', type(type_basic).__name__, repr(type_basic), type_basic.default_factory, type_basic['a'], type_basic['b'])
+type_value = defaultdict.fromkeys(['a', 'b'], 3)
+print('type-value', type(type_value).__name__, repr(type_value), type_value.default_factory, sorted(type_value.items()))
+inst_basic = defaultdict(list).fromkeys(['a', 'b'])
+print('inst-basic', type(inst_basic).__name__, repr(inst_basic), inst_basic.default_factory, sorted(inst_basic.items()))
+list_value = defaultdict.fromkeys('ab', [])
+print('shared-value', list_value['a'] is list_value['b'], sorted(list_value.items()))
+show('empty', lambda: defaultdict.fromkeys([]))
+show('missing', lambda: defaultdict.fromkeys())
+show('extra', lambda: defaultdict.fromkeys([], 1, 2))
+show('kw-iterable', lambda: defaultdict.fromkeys(iterable=['a']))
+show('kw-value', lambda: defaultdict.fromkeys(['a'], value=1))
+show('none-missing', lambda: type_basic['missing'])"#,
+        &[
+            "visible True True True True",
+            "type-basic defaultdict defaultdict(None, {'a': None, 'b': None}) None None None",
+            "type-value defaultdict defaultdict(None, {'a': 3, 'b': 3}) None [('a', 3), ('b', 3)]",
+            "inst-basic defaultdict defaultdict(None, {'a': None, 'b': None}) None [('a', None), ('b', None)]",
+            "shared-value True [('a', []), ('b', [])]",
+            "empty defaultdict defaultdict(None, {})",
+            "empty-factory None",
+            "missing TypeError fromkeys expected at least 1 argument, got 0 ('fromkeys expected at least 1 argument, got 0',)",
+            "extra TypeError fromkeys expected at most 2 arguments, got 3 ('fromkeys expected at most 2 arguments, got 3',)",
+            "kw-iterable TypeError defaultdict.fromkeys() takes no keyword arguments ('defaultdict.fromkeys() takes no keyword arguments',)",
+            "kw-value TypeError defaultdict.fromkeys() takes no keyword arguments ('defaultdict.fromkeys() takes no keyword arguments',)",
+            "none-missing KeyError 'missing' ('missing',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names.
 // This ports the public module-name surface. CPython's C accelerator identity
 // comparison and descriptor behavior are tracked separately in the manifest.

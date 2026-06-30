@@ -598,6 +598,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
+  `cpython_collections_defaultdict_fromkeys_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
@@ -1202,6 +1203,14 @@ Recent runtime migration notes:
   copies, shared nested values, copied default-factory state, and missing-key
   behavior without promoting descriptor type identity, pickle, merge operators,
   or subclass compatibility.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_fromkeys_diff_subset` and
+  `cpython_collections_defaultdict_fromkeys_subset`, covering CPython public
+  `defaultdict.fromkeys()` behavior on the type and through instances:
+  visible classmethod-style lookup, `defaultdict(None, ...)` results,
+  `default_factory is None`, shared explicit default values, missing-key
+  `KeyError`, arity errors, and keyword rejection without promoting pickle,
+  merge operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public
@@ -4885,6 +4894,13 @@ without adding general custom encoder/decoder class support.
   and `dir()` visibility for the supported pure-memory mapping without
   promoting descriptor type identity, `deepcopy`, pickle, merge operators, or
   subclass compatibility.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_fromkeys_diff_subset` and
+  `cpython_collections_defaultdict_fromkeys_subset`, covering
+  `defaultdict.fromkeys()` as a pure-memory constructor that returns
+  `defaultdict(None, ...)` with `default_factory is None`, preserves shared
+  explicit default values, rejects keywords, and leaves pickle, merge
+  operators, and subclass compatibility outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

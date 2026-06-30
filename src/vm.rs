@@ -9990,6 +9990,15 @@ impl Vm {
 
                 self.call_ordered_dict_fromkeys(args)
             }
+            Value::Builtin(name) if name == "defaultdict.fromkeys" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: defaultdict.fromkeys() takes no keyword arguments".to_string(),
+                    );
+                }
+
+                self.call_default_dict_fromkeys(args)
+            }
             Value::Builtin(name) if name == "dict.__class_getitem__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -26549,6 +26558,27 @@ impl Vm {
         }
 
         build_ordered_dict(entries)
+    }
+
+    fn call_default_dict_fromkeys(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let (iterable, default) = match args.as_slice() {
+            [] => return Err("TypeError: fromkeys expected at least 1 argument, got 0".to_string()),
+            [iterable] => (iterable.clone(), Value::None),
+            [iterable, default] => (iterable.clone(), default.clone()),
+            values => {
+                return Err(format!(
+                    "TypeError: fromkeys expected at most 2 arguments, got {}",
+                    values.len()
+                ));
+            }
+        };
+
+        let mut entries = Vec::new();
+        for key in self.collect_iterable_values_propagating(iterable)? {
+            insert_dict_entry(&mut entries, key, default.clone())?;
+        }
+
+        build_default_dict(entries)
     }
 
     fn dict_entries_from_update_source(
@@ -49882,6 +49912,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "clear",
             "copy",
             "default_factory",
+            "fromkeys",
             "get",
             "items",
             "keys",
@@ -57605,6 +57636,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             default_factory,
         } => match name {
             "default_factory" => Ok(default_factory.borrow().clone()),
+            "fromkeys" => Ok(Value::Builtin("defaultdict.fromkeys".to_string())),
             "__format__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("object.__format__".to_string())),
                 receiver: Box::new(Value::DefaultDict {
@@ -58578,6 +58610,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "OrderedDict" && name == "fromkeys" => {
             Ok(Value::Builtin("OrderedDict.fromkeys".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "defaultdict" && name == "fromkeys" => {
+            Ok(Value::Builtin("defaultdict.fromkeys".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
@@ -58697,9 +58732,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("OrderedDict.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "defaultdict"
-                && is_builtin_dict_type_method(name)
-                && name != "fromkeys" =>
+            if function_name == "defaultdict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("defaultdict.{name}")))
         }
@@ -79270,6 +79303,13 @@ fn build_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
 
 fn build_ordered_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
     dict_ref_from_entries(entries).map(Value::OrderedDict)
+}
+
+fn build_default_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
+    Ok(Value::DefaultDict {
+        entries: dict_ref_from_entries(entries)?,
+        default_factory: Rc::new(RefCell::new(Value::None)),
+    })
 }
 
 fn dict_ref_from_entries(entries: Vec<(Value, Value)>) -> Result<DictRef, String> {

@@ -18403,6 +18403,40 @@ show('none-missing', lambda: n['x'])"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_fromkeys_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict fromkeys public behavior subset",
+        name: "collections-defaultdict-fromkeys",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+        if isinstance(value, defaultdict):
+            print(label + '-factory', value.default_factory)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+print('visible', hasattr(defaultdict, 'fromkeys'), 'fromkeys' in dir(defaultdict), hasattr(defaultdict(), 'fromkeys'), 'fromkeys' in dir(defaultdict()))
+type_basic = defaultdict.fromkeys(['a', 'b'])
+print('type-basic', type(type_basic).__name__, repr(type_basic), type_basic.default_factory, type_basic['a'], type_basic['b'])
+type_value = defaultdict.fromkeys(['a', 'b'], 3)
+print('type-value', type(type_value).__name__, repr(type_value), type_value.default_factory, sorted(type_value.items()))
+inst_basic = defaultdict(list).fromkeys(['a', 'b'])
+print('inst-basic', type(inst_basic).__name__, repr(inst_basic), inst_basic.default_factory, sorted(inst_basic.items()))
+list_value = defaultdict.fromkeys('ab', [])
+print('shared-value', list_value['a'] is list_value['b'], sorted(list_value.items()))
+show('empty', lambda: defaultdict.fromkeys([]))
+show('missing', lambda: defaultdict.fromkeys())
+show('extra', lambda: defaultdict.fromkeys([], 1, 2))
+show('kw-iterable', lambda: defaultdict.fromkeys(iterable=['a']))
+show('kw-value', lambda: defaultdict.fromkeys(['a'], value=1))
+show('none-missing', lambda: type_basic['missing'])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",

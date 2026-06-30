@@ -17478,6 +17478,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
+            "cpython_collections_defaultdict_fromkeys_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
@@ -18814,6 +18815,85 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict __copy__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_fromkeys_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict fromkeys behavior"
+    );
+    let defaultdict_fromkeys_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_fromkeys_diff_subset",
+    );
+    let defaultdict_fromkeys_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_fromkeys_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "hasattr(defaultdict, 'fromkeys')",
+        "'fromkeys' in dir(defaultdict)",
+        "defaultdict.fromkeys(['a', 'b'])",
+        "defaultdict.fromkeys(['a', 'b'], 3)",
+        "defaultdict(list).fromkeys(['a', 'b'])",
+        "defaultdict.fromkeys('ab', [])",
+        "defaultdict.fromkeys(iterable=['a'])",
+        "defaultdict.fromkeys(['a'], value=1)",
+        "type_basic['missing']",
+    ] {
+        assert!(
+            defaultdict_fromkeys_diff_body.contains(required)
+                && defaultdict_fromkeys_subset_body.contains(required),
+            "defaultdict fromkeys diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-basic defaultdict defaultdict(None, {'a': None, 'b': None}) None None None\"",
+        "\"type-value defaultdict defaultdict(None, {'a': 3, 'b': 3}) None [('a', 3), ('b', 3)]\"",
+        "\"inst-basic defaultdict defaultdict(None, {'a': None, 'b': None}) None [('a', None), ('b', None)]\"",
+        "\"shared-value True [('a', []), ('b', [])]\"",
+        "\"empty defaultdict defaultdict(None, {})\"",
+        "\"missing TypeError fromkeys expected at least 1 argument, got 0 ('fromkeys expected at least 1 argument, got 0',)\"",
+        "\"extra TypeError fromkeys expected at most 2 arguments, got 3 ('fromkeys expected at most 2 arguments, got 3',)\"",
+        "\"kw-iterable TypeError defaultdict.fromkeys() takes no keyword arguments ('defaultdict.fromkeys() takes no keyword arguments',)\"",
+        "\"kw-value TypeError defaultdict.fromkeys() takes no keyword arguments ('defaultdict.fromkeys() takes no keyword arguments',)\"",
+        "\"none-missing KeyError 'missing' ('missing',)\"",
+    ] {
+        assert!(
+            defaultdict_fromkeys_subset_body.contains(required),
+            "defaultdict fromkeys subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn call_default_dict_fromkeys(",
+        "fn build_default_dict(",
+        "\"defaultdict.fromkeys\"",
+        "\"fromkeys\"",
+        "default_factory: Rc::new(RefCell::new(Value::None))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict fromkeys implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_fromkeys_subset",
+            "cpython_collections_defaultdict_fromkeys_diff_subset",
+            "`defaultdict.fromkeys()`",
+            "`defaultdict(None, ...)`",
+            "`default_factory is None`",
+            "keyword rejection",
+            "pickle",
+            "merge operators",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict fromkeys docs must contain `{required}`"
             );
         }
     }
