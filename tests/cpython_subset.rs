@@ -25073,6 +25073,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "from collections.abc import Hashable\nprint('collections-abc-type-getattribute-doc-hashable', object.__getattribute__(Hashable, '__doc__'))",
+        &["collections-abc-type-getattribute-doc-hashable None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
