@@ -22566,6 +22566,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-text-signature-async-generator None",
         "collections-abc-type-getattribute-doc-generator None",
         "collections-abc-type-getattribute-text-signature-generator None",
+        "collections-abc-type-getattribute-doc-mapping-repr 'A Mapping is a generic container for associating key/value\\npairs.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __getitem__, __iter__, and __len__.\\n'",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22821,6 +22822,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-text-signature-async-generator None",
         "collections-abc-type-getattribute-doc-generator None",
         "collections-abc-type-getattribute-text-signature-generator None",
+        "collections-abc-type-getattribute-doc-mapping-repr 'A Mapping is a generic container for associating key/value\\npairs.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __getitem__, __iter__, and __len__.\\n'",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23098,6 +23100,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains(
                     "object.__getattribute__ Generator ABC type-object __text_signature__ metadata"
                 )
+                && document
+                    .contains("object.__getattribute__ Mapping ABC type-object __doc__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document

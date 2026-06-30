@@ -25223,6 +25223,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-generator None"],
     );
     assert_output(
+        "from collections.abc import Mapping\nprint('collections-abc-type-getattribute-doc-mapping-repr', repr(object.__getattribute__(Mapping, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-mapping-repr 'A Mapping is a generic container for associating key/value\npairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __iter__, and __len__.\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
