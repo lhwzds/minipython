@@ -54097,6 +54097,32 @@ fn cpython_types_class_creation_init_subclass_missing_required_owner_subset() {
     );
 }
 
+// Adapted from CPython class creation public behavior. A plain function named
+// __init_subclass__ is implicitly exposed as a classmethod on the owner.
+#[test]
+fn cpython_types_class_creation_init_subclass_bound_classmethod_subset() {
+    assert_output(
+        concat!(
+            "class Base:\n",
+            "    def __init_subclass__(cls):\n",
+            "        pass\n",
+            "print(type(Base.__init_subclass__).__name__)\n",
+            "print(Base.__init_subclass__.__self__ is Base)\n",
+            "try:\n",
+            "    Base.__init_subclass__(1)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error), error.args)\n",
+            "else:\n",
+            "    print('ok')"
+        ),
+        &[
+            "method",
+            "True",
+            "TypeError Base.__init_subclass__() takes 1 positional argument but 2 were given ('Base.__init_subclass__() takes 1 positional argument but 2 were given',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests. MiniPython
 // covers the exact-dict MappingProxyType path here; dict subclasses and
 // ChainMap remain a later object-model slice.

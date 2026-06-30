@@ -27757,7 +27757,7 @@ fn types_class_creation_init_subclass_return_value_subset_has_focused_diff_evide
     }
 
     assert!(
-        VM_SOURCE.contains("self.call_value_with_keywords(\n            bind_method(init_subclass"),
+        VM_SOURCE.contains("init_subclass_callable(init_subclass, class_value.clone())"),
         "class construction must call user-defined __init_subclass__ hooks"
     );
     assert!(
@@ -27896,6 +27896,70 @@ fn types_class_creation_init_subclass_missing_required_owner_subset_has_focused_
 }
 
 #[test]
+fn types_class_creation_init_subclass_bound_classmethod_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_class_creation_init_subclass_bound_classmethod_subset",
+    );
+    for required in [
+        "def __init_subclass__(cls):",
+        "type(Base.__init_subclass__).__name__",
+        "Base.__init_subclass__.__self__ is Base",
+        "Base.__init_subclass__(1)",
+        "Base.__init_subclass__() takes 1 positional argument but 2 were given",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types class creation __init_subclass__ bound-classmethod subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_class_creation_init_subclass_bound_classmethod_diff_subset",
+    );
+    for required in [
+        "CPython class creation __init_subclass__ implicit classmethod subset",
+        "name: \"types-class-creation-init-subclass-bound-classmethod\"",
+        "type(Base.__init_subclass__).__name__",
+        "Base.__init_subclass__.__self__ is Base",
+        "Base.__init_subclass__(1)",
+    ] {
+        assert!(
+            diff.contains(required),
+            "types class creation __init_subclass__ bound-classmethod CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "wrap_init_subclass_as_classmethod(&attrs)",
+        "fn wrap_init_subclass_as_classmethod",
+        "fn init_subclass_callable",
+        "name == \"__init_subclass__\" && owner_class.is_some()",
+        "too_many_positional_arguments_error",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "class construction must implement implicit __init_subclass__ classmethod binding evidence `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document
+                .contains("cpython_types_class_creation_init_subclass_bound_classmethod_subset")
+                && document.contains(
+                    "cpython_types_class_creation_init_subclass_bound_classmethod_diff_subset"
+                )
+                && document.contains(
+                    "Base.__init_subclass__() takes 1 positional argument but 2 were given"
+                ),
+            "types class creation __init_subclass__ bound-classmethod evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
@@ -27948,6 +28012,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_class_creation_init_subclass_return_value_subset",
             "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset",
             "cpython_types_class_creation_init_subclass_missing_required_owner_subset",
+            "cpython_types_class_creation_init_subclass_bound_classmethod_subset",
             "cpython_types_coroutine_public_subset",
             "cpython_types_coroutine_async_def_subset",
             "cpython_types_coroutine_generator_wrapper_subset",
@@ -28006,6 +28071,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_init_subclass_return_value_diff_subset",
         "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset",
         "cpython_types_class_creation_init_subclass_missing_required_owner_diff_subset",
+        "cpython_types_class_creation_init_subclass_bound_classmethod_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_mro_entries_multiple_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",

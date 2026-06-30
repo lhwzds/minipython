@@ -4015,6 +4015,22 @@ fn bind_keyword_call(
     Ok(values)
 }
 
+fn too_many_positional_arguments_error(
+    function_name: &str,
+    expected: usize,
+    given: usize,
+) -> String {
+    let expected_noun = if expected == 1 {
+        "argument"
+    } else {
+        "arguments"
+    };
+    let given_verb = if given == 1 { "was" } else { "were" };
+    format!(
+        "TypeError: {function_name}() takes {expected} positional {expected_noun} but {given} {given_verb} given"
+    )
+}
+
 fn bind_itertools_keyword_call(
     function_name: &str,
     parameters: &[&str],
@@ -11563,6 +11579,13 @@ impl Vm {
     ) -> Result<Value, String> {
         let positional_param_count = positional_only.len() + params.len();
         if args.len() > positional_param_count && vararg.is_none() {
+            if name == "__init_subclass__" && owner_class.is_some() {
+                return Err(too_many_positional_arguments_error(
+                    &function_qualname,
+                    positional_param_count,
+                    args.len(),
+                ));
+            }
             return Err(format!(
                 "{name}() expected at most {} positional arguments, got {}",
                 positional_param_count,
@@ -11997,6 +12020,7 @@ impl Vm {
             }
         }
         wrap_dunder_new_as_staticmethod(&attrs);
+        wrap_init_subclass_as_classmethod(&attrs);
         let class_value = Value::Class {
             name,
             type_params,
@@ -12482,7 +12506,7 @@ impl Vm {
         };
 
         self.call_value_with_keywords(
-            bind_method(init_subclass, class_value.clone()),
+            init_subclass_callable(init_subclass, class_value.clone()),
             Vec::new(),
             keywords,
         )
@@ -50256,6 +50280,31 @@ fn wrap_dunder_new_as_staticmethod(attrs: &Scope) {
             identity: Rc::new(()),
         },
     );
+}
+
+fn wrap_init_subclass_as_classmethod(attrs: &Scope) {
+    let Some(value @ Value::Function { .. }) = attrs.borrow().get("__init_subclass__").cloned()
+    else {
+        return;
+    };
+    attrs.borrow_mut().insert(
+        "__init_subclass__".to_string(),
+        Value::ClassMethod {
+            function: Box::new(value),
+            identity: Rc::new(()),
+        },
+    );
+}
+
+fn init_subclass_callable(descriptor: Value, class_value: Value) -> Value {
+    match descriptor {
+        Value::ClassMethod { function, .. } => Value::BoundMethod {
+            function,
+            receiver: Box::new(class_value),
+            identity: Rc::new(()),
+        },
+        descriptor => bind_method(descriptor, class_value),
+    }
 }
 
 fn class_new_callable(descriptor: Value, class_value: Value) -> Value {
