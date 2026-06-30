@@ -9735,6 +9735,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-type-getattribute-module-userstring collections.
     // CPython oracle line: collections-builtin-getattribute-module-namedtuple collections.
     // CPython oracle line: collections-builtin-getattribute-qualname-namedtuple namedtuple.
+    // CPython oracle line: collections-builtin-getattribute-defaults-namedtuple None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -9948,6 +9949,7 @@ print('collections-type-getattribute-module-userstring', object.__getattribute__
 from collections import namedtuple
 print('collections-builtin-getattribute-module-namedtuple', object.__getattribute__(namedtuple, '__module__'))
 print('collections-builtin-getattribute-qualname-namedtuple', object.__getattribute__(namedtuple, '__qualname__'))
+print('collections-builtin-getattribute-defaults-namedtuple', object.__getattribute__(namedtuple, '__defaults__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
