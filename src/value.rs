@@ -1583,6 +1583,12 @@ impl fmt::Display for Value {
                     "<slot wrapper '__getattribute__' of 'collections.defaultdict' objects>"
                 )
             }
+            Value::Builtin(name) if is_defaultdict_init_wrapper_descriptor(name) => {
+                write!(
+                    f,
+                    "<slot wrapper '__init__' of 'collections.defaultdict' objects>"
+                )
+            }
             Value::Builtin(name) if is_defaultdict_class_getitem_classmethod_descriptor(name) => {
                 write!(
                     f,
@@ -2500,6 +2506,10 @@ fn is_defaultdict_repr_wrapper_descriptor(name: &str) -> bool {
 
 fn is_defaultdict_getattribute_wrapper_descriptor(name: &str) -> bool {
     name == "defaultdict.__getattribute__"
+}
+
+fn is_defaultdict_init_wrapper_descriptor(name: &str) -> bool {
+    name == "defaultdict.__init__"
 }
 
 fn is_defaultdict_class_getitem_classmethod_descriptor(name: &str) -> bool {

@@ -58684,6 +58684,25 @@ for label, thunk in [
         thunk()
     except Exception as error:
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+print('type-init-descriptor', type(defaultdict.__init__).__name__, repr(defaultdict.__init__))
+print('type-dict-init', '__init__' in mp, type(mp['__init__']).__name__, repr(mp['__init__']), mp['__init__'] is defaultdict.__init__)
+init_target = defaultdict(list, {'ia': [1]}, ib=[2])
+print('init-before', repr(init_target), init_target.default_factory is list)
+init_ret = init_target.__init__(int, {'ic': 3}, id=4)
+print('init-bound-ret', init_ret, repr(init_target), init_target.default_factory is int, sorted(init_target.items()))
+init_ret = defaultdict.__init__(init_target, None, [('ix', 5)])
+print('init-type-ret', init_ret, repr(init_target), init_target.default_factory is None, sorted(init_target.items()))
+init_ret = init_target.__init__()
+print('init-noargs-ret', init_ret, repr(init_target), init_target.default_factory is None, sorted(init_target.items()))
+for label, thunk in [
+    ('init-type-no-self', lambda: defaultdict.__init__()),
+    ('init-wrong-self', lambda: defaultdict.__init__({}, None)),
+    ('init-bad-factory', lambda: defaultdict().__init__(3)),
+]:
+    try:
+        thunk()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
@@ -58735,6 +58754,15 @@ except Exception as error:
             "class-getitem-noargs TypeError defaultdict.__class_getitem__() takes exactly one argument (0 given) ('defaultdict.__class_getitem__() takes exactly one argument (0 given)',)",
             "class-getitem-extra TypeError defaultdict.__class_getitem__() takes exactly one argument (2 given) ('defaultdict.__class_getitem__() takes exactly one argument (2 given)',)",
             "class-getitem-keyword TypeError defaultdict.__class_getitem__() takes no keyword arguments ('defaultdict.__class_getitem__() takes no keyword arguments',)",
+            "type-init-descriptor wrapper_descriptor <slot wrapper '__init__' of 'collections.defaultdict' objects>",
+            "type-dict-init True wrapper_descriptor <slot wrapper '__init__' of 'collections.defaultdict' objects> True",
+            "init-before defaultdict(<class 'list'>, {'ia': [1], 'ib': [2]}) True",
+            "init-bound-ret None defaultdict(<class 'int'>, {'ia': [1], 'ib': [2], 'ic': 3, 'id': 4}) True [('ia', [1]), ('ib', [2]), ('ic', 3), ('id', 4)]",
+            "init-type-ret None defaultdict(None, {'ia': [1], 'ib': [2], 'ic': 3, 'id': 4, 'ix': 5}) True [('ia', [1]), ('ib', [2]), ('ic', 3), ('id', 4), ('ix', 5)]",
+            "init-noargs-ret None defaultdict(None, {'ia': [1], 'ib': [2], 'ic': 3, 'id': 4, 'ix': 5}) True [('ia', [1]), ('ib', [2]), ('ic', 3), ('id', 4), ('ix', 5)]",
+            "init-type-no-self TypeError descriptor '__init__' of 'collections.defaultdict' object needs an argument (\"descriptor '__init__' of 'collections.defaultdict' object needs an argument\",)",
+            "init-wrong-self TypeError descriptor '__init__' requires a 'collections.defaultdict' object but received a 'dict' (\"descriptor '__init__' requires a 'collections.defaultdict' object but received a 'dict'\",)",
+            "init-bad-factory TypeError first argument must be callable or None ('first argument must be callable or None',)",
             "empty-none defaultdict defaultdict(None, {})",
             "empty-list defaultdict defaultdict(<class 'list'>, {})",
             "factory True list",

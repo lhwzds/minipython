@@ -1200,9 +1200,12 @@ Recent runtime migration notes:
   mappingproxy exposure, and bound method-wrapper attribute reads,
   `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
   `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
-  mappingproxy exposure, `default_factory` read/write/reset, missing-key
-  factory insertion, `get()` not invoking missing behavior, `copy()`,
-  constructor error boundaries, factory exception propagation, and
+  mappingproxy exposure, `defaultdict.__init__` wrapper_descriptor identity,
+  `defaultdict.__dict__['__init__']` mappingproxy exposure, pure-memory
+  reinitialization that updates the default factory and merges new entries
+  without clearing existing mapping items, `default_factory` read/write/reset,
+  missing-key factory insertion, `get()` not invoking missing behavior,
+  `copy()`, constructor error boundaries, factory exception propagation, and
   `json.dumps()` treating the supported container as a dict-like mapping.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
@@ -4945,9 +4948,13 @@ without adding general custom encoder/decoder class support.
   mappingproxy exposure, bound method-wrapper attribute reads,
   `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
   `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
-  mappingproxy exposure, default-factory storage, missing-key insertion,
-  non-triggering `get()`, shallow `copy()`, callable/`None` factory
-  validation, factory exceptions, and JSON mapping serialization.
+  mappingproxy exposure, `defaultdict.__init__` wrapper_descriptor identity,
+  `defaultdict.__dict__['__init__']` mappingproxy exposure, pure-memory
+  reinitialization that updates the default factory and merges new entries
+  without clearing existing mapping items, default-factory storage,
+  missing-key insertion, non-triggering `get()`, shallow `copy()`,
+  callable/`None` factory validation, factory exceptions, and JSON mapping
+  serialization.
   Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and

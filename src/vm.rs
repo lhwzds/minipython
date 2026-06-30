@@ -9920,6 +9920,9 @@ impl Vm {
 
                 self.call_default_dict_getattribute(args)
             }
+            Value::Builtin(name) if name == "defaultdict.__init__" => {
+                self.call_default_dict_init(args, keywords)
+            }
             Value::Builtin(name) if name == "object.__setattr__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -16130,6 +16133,50 @@ impl Vm {
         };
 
         self.call_object_getattribute(args)
+    }
+
+    fn call_default_dict_init(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__init__' of 'collections.defaultdict' object needs an argument"
+                    .to_string(),
+            );
+        };
+        let Value::DefaultDict {
+            entries,
+            default_factory,
+        } = receiver
+        else {
+            return Err(format!(
+                "TypeError: descriptor '__init__' requires a 'collections.defaultdict' object but received a '{}'",
+                type_name(receiver)
+            ));
+        };
+
+        let (factory, update_args) = match rest.split_first() {
+            Some((factory, update_args)) => (factory.clone(), update_args.to_vec()),
+            None => (Value::None, Vec::new()),
+        };
+        if !matches!(factory, Value::None) && !is_callable_value(&factory) {
+            return Err("TypeError: first argument must be callable or None".to_string());
+        }
+
+        let updates = self.call_dict_constructor(update_args, keywords)?;
+        let Value::Dict(update_entries) = updates else {
+            unreachable!("dict constructor returns a dict")
+        };
+
+        *default_factory.borrow_mut() = factory;
+        let update_entries = update_entries.borrow().entries.clone();
+        let mut entries = entries.borrow_mut();
+        for (key, value) in update_entries {
+            insert_live_dict_entry(&mut entries, key, value)?;
+        }
+        Ok(Value::None)
     }
 
     fn call_object_setattr(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -57785,6 +57832,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__init__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("defaultdict.__init__".to_string())),
+                receiver: Box::new(Value::DefaultDict {
+                    entries,
+                    default_factory,
+                }),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__copy__" | "__delitem__" | "__getitem__"
             | "__iter__" | "__len__" | "__missing__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -58760,6 +58815,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin("defaultdict.__class_getitem__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "defaultdict" && name == "__init__" => {
+            Ok(Value::Builtin("defaultdict.__init__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
@@ -59729,6 +59787,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::Builtin(
                         "defaultdict.__class_getitem__.classmethod_descriptor".to_string(),
                     ),
+                ));
+                entries.push((
+                    Value::String("__init__".to_string()),
+                    Value::Builtin("defaultdict.__init__".to_string()),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))
@@ -61242,7 +61304,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
-        "defaultdict" => matches!(method, "__repr__" | "__getattribute__"),
+        "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         _ => false,
     }
 }
