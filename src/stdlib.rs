@@ -976,6 +976,7 @@ pub(crate) fn create_module(
         "collections.abc" => Ok(module_value(
             "collections.abc",
             vec![
+                ("__package__", Value::String(String::new())),
                 ("__all__", string_list_value(COLLECTIONS_ABC_ALL)),
                 ("Hashable", Value::Builtin("Hashable".to_string())),
                 ("Iterable", Value::Builtin("Iterable".to_string())),

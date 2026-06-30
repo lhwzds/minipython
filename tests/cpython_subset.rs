@@ -25301,6 +25301,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "import collections.abc as abc\nprint('collections-abc-module-package', repr(object.__getattribute__(abc, '__package__')))",
+        &["collections-abc-module-package ''"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
