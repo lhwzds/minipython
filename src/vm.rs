@@ -59328,6 +59328,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__kwdefaults__" && function_name == "collections.namedtuple" =>
+        {
+            Ok(dict_value(vec![
+                (Value::String("rename".to_string()), Value::Bool(false)),
+                (Value::String("defaults".to_string()), Value::None),
+                (Value::String("module".to_string()), Value::None),
+            ]))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))

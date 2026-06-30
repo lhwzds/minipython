@@ -25037,6 +25037,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-builtin-getattribute-defaults-namedtuple None"],
     );
     assert_output(
+        "from collections import namedtuple\nprint('collections-builtin-getattribute-kwdefaults-namedtuple', object.__getattribute__(namedtuple, '__kwdefaults__'))",
+        &[
+            "collections-builtin-getattribute-kwdefaults-namedtuple {'rename': False, 'defaults': None, 'module': None}",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
