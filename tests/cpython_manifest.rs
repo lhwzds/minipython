@@ -22514,6 +22514,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-module-userdict collections",
         "collections-type-getattribute-module-userlist collections",
+        "collections-type-getattribute-module-userstring collections",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22720,6 +22721,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-module-userdict collections",
         "collections-type-getattribute-module-userlist collections",
+        "collections-type-getattribute-module-userstring collections",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -22899,6 +22901,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ UserDict type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ UserList type-object __module__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserString type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
                 && document
