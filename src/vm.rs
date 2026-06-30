@@ -63463,38 +63463,39 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_value(&mut self) -> Result<Value, String> {
+        let value_start = self.pos;
         match self.peek() {
             Some('"') => self.parse_string().map(Value::String),
             Some('{') => self.parse_object(),
             Some('[') => self.parse_array(),
             Some('N') => {
-                self.expect_literal("NaN")?;
+                self.expect_literal("NaN", value_start)?;
                 self.parse_constant_value("NaN", f64::NAN)
             }
             Some('I') => {
-                self.expect_literal("Infinity")?;
+                self.expect_literal("Infinity", value_start)?;
                 self.parse_constant_value("Infinity", f64::INFINITY)
             }
             Some('t') => {
-                self.expect_literal("true")?;
+                self.expect_literal("true", value_start)?;
                 Ok(Value::Bool(true))
             }
             Some('f') => {
-                self.expect_literal("false")?;
+                self.expect_literal("false", value_start)?;
                 Ok(Value::Bool(false))
             }
             Some('n') => {
-                self.expect_literal("null")?;
+                self.expect_literal("null", value_start)?;
                 Ok(Value::None)
             }
             Some('-') if self.starts_with("-Infinity") => {
-                self.expect_literal("-Infinity")?;
+                self.expect_literal("-Infinity", value_start)?;
                 self.parse_constant_value("-Infinity", f64::NEG_INFINITY)
             }
             Some('-') if matches!(self.peek_offset(1), Some('0'..='9')) => self.parse_number(),
-            Some('-') => self.error("Expecting value"),
+            Some('-') => self.error_at(value_start, "Expecting value"),
             Some('0'..='9') => self.parse_number(),
-            Some(_) | None => self.error("Expecting value"),
+            Some(_) | None => self.error_at(value_start, "Expecting value"),
         }
     }
 
@@ -63732,10 +63733,10 @@ impl<'a> JsonParser<'a> {
         self.vm.call_value(hook, args)
     }
 
-    fn expect_literal(&mut self, literal: &str) -> Result<(), String> {
+    fn expect_literal(&mut self, literal: &str, value_start: usize) -> Result<(), String> {
         for expected in literal.chars() {
             if self.next() != Some(expected) {
-                return self.error("Expecting value");
+                return self.error_at(value_start, "Expecting value");
             }
         }
         Ok(())

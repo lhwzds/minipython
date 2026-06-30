@@ -4221,6 +4221,29 @@ show('loads-extra-array-object-full-text', '[]{}', 'Extra data: line 1 column 3 
 }
 
 #[test]
+fn cpython_json_loads_expecting_value_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public expecting value decode messages subset",
+        name: "json-loads-expecting-value-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-empty-expecting-value-full-text', '', 'Expecting value: line 1 column 1 (char 0)')
+show('loads-spaces-expecting-value-full-text', '   ', 'Expecting value: line 1 column 4 (char 3)')
+show('loads-array-invalid-value-full-text', '[x]', 'Expecting value: line 1 column 2 (char 1)')
+show('loads-object-invalid-value-full-text', '{"a": x}', 'Expecting value: line 1 column 7 (char 6)')
+show('loads-literal-mismatch-full-text', 'tru', 'Expecting value: line 1 column 1 (char 0)')"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_string_error_boundary_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads string error boundary subset",

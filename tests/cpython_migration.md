@@ -832,6 +832,10 @@ CPython public extra-data messages include line/column/char positions;
 `cpython_json_loads_extra_data_message_subset`, backed by
 `cpython_json_loads_extra_data_message_diff_subset`, pins those public `str(error)` / `args` values
 without adding full `JSONDecodeError` compatibility.
+CPython public expecting-value messages include line/column/char positions;
+`cpython_json_loads_expecting_value_message_subset`, backed by
+`cpython_json_loads_expecting_value_message_diff_subset`, pins those public `str(error)` / `args` values
+without adding full `JSONDecodeError` compatibility.
 `cpython_json_loads_string_error_boundary_subset`, backed by
 `cpython_json_loads_string_error_boundary_diff_subset`, keeps the `loads()` string escape/control-character error boundary for
 bad escapes, short Unicode escapes, non-hex Unicode escapes, raw newline, and raw tab,

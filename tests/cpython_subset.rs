@@ -39232,6 +39232,34 @@ fn cpython_json_loads_extra_data_message_subset() {
 }
 
 #[test]
+fn cpython_json_loads_expecting_value_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-empty-expecting-value-full-text', '', 'Expecting value: line 1 column 1 (char 0)')\n",
+            "show('loads-spaces-expecting-value-full-text', '   ', 'Expecting value: line 1 column 4 (char 3)')\n",
+            "show('loads-array-invalid-value-full-text', '[x]', 'Expecting value: line 1 column 2 (char 1)')\n",
+            "show('loads-object-invalid-value-full-text', '{\"a\": x}', 'Expecting value: line 1 column 7 (char 6)')\n",
+            "show('loads-literal-mismatch-full-text', 'tru', 'Expecting value: line 1 column 1 (char 0)')"
+        ),
+        &[
+            "loads-empty-expecting-value-full-text True True True",
+            "loads-spaces-expecting-value-full-text True True True",
+            "loads-array-invalid-value-full-text True True True",
+            "loads-object-invalid-value-full-text True True True",
+            "loads-literal-mismatch-full-text True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_string_error_boundary_subset() {
     assert_output(
         concat!(
