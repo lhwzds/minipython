@@ -25291,6 +25291,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "from collections.abc import MutableSet\nprint('collections-abc-type-getattribute-text-signature-mutable-set', object.__getattribute__(MutableSet, '__text_signature__'))",
+        &["collections-abc-type-getattribute-text-signature-mutable-set None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );

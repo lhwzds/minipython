@@ -60790,6 +60790,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "A mutable set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__, __len__,\nadd(), and discard().\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), all you have to do is redefine __le__ and\nthen the other operations will automatically follow suit.\n"
                 .to_string(),
         )),
+        ("MutableSet", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
