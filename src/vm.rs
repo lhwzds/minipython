@@ -59029,69 +59029,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Hashable" => {
-            Ok(Value::None)
-        }
         Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Hashable" =>
+            if collections_abc_type_metadata(&function_name, name).is_some() =>
         {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Iterable" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Iterable" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Iterator" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Iterator" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Sized" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Sized" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Container" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Container" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Callable" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Callable" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Collection" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Collection" =>
-        {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name) if name == "__doc__" && function_name == "Reversible" => {
-            Ok(Value::None)
-        }
-        Value::Builtin(function_name)
-            if name == "__text_signature__" && function_name == "Reversible" =>
-        {
-            Ok(Value::None)
+            Ok(collections_abc_type_metadata(&function_name, name)
+                .expect("guard checked collections ABC metadata"))
         }
         Value::Builtin(function_name)
             if is_collections_abc_type_name(&function_name)
@@ -60788,6 +60730,21 @@ fn is_descriptor_get_wrapper_name(name: &str) -> bool {
             | "getset_descriptor.__set__"
             | "getset_descriptor.__delete__"
     )
+}
+
+fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
+    match (type_name, name) {
+        ("Sequence", "__doc__") => Some(Value::String(
+            "All the operations on a read-only sequence.\n\nConcrete subclasses must override __new__ or __init__,\n__getitem__, and __len__.\n"
+                .to_string(),
+        )),
+        (
+            "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
+            | "Collection" | "Reversible",
+            "__doc__" | "__text_signature__",
+        ) => Some(Value::None),
+        _ => None,
+    }
 }
 
 fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {
