@@ -60785,6 +60785,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "A set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__ and __len__.\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), redefine __le__ and __ge__,\nthen the other operations will automatically follow suit.\n"
                 .to_string(),
         )),
+        ("Set", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
