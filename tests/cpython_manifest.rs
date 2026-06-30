@@ -27779,6 +27779,64 @@ fn types_class_creation_init_subclass_return_value_subset_has_focused_diff_evide
 }
 
 #[test]
+fn types_class_creation_init_subclass_unexpected_keyword_owner_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset",
+    );
+    for required in [
+        "def __init_subclass__(cls):",
+        "class Direct(Base, flag=1):",
+        "class Inherited(Child, flag=1):",
+        "Base.__init_subclass__() got an unexpected keyword argument 'flag'",
+        "error.args",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types class creation __init_subclass__ unexpected-keyword owner subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset",
+    );
+    for required in [
+        "CPython class creation __init_subclass__ unexpected keyword owner subset",
+        "name: \"types-class-creation-init-subclass-unexpected-keyword-owner\"",
+        "class Direct(Base, flag=1):",
+        "class Inherited(Child, flag=1):",
+        "print('inherited', type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            diff.contains(required),
+            "types class creation __init_subclass__ unexpected-keyword owner CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("find_base_attr_by_mro_with_owner(bases, \"__init_subclass__\")"),
+        "class construction must retain the __init_subclass__ defining owner"
+    );
+    assert!(
+        VM_SOURCE.contains("qualify_init_subclass_keyword_error"),
+        "class construction must qualify user-defined __init_subclass__ keyword errors"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(
+                "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset"
+            ) && document.contains(
+                "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset"
+            ) && document
+                .contains("Base.__init_subclass__() got an unexpected keyword argument 'flag'"),
+            "types class creation __init_subclass__ unexpected-keyword owner evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
@@ -27829,6 +27887,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_class_creation_one_argument_type_subset",
             "cpython_types_class_creation_init_subclass_keyword_error_subset",
             "cpython_types_class_creation_init_subclass_return_value_subset",
+            "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_subset",
             "cpython_types_coroutine_public_subset",
             "cpython_types_coroutine_async_def_subset",
             "cpython_types_coroutine_generator_wrapper_subset",
@@ -27885,6 +27944,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_subclass_inherited_slot_update_diff_subset",
         "cpython_types_class_creation_init_subclass_keyword_error_diff_subset",
         "cpython_types_class_creation_init_subclass_return_value_diff_subset",
+        "cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_mro_entries_multiple_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",

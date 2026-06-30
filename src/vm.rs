@@ -12470,7 +12470,9 @@ impl Vm {
             return Ok(Value::None);
         };
 
-        let Some(init_subclass) = find_base_attr_by_mro(bases, "__init_subclass__") else {
+        let Some((init_subclass, init_subclass_owner)) =
+            find_base_attr_by_mro_with_owner(bases, "__init_subclass__")
+        else {
             if keywords.is_empty() {
                 return Ok(Value::None);
             }
@@ -12483,7 +12485,8 @@ impl Vm {
             bind_method(init_subclass, class_value.clone()),
             Vec::new(),
             keywords,
-        )?;
+        )
+        .map_err(|message| qualify_init_subclass_keyword_error(message, &init_subclass_owner))?;
         Ok(Value::None)
     }
 
@@ -50188,12 +50191,37 @@ fn find_class_attr(attrs: &Scope, bases: &[Value], name: &str) -> Option<Value> 
 }
 
 fn find_base_attr_by_mro(bases: &[Value], name: &str) -> Option<Value> {
+    find_base_attr_by_mro_with_owner(bases, name).map(|(value, _)| value)
+}
+
+fn find_base_attr_by_mro_with_owner(bases: &[Value], name: &str) -> Option<(Value, Value)> {
     mro_for_bases(bases).ok()?.into_iter().find_map(|base| {
-        let Value::Class { attrs, .. } = base else {
+        let Value::Class { attrs, .. } = &base else {
             return None;
         };
-        attrs.borrow().get(name).cloned()
+        attrs
+            .borrow()
+            .get(name)
+            .cloned()
+            .map(|value| (value, base.clone()))
     })
+}
+
+fn qualify_init_subclass_keyword_error(message: String, owner: &Value) -> String {
+    let rest = message
+        .strip_prefix("TypeError: __init_subclass__() got an unexpected keyword argument ")
+        .or_else(|| {
+            message.strip_prefix("__init_subclass__() got an unexpected keyword argument ")
+        });
+    let Some(rest) = rest else {
+        return message;
+    };
+
+    let Value::Class { name, .. } = owner else {
+        return message;
+    };
+
+    format!("TypeError: {name}.__init_subclass__() got an unexpected keyword argument {rest}")
 }
 
 fn attach_owner_class_to_members(class: &Value) {

@@ -14118,6 +14118,30 @@ else:
 }
 
 #[test]
+fn cpython_types_class_creation_init_subclass_unexpected_keyword_owner_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython class creation __init_subclass__ unexpected keyword owner subset",
+        name: "types-class-creation-init-subclass-unexpected-keyword-owner",
+        source: r#"class Base:
+    def __init_subclass__(cls):
+        pass
+try:
+    class Direct(Base, flag=1):
+        pass
+except TypeError as error:
+    print('direct', type(error).__name__, str(error), error.args)
+
+class Child(Base):
+    pass
+try:
+    class Inherited(Child, flag=1):
+        pass
+except TypeError as error:
+    print('inherited', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
