@@ -60743,6 +60743,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "All the operations on a read-write sequence.\n\nConcrete subclasses must provide __new__ or __init__,\n__getitem__, __setitem__, __delitem__, __len__, and insert().\n"
                 .to_string(),
         )),
+        ("MutableSequence", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
