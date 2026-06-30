@@ -9764,6 +9764,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-doc-mutable-sequence-repr 'All the operations on a read-write sequence.\n\nConcrete subclasses must provide __new__ or __init__,\n__getitem__, __setitem__, __delitem__, __len__, and insert().\n'.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mutable-sequence None.
     // CPython oracle line: collections-abc-type-getattribute-doc-bytestring-repr 'Deprecated ABC serving as a common supertype of ``bytes`` and ``bytearray``.\n\nThis ABC is scheduled for removal in Python 3.17.\nUse ``isinstance(obj, collections.abc.Buffer)`` to test if ``obj``\nimplements the buffer protocol at runtime. For use in type annotations,\neither use ``Buffer`` or a union that explicitly specifies the types your\ncode supports (e.g., ``bytes | bytearray | memoryview``).\n'.
+    // CPython oracle line: collections-abc-type-getattribute-text-signature-bytestring None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10020,6 +10021,7 @@ import warnings
 warnings.simplefilter('ignore')
 from collections.abc import ByteString
 print('collections-abc-type-getattribute-doc-bytestring-repr', repr(object.__getattribute__(ByteString, '__doc__')))
+print('collections-abc-type-getattribute-text-signature-bytestring', object.__getattribute__(ByteString, '__text_signature__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

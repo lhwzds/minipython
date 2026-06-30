@@ -25163,6 +25163,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "import warnings\nwarnings.simplefilter('ignore')\nfrom collections.abc import ByteString\nprint('collections-abc-type-getattribute-text-signature-bytestring', object.__getattribute__(ByteString, '__text_signature__'))",
+        &["collections-abc-type-getattribute-text-signature-bytestring None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
