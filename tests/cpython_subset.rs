@@ -39208,6 +39208,30 @@ fn cpython_json_loads_delimiter_message_subset() {
 }
 
 #[test]
+fn cpython_json_loads_extra_data_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-extra-object-array-full-text', '{} []', 'Extra data: line 1 column 4 (char 3)')\n",
+            "show('loads-extra-number-zero-full-text', '01', 'Extra data: line 1 column 2 (char 1)')\n",
+            "show('loads-extra-array-object-full-text', '[]{}', 'Extra data: line 1 column 3 (char 2)')"
+        ),
+        &[
+            "loads-extra-object-array-full-text True True True",
+            "loads-extra-number-zero-full-text True True True",
+            "loads-extra-array-object-full-text True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_string_error_boundary_subset() {
     assert_output(
         concat!(

@@ -9093,6 +9093,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_delimiter_message_diff_subset",
             "cpython_json_loads_delimiter_message_subset",
         ),
+        (
+            "cpython_json_loads_extra_data_message_diff_subset",
+            "cpython_json_loads_extra_data_message_subset",
+        ),
     ] {
         assert!(
             CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
@@ -9137,6 +9141,12 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "Expecting ',' delimiter: line 1 column 4 (char 3)",
         "Expecting ',' delimiter: line 1 column 8 (char 7)",
         "Expecting ',' delimiter: line 1 column 3 (char 2)",
+        "loads-extra-object-array-full-text",
+        "loads-extra-number-zero-full-text",
+        "loads-extra-array-object-full-text",
+        "Extra data: line 1 column 4 (char 3)",
+        "Extra data: line 1 column 2 (char 1)",
+        "Extra data: line 1 column 3 (char 2)",
         "loads-invalid-escape",
         "dumps-bytearray",
         "dumps-memoryview",
@@ -9159,6 +9169,7 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "Illegal trailing comma before end of object",
         "let pos = self.pos;",
         "self.error_at(pos, message)",
+        "self.error_at(self.pos, \"Extra data\")",
         "fn error_at",
         "fn line_column",
     ] {
@@ -9187,6 +9198,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_delimiter_message_diff_subset",
             "cpython_json_loads_delimiter_message_subset",
+        ),
+        (
+            "cpython_json_loads_extra_data_message_diff_subset",
+            "cpython_json_loads_extra_data_message_subset",
         ),
     ];
 
@@ -9229,6 +9244,12 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "Expecting ',' delimiter: line 1 column 4 (char 3)",
         "Expecting ',' delimiter: line 1 column 8 (char 7)",
         "Expecting ',' delimiter: line 1 column 3 (char 2)",
+        "loads-extra-object-array-full-text",
+        "loads-extra-number-zero-full-text",
+        "loads-extra-array-object-full-text",
+        "Extra data: line 1 column 4 (char 3)",
+        "Extra data: line 1 column 2 (char 1)",
+        "Extra data: line 1 column 3 (char 2)",
         "loads-leading-zero-extra",
         "dumps-no-args",
         "dumps-extra-arg",
@@ -9277,6 +9298,9 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-array-missing-comma-full-text True True True\"",
         "\"loads-object-missing-comma-full-text True True True\"",
         "\"loads-unclosed-array-full-text True True True\"",
+        "\"loads-extra-object-array-full-text True True True\"",
+        "\"loads-extra-number-zero-full-text True True True\"",
+        "\"loads-extra-array-object-full-text True True True\"",
         "\"dumps-bytearray True False\"",
         "\"dumps-memoryview True False\"",
         "\"dumps-namedtuple-cycle False True\"",
@@ -9308,6 +9332,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "structural JSON parse failures including trailing data and trailing commas",
             "CPython public trailing-comma messages for arrays and objects include line/column/char positions",
             "CPython public delimiter messages for missing colon/comma cases include line/column/char positions",
+            "CPython public extra-data messages include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

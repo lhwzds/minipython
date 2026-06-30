@@ -63457,7 +63457,7 @@ impl<'a> JsonParser<'a> {
         let value = self.parse_value()?;
         self.skip_whitespace();
         if self.pos != self.chars.len() {
-            return self.error("Extra data");
+            return self.error_at(self.pos, "Extra data");
         }
         Ok(value)
     }
