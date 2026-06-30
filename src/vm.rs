@@ -60772,6 +60772,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "A MutableMapping is a generic container for associating\nkey/value pairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __setitem__, __delitem__,\n__iter__, and __len__.\n"
                 .to_string(),
         )),
+        ("MutableMapping", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
