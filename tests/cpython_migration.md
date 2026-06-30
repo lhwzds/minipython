@@ -11234,7 +11234,9 @@ Completed in the CPython collections manifest expansion pass:
   `repr(defaultdict)` / `str(defaultdict)` type-object display,
   `defaultdict.__doc__` text, `defaultdict.__dict__['__doc__']` mappingproxy
   exposure, `defaultdict.__module__`, `defaultdict.__dict__['__module__']`
-  mappingproxy exposure, default-factory storage, callable/`None` factory
+  mappingproxy exposure, `defaultdict.__repr__` wrapper_descriptor identity,
+  `defaultdict.__dict__['__repr__']` mappingproxy exposure, bound
+  method-wrapper repr calls, default-factory storage, callable/`None` factory
   validation, keyword `default_factory` treatment as a mapping item,
   missing-key factory insertion, `get()` not invoking missing behavior,
   `default_factory` assignment/reset, shallow `copy()`, factory exception

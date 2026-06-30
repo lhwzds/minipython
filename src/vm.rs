@@ -59646,6 +59646,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::String("__module__".to_string()),
                     Value::String("collections".to_string()),
                 ));
+                entries.push((
+                    Value::String("__repr__".to_string()),
+                    Value::Builtin("defaultdict.__repr__".to_string()),
+                ));
             }
             Ok(mapping_proxy_from_entries(entries))
         }
@@ -61158,6 +61162,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
+        "defaultdict" => method == "__repr__",
         _ => false,
     }
 }

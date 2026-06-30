@@ -58655,6 +58655,9 @@ print('type-doc', type(defaultdict.__doc__).__name__, bool(defaultdict.__doc__),
 print('type-dict-doc', '__doc__' in mp, type(mp['__doc__']).__name__, mp['__doc__'] == defaultdict.__doc__, mp['__doc__'].splitlines()[0])
 print('type-module', type(defaultdict.__module__).__name__, defaultdict.__module__)
 print('type-dict-module', '__module__' in mp, type(mp['__module__']).__name__, mp['__module__'], mp['__module__'] == defaultdict.__module__)
+print('type-repr-descriptor', type(defaultdict.__repr__).__name__, repr(defaultdict.__repr__))
+print('type-dict-repr', '__repr__' in mp, type(mp['__repr__']).__name__, repr(mp['__repr__']), mp['__repr__'] is defaultdict.__repr__)
+print('bound-repr', type(defaultdict().__repr__).__name__, defaultdict(list, {'a': 1}).__repr__())
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
@@ -58691,6 +58694,9 @@ except Exception as error:
             "type-dict-doc True str True defaultdict(default_factory=None, /, [...]) --> dict with default factory",
             "type-module str collections",
             "type-dict-module True str collections True",
+            "type-repr-descriptor wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects>",
+            "type-dict-repr True wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects> True",
+            "bound-repr method-wrapper defaultdict(<class 'list'>, {'a': 1})",
             "empty-none defaultdict defaultdict(None, {})",
             "empty-list defaultdict defaultdict(<class 'list'>, {})",
             "factory True list",

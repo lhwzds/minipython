@@ -1193,7 +1193,9 @@ Recent runtime migration notes:
   `str(defaultdict)` type-object display, `defaultdict.__doc__` text and
   `defaultdict.__dict__['__doc__']` mappingproxy exposure,
   `defaultdict.__module__` and `defaultdict.__dict__['__module__']`
-  mappingproxy exposure, `default_factory` read/write/reset, missing-key
+  mappingproxy exposure, `defaultdict.__repr__` wrapper_descriptor identity,
+  `defaultdict.__dict__['__repr__']` mappingproxy exposure, and bound
+  method-wrapper repr calls, `default_factory` read/write/reset, missing-key
   factory insertion, `get()` not invoking missing behavior, `copy()`,
   constructor error boundaries, factory exception propagation, and
   `json.dumps()` treating the supported container as a dict-like mapping.
@@ -4931,9 +4933,11 @@ without adding general custom encoder/decoder class support.
   `defaultdict.__doc__` text and `defaultdict.__dict__['__doc__']`
   mappingproxy exposure, `defaultdict.__module__` and
   `defaultdict.__dict__['__module__']` mappingproxy exposure,
-  default-factory storage, missing-key insertion, non-triggering `get()`,
-  shallow `copy()`, callable/`None` factory validation, factory exceptions,
-  and JSON mapping serialization.
+  `defaultdict.__repr__` wrapper_descriptor identity,
+  `defaultdict.__dict__['__repr__']` mappingproxy exposure, bound
+  method-wrapper repr calls, default-factory storage, missing-key insertion,
+  non-triggering `get()`, shallow `copy()`, callable/`None` factory
+  validation, factory exceptions, and JSON mapping serialization.
   Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and

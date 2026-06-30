@@ -18613,6 +18613,12 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "'__module__' in mp",
         "type(mp['__module__']).__name__",
         "mp['__module__'] == defaultdict.__module__",
+        "type(defaultdict.__repr__).__name__",
+        "repr(defaultdict.__repr__)",
+        "'__repr__' in mp",
+        "type(mp['__repr__']).__name__",
+        "mp['__repr__'] is defaultdict.__repr__",
+        "type(defaultdict().__repr__).__name__",
         "defaultdict(list, {'a': [1]}, b=[2])",
         "d.get('x')",
         "d['x']",
@@ -18635,6 +18641,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "\"type-dict-doc True str True defaultdict(default_factory=None, /, [...]) --> dict with default factory\"",
         "\"type-module str collections\"",
         "\"type-dict-module True str collections True\"",
+        "\"type-repr-descriptor wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects>\"",
+        "\"type-dict-repr True wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects> True\"",
+        "\"bound-repr method-wrapper defaultdict(<class 'list'>, {'a': 1})\"",
         "\"empty-none defaultdict defaultdict(None, {})\"",
         "\"empty-list defaultdict defaultdict(<class 'list'>, {})\"",
         "\"get-missing None False [('a', [1]), ('b', [2])]\"",
@@ -18661,11 +18670,23 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Value::String(\"__doc__\".to_string())",
         "Value::String(\"__module__\".to_string())",
         "Value::String(\"collections\".to_string())",
+        "Value::String(\"__repr__\".to_string())",
+        "Value::Builtin(\"defaultdict.__repr__\".to_string())",
+        "\"defaultdict\" => method == \"__repr__\"",
         "defaultdict(default_factory=None, /, [...]) --> dict with default factory",
     ] {
         assert!(
             VM_SOURCE.contains(required),
             "defaultdict implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "is_defaultdict_repr_wrapper_descriptor",
+        "<slot wrapper '__repr__' of 'collections.defaultdict' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "defaultdict __repr__ descriptor display implementation must contain `{required}`"
         );
     }
     for required in [
@@ -18690,6 +18711,10 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`defaultdict.__dict__['__doc__']`",
             "`defaultdict.__module__`",
             "`defaultdict.__dict__['__module__']`",
+            "`defaultdict.__repr__`",
+            "`defaultdict.__dict__['__repr__']`",
+            "wrapper_descriptor",
+            "method-wrapper",
             "mappingproxy",
             "default-factory",
             "`json.dumps()`",
