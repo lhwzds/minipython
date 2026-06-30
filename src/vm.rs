@@ -60744,6 +60744,10 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
                 .to_string(),
         )),
         ("MutableSequence", "__text_signature__") => Some(Value::None),
+        ("ByteString", "__doc__") => Some(Value::String(
+            "Deprecated ABC serving as a common supertype of ``bytes`` and ``bytearray``.\n\nThis ABC is scheduled for removal in Python 3.17.\nUse ``isinstance(obj, collections.abc.Buffer)`` to test if ``obj``\nimplements the buffer protocol at runtime. For use in type annotations,\neither use ``Buffer`` or a union that explicitly specifies the types your\ncode supports (e.g., ``bytes | bytearray | memoryview``).\n"
+                .to_string(),
+        )),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",

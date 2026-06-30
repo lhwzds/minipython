@@ -25157,6 +25157,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-mutable-sequence None"],
     );
     assert_output(
+        "import warnings\nwarnings.simplefilter('ignore')\nfrom collections.abc import ByteString\nprint('collections-abc-type-getattribute-doc-bytestring-repr', repr(object.__getattribute__(ByteString, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-bytestring-repr 'Deprecated ABC serving as a common supertype of ``bytes`` and ``bytearray``.\n\nThis ABC is scheduled for removal in Python 3.17.\nUse ``isinstance(obj, collections.abc.Buffer)`` to test if ``obj``\nimplements the buffer protocol at runtime. For use in type annotations,\neither use ``Buffer`` or a union that explicitly specifies the types your\ncode supports (e.g., ``bytes | bytearray | memoryview``).\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
