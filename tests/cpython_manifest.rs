@@ -18603,6 +18603,12 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "from collections import defaultdict",
         "repr(defaultdict)",
         "str(defaultdict)",
+        "defaultdict.__doc__.splitlines()[0]",
+        "mp = defaultdict.__dict__",
+        "'__doc__' in mp",
+        "type(mp['__doc__']).__name__",
+        "mp['__doc__'] == defaultdict.__doc__",
+        "mp['__doc__'].splitlines()[0]",
         "defaultdict(list, {'a': [1]}, b=[2])",
         "d.get('x')",
         "d['x']",
@@ -18621,6 +18627,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "\"type-repr <class 'collections.defaultdict'> <class 'collections.defaultdict'>\"",
+        "\"type-doc str True defaultdict(default_factory=None, /, [...]) --> dict with default factory\"",
+        "\"type-dict-doc True str True defaultdict(default_factory=None, /, [...]) --> dict with default factory\"",
         "\"empty-none defaultdict defaultdict(None, {})\"",
         "\"empty-list defaultdict defaultdict(<class 'list'>, {})\"",
         "\"get-missing None False [('a', [1]), ('b', [2])]\"",
@@ -18643,6 +18651,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "call_default_dict_constructor",
         "load_default_dict_subscript",
         "default_factory",
+        "builtin_type_doc(\"defaultdict\")",
+        "Value::String(\"__doc__\".to_string())",
+        "defaultdict(default_factory=None, /, [...]) --> dict with default factory",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -18667,6 +18678,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`defaultdict`",
             "`repr(defaultdict)`",
             "`str(defaultdict)`",
+            "`defaultdict.__doc__`",
+            "`defaultdict.__dict__['__doc__']`",
+            "mappingproxy",
             "default-factory",
             "`json.dumps()`",
             "full defaultdict pickle/merge operators/subclass compatibility",

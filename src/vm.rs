@@ -59634,6 +59634,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::String("__copy__".to_string()),
                     Value::Builtin("defaultdict.__copy__".to_string()),
                 ));
+                entries.push((
+                    Value::String("__doc__".to_string()),
+                    Value::String(
+                        builtin_type_doc("defaultdict")
+                            .expect("defaultdict doc exists")
+                            .to_string(),
+                    ),
+                ));
             }
             Ok(mapping_proxy_from_entries(entries))
         }
@@ -60216,7 +60224,15 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "  - an integer"
         )),
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
-        "defaultdict" => Some("Dictionary with a default factory for missing keys."),
+        "defaultdict" => Some(concat!(
+            "defaultdict(default_factory=None, /, [...]) --> dict with default factory\n",
+            "\n",
+            "The default factory is called without arguments to produce\n",
+            "a new value when a key is not present, in __getitem__ only.\n",
+            "A defaultdict compares equal to a dict with the same items.\n",
+            "All remaining arguments are treated the same as if they were\n",
+            "passed to the dict constructor, including keyword arguments.\n"
+        )),
         "OrderedDict" => Some("Dictionary that remembers insertion order"),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         "mappingproxy" => Some("Read-only proxy of a mapping."),
