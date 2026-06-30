@@ -59642,6 +59642,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                             .to_string(),
                     ),
                 ));
+                entries.push((
+                    Value::String("__module__".to_string()),
+                    Value::String("collections".to_string()),
+                ));
             }
             Ok(mapping_proxy_from_entries(entries))
         }

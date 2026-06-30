@@ -11233,13 +11233,14 @@ Completed in the CPython collections manifest expansion pass:
   `defaultdict` public behavior, covering the sandbox-safe pure-memory core:
   `repr(defaultdict)` / `str(defaultdict)` type-object display,
   `defaultdict.__doc__` text, `defaultdict.__dict__['__doc__']` mappingproxy
-  exposure, default-factory storage, callable/`None` factory validation,
-  keyword `default_factory` treatment as a mapping item, missing-key factory
-  insertion, `get()` not invoking missing behavior, `default_factory`
-  assignment/reset, shallow `copy()`, factory exception propagation, and
-  `json.dumps()` mapping serialization. Full pickle/eval identity, merge
-  operators, and subclass compatibility stay outside the default sandbox
-  surface.
+  exposure, `defaultdict.__module__`, `defaultdict.__dict__['__module__']`
+  mappingproxy exposure, default-factory storage, callable/`None` factory
+  validation, keyword `default_factory` treatment as a mapping item,
+  missing-key factory insertion, `get()` not invoking missing behavior,
+  `default_factory` assignment/reset, shallow `copy()`, factory exception
+  propagation, and `json.dumps()` mapping serialization. Full pickle/eval
+  identity, merge operators, and subclass compatibility stay outside the
+  default sandbox surface.
 - Added
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`, covering

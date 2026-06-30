@@ -58653,6 +58653,8 @@ mp = defaultdict.__dict__
 print('type-repr', repr(defaultdict), str(defaultdict))
 print('type-doc', type(defaultdict.__doc__).__name__, bool(defaultdict.__doc__), defaultdict.__doc__.splitlines()[0])
 print('type-dict-doc', '__doc__' in mp, type(mp['__doc__']).__name__, mp['__doc__'] == defaultdict.__doc__, mp['__doc__'].splitlines()[0])
+print('type-module', type(defaultdict.__module__).__name__, defaultdict.__module__)
+print('type-dict-module', '__module__' in mp, type(mp['__module__']).__name__, mp['__module__'], mp['__module__'] == defaultdict.__module__)
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
@@ -58687,6 +58689,8 @@ except Exception as error:
             "type-repr <class 'collections.defaultdict'> <class 'collections.defaultdict'>",
             "type-doc str True defaultdict(default_factory=None, /, [...]) --> dict with default factory",
             "type-dict-doc True str True defaultdict(default_factory=None, /, [...]) --> dict with default factory",
+            "type-module str collections",
+            "type-dict-module True str collections True",
             "empty-none defaultdict defaultdict(None, {})",
             "empty-list defaultdict defaultdict(<class 'list'>, {})",
             "factory True list",
