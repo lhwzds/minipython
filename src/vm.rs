@@ -60738,6 +60738,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "All the operations on a read-only sequence.\n\nConcrete subclasses must override __new__ or __init__,\n__getitem__, and __len__.\n"
                 .to_string(),
         )),
+        ("Sequence", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
