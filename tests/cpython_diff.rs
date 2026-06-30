@@ -9783,6 +9783,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mapping None.
     // CPython oracle line: collections-abc-type-getattribute-doc-mutable-mapping-repr 'A MutableMapping is a generic container for associating\nkey/value pairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __setitem__, __delitem__,\n__iter__, and __len__.\n'.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mutable-mapping None.
+    // CPython oracle line: collections-abc-type-getattribute-doc-mapping-view None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10067,6 +10068,8 @@ print('collections-abc-type-getattribute-text-signature-mapping', object.__getat
 from collections.abc import MutableMapping
 print('collections-abc-type-getattribute-doc-mutable-mapping-repr', repr(object.__getattribute__(MutableMapping, '__doc__')))
 print('collections-abc-type-getattribute-text-signature-mutable-mapping', object.__getattribute__(MutableMapping, '__text_signature__'))
+from collections.abc import MappingView
+print('collections-abc-type-getattribute-doc-mapping-view', object.__getattribute__(MappingView, '__doc__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
