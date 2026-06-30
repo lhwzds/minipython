@@ -58658,6 +58658,17 @@ print('type-dict-module', '__module__' in mp, type(mp['__module__']).__name__, m
 print('type-repr-descriptor', type(defaultdict.__repr__).__name__, repr(defaultdict.__repr__))
 print('type-dict-repr', '__repr__' in mp, type(mp['__repr__']).__name__, repr(mp['__repr__']), mp['__repr__'] is defaultdict.__repr__)
 print('bound-repr', type(defaultdict().__repr__).__name__, defaultdict(list, {'a': 1}).__repr__())
+print('type-getattribute-descriptor', type(defaultdict.__getattribute__).__name__, repr(defaultdict.__getattribute__))
+print('type-dict-getattribute', '__getattribute__' in mp, type(mp['__getattribute__']).__name__, repr(mp['__getattribute__']), mp['__getattribute__'] is defaultdict.__getattribute__)
+print('bound-getattribute', type(defaultdict().__getattribute__).__name__, defaultdict.__getattribute__(defaultdict(list), 'default_factory') is list, defaultdict(list).__getattribute__('default_factory') is list)
+for label, thunk in [
+    ('getattribute-wrong-self', lambda: defaultdict.__getattribute__({}, 'keys')),
+    ('getattribute-keyword', lambda: defaultdict.__getattribute__(defaultdict(), name='default_factory')),
+]:
+    try:
+        thunk()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
@@ -58697,6 +58708,11 @@ except Exception as error:
             "type-repr-descriptor wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects>",
             "type-dict-repr True wrapper_descriptor <slot wrapper '__repr__' of 'collections.defaultdict' objects> True",
             "bound-repr method-wrapper defaultdict(<class 'list'>, {'a': 1})",
+            "type-getattribute-descriptor wrapper_descriptor <slot wrapper '__getattribute__' of 'collections.defaultdict' objects>",
+            "type-dict-getattribute True wrapper_descriptor <slot wrapper '__getattribute__' of 'collections.defaultdict' objects> True",
+            "bound-getattribute method-wrapper True True",
+            "getattribute-wrong-self TypeError descriptor '__getattribute__' requires a 'collections.defaultdict' object but received a 'dict' (\"descriptor '__getattribute__' requires a 'collections.defaultdict' object but received a 'dict'\",)",
+            "getattribute-keyword TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
             "empty-none defaultdict defaultdict(None, {})",
             "empty-list defaultdict defaultdict(<class 'list'>, {})",
             "factory True list",

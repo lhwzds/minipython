@@ -9910,6 +9910,16 @@ impl Vm {
 
                 self.call_object_getattribute(args)
             }
+            Value::Builtin(name) if name == "defaultdict.__getattribute__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: wrapper __getattribute__() takes no keyword arguments"
+                            .to_string(),
+                    );
+                }
+
+                self.call_default_dict_getattribute(args)
+            }
             Value::Builtin(name) if name == "object.__setattr__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -16078,6 +16088,29 @@ impl Vm {
             return Err(missing_type_attribute_error("type", &name));
         }
         result
+    }
+
+    fn call_default_dict_getattribute(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__getattribute__' of 'collections.defaultdict' object needs an argument"
+                    .to_string(),
+            );
+        };
+        if !matches!(receiver, Value::DefaultDict { .. }) {
+            return Err(format!(
+                "TypeError: descriptor '__getattribute__' requires a 'collections.defaultdict' object but received a '{}'",
+                type_name(receiver)
+            ));
+        }
+        let [_name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+
+        self.call_object_getattribute(args)
     }
 
     fn call_object_setattr(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -57725,6 +57758,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__getattribute__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("defaultdict.__getattribute__".to_string())),
+                receiver: Box::new(Value::DefaultDict {
+                    entries,
+                    default_factory,
+                }),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__copy__" | "__delitem__" | "__getitem__"
             | "__iter__" | "__len__" | "__missing__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -58690,6 +58731,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(default_dict_default_factory_descriptor())
         }
+        Value::Builtin(function_name)
+            if function_name == "defaultdict" && name == "__getattribute__" =>
+        {
+            Ok(Value::Builtin("defaultdict.__getattribute__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
@@ -59649,6 +59695,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("__repr__".to_string()),
                     Value::Builtin("defaultdict.__repr__".to_string()),
+                ));
+                entries.push((
+                    Value::String("__getattribute__".to_string()),
+                    Value::Builtin("defaultdict.__getattribute__".to_string()),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))
@@ -61162,7 +61212,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
-        "defaultdict" => method == "__repr__",
+        "defaultdict" => matches!(method, "__repr__" | "__getattribute__"),
         _ => false,
     }
 }

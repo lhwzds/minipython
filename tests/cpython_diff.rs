@@ -18314,6 +18314,17 @@ print('type-dict-module', '__module__' in mp, type(mp['__module__']).__name__, m
 print('type-repr-descriptor', type(defaultdict.__repr__).__name__, repr(defaultdict.__repr__))
 print('type-dict-repr', '__repr__' in mp, type(mp['__repr__']).__name__, repr(mp['__repr__']), mp['__repr__'] is defaultdict.__repr__)
 print('bound-repr', type(defaultdict().__repr__).__name__, defaultdict(list, {'a': 1}).__repr__())
+print('type-getattribute-descriptor', type(defaultdict.__getattribute__).__name__, repr(defaultdict.__getattribute__))
+print('type-dict-getattribute', '__getattribute__' in mp, type(mp['__getattribute__']).__name__, repr(mp['__getattribute__']), mp['__getattribute__'] is defaultdict.__getattribute__)
+print('bound-getattribute', type(defaultdict().__getattribute__).__name__, defaultdict.__getattribute__(defaultdict(list), 'default_factory') is list, defaultdict(list).__getattribute__('default_factory') is list)
+for label, thunk in [
+    ('getattribute-wrong-self', lambda: defaultdict.__getattribute__({}, 'keys')),
+    ('getattribute-keyword', lambda: defaultdict.__getattribute__(defaultdict(), name='default_factory')),
+]:
+    try:
+        thunk()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 value = defaultdict()
 print('empty-none', type(value).__name__, repr(value))
 value = defaultdict(list)
