@@ -60753,6 +60753,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
         ("Buffer", "__text_signature__") => Some(Value::None),
         ("Awaitable", "__doc__") => Some(Value::None),
         ("Awaitable", "__text_signature__") => Some(Value::None),
+        ("Coroutine", "__doc__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
