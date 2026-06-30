@@ -9774,6 +9774,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-doc-async-iterable None.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-async-iterable None.
     // CPython oracle line: collections-abc-type-getattribute-doc-async-iterator None.
+    // CPython oracle line: collections-abc-type-getattribute-text-signature-async-iterator None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10045,6 +10046,7 @@ print('collections-abc-type-getattribute-doc-async-iterable', object.__getattrib
 print('collections-abc-type-getattribute-text-signature-async-iterable', object.__getattribute__(AsyncIterable, '__text_signature__'))
 from collections.abc import AsyncIterator
 print('collections-abc-type-getattribute-doc-async-iterator', object.__getattribute__(AsyncIterator, '__doc__'))
+print('collections-abc-type-getattribute-text-signature-async-iterator', object.__getattribute__(AsyncIterator, '__text_signature__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
