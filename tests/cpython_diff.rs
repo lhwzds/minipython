@@ -9777,6 +9777,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-async-iterator None.
     // CPython oracle line: collections-abc-type-getattribute-doc-async-generator None.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-async-generator None.
+    // CPython oracle line: collections-abc-type-getattribute-doc-generator None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10052,6 +10053,8 @@ print('collections-abc-type-getattribute-text-signature-async-iterator', object.
 from collections.abc import AsyncGenerator
 print('collections-abc-type-getattribute-doc-async-generator', object.__getattribute__(AsyncGenerator, '__doc__'))
 print('collections-abc-type-getattribute-text-signature-async-generator', object.__getattribute__(AsyncGenerator, '__text_signature__'))
+from collections.abc import Generator
+print('collections-abc-type-getattribute-doc-generator', object.__getattribute__(Generator, '__doc__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
