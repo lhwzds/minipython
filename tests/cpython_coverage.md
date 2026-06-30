@@ -599,6 +599,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
   `cpython_collections_defaultdict_fromkeys_diff_subset`,
+  `cpython_collections_defaultdict_format_error_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
@@ -1211,6 +1212,14 @@ Recent runtime migration notes:
   `default_factory is None`, shared explicit default values, missing-key
   `KeyError`, arity errors, and keyword rejection without promoting pickle,
   merge operators, or subclass compatibility.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_format_error_diff_subset` and
+  `cpython_collections_defaultdict_format_error_subset`, covering CPython
+  public `defaultdict.__format__()` and `format(defaultdict(...), spec)`
+  behavior for empty and non-empty format specs, including the qualified
+  `collections.defaultdict.__format__` TypeError text for non-empty format spec
+  values without promoting descriptor identity, pickle, merge operators, or
+  subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public
@@ -4901,6 +4910,14 @@ without adding general custom encoder/decoder class support.
   `defaultdict(None, ...)` with `default_factory is None`, preserves shared
   explicit default values, rejects keywords, and leaves pickle, merge
   operators, and subclass compatibility outside the supported surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_format_error_diff_subset` and
+  `cpython_collections_defaultdict_format_error_subset`, covering
+  `defaultdict.__format__()` / `format(defaultdict(...), spec)` empty-format
+  display and non-empty format spec rejection with the public
+  `collections.defaultdict.__format__` TypeError text, while keeping
+  descriptor identity, pickle, merge operators, and subclass compatibility
+  outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

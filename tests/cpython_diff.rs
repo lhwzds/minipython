@@ -18437,6 +18437,31 @@ show('none-missing', lambda: type_basic['missing'])"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_format_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict __format__ public behavior subset",
+        name: "collections-defaultdict-format-error",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': 1})
+print('empty', format(d, ''), d.__format__(''), defaultdict.__format__(d, ''))
+for label, thunk in [
+    ('format-builtin', lambda: format(d, 'x')),
+    ('bound-format', lambda: d.__format__('x')),
+    ('type-format', lambda: defaultdict.__format__(d, 'x')),
+]:
+    show(label, thunk)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",

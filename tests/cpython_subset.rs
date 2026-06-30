@@ -58829,6 +58829,38 @@ show('none-missing', lambda: type_basic['missing'])"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict display
+// behavior. This pins public __format__ error text only; descriptor identity,
+// pickle, merge operators, and subclassing stay outside this slice.
+#[test]
+fn cpython_collections_defaultdict_format_error_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': 1})
+print('empty', format(d, ''), d.__format__(''), defaultdict.__format__(d, ''))
+for label, thunk in [
+    ('format-builtin', lambda: format(d, 'x')),
+    ('bound-format', lambda: d.__format__('x')),
+    ('type-format', lambda: defaultdict.__format__(d, 'x')),
+]:
+    show(label, thunk)"#,
+        &[
+            "empty defaultdict(<class 'list'>, {'a': 1}) defaultdict(<class 'list'>, {'a': 1}) defaultdict(<class 'list'>, {'a': 1})",
+            "format-builtin TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)",
+            "bound-format TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)",
+            "type-format TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names.
 // This ports the public module-name surface. CPython's C accelerator identity
 // comparison and descriptor behavior are tracked separately in the manifest.

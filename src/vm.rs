@@ -3253,7 +3253,7 @@ fn unsupported_format_code_for_value(value: &Value, converted: bool, ty: char) -
 
     format!(
         "TypeError: unsupported format string passed to {}.__format__",
-        type_name(value)
+        object_format_error_type_name(value)
     )
 }
 
@@ -16052,7 +16052,7 @@ impl Vm {
                 } else {
                     Err(format!(
                         "TypeError: unsupported format string passed to {}.__format__",
-                        type_name(value)
+                        object_format_error_type_name(value)
                     ))
                 }
             }
@@ -62575,6 +62575,13 @@ fn type_name(value: &Value) -> &str {
         Value::None => "NoneType",
         Value::NotImplemented => "NotImplementedType",
         Value::Ellipsis => "ellipsis",
+    }
+}
+
+fn object_format_error_type_name(value: &Value) -> String {
+    match value {
+        Value::DefaultDict { .. } => "collections.defaultdict".to_string(),
+        _ => type_name(value).to_string(),
     }
 }
 

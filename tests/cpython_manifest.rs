@@ -17479,6 +17479,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
             "cpython_collections_defaultdict_fromkeys_subset",
+            "cpython_collections_defaultdict_format_error_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
@@ -18894,6 +18895,74 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict fromkeys docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_format_error_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict __format__ errors"
+    );
+    let defaultdict_format_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_format_error_diff_subset",
+    );
+    let defaultdict_format_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_format_error_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "format(d, '')",
+        "d.__format__('')",
+        "defaultdict.__format__(d, '')",
+        "format(d, 'x')",
+        "d.__format__('x')",
+        "defaultdict.__format__(d, 'x')",
+    ] {
+        assert!(
+            defaultdict_format_diff_body.contains(required)
+                && defaultdict_format_subset_body.contains(required),
+            "defaultdict __format__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty defaultdict(<class 'list'>, {'a': 1}) defaultdict(<class 'list'>, {'a': 1}) defaultdict(<class 'list'>, {'a': 1})\"",
+        "\"format-builtin TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)\"",
+        "\"bound-format TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)\"",
+        "\"type-format TypeError unsupported format string passed to collections.defaultdict.__format__ ('unsupported format string passed to collections.defaultdict.__format__',)\"",
+    ] {
+        assert!(
+            defaultdict_format_subset_body.contains(required),
+            "defaultdict __format__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn object_format_error_type_name(",
+        "Value::DefaultDict { .. } => \"collections.defaultdict\"",
+        "object_format_error_type_name(value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict __format__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_format_error_subset",
+            "cpython_collections_defaultdict_format_error_diff_subset",
+            "`defaultdict.__format__()`",
+            "`format(defaultdict(...), spec)`",
+            "collections.defaultdict.__format__",
+            "non-empty format spec",
+            "descriptor identity",
+            "pickle",
+            "merge operators",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict __format__ docs must contain `{required}`"
             );
         }
     }
