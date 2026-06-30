@@ -25275,6 +25275,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-values-view None"],
     );
     assert_output(
+        "from collections.abc import Set\nprint('collections-abc-type-getattribute-doc-set-repr', repr(object.__getattribute__(Set, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-set-repr 'A set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__ and __len__.\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), redefine __le__ and __ge__,\nthen the other operations will automatically follow suit.\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
