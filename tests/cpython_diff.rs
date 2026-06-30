@@ -9785,6 +9785,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mutable-mapping None.
     // CPython oracle line: collections-abc-type-getattribute-doc-mapping-view None.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mapping-view None.
+    // CPython oracle line: collections-abc-type-getattribute-doc-keys-view None.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10072,6 +10073,8 @@ print('collections-abc-type-getattribute-text-signature-mutable-mapping', object
 from collections.abc import MappingView
 print('collections-abc-type-getattribute-doc-mapping-view', object.__getattribute__(MappingView, '__doc__'))
 print('collections-abc-type-getattribute-text-signature-mapping-view', object.__getattribute__(MappingView, '__text_signature__'))
+from collections.abc import KeysView
+print('collections-abc-type-getattribute-doc-keys-view', object.__getattribute__(KeysView, '__doc__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))
