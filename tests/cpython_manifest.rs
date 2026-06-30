@@ -22580,6 +22580,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-abc-type-getattribute-text-signature-values-view None",
         "collections-abc-type-getattribute-doc-set-repr 'A set is a finite, iterable container.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __contains__, __iter__ and __len__.\\n\\nTo override the comparisons (presumably for speed, as the\\nsemantics are fixed), redefine __le__ and __ge__,\\nthen the other operations will automatically follow suit.\\n'",
         "collections-abc-type-getattribute-text-signature-set None",
+        "collections-abc-type-getattribute-doc-mutable-set-repr 'A mutable set is a finite, iterable container.\\n\\nThis class provides concrete generic implementations of all\\nmethods except for __contains__, __iter__, __len__,\\nadd(), and discard().\\n\\nTo override the comparisons (presumably for speed, as the\\nsemantics are fixed), all you have to do is redefine __le__ and\\nthen the other operations will automatically follow suit.\\n'",
         "collections-type-getattribute-qualname-chainmap ChainMap",
         "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-qualname-userlist UserList",
@@ -23159,6 +23160,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ Set ABC type-object __doc__ metadata")
                 && document.contains(
                     "object.__getattribute__ Set ABC type-object __text_signature__ metadata"
+                )
+                && document.contains(
+                    "object.__getattribute__ MutableSet ABC type-object __doc__ metadata"
                 )
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")

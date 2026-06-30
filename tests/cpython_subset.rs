@@ -25285,6 +25285,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-set None"],
     );
     assert_output(
+        "from collections.abc import MutableSet\nprint('collections-abc-type-getattribute-doc-mutable-set-repr', repr(object.__getattribute__(MutableSet, '__doc__')))",
+        &[
+            r"collections-abc-type-getattribute-doc-mutable-set-repr 'A mutable set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__, __len__,\nadd(), and discard().\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), all you have to do is redefine __le__ and\nthen the other operations will automatically follow suit.\n'",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
