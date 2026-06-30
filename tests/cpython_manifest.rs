@@ -22514,6 +22514,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-module-userdict collections",
         "collections-type-getattribute-qualname-chainmap ChainMap",
+        "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-text-signature-chainmap None",
         "collections-type-getattribute-qualname-counter Counter",
         "collections-type-getattribute-text-signature-counter None",
@@ -22715,6 +22716,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "collections-type-getattribute-module-chainmap collections",
         "collections-type-getattribute-module-userdict collections",
         "collections-type-getattribute-qualname-chainmap ChainMap",
+        "collections-type-getattribute-qualname-userdict UserDict",
         "collections-type-getattribute-text-signature-chainmap None",
         "collections-type-getattribute-qualname-counter Counter",
         "collections-type-getattribute-text-signature-counter None",
@@ -22889,6 +22891,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ UserDict type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __qualname__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserDict type-object __qualname__ metadata")
                 && document.contains(
                     "object.__getattribute__ ChainMap type-object __text_signature__ metadata"
                 )

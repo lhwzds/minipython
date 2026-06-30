@@ -9732,6 +9732,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-type-getattribute-module-chainmap collections.
     // CPython oracle line: collections-type-getattribute-module-userdict collections.
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
+    // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-text-signature-chainmap None.
     // CPython oracle line: collections-type-getattribute-qualname-counter Counter.
     // CPython oracle line: collections-type-getattribute-text-signature-counter None.
@@ -9932,6 +9933,7 @@ print('collections-type-getattribute-module-chainmap', object.__getattribute__(C
 from collections import UserDict
 print('collections-type-getattribute-module-userdict', object.__getattribute__(UserDict, '__module__'))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
+print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-text-signature-chainmap', object.__getattribute__(ChainMap, '__text_signature__'))
 print('collections-type-getattribute-qualname-counter', object.__getattribute__(Counter, '__qualname__'))
 print('collections-type-getattribute-text-signature-counter', object.__getattribute__(Counter, '__text_signature__'))
