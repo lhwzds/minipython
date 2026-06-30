@@ -63559,17 +63559,18 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_string(&mut self) -> Result<String, String> {
+        let string_start = self.pos;
         self.expect_char('"')?;
         let mut value = String::new();
         loop {
             let Some(ch) = self.next() else {
-                return self.error("Unterminated string");
+                return self.error_at(string_start, "Unterminated string starting at");
             };
             match ch {
                 '"' => return Ok(value),
                 '\\' => {
                     let backslash_pos = self.pos.saturating_sub(1);
-                    value.push_str(&self.parse_escape(backslash_pos)?);
+                    value.push_str(&self.parse_escape(backslash_pos, string_start)?);
                 }
                 ch if self.strict && ch <= '\u{1f}' => {
                     let control_pos = self.pos.saturating_sub(1);
@@ -63580,9 +63581,13 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn parse_escape(&mut self, backslash_pos: usize) -> Result<String, String> {
+    fn parse_escape(
+        &mut self,
+        backslash_pos: usize,
+        string_start: usize,
+    ) -> Result<String, String> {
         let Some(ch) = self.next() else {
-            return self.error("Invalid escape");
+            return self.error_at(string_start, "Unterminated string starting at");
         };
         match ch {
             '"' => Ok("\"".to_string()),

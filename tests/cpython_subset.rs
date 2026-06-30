@@ -39337,6 +39337,34 @@ fn cpython_json_loads_control_character_message_subset() {
     );
 }
 
+#[test]
+fn cpython_json_loads_unterminated_string_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-top-unclosed-string-full-text', '\"abc', 'Unterminated string starting at: line 1 column 1 (char 0)')\n",
+            "show('loads-dangling-backslash-string-full-text', '\"abc\\\\', 'Unterminated string starting at: line 1 column 1 (char 0)')\n",
+            "show('loads-array-unclosed-string-full-text', '[\"abc', 'Unterminated string starting at: line 1 column 2 (char 1)')\n",
+            "show('loads-object-key-unclosed-string-full-text', '{\"abc', 'Unterminated string starting at: line 1 column 2 (char 1)')\n",
+            "show('loads-object-value-unclosed-string-full-text', '{\"a\":\"bc', 'Unterminated string starting at: line 1 column 6 (char 5)')"
+        ),
+        &[
+            "loads-top-unclosed-string-full-text True True True",
+            "loads-dangling-backslash-string-full-text True True True",
+            "loads-array-unclosed-string-full-text True True True",
+            "loads-object-key-unclosed-string-full-text True True True",
+            "loads-object-value-unclosed-string-full-text True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray

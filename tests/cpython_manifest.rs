@@ -9094,6 +9094,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_control_character_message_subset",
         ),
         (
+            "cpython_json_loads_unterminated_string_message_diff_subset",
+            "cpython_json_loads_unterminated_string_message_subset",
+        ),
+        (
             "cpython_json_loads_trailing_comma_message_diff_subset",
             "cpython_json_loads_trailing_comma_message_subset",
         ),
@@ -9189,6 +9193,14 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "Invalid control character at: line 1 column 3 (char 2)",
         "Invalid control character at: line 1 column 4 (char 3)",
         "Invalid control character at: line 1 column 8 (char 7)",
+        "loads-top-unclosed-string-full-text",
+        "loads-dangling-backslash-string-full-text",
+        "loads-array-unclosed-string-full-text",
+        "loads-object-key-unclosed-string-full-text",
+        "loads-object-value-unclosed-string-full-text",
+        "Unterminated string starting at: line 1 column 1 (char 0)",
+        "Unterminated string starting at: line 1 column 2 (char 1)",
+        "Unterminated string starting at: line 1 column 6 (char 5)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -9206,10 +9218,12 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "self.error_at(value_start, \"Expecting value\")",
         "fn expect_literal(&mut self, literal: &str, value_start: usize)",
         "let backslash_pos = self.pos.saturating_sub(1);",
-        "parse_escape(backslash_pos)",
+        "parse_escape(backslash_pos, string_start)",
         "self.error_at(backslash_pos, \"Invalid \\\\escape\")",
         "let control_pos = self.pos.saturating_sub(1);",
         "self.error_at(control_pos, \"Invalid control character at\")",
+        "let string_start = self.pos;",
+        "self.error_at(string_start, \"Unterminated string starting at\")",
         "fn error_at",
         "fn line_column",
     ] {
@@ -9234,6 +9248,14 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_invalid_escape_message_diff_subset",
             "cpython_json_loads_invalid_escape_message_subset",
+        ),
+        (
+            "cpython_json_loads_control_character_message_diff_subset",
+            "cpython_json_loads_control_character_message_subset",
+        ),
+        (
+            "cpython_json_loads_unterminated_string_message_diff_subset",
+            "cpython_json_loads_unterminated_string_message_subset",
         ),
         (
             "cpython_json_loads_trailing_comma_message_diff_subset",
@@ -9339,6 +9361,14 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "Invalid control character at: line 1 column 3 (char 2)",
         "Invalid control character at: line 1 column 4 (char 3)",
         "Invalid control character at: line 1 column 8 (char 7)",
+        "loads-top-unclosed-string-full-text",
+        "loads-dangling-backslash-string-full-text",
+        "loads-array-unclosed-string-full-text",
+        "loads-object-key-unclosed-string-full-text",
+        "loads-object-value-unclosed-string-full-text",
+        "Unterminated string starting at: line 1 column 1 (char 0)",
+        "Unterminated string starting at: line 1 column 2 (char 1)",
+        "Unterminated string starting at: line 1 column 6 (char 5)",
         "short-unicode-escape",
         "nonhex-unicode-escape",
         "raw-newline",
@@ -9389,6 +9419,11 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-raw-tab-full-text True True True\"",
         "\"loads-array-raw-newline-full-text True True True\"",
         "\"loads-object-raw-tab-full-text True True True\"",
+        "\"loads-top-unclosed-string-full-text True True True\"",
+        "\"loads-dangling-backslash-string-full-text True True True\"",
+        "\"loads-array-unclosed-string-full-text True True True\"",
+        "\"loads-object-key-unclosed-string-full-text True True True\"",
+        "\"loads-object-value-unclosed-string-full-text True True True\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9416,6 +9451,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "CPython public expecting-value messages include line/column/char positions",
             "CPython public invalid-escape messages include line/column/char positions",
             "CPython public raw-control-character messages include line/column/char positions",
+            "CPython public unterminated-string messages include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

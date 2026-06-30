@@ -4310,6 +4310,29 @@ show('loads-object-raw-tab-full-text', '{"a":"x\ty"}', 'Invalid control characte
 }
 
 #[test]
+fn cpython_json_loads_unterminated_string_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public unterminated string decode messages subset",
+        name: "json-loads-unterminated-string-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-top-unclosed-string-full-text', '"abc', 'Unterminated string starting at: line 1 column 1 (char 0)')
+show('loads-dangling-backslash-string-full-text', '"abc\\', 'Unterminated string starting at: line 1 column 1 (char 0)')
+show('loads-array-unclosed-string-full-text', '["abc', 'Unterminated string starting at: line 1 column 2 (char 1)')
+show('loads-object-key-unclosed-string-full-text', '{"abc', 'Unterminated string starting at: line 1 column 2 (char 1)')
+show('loads-object-value-unclosed-string-full-text', '{"a":"bc', 'Unterminated string starting at: line 1 column 6 (char 5)')"#,
+    });
+}
+
+#[test]
 fn cpython_math_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py public pure-memory core subset",
