@@ -4288,6 +4288,28 @@ show('loads-object-invalid-escape-full-text', '{"a":"\\q"}', 'Invalid \\escape: 
 }
 
 #[test]
+fn cpython_json_loads_control_character_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public raw control-character decode messages subset",
+        name: "json-loads-control-character-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-raw-newline-full-text', '"line\nbreak"', 'Invalid control character at: line 1 column 6 (char 5)')
+show('loads-raw-tab-full-text', '"a\tb"', 'Invalid control character at: line 1 column 3 (char 2)')
+show('loads-array-raw-newline-full-text', '["x\ny"]', 'Invalid control character at: line 1 column 4 (char 3)')
+show('loads-object-raw-tab-full-text', '{"a":"x\ty"}', 'Invalid control character at: line 1 column 8 (char 7)')"#,
+    });
+}
+
+#[test]
 fn cpython_math_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py public pure-memory core subset",

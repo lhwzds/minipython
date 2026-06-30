@@ -9090,6 +9090,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_invalid_escape_message_subset",
         ),
         (
+            "cpython_json_loads_control_character_message_diff_subset",
+            "cpython_json_loads_control_character_message_subset",
+        ),
+        (
             "cpython_json_loads_trailing_comma_message_diff_subset",
             "cpython_json_loads_trailing_comma_message_subset",
         ),
@@ -9177,6 +9181,14 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "loads-invalid-q-escape-full-text",
         "loads-array-invalid-escape-full-text",
         "loads-object-invalid-escape-full-text",
+        "loads-raw-newline-full-text",
+        "loads-raw-tab-full-text",
+        "loads-array-raw-newline-full-text",
+        "loads-object-raw-tab-full-text",
+        "Invalid control character at: line 1 column 6 (char 5)",
+        "Invalid control character at: line 1 column 3 (char 2)",
+        "Invalid control character at: line 1 column 4 (char 3)",
+        "Invalid control character at: line 1 column 8 (char 7)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -9196,6 +9208,8 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "let backslash_pos = self.pos.saturating_sub(1);",
         "parse_escape(backslash_pos)",
         "self.error_at(backslash_pos, \"Invalid \\\\escape\")",
+        "let control_pos = self.pos.saturating_sub(1);",
+        "self.error_at(control_pos, \"Invalid control character at\")",
         "fn error_at",
         "fn line_column",
     ] {
@@ -9317,6 +9331,14 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "loads-invalid-q-escape-full-text",
         "loads-array-invalid-escape-full-text",
         "loads-object-invalid-escape-full-text",
+        "loads-raw-newline-full-text",
+        "loads-raw-tab-full-text",
+        "loads-array-raw-newline-full-text",
+        "loads-object-raw-tab-full-text",
+        "Invalid control character at: line 1 column 6 (char 5)",
+        "Invalid control character at: line 1 column 3 (char 2)",
+        "Invalid control character at: line 1 column 4 (char 3)",
+        "Invalid control character at: line 1 column 8 (char 7)",
         "short-unicode-escape",
         "nonhex-unicode-escape",
         "raw-newline",
@@ -9363,6 +9385,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-invalid-q-escape-full-text True True True\"",
         "\"loads-array-invalid-escape-full-text True True True\"",
         "\"loads-object-invalid-escape-full-text True True True\"",
+        "\"loads-raw-newline-full-text True True True\"",
+        "\"loads-raw-tab-full-text True True True\"",
+        "\"loads-array-raw-newline-full-text True True True\"",
+        "\"loads-object-raw-tab-full-text True True True\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9389,6 +9415,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "CPython public extra-data messages include line/column/char positions",
             "CPython public expecting-value messages include line/column/char positions",
             "CPython public invalid-escape messages include line/column/char positions",
+            "CPython public raw-control-character messages include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

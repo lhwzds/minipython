@@ -39311,6 +39311,32 @@ fn cpython_json_loads_invalid_escape_message_subset() {
     );
 }
 
+#[test]
+fn cpython_json_loads_control_character_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-raw-newline-full-text', '\"line\\nbreak\"', 'Invalid control character at: line 1 column 6 (char 5)')\n",
+            "show('loads-raw-tab-full-text', '\"a\\tb\"', 'Invalid control character at: line 1 column 3 (char 2)')\n",
+            "show('loads-array-raw-newline-full-text', '[\"x\\ny\"]', 'Invalid control character at: line 1 column 4 (char 3)')\n",
+            "show('loads-object-raw-tab-full-text', '{\"a\":\"x\\ty\"}', 'Invalid control character at: line 1 column 8 (char 7)')"
+        ),
+        &[
+            "loads-raw-newline-full-text True True True",
+            "loads-raw-tab-full-text True True True",
+            "loads-array-raw-newline-full-text True True True",
+            "loads-object-raw-tab-full-text True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray

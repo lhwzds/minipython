@@ -63572,7 +63572,8 @@ impl<'a> JsonParser<'a> {
                     value.push_str(&self.parse_escape(backslash_pos)?);
                 }
                 ch if self.strict && ch <= '\u{1f}' => {
-                    return self.error("Invalid control character");
+                    let control_pos = self.pos.saturating_sub(1);
+                    return self.error_at(control_pos, "Invalid control character at");
                 }
                 ch => value.push(ch),
             }
