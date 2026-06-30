@@ -58780,6 +58780,66 @@ show('none-missing', lambda: n['x'])"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict copying
+// behavior. This pins direct copy / __copy__ method-descriptor errors without
+// expanding into deepcopy, pickle, merge operators, or subclassing.
+#[test]
+fn cpython_collections_defaultdict_copy_descriptor_errors_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': []})
+for label, thunk in [
+    ('copy-bound', lambda: d.copy()),
+    ('copy-type', lambda: defaultdict.copy(d)),
+    ('copy-bound-keyword', lambda: d.copy(x=1)),
+    ('copy-type-no-args', lambda: defaultdict.copy()),
+    ('copy-type-extra', lambda: defaultdict.copy(d, 1)),
+    ('copy-type-wrong-self', lambda: defaultdict.copy({})),
+    ('copy-type-wrong-self-keyword', lambda: defaultdict.copy({}, x=1)),
+    ('copy-type-keyword-no-pos', lambda: defaultdict.copy(self=d)),
+    ('copy-type-keyword-self-pos', lambda: defaultdict.copy(d, self=d)),
+    ('dunder-bound', lambda: d.__copy__()),
+    ('dunder-type', lambda: defaultdict.__copy__(d)),
+    ('dunder-bound-keyword', lambda: d.__copy__(x=1)),
+    ('dunder-type-no-args', lambda: defaultdict.__copy__()),
+    ('dunder-type-extra', lambda: defaultdict.__copy__(d, 1)),
+    ('dunder-type-wrong-self', lambda: defaultdict.__copy__({})),
+    ('dunder-type-wrong-self-keyword', lambda: defaultdict.__copy__({}, x=1)),
+    ('dunder-type-keyword-no-pos', lambda: defaultdict.__copy__(self=d)),
+    ('dunder-type-keyword-self-pos', lambda: defaultdict.__copy__(d, self=d)),
+]:
+    show(label, thunk)"#,
+        &[
+            "copy-bound defaultdict defaultdict(<class 'list'>, {'a': []})",
+            "copy-type defaultdict defaultdict(<class 'list'>, {'a': []})",
+            "copy-bound-keyword TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)",
+            "copy-type-no-args TypeError unbound method defaultdict.copy() needs an argument ('unbound method defaultdict.copy() needs an argument',)",
+            "copy-type-extra TypeError defaultdict.copy() takes no arguments (1 given) ('defaultdict.copy() takes no arguments (1 given)',)",
+            "copy-type-wrong-self TypeError descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "copy-type-wrong-self-keyword TypeError descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "copy-type-keyword-no-pos TypeError unbound method defaultdict.copy() needs an argument ('unbound method defaultdict.copy() needs an argument',)",
+            "copy-type-keyword-self-pos TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)",
+            "dunder-bound defaultdict defaultdict(<class 'list'>, {'a': []})",
+            "dunder-type defaultdict defaultdict(<class 'list'>, {'a': []})",
+            "dunder-bound-keyword TypeError defaultdict.__copy__() takes no keyword arguments ('defaultdict.__copy__() takes no keyword arguments',)",
+            "dunder-type-no-args TypeError unbound method defaultdict.__copy__() needs an argument ('unbound method defaultdict.__copy__() needs an argument',)",
+            "dunder-type-extra TypeError defaultdict.__copy__() takes no arguments (1 given) ('defaultdict.__copy__() takes no arguments (1 given)',)",
+            "dunder-type-wrong-self TypeError descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "dunder-type-wrong-self-keyword TypeError descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\"descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\",)",
+            "dunder-type-keyword-no-pos TypeError unbound method defaultdict.__copy__() needs an argument ('unbound method defaultdict.__copy__() needs an argument',)",
+            "dunder-type-keyword-self-pos TypeError defaultdict.__copy__() takes no keyword arguments ('defaultdict.__copy__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict construction
 // behavior. This pins defaultdict.fromkeys() as a pure-memory mapping
 // constructor, without promoting merge operators, pickle, or subclassing.

@@ -73636,19 +73636,36 @@ fn call_dict_method(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if matches!(name, "defaultdict.copy" | "defaultdict.__copy__") {
-        reject_method_keywords(name, &keywords)?;
-        let [
-            Value::DefaultDict {
-                entries,
-                default_factory,
-            },
-        ] = args.as_slice()
+        let method = name
+            .strip_prefix("defaultdict.")
+            .expect("defaultdict copy method prefix checked");
+        if args.is_empty() {
+            return Err(format!(
+                "TypeError: unbound method defaultdict.{method}() needs an argument"
+            ));
+        }
+        let receiver = &args[0];
+        let Value::DefaultDict {
+            entries,
+            default_factory,
+        } = receiver
         else {
             return Err(format!(
-                "copy() expected 0 arguments, got {}",
-                method_arg_count(&args)
+                "TypeError: descriptor '{method}' for 'collections.defaultdict' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: defaultdict.{method}() takes no keyword arguments"
+            ));
+        }
+        if args.len() != 1 {
+            return Err(format!(
+                "TypeError: defaultdict.{method}() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        }
         return copy_default_dict(entries, default_factory);
     }
 

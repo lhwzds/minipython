@@ -17478,6 +17478,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
+            "cpython_collections_defaultdict_copy_descriptor_errors_subset",
             "cpython_collections_defaultdict_fromkeys_subset",
             "cpython_collections_defaultdict_missing_descriptor_subset",
             "cpython_collections_defaultdict_format_error_subset",
@@ -18817,6 +18818,98 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict __copy__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_copy_descriptor_errors_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict copy descriptor errors"
+    );
+    let defaultdict_copy_descriptor_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_copy_descriptor_errors_diff_subset",
+    );
+    let defaultdict_copy_descriptor_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_copy_descriptor_errors_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "d.copy()",
+        "defaultdict.copy(d)",
+        "d.copy(x=1)",
+        "defaultdict.copy()",
+        "defaultdict.copy(d, 1)",
+        "defaultdict.copy({})",
+        "defaultdict.copy({}, x=1)",
+        "defaultdict.copy(self=d)",
+        "defaultdict.copy(d, self=d)",
+        "d.__copy__()",
+        "defaultdict.__copy__(d)",
+        "d.__copy__(x=1)",
+        "defaultdict.__copy__()",
+        "defaultdict.__copy__(d, 1)",
+        "defaultdict.__copy__({})",
+        "defaultdict.__copy__({}, x=1)",
+        "defaultdict.__copy__(self=d)",
+        "defaultdict.__copy__(d, self=d)",
+    ] {
+        assert!(
+            defaultdict_copy_descriptor_diff_body.contains(required)
+                && defaultdict_copy_descriptor_subset_body.contains(required),
+            "defaultdict copy descriptor diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"copy-bound defaultdict defaultdict(<class 'list'>, {'a': []})\"",
+        "\"copy-type defaultdict defaultdict(<class 'list'>, {'a': []})\"",
+        "\"copy-bound-keyword TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)\"",
+        "\"copy-type-no-args TypeError unbound method defaultdict.copy() needs an argument ('unbound method defaultdict.copy() needs an argument',)\"",
+        "\"copy-type-extra TypeError defaultdict.copy() takes no arguments (1 given) ('defaultdict.copy() takes no arguments (1 given)',)\"",
+        "\"copy-type-wrong-self TypeError descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\\\"descriptor 'copy' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\\\",)\"",
+        "\"copy-type-keyword-self-pos TypeError defaultdict.copy() takes no keyword arguments ('defaultdict.copy() takes no keyword arguments',)\"",
+        "\"dunder-bound defaultdict defaultdict(<class 'list'>, {'a': []})\"",
+        "\"dunder-type defaultdict defaultdict(<class 'list'>, {'a': []})\"",
+        "\"dunder-bound-keyword TypeError defaultdict.__copy__() takes no keyword arguments ('defaultdict.__copy__() takes no keyword arguments',)\"",
+        "\"dunder-type-no-args TypeError unbound method defaultdict.__copy__() needs an argument ('unbound method defaultdict.__copy__() needs an argument',)\"",
+        "\"dunder-type-extra TypeError defaultdict.__copy__() takes no arguments (1 given) ('defaultdict.__copy__() takes no arguments (1 given)',)\"",
+        "\"dunder-type-wrong-self TypeError descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object (\\\"descriptor '__copy__' for 'collections.defaultdict' objects doesn't apply to a 'dict' object\\\",)\"",
+        "\"dunder-type-keyword-self-pos TypeError defaultdict.__copy__() takes no keyword arguments ('defaultdict.__copy__() takes no keyword arguments',)\"",
+    ] {
+        assert!(
+            defaultdict_copy_descriptor_subset_body.contains(required),
+            "defaultdict copy descriptor subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "unbound method defaultdict.{method}() needs an argument",
+        "descriptor '{method}' for 'collections.defaultdict' objects doesn't apply",
+        "defaultdict.{method}() takes no keyword arguments",
+        "defaultdict.{method}() takes no arguments",
+        "copy_default_dict(entries, default_factory)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict copy descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_copy_descriptor_errors_subset",
+            "cpython_collections_defaultdict_copy_descriptor_errors_diff_subset",
+            "`defaultdict.copy()`",
+            "`defaultdict.__copy__()`",
+            "method-descriptor self validation",
+            "unbound method",
+            "keyword rejection",
+            "pickle",
+            "merge operators",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict copy descriptor docs must contain `{required}`"
             );
         }
     }

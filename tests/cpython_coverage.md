@@ -598,6 +598,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
+  `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset`,
   `cpython_collections_defaultdict_fromkeys_diff_subset`,
   `cpython_collections_defaultdict_missing_descriptor_diff_subset`,
   `cpython_collections_defaultdict_format_error_diff_subset`,
@@ -1205,6 +1206,13 @@ Recent runtime migration notes:
   copies, shared nested values, copied default-factory state, and missing-key
   behavior without promoting descriptor type identity, pickle, merge operators,
   or subclass compatibility.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset` and
+  `cpython_collections_defaultdict_copy_descriptor_errors_subset`, covering
+  CPython public `defaultdict.copy()` and `defaultdict.__copy__()` direct
+  method-descriptor error behavior: unbound method text, method-descriptor self
+  validation, no-extra-argument text, and keyword rejection without promoting
+  `deepcopy`, pickle, merge operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_fromkeys_diff_subset` and
   `cpython_collections_defaultdict_fromkeys_subset`, covering CPython public
@@ -4913,6 +4921,14 @@ without adding general custom encoder/decoder class support.
   and `dir()` visibility for the supported pure-memory mapping without
   promoting descriptor type identity, `deepcopy`, pickle, merge operators, or
   subclass compatibility.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset` and
+  `cpython_collections_defaultdict_copy_descriptor_errors_subset`, covering
+  `defaultdict.copy()` / `defaultdict.__copy__()` direct method-descriptor
+  self validation, unbound method text, extra-argument text, and keyword
+  rejection for the supported pure-memory mapping while leaving `deepcopy`,
+  pickle, merge operators, and subclass compatibility outside the supported
+  surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_fromkeys_diff_subset` and
   `cpython_collections_defaultdict_fromkeys_subset`, covering

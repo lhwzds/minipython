@@ -18403,6 +18403,45 @@ show('none-missing', lambda: n['x'])"#,
 }
 
 #[test]
+fn cpython_collections_defaultdict_copy_descriptor_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict copy method descriptor errors subset",
+        name: "collections-defaultdict-copy-descriptor-errors",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': []})
+for label, thunk in [
+    ('copy-bound', lambda: d.copy()),
+    ('copy-type', lambda: defaultdict.copy(d)),
+    ('copy-bound-keyword', lambda: d.copy(x=1)),
+    ('copy-type-no-args', lambda: defaultdict.copy()),
+    ('copy-type-extra', lambda: defaultdict.copy(d, 1)),
+    ('copy-type-wrong-self', lambda: defaultdict.copy({})),
+    ('copy-type-wrong-self-keyword', lambda: defaultdict.copy({}, x=1)),
+    ('copy-type-keyword-no-pos', lambda: defaultdict.copy(self=d)),
+    ('copy-type-keyword-self-pos', lambda: defaultdict.copy(d, self=d)),
+    ('dunder-bound', lambda: d.__copy__()),
+    ('dunder-type', lambda: defaultdict.__copy__(d)),
+    ('dunder-bound-keyword', lambda: d.__copy__(x=1)),
+    ('dunder-type-no-args', lambda: defaultdict.__copy__()),
+    ('dunder-type-extra', lambda: defaultdict.__copy__(d, 1)),
+    ('dunder-type-wrong-self', lambda: defaultdict.__copy__({})),
+    ('dunder-type-wrong-self-keyword', lambda: defaultdict.__copy__({}, x=1)),
+    ('dunder-type-keyword-no-pos', lambda: defaultdict.__copy__(self=d)),
+    ('dunder-type-keyword-self-pos', lambda: defaultdict.__copy__(d, self=d)),
+]:
+    show(label, thunk)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_fromkeys_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict fromkeys public behavior subset",
