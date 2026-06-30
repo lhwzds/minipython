@@ -1,4 +1,8 @@
 /target/
+/__pycache__/
+__pycache__/
+/reports/*
+!/reports/.gitignore
 
 # private e2e issue tracker (not part of the repo)
 issue.md

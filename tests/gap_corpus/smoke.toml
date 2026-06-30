@@ -1,0 +1,93 @@
+[[case]]
+name = "syntax-function-closure"
+scope = "syntax"
+priority = "must_fix"
+source = '''
+def make(offset):
+    def inner(value):
+        return value + offset
+    return inner
+print(make(4)(5))
+'''
+
+[[case]]
+name = "syntax-class-method"
+scope = "syntax"
+priority = "must_fix"
+source = '''
+class Counter:
+    def __init__(self, value):
+        self.value = value
+    def inc(self):
+        self.value += 1
+        return self.value
+print(Counter(2).inc())
+'''
+
+[[case]]
+name = "syntax-match-basic"
+scope = "syntax"
+priority = "must_fix"
+source = '''
+value = ("ok", 3)
+match value:
+    case ("ok", n):
+        print(n)
+    case _:
+        print("fallback")
+'''
+
+[[case]]
+name = "core-container-comprehension"
+scope = "core-runtime"
+priority = "must_fix"
+source = '''
+values = [x * x for x in range(5) if x % 2 == 0]
+print(values)
+print({x: x + 1 for x in values})
+'''
+
+[[case]]
+name = "core-exception-catch"
+scope = "core-runtime"
+priority = "must_fix"
+source = '''
+try:
+    [][0]
+except IndexError as error:
+    print(type(error).__name__)
+'''
+
+[[case]]
+name = "stdlib-json-basic"
+scope = "stdlib-sandbox"
+priority = "should_fix"
+source = '''
+import json
+value = json.loads('{"a": [1, true, null]}')
+print(value)
+print(json.dumps(value, sort_keys=True))
+'''
+
+[[case]]
+name = "stdlib-collections-abc-iterable-doc"
+scope = "stdlib-sandbox"
+priority = "nice_to_have"
+source = '''
+from collections.abc import Iterable
+print(object.__getattribute__(Iterable, "__doc__"))
+'''
+
+[[case]]
+name = "sandbox-socket-import-block"
+scope = "intentional-sandbox"
+priority = "wont_fix"
+expected = "intentional_sandbox_block"
+source = '''
+try:
+    import socket
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''

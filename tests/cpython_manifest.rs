@@ -10,6 +10,11 @@ const LANGUAGE_TESTS: &str = include_str!("language.rs");
 const AGENTS: &str = include_str!("../AGENTS.md");
 const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
+const PYTHON_VERSION_FILE: &str = include_str!("../.python-version");
+const GAP_SWEEP_TOOL: &str = include_str!("../tools/cpython_gap_sweep.py");
+const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
+const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
+const REPORTS_GITIGNORE: &str = include_str!("../reports/.gitignore");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
 const VM_SOURCE: &str = include_str!("../src/vm.rs");
 const VALUE_SOURCE: &str = include_str!("../src/value.rs");
@@ -31324,6 +31329,68 @@ fn cpython_test_manifest_collections_counter_method_audit_is_complete() {
             "missing TestCounter method audit row for `{expected}`"
         );
     }
+}
+
+#[test]
+fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
+    assert_eq!(
+        PYTHON_VERSION_FILE.trim(),
+        "3.14.6",
+        "gap sweep CPython oracle must stay pinned"
+    );
+
+    for required in [
+        "argparse",
+        "tomllib",
+        "--require-version",
+        "--minipython",
+        "--fail-on-diff",
+        "INTENTIONAL_SANDBOX_BLOCK",
+        "UNSUPPORTED_OUT_OF_SCOPE",
+        "write_reports",
+        "render_markdown",
+    ] {
+        assert!(
+            GAP_SWEEP_TOOL.contains(required),
+            "gap sweep tool must keep `{required}`"
+        );
+    }
+
+    for required in [
+        "syntax-function-closure",
+        "syntax-class-method",
+        "syntax-match-basic",
+        "core-container-comprehension",
+        "core-exception-catch",
+        "stdlib-json-basic",
+        "stdlib-collections-abc-iterable-doc",
+        "sandbox-socket-import-block",
+        "expected = \"intentional_sandbox_block\"",
+    ] {
+        assert!(
+            GAP_SWEEP_SMOKE_CORPUS.contains(required),
+            "gap sweep smoke corpus must keep `{required}`"
+        );
+    }
+
+    for required in [
+        "discovery tool, not a release gate",
+        "`must_fix`",
+        "`should_fix`",
+        "`nice_to_have`",
+        "`wont_fix`",
+        "cpython_diff",
+    ] {
+        assert!(
+            GAP_SWEEP_CORPUS_README.contains(required),
+            "gap sweep corpus README must document `{required}`"
+        );
+    }
+
+    assert!(
+        REPORTS_GITIGNORE.contains("*") && REPORTS_GITIGNORE.contains("!.gitignore"),
+        "generated gap reports must stay ignored while preserving reports/.gitignore"
+    );
 }
 
 fn assert_source_total(groups: &[ManifestGroup<'_>], source: &str, expected: usize) {
