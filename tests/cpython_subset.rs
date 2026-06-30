@@ -39365,6 +39365,32 @@ fn cpython_json_loads_unterminated_string_message_subset() {
     );
 }
 
+#[test]
+fn cpython_json_loads_unicode_escape_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-short-unicode-escape-full-text', '\"\\\\u12\"', 'Invalid \\\\uXXXX escape: line 1 column 3 (char 2)')\n",
+            "show('loads-nonhex-unicode-escape-full-text', '\"\\\\u12xz\"', 'Invalid \\\\uXXXX escape: line 1 column 3 (char 2)')\n",
+            "show('loads-array-short-unicode-escape-full-text', '[\"\\\\u12\"]', 'Invalid \\\\uXXXX escape: line 1 column 4 (char 3)')\n",
+            "show('loads-object-nonhex-unicode-escape-full-text', '{\"a\":\"\\\\u12xz\"}', 'Invalid \\\\uXXXX escape: line 1 column 8 (char 7)')"
+        ),
+        &[
+            "loads-short-unicode-escape-full-text True True True",
+            "loads-nonhex-unicode-escape-full-text True True True",
+            "loads-array-short-unicode-escape-full-text True True True",
+            "loads-object-nonhex-unicode-escape-full-text True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray

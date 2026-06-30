@@ -852,6 +852,10 @@ CPython public unterminated-string messages include line/column/char positions;
 `cpython_json_loads_unterminated_string_message_subset`, backed by
 `cpython_json_loads_unterminated_string_message_diff_subset`, pins those public `str(error)` / `args` values
 without adding full `JSONDecodeError` compatibility.
+CPython public invalid-unicode-escape messages include line/column/char positions;
+`cpython_json_loads_unicode_escape_message_subset`, backed by
+`cpython_json_loads_unicode_escape_message_diff_subset`, pins those public `str(error)` / `args` values
+without adding full `JSONDecodeError` compatibility.
 
 `cpython_json_loads_escape_and_duplicate_key_subset`, backed by
 `cpython_json_loads_escape_and_duplicate_key_diff_subset`, keeps `loads()` escape and duplicate-key parsing for

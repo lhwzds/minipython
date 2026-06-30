@@ -9098,6 +9098,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_unterminated_string_message_subset",
         ),
         (
+            "cpython_json_loads_unicode_escape_message_diff_subset",
+            "cpython_json_loads_unicode_escape_message_subset",
+        ),
+        (
             "cpython_json_loads_trailing_comma_message_diff_subset",
             "cpython_json_loads_trailing_comma_message_subset",
         ),
@@ -9201,6 +9205,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "Unterminated string starting at: line 1 column 1 (char 0)",
         "Unterminated string starting at: line 1 column 2 (char 1)",
         "Unterminated string starting at: line 1 column 6 (char 5)",
+        "loads-short-unicode-escape-full-text",
+        "loads-nonhex-unicode-escape-full-text",
+        "loads-array-short-unicode-escape-full-text",
+        "loads-object-nonhex-unicode-escape-full-text",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -9224,6 +9232,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "self.error_at(control_pos, \"Invalid control character at\")",
         "let string_start = self.pos;",
         "self.error_at(string_start, \"Unterminated string starting at\")",
+        "let escape_pos = self.pos.saturating_sub(1);",
+        "parse_unicode_escape(escape_pos)",
+        "parse_hex_escape_unit(escape_pos)",
+        "self.error_at(escape_pos, \"Invalid \\\\uXXXX escape\")",
         "fn error_at",
         "fn line_column",
     ] {
@@ -9256,6 +9268,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_unterminated_string_message_diff_subset",
             "cpython_json_loads_unterminated_string_message_subset",
+        ),
+        (
+            "cpython_json_loads_unicode_escape_message_diff_subset",
+            "cpython_json_loads_unicode_escape_message_subset",
         ),
         (
             "cpython_json_loads_trailing_comma_message_diff_subset",
@@ -9369,6 +9385,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "Unterminated string starting at: line 1 column 1 (char 0)",
         "Unterminated string starting at: line 1 column 2 (char 1)",
         "Unterminated string starting at: line 1 column 6 (char 5)",
+        "loads-short-unicode-escape-full-text",
+        "loads-nonhex-unicode-escape-full-text",
+        "loads-array-short-unicode-escape-full-text",
+        "loads-object-nonhex-unicode-escape-full-text",
         "short-unicode-escape",
         "nonhex-unicode-escape",
         "raw-newline",
@@ -9424,6 +9444,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-array-unclosed-string-full-text True True True\"",
         "\"loads-object-key-unclosed-string-full-text True True True\"",
         "\"loads-object-value-unclosed-string-full-text True True True\"",
+        "\"loads-short-unicode-escape-full-text True True True\"",
+        "\"loads-nonhex-unicode-escape-full-text True True True\"",
+        "\"loads-array-short-unicode-escape-full-text True True True\"",
+        "\"loads-object-nonhex-unicode-escape-full-text True True True\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9452,6 +9476,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "CPython public invalid-escape messages include line/column/char positions",
             "CPython public raw-control-character messages include line/column/char positions",
             "CPython public unterminated-string messages include line/column/char positions",
+            "CPython public invalid-unicode-escape messages include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

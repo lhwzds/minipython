@@ -63598,17 +63598,21 @@ impl<'a> JsonParser<'a> {
             'n' => Ok("\n".to_string()),
             'r' => Ok("\r".to_string()),
             't' => Ok("\t".to_string()),
-            'u' => self.parse_unicode_escape(),
+            'u' => {
+                let escape_pos = self.pos.saturating_sub(1);
+                self.parse_unicode_escape(escape_pos)
+            }
             _ => self.error_at(backslash_pos, "Invalid \\escape"),
         }
     }
 
-    fn parse_unicode_escape(&mut self) -> Result<String, String> {
-        let value = self.parse_hex_escape_unit()?;
+    fn parse_unicode_escape(&mut self, escape_pos: usize) -> Result<String, String> {
+        let value = self.parse_hex_escape_unit(escape_pos)?;
         if (0xd800..=0xdbff).contains(&value) {
             let saved = self.pos;
             if self.next() == Some('\\') && self.next() == Some('u') {
-                let low = self.parse_hex_escape_unit()?;
+                let low_escape_pos = self.pos.saturating_sub(1);
+                let low = self.parse_hex_escape_unit(low_escape_pos)?;
                 if (0xdc00..=0xdfff).contains(&low) {
                     let codepoint = 0x10000 + ((value - 0xd800) << 10) + (low - 0xdc00);
                     let ch = char::from_u32(codepoint).ok_or_else(|| {
@@ -63629,14 +63633,14 @@ impl<'a> JsonParser<'a> {
         Ok(ch.to_string())
     }
 
-    fn parse_hex_escape_unit(&mut self) -> Result<u32, String> {
+    fn parse_hex_escape_unit(&mut self, escape_pos: usize) -> Result<u32, String> {
         let mut value = 0_u32;
         for _ in 0..4 {
             let Some(ch) = self.next() else {
-                return self.error("Invalid \\uXXXX escape");
+                return self.error_at(escape_pos, "Invalid \\uXXXX escape");
             };
             let Some(digit) = ch.to_digit(16) else {
-                return self.error("Invalid \\uXXXX escape");
+                return self.error_at(escape_pos, "Invalid \\uXXXX escape");
             };
             value = (value << 4) | digit;
         }

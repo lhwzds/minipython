@@ -4333,6 +4333,28 @@ show('loads-object-value-unclosed-string-full-text', '{"a":"bc', 'Unterminated s
 }
 
 #[test]
+fn cpython_json_loads_unicode_escape_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public invalid unicode escape decode messages subset",
+        name: "json-loads-unicode-escape-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-short-unicode-escape-full-text', '"\\u12"', 'Invalid \\uXXXX escape: line 1 column 3 (char 2)')
+show('loads-nonhex-unicode-escape-full-text', '"\\u12xz"', 'Invalid \\uXXXX escape: line 1 column 3 (char 2)')
+show('loads-array-short-unicode-escape-full-text', '["\\u12"]', 'Invalid \\uXXXX escape: line 1 column 4 (char 3)')
+show('loads-object-nonhex-unicode-escape-full-text', '{"a":"\\u12xz"}', 'Invalid \\uXXXX escape: line 1 column 8 (char 7)')"#,
+    });
+}
+
+#[test]
 fn cpython_math_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py public pure-memory core subset",
