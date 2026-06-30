@@ -104,6 +104,7 @@ thread_local! {
     static ITERABLE_COROUTINE_FUNCTIONS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
     static FUNCTION_CODE_IDENTITIES: RefCell<HashMap<usize, Rc<()>>> =
         RefCell::new(HashMap::new());
+    static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
 fn namedtuple_set_option(slot: &mut Option<Value>, name: &str, value: Value) -> Result<(), String> {
@@ -50790,10 +50791,12 @@ fn class_inherits_weakref(bases: &[Value]) -> Result<bool, String> {
 }
 
 fn default_dict_default_factory_descriptor() -> Value {
+    let identity =
+        DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY.with(|identity| identity.clone());
     Value::MemberDescriptor {
         name: "default_factory".to_string(),
         owner_name: "collections.defaultdict".to_string(),
-        identity: Rc::new(()),
+        identity,
     }
 }
 
@@ -59612,6 +59615,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("maxlen".to_string()),
                     Value::Builtin("deque.maxlen.getset_descriptor".to_string()),
+                ));
+            }
+            if class_name == "defaultdict" {
+                entries.push((
+                    Value::String("default_factory".to_string()),
+                    default_dict_default_factory_descriptor(),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))

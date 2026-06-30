@@ -1202,8 +1202,10 @@ Recent runtime migration notes:
   `__delete__` on the supported pure-memory mapping, descriptor metadata
   (`__objclass__`, `__qualname__`, and `__doc__`), method-descriptor self
   validation, `dir(defaultdict.default_factory)` discoverability, and
-  descriptor arity text without promoting pickle, merge operators, or subclass
-  compatibility.
+  `defaultdict.__dict__['default_factory']` exposure through the type
+  mappingproxy with descriptor identity preserved. It keeps descriptor arity
+  text without promoting full `defaultdict.__dict__` method-table parity,
+  pickle, merge operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering CPython public
@@ -4928,8 +4930,11 @@ without adding general custom encoder/decoder class support.
   `__get__` / `__set__` / `__delete__` behavior, descriptor metadata
   (`__objclass__`, `__qualname__`, and `__doc__`), method-descriptor self
   validation, descriptor repr, `dir(defaultdict.default_factory)`
-  discoverability, and descriptor arity text while leaving pickle, merge
-  operators, and subclass compatibility outside the supported surface.
+  discoverability, and `defaultdict.__dict__['default_factory']` exposure
+  through the type mappingproxy with descriptor identity preserved. Descriptor
+  arity text is covered while full `defaultdict.__dict__` method-table parity,
+  pickle, merge operators, and subclass compatibility stay outside the
+  supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering

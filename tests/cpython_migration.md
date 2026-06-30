@@ -11247,9 +11247,12 @@ Completed in the CPython collections manifest expansion pass:
   / `__set__` / `__delete__` for the exact supported `defaultdict` object,
   exposes descriptor metadata (`__objclass__`, `__qualname__`, and `__doc__`),
   and pins method-descriptor self validation,
-  `dir(defaultdict.default_factory)` discoverability, plus descriptor arity
-  text. Pickle/eval identity, merge operators, and defaultdict subclass
-  compatibility stay outside this slice.
+  `dir(defaultdict.default_factory)` discoverability,
+  `defaultdict.__dict__['default_factory']` exposure through the type
+  mappingproxy with descriptor identity preserved, plus descriptor arity text.
+  The full `defaultdict.__dict__` method-table parity, pickle/eval identity,
+  merge operators, and defaultdict subclass compatibility stay outside this
+  slice.
 - Added `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering
   `copy.copy(defaultdict(...))` for the supported pure-memory mapping: the

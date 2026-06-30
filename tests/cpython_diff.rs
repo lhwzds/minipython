@@ -18354,6 +18354,7 @@ def show(label, thunk):
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 
 d = defaultdict(list)
+mp = defaultdict.__dict__
 for label, thunk in [
     ('has-type', lambda: hasattr(defaultdict, 'default_factory')),
     ('dir-type', lambda: 'default_factory' in dir(defaultdict)),
@@ -18365,6 +18366,12 @@ for label, thunk in [
     ('descriptor-objclass', lambda: defaultdict.default_factory.__objclass__ is defaultdict),
     ('descriptor-doc', lambda: defaultdict.default_factory.__doc__),
     ('descriptor-dir-metadata', lambda: [name for name in dir(defaultdict.default_factory) if name in {'__delete__', '__doc__', '__get__', '__name__', '__objclass__', '__qualname__', '__set__'}]),
+    ('type-dict-has', lambda: 'default_factory' in mp),
+    ('type-dict-lookup', lambda: mp['default_factory']),
+    ('type-dict-get', lambda: mp.get('default_factory')),
+    ('type-dict-same', lambda: mp['default_factory'] is defaultdict.default_factory),
+    ('type-dict-objclass', lambda: mp['default_factory'].__objclass__ is defaultdict),
+    ('type-dict-qualname', lambda: mp['default_factory'].__qualname__),
     ('desc-get-noargs', lambda: defaultdict.default_factory.__get__()),
     ('desc-get-none', lambda: defaultdict.default_factory.__get__(None, defaultdict)),
     ('desc-get-inst', lambda: defaultdict.default_factory.__get__(d, defaultdict)),
