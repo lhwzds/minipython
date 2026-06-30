@@ -19150,6 +19150,14 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "hasattr(defaultdict, '__missing__')",
         "'__missing__' in dir(defaultdict)",
         "'__missing__' in dir(d)",
+        "mp = defaultdict.__dict__",
+        "type(defaultdict.__missing__).__name__",
+        "repr(defaultdict.__missing__)",
+        "'__missing__' in mp",
+        "type(mp['__missing__']).__name__",
+        "repr(mp['__missing__'])",
+        "mp['__missing__'] is defaultdict.__missing__",
+        "mp['__missing__'](dict_d, 'td')",
         "d.__missing__('x')",
         "defaultdict.__missing__(d, 'y')",
         "defaultdict(None).__missing__('z')",
@@ -19171,6 +19179,10 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "\"visible True True True\"",
+        "\"descriptor-kind method_descriptor <method '__missing__' of 'collections.defaultdict' objects>\"",
+        "\"type-dict-visible True method_descriptor <method '__missing__' of 'collections.defaultdict' objects> True\"",
+        "\"type-dict-missing list []\"",
+        "\"after-type-dict defaultdict(<class 'list'>, {'td': []}) True\"",
         "\"bound-missing list []\"",
         "\"after-bound defaultdict(<class 'list'>, {'x': []}) True\"",
         "\"type-missing list []\"",
@@ -19191,6 +19203,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "\"defaultdict.__missing__\"",
+        "\"__missing__\".to_string()",
+        "method == \"__missing__\"",
         "unbound method defaultdict.__missing__() needs an argument",
         "descriptor '__missing__' for 'collections.defaultdict' objects doesn't apply",
         "defaultdict.__missing__() takes no keyword arguments",
@@ -19202,11 +19216,23 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "defaultdict __missing__ implementation must contain `{required}`"
         );
     }
+    for required in [
+        "is_defaultdict_missing_method_descriptor",
+        "\"<method '__missing__' of 'collections.defaultdict' objects>\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "defaultdict __missing__ value display implementation must contain `{required}`"
+        );
+    }
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_collections_defaultdict_missing_descriptor_subset",
             "cpython_collections_defaultdict_missing_descriptor_diff_subset",
             "`defaultdict.__missing__()`",
+            "`defaultdict.__dict__['__missing__']`",
+            "method_descriptor",
+            "mappingproxy",
             "method-descriptor self validation",
             "unbound method",
             "keyword rejection",

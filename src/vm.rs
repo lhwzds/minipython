@@ -59622,6 +59622,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::String("default_factory".to_string()),
                     default_dict_default_factory_descriptor(),
                 ));
+                entries.push((
+                    Value::String("__missing__".to_string()),
+                    Value::Builtin("defaultdict.__missing__".to_string()),
+                ));
             }
             Ok(mapping_proxy_from_entries(entries))
         }
@@ -61084,6 +61088,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         return false;
     };
     match type_name {
+        "defaultdict" => method == "__missing__",
         "int" | "bool" => {
             is_builtin_int_type_method(method) && !matches!(method, "__new__" | "from_bytes")
         }

@@ -18539,7 +18539,13 @@ def show(label, thunk):
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 
 d = defaultdict(list)
+mp = defaultdict.__dict__
+dict_d = defaultdict(list)
 print('visible', hasattr(defaultdict, '__missing__'), '__missing__' in dir(defaultdict), '__missing__' in dir(d))
+print('descriptor-kind', type(defaultdict.__missing__).__name__, repr(defaultdict.__missing__))
+print('type-dict-visible', '__missing__' in mp, type(mp['__missing__']).__name__, repr(mp['__missing__']), mp['__missing__'] is defaultdict.__missing__)
+show('type-dict-missing', lambda: mp['__missing__'](dict_d, 'td'))
+print('after-type-dict', repr(dict_d), dict_d['td'] is dict_d['td'])
 show('bound-missing', lambda: d.__missing__('x'))
 print('after-bound', repr(d), d['x'] is d['x'])
 show('type-missing', lambda: defaultdict.__missing__(d, 'y'))

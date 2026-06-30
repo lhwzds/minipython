@@ -1241,9 +1241,11 @@ Recent runtime migration notes:
   CPython public `defaultdict.__missing__()` dispatch on instances and through
   `defaultdict.__missing__(obj, key)`, including missing-key insertion,
   `KeyError` for `default_factory is None`, non-callable factory errors,
+  `defaultdict.__missing__` as a `method_descriptor`,
+  `defaultdict.__dict__['__missing__']` exposure through the type mappingproxy,
   unbound method text, method-descriptor self validation, arity text, and
-  keyword rejection without promoting pickle, merge operators, or subclass
-  compatibility.
+  keyword rejection without promoting full `defaultdict.__dict__`
+  method-table parity, pickle, merge operators, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_format_error_diff_subset` and
   `cpython_collections_defaultdict_format_error_subset`, covering CPython
@@ -4967,9 +4969,12 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_defaultdict_missing_descriptor_diff_subset` and
   `cpython_collections_defaultdict_missing_descriptor_subset`, covering
   `defaultdict.__missing__()` as a pure-memory missing-key hook on bound and
-  type-direct calls, plus unbound method text, method-descriptor self
-  validation, arity text, and keyword rejection while leaving pickle, merge
-  operators, and subclass compatibility outside the supported surface.
+  type-direct calls, `defaultdict.__missing__` as a `method_descriptor`,
+  `defaultdict.__dict__['__missing__']` exposure through the type mappingproxy,
+  plus unbound method text, method-descriptor self validation, arity text, and
+  keyword rejection while leaving full `defaultdict.__dict__` method-table
+  parity, pickle, merge operators, and subclass compatibility outside the
+  supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_format_error_diff_subset` and
   `cpython_collections_defaultdict_format_error_subset`, covering

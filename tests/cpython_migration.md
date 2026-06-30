@@ -11293,9 +11293,12 @@ Completed in the CPython collections manifest expansion pass:
   `defaultdict.__missing__(obj, key)` for the supported pure-memory mapping:
   missing keys insert factory results, `default_factory is None` raises
   `KeyError`, non-callable factories keep CPython's public `TypeError`, and
-  direct calls now pin unbound method text, method-descriptor self validation,
-  arity text, and keyword rejection. Pickle/eval identity, merge operators,
-  and defaultdict subclass compatibility stay outside this slice.
+  direct calls now pin `defaultdict.__missing__` as a `method_descriptor`,
+  `defaultdict.__dict__['__missing__']` exposure through the type mappingproxy,
+  unbound method text, method-descriptor self validation, arity text, and
+  keyword rejection. Full `defaultdict.__dict__` method-table parity,
+  pickle/eval identity, merge operators, and defaultdict subclass
+  compatibility stay outside this slice.
 - Added `cpython_collections_defaultdict_format_error_diff_subset` and
   `cpython_collections_defaultdict_format_error_subset`, covering
   `defaultdict.__format__()` and `format(defaultdict(...), spec)` for the

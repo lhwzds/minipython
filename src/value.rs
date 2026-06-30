@@ -1556,6 +1556,12 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
                 write!(f, "<attribute 'maxlen' of 'collections.deque' objects>")
             }
+            Value::Builtin(name) if is_defaultdict_missing_method_descriptor(name) => {
+                write!(
+                    f,
+                    "<method '__missing__' of 'collections.defaultdict' objects>"
+                )
+            }
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
@@ -2447,6 +2453,10 @@ fn is_typing_special_form_name(name: &str) -> bool {
 
 fn is_deque_maxlen_getset_descriptor(name: &str) -> bool {
     name == "deque.maxlen.getset_descriptor"
+}
+
+fn is_defaultdict_missing_method_descriptor(name: &str) -> bool {
+    name == "defaultdict.__missing__"
 }
 
 fn builtin_type_public_name(name: &str) -> &str {
