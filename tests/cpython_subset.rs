@@ -25175,6 +25175,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-buffer None"],
     );
     assert_output(
+        "from collections.abc import Awaitable\nprint('collections-abc-type-getattribute-doc-awaitable', object.__getattribute__(Awaitable, '__doc__'))",
+        &["collections-abc-type-getattribute-doc-awaitable None"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
