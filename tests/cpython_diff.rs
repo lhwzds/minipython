@@ -9795,6 +9795,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle line: collections-abc-type-getattribute-text-signature-set None.
     // CPython oracle line: collections-abc-type-getattribute-doc-mutable-set-repr 'A mutable set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__, __len__,\nadd(), and discard().\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), all you have to do is redefine __le__ and\nthen the other operations will automatically follow suit.\n'.
     // CPython oracle line: collections-abc-type-getattribute-text-signature-mutable-set None.
+    // CPython oracle line: collections-abc-all-repr ['Awaitable', 'Coroutine', 'AsyncIterable', 'AsyncIterator', 'AsyncGenerator', 'Hashable', 'Iterable', 'Iterator', 'Generator', 'Reversible', 'Sized', 'Container', 'Callable', 'Collection', 'Set', 'MutableSet', 'Mapping', 'MutableMapping', 'MappingView', 'KeysView', 'ItemsView', 'ValuesView', 'Sequence', 'MutableSequence', 'ByteString', 'Buffer'].
     // CPython oracle line: collections-type-getattribute-qualname-chainmap ChainMap.
     // CPython oracle line: collections-type-getattribute-qualname-userdict UserDict.
     // CPython oracle line: collections-type-getattribute-qualname-userlist UserList.
@@ -10097,6 +10098,8 @@ print('collections-abc-type-getattribute-text-signature-set', object.__getattrib
 from collections.abc import MutableSet
 print('collections-abc-type-getattribute-doc-mutable-set-repr', repr(object.__getattribute__(MutableSet, '__doc__')))
 print('collections-abc-type-getattribute-text-signature-mutable-set', object.__getattribute__(MutableSet, '__text_signature__'))
+import collections.abc as abc
+print('collections-abc-all-repr', repr(abc.__all__))
 print('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))
 print('collections-type-getattribute-qualname-userdict', object.__getattribute__(UserDict, '__qualname__'))
 print('collections-type-getattribute-qualname-userlist', object.__getattribute__(UserList, '__qualname__'))

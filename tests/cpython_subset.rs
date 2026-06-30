@@ -25295,6 +25295,12 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-abc-type-getattribute-text-signature-mutable-set None"],
     );
     assert_output(
+        "import collections.abc as abc\nprint('collections-abc-all-repr', repr(abc.__all__))",
+        &[
+            "collections-abc-all-repr ['Awaitable', 'Coroutine', 'AsyncIterable', 'AsyncIterator', 'AsyncGenerator', 'Hashable', 'Iterable', 'Iterator', 'Generator', 'Reversible', 'Sized', 'Container', 'Callable', 'Collection', 'Set', 'MutableSet', 'Mapping', 'MutableMapping', 'MappingView', 'KeysView', 'ItemsView', 'ValuesView', 'Sequence', 'MutableSequence', 'ByteString', 'Buffer']",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );

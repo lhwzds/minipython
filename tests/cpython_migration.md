@@ -251,6 +251,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ Set ABC type-object __text_signature__ metadata,
   object.__getattribute__ MutableSet ABC type-object __doc__ metadata,
   object.__getattribute__ MutableSet ABC type-object __text_signature__ metadata,
+  collections.abc module __all__ public export list,
   object.__getattribute__ ChainMap type-object __qualname__ metadata,
   object.__getattribute__ UserDict type-object __qualname__ metadata,
   object.__getattribute__ UserList type-object __qualname__ metadata,

@@ -59,6 +59,34 @@ pub(crate) const TYPES_ALL: &[&str] = &[
     "prepare_class",
     "resolve_bases",
 ];
+const COLLECTIONS_ABC_ALL: &[&str] = &[
+    "Awaitable",
+    "Coroutine",
+    "AsyncIterable",
+    "AsyncIterator",
+    "AsyncGenerator",
+    "Hashable",
+    "Iterable",
+    "Iterator",
+    "Generator",
+    "Reversible",
+    "Sized",
+    "Container",
+    "Callable",
+    "Collection",
+    "Set",
+    "MutableSet",
+    "Mapping",
+    "MutableMapping",
+    "MappingView",
+    "KeysView",
+    "ItemsView",
+    "ValuesView",
+    "Sequence",
+    "MutableSequence",
+    "ByteString",
+    "Buffer",
+];
 pub(crate) const SYS_BUILTIN_MODULE_NAMES: &[&str] = &["builtins", "sys", "time"];
 pub(crate) const MINIPYTHON_VERSION_MAJOR: i64 = 0;
 pub(crate) const MINIPYTHON_VERSION_MINOR: i64 = 1;
@@ -948,6 +976,7 @@ pub(crate) fn create_module(
         "collections.abc" => Ok(module_value(
             "collections.abc",
             vec![
+                ("__all__", string_list_value(COLLECTIONS_ABC_ALL)),
                 ("Hashable", Value::Builtin("Hashable".to_string())),
                 ("Iterable", Value::Builtin("Iterable".to_string())),
                 ("Iterator", Value::Builtin("Iterator".to_string())),
