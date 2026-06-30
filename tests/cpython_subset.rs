@@ -25037,6 +25037,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-type-getattribute-qualname-userlist UserList"],
     );
     assert_output(
+        "from collections import UserString\nprint('collections-type-getattribute-qualname-userstring', object.__getattribute__(UserString, '__qualname__'))",
+        &["collections-type-getattribute-qualname-userstring UserString"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-text-signature-chainmap', object.__getattribute__(ChainMap, '__text_signature__'))",
         &["collections-type-getattribute-text-signature-chainmap None"],
     );
