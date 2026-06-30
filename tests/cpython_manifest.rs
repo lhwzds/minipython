@@ -9089,6 +9089,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_trailing_comma_message_diff_subset",
             "cpython_json_loads_trailing_comma_message_subset",
         ),
+        (
+            "cpython_json_loads_delimiter_message_diff_subset",
+            "cpython_json_loads_delimiter_message_subset",
+        ),
     ] {
         assert!(
             CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
@@ -9125,6 +9129,14 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "loads-missing-colon-text",
         "loads-array-missing-comma-text",
         "loads-object-missing-comma-text",
+        "loads-object-missing-colon-full-text",
+        "loads-array-missing-comma-full-text",
+        "loads-object-missing-comma-full-text",
+        "loads-unclosed-array-full-text",
+        "Expecting ':' delimiter: line 1 column 6 (char 5)",
+        "Expecting ',' delimiter: line 1 column 4 (char 3)",
+        "Expecting ',' delimiter: line 1 column 8 (char 7)",
+        "Expecting ',' delimiter: line 1 column 3 (char 2)",
         "loads-invalid-escape",
         "dumps-bytearray",
         "dumps-memoryview",
@@ -9145,6 +9157,8 @@ fn json_error_boundary_diff_covers_subset_surface() {
     for required in [
         "Illegal trailing comma before end of array",
         "Illegal trailing comma before end of object",
+        "let pos = self.pos;",
+        "self.error_at(pos, message)",
         "fn error_at",
         "fn line_column",
     ] {
@@ -9169,6 +9183,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_trailing_comma_message_diff_subset",
             "cpython_json_loads_trailing_comma_message_subset",
+        ),
+        (
+            "cpython_json_loads_delimiter_message_diff_subset",
+            "cpython_json_loads_delimiter_message_subset",
         ),
     ];
 
@@ -9203,6 +9221,14 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "loads-missing-colon-text",
         "loads-array-missing-comma-text",
         "loads-object-missing-comma-text",
+        "loads-object-missing-colon-full-text",
+        "loads-array-missing-comma-full-text",
+        "loads-object-missing-comma-full-text",
+        "loads-unclosed-array-full-text",
+        "Expecting ':' delimiter: line 1 column 6 (char 5)",
+        "Expecting ',' delimiter: line 1 column 4 (char 3)",
+        "Expecting ',' delimiter: line 1 column 8 (char 7)",
+        "Expecting ',' delimiter: line 1 column 3 (char 2)",
         "loads-leading-zero-extra",
         "dumps-no-args",
         "dumps-extra-arg",
@@ -9247,6 +9273,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         "\"loads-missing-colon-text True\"",
         "\"loads-array-missing-comma-text True\"",
         "\"loads-object-missing-comma-text True\"",
+        "\"loads-object-missing-colon-full-text True True True\"",
+        "\"loads-array-missing-comma-full-text True True True\"",
+        "\"loads-object-missing-comma-full-text True True True\"",
+        "\"loads-unclosed-array-full-text True True True\"",
         "\"dumps-bytearray True False\"",
         "\"dumps-memoryview True False\"",
         "\"dumps-namedtuple-cycle False True\"",
@@ -9277,6 +9307,7 @@ fn json_error_boundary_docs_cover_subset_limits() {
             "odd-length NUL-containing byte input falls through to JSON parser errors",
             "structural JSON parse failures including trailing data and trailing commas",
             "CPython public trailing-comma messages for arrays and objects include line/column/char positions",
+            "CPython public delimiter messages for missing colon/comma cases include line/column/char positions",
             "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
             "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
             "`loads()` string escape/control-character error boundary",

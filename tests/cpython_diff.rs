@@ -4178,6 +4178,28 @@ show('loads-object-trailing-comma-text', '{"a": 1,}', 'Illegal trailing comma be
 }
 
 #[test]
+fn cpython_json_loads_delimiter_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public delimiter decode messages subset",
+        name: "json-loads-delimiter-messages",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+
+show('loads-object-missing-colon-full-text', '{"a" 1}', "Expecting ':' delimiter: line 1 column 6 (char 5)")
+show('loads-array-missing-comma-full-text', '[1 2]', "Expecting ',' delimiter: line 1 column 4 (char 3)")
+show('loads-object-missing-comma-full-text', '{"a":1 "b":2}', "Expecting ',' delimiter: line 1 column 8 (char 7)")
+show('loads-unclosed-array-full-text', '[1', "Expecting ',' delimiter: line 1 column 3 (char 2)")"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_string_error_boundary_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads string error boundary subset",

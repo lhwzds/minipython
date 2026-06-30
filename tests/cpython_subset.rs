@@ -39182,6 +39182,32 @@ fn cpython_json_loads_trailing_comma_message_subset() {
 }
 
 #[test]
+fn cpython_json_loads_delimiter_message_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source, expected):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('loads-object-missing-colon-full-text', '{\"a\" 1}', \"Expecting ':' delimiter: line 1 column 6 (char 5)\")\n",
+            "show('loads-array-missing-comma-full-text', '[1 2]', \"Expecting ',' delimiter: line 1 column 4 (char 3)\")\n",
+            "show('loads-object-missing-comma-full-text', '{\"a\":1 \"b\":2}', \"Expecting ',' delimiter: line 1 column 8 (char 7)\")\n",
+            "show('loads-unclosed-array-full-text', '[1', \"Expecting ',' delimiter: line 1 column 3 (char 2)\")"
+        ),
+        &[
+            "loads-object-missing-colon-full-text True True True",
+            "loads-array-missing-comma-full-text True True True",
+            "loads-object-missing-comma-full-text True True True",
+            "loads-unclosed-array-full-text True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_string_error_boundary_subset() {
     assert_output(
         concat!(

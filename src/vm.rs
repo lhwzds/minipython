@@ -63746,10 +63746,11 @@ impl<'a> JsonParser<'a> {
     }
 
     fn expect_char_with_message(&mut self, expected: char, message: &str) -> Result<(), String> {
+        let pos = self.pos;
         if self.next() == Some(expected) {
             Ok(())
         } else {
-            self.error(message)
+            self.error_at(pos, message)
         }
     }
 
