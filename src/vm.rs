@@ -36818,6 +36818,13 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
         }),
         Value::Set(items) => Ok(set_value(items.borrow().clone())),
         Value::Dict(entries) => Ok(dict_value(entries.borrow().entries.clone())),
+        Value::DefaultDict {
+            entries,
+            default_factory,
+        } => Ok(Value::DefaultDict {
+            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
+            default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
+        }),
         Value::Counter { entries } => Ok(Value::Counter {
             entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
         }),

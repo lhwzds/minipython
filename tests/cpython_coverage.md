@@ -596,6 +596,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
+  `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
@@ -1186,6 +1187,12 @@ Recent runtime migration notes:
   missing-key factory insertion, `get()` not invoking missing behavior,
   `copy()`, constructor error boundaries, factory exception propagation, and
   `json.dumps()` treating the supported container as a dict-like mapping.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_copy_module_diff_subset` and
+  `cpython_collections_defaultdict_copy_module_subset`, covering CPython public
+  `copy.copy(defaultdict(...))` shallow-copy behavior: a fresh `defaultdict`
+  object with the same default factory, shallow-copied mapping entries, shared
+  nested values, and missing-key writes isolated to the copied mapping.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public
@@ -2686,8 +2693,9 @@ without adding general custom encoder/decoder class support.
   nested list/dict shallow-vs-deep copy behavior, `deepcopy()` memo preservation for
   shared list/dict/tuple members, explicit memo dict pre-seeding and population for
   supported identities, and self-referential lists, shared user-instance fields
-  and user-instance self-cycles, and shared `UserList` / `UserDict` / `deque`
-  members plus `UserList` self-cycles, `io.BytesIO` shallow/deep copy behavior
+  and user-instance self-cycles, shared `UserList` / `UserDict` / `deque`
+  members plus `UserList` self-cycles, and `copy.copy(defaultdict(...))`
+  shallow-copy behavior for the supported pure-memory mapping, `io.BytesIO` shallow/deep copy behavior
   for open in-memory buffers with position and custom attributes, independent
   bytearray copy buffers, dictionary copy independence, `copy.replace()` custom
   `__replace__` hook dispatch through class-level lookup, including
@@ -4855,6 +4863,12 @@ without adding general custom encoder/decoder class support.
   shallow `copy()`, callable/`None` factory validation, factory exceptions,
   and JSON mapping serialization.
   Excluded surface includes full defaultdict pickle/merge operators/subclass compatibility.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_copy_module_diff_subset` and
+  `cpython_collections_defaultdict_copy_module_subset`, covering
+  `copy.copy(defaultdict(...))` shallow-copy behavior for the supported
+  pure-memory `defaultdict` mapping without promoting `deepcopy`, pickle, merge
+  operators, or subclass compatibility.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

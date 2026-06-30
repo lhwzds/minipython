@@ -18339,6 +18339,40 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_collections_defaultdict_copy_module_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict copy.copy public behavior subset",
+        name: "collections-defaultdict-copy-module",
+        source: r#"from collections import defaultdict
+from copy import copy
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+shared = []
+d = defaultdict(list, {'a': shared})
+c = copy(d)
+print('copy-list', type(c).__name__, repr(c), c is d, c.default_factory is d.default_factory, c['a'] is d['a'])
+c['a'].append(1)
+c['b'].append(2)
+print('after-copy-mutate', d['a'], c['a'], 'b' in d, sorted(c.items()))
+d.default_factory = int
+e = copy(d)
+print('copy-int-before', type(e).__name__, repr(e), e is d, e.default_factory is int, 'n' in d, 'n' in e)
+print('copy-int-missing', e['n'], 'n' in d, 'n' in e, sorted(e.items()))
+d.default_factory = None
+f = copy(d)
+print('copy-none', type(f).__name__, repr(f), f.default_factory, f is d)
+show('copy-none-missing', lambda: f['missing'])
+print('original-factory', d.default_factory)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",
