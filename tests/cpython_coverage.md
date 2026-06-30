@@ -1198,9 +1198,11 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_default_factory_descriptor_subset`,
   covering CPython public `defaultdict.default_factory` type-level
   `member_descriptor` behavior: type lookup and repr, `__get__` / `__set__` /
-  `__delete__` on the supported pure-memory mapping, method-descriptor self
-  validation, and descriptor arity text without promoting pickle, merge
-  operators, or subclass compatibility.
+  `__delete__` on the supported pure-memory mapping, descriptor metadata
+  (`__objclass__`, `__qualname__`, and `__doc__`), method-descriptor self
+  validation, `dir(defaultdict.default_factory)` discoverability, and
+  descriptor arity text without promoting pickle, merge operators, or subclass
+  compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering CPython public
@@ -4921,9 +4923,11 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`,
   covering `defaultdict.default_factory` as a public `member_descriptor` with
-  `__get__` / `__set__` / `__delete__` behavior, method-descriptor self
-  validation, descriptor repr, and descriptor arity text while leaving pickle,
-  merge operators, and subclass compatibility outside the supported surface.
+  `__get__` / `__set__` / `__delete__` behavior, descriptor metadata
+  (`__objclass__`, `__qualname__`, and `__doc__`), method-descriptor self
+  validation, descriptor repr, `dir(defaultdict.default_factory)`
+  discoverability, and descriptor arity text while leaving pickle, merge
+  operators, and subclass compatibility outside the supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering

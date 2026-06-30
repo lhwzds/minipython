@@ -49425,6 +49425,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => {
             names.extend(getset_descriptor_dir_names())
         }
+        Value::MemberDescriptor { .. } => names.extend(member_descriptor_dir_names()),
         Value::Builtin(name)
             if is_builtins_builtin_function_name(name)
                 || is_sys_breakpointhook_builtin_name(name) =>
@@ -49757,6 +49758,10 @@ fn getset_descriptor_dir_names() -> Vec<String> {
     .into_iter()
     .map(str::to_string)
     .collect()
+}
+
+fn member_descriptor_dir_names() -> Vec<String> {
+    getset_descriptor_dir_names()
 }
 
 fn builtin_function_dir_names() -> Vec<String> {
@@ -50805,6 +50810,25 @@ fn default_dict_default_factory_descriptor_value(
         ));
     };
     Ok(default_factory.clone())
+}
+
+fn member_descriptor_doc_value(descriptor_name: &str, owner_name: &str) -> Value {
+    if descriptor_name == "default_factory" && owner_name == "collections.defaultdict" {
+        return Value::String("Factory for default value called by __missing__().".to_string());
+    }
+    Value::None
+}
+
+fn member_descriptor_objclass_value(owner_name: &str) -> Option<Value> {
+    match owner_name {
+        "collections.defaultdict" => Some(Value::Builtin("defaultdict".to_string())),
+        _ => None,
+    }
+}
+
+fn member_descriptor_qualname(descriptor_name: &str, owner_name: &str) -> String {
+    let owner_qualname = owner_name.rsplit('.').next().unwrap_or(owner_name);
+    format!("{owner_qualname}.{descriptor_name}")
 }
 
 fn member_descriptor_fields(object: &Value, name: &str, owner_name: &str) -> Result<Scope, String> {
@@ -57070,7 +57094,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             identity,
         } => match name {
             "__name__" => Ok(Value::String(descriptor_name)),
-            "__doc__" => Ok(Value::None),
+            "__doc__" => Ok(member_descriptor_doc_value(&descriptor_name, &owner_name)),
+            "__objclass__" => member_descriptor_objclass_value(&owner_name).ok_or_else(|| {
+                "AttributeError: member_descriptor has no attribute '__objclass__'".to_string()
+            }),
+            "__qualname__" => Ok(Value::String(member_descriptor_qualname(
+                &descriptor_name,
+                &owner_name,
+            ))),
             "__get__" | "__set__" | "__delete__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("member_descriptor.{name}"))),
                 receiver: Box::new(Value::MemberDescriptor {
