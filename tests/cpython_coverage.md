@@ -127,6 +127,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ Counter type-object __module__ metadata
   behavior, object.__getattribute__ ChainMap type-object __module__ metadata
   behavior, object.__getattribute__ ChainMap type-object __qualname__ metadata
+  behavior, object.__getattribute__ ChainMap type-object __text_signature__ metadata
   behavior, object.__getattribute__ Counter type-object __qualname__ metadata
   behavior, object.__getattribute__ Counter type-object __text_signature__ metadata
   behavior, object.__getattribute__ builtin type-object __qualname__ metadata
