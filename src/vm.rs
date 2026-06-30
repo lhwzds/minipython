@@ -59337,6 +59337,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ]))
         }
         Value::Builtin(function_name)
+            if name == "__annotations__" && function_name == "collections.namedtuple" =>
+        {
+            Ok(dict_value(Vec::new()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
