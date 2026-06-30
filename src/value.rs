@@ -1565,6 +1565,12 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_defaultdict_copy_method_descriptor(name) => {
                 write!(f, "<method 'copy' of 'collections.defaultdict' objects>")
             }
+            Value::Builtin(name) if is_defaultdict_dunder_copy_method_descriptor(name) => {
+                write!(
+                    f,
+                    "<method '__copy__' of 'collections.defaultdict' objects>"
+                )
+            }
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
@@ -2464,6 +2470,10 @@ fn is_defaultdict_missing_method_descriptor(name: &str) -> bool {
 
 fn is_defaultdict_copy_method_descriptor(name: &str) -> bool {
     name == "defaultdict.copy"
+}
+
+fn is_defaultdict_dunder_copy_method_descriptor(name: &str) -> bool {
+    name == "defaultdict.__copy__"
 }
 
 fn builtin_type_public_name(name: &str) -> &str {
