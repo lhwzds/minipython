@@ -60767,6 +60767,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             "A Mapping is a generic container for associating key/value\npairs.\n\nThis class provides concrete generic implementations of all\nmethods except for __getitem__, __iter__, and __len__.\n"
                 .to_string(),
         )),
+        ("Mapping", "__text_signature__") => Some(Value::None),
         (
             "Hashable" | "Iterable" | "Iterator" | "Sized" | "Container" | "Callable"
             | "Collection" | "Reversible",
