@@ -59313,6 +59313,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("math.integer".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && function_name == "collections.namedtuple" =>
+        {
+            Ok(Value::String("collections".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))

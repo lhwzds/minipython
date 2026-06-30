@@ -25025,6 +25025,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["collections-type-getattribute-module-userstring collections"],
     );
     assert_output(
+        "from collections import namedtuple\nprint('collections-builtin-getattribute-module-namedtuple', object.__getattribute__(namedtuple, '__module__'))",
+        &["collections-builtin-getattribute-module-namedtuple collections"],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
