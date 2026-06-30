@@ -138,6 +138,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ _count_elements builtin __module__ metadata
   behavior, object.__getattribute__ _count_elements builtin __qualname__ metadata
   behavior, object.__getattribute__ _count_elements builtin __doc__ metadata
+  behavior, object.__getattribute__ _count_elements builtin __text_signature__ metadata
   behavior, object.__getattribute__ ChainMap type-object __qualname__ metadata
   behavior, object.__getattribute__ UserDict type-object __qualname__ metadata
   behavior, object.__getattribute__ UserList type-object __qualname__ metadata

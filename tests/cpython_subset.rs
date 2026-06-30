@@ -25067,6 +25067,12 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "from collections import _count_elements\nprint('collections-builtin-getattribute-text-signature-count-elements', object.__getattribute__(_count_elements, '__text_signature__'))",
+        &[
+            "collections-builtin-getattribute-text-signature-count-elements ($module, mapping, iterable, /)",
+        ],
+    );
+    assert_output(
         "from collections import ChainMap\nprint('collections-type-getattribute-qualname-chainmap', object.__getattribute__(ChainMap, '__qualname__'))",
         &["collections-type-getattribute-qualname-chainmap ChainMap"],
     );
