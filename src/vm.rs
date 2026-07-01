@@ -113,6 +113,7 @@ thread_local! {
     static JSON_BUILTIN_NAMES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static JSON_BUILTIN_ANNOTATE: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
@@ -61437,7 +61438,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__annotate__" && is_json_builtin(&function_name) =>
         {
-            Ok(Value::None)
+            Ok(json_builtin_annotate(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__closure__" && is_json_builtin(&function_name) =>
@@ -62120,6 +62121,21 @@ fn delete_json_builtin_module(name: &str) {
     set_json_builtin_module(name, Value::None);
 }
 
+fn json_builtin_annotate(name: &str) -> Value {
+    JSON_BUILTIN_ANNOTATE
+        .with(|annotate| annotate.borrow().get(name).cloned().unwrap_or(Value::None))
+}
+
+fn set_json_builtin_annotate(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::None) && !is_callable_value(&value) {
+        return Err("TypeError: __annotate__ must be callable or None".to_string());
+    }
+    JSON_BUILTIN_ANNOTATE.with(|annotate| {
+        annotate.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
+}
+
 fn set_json_builtin_annotations(name: &str, value: Value) -> Result<(), String> {
     let replacement = if matches!(value, Value::None) {
         dict_value(Vec::new())
@@ -62317,6 +62333,7 @@ fn store_json_builtin_attribute(
             return Ok(());
         }
         "__dict__" => return set_json_builtin_dict(function_name, value),
+        "__annotate__" => return set_json_builtin_annotate(function_name, value),
         "__annotations__" => return set_json_builtin_annotations(function_name, value),
         _ => {}
     }
@@ -62339,6 +62356,7 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             return Ok(());
         }
         "__dict__" => return Err("TypeError: cannot delete __dict__".to_string()),
+        "__annotate__" => return Err("TypeError: __annotate__ cannot be deleted".to_string()),
         "__annotations__" => {
             delete_json_builtin_annotations(function_name);
             return Ok(());

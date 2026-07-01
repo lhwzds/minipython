@@ -1062,6 +1062,7 @@ Recent runtime migration notes:
   `cpython_json_function_dict_assignment_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
+  `cpython_json_function_annotate_assignment_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
   `cpython_json_function_builtins_metadata_diff_subset`,
   `cpython_json_function_builtins_identity_metadata_diff_subset`,
@@ -1713,6 +1714,8 @@ Recent runtime migration notes:
   `cpython_json_function_type_params_metadata_subset`,
   `cpython_json_function_annotate_metadata_diff_subset` /
   `cpython_json_function_annotate_metadata_subset`,
+  `cpython_json_function_annotate_assignment_metadata_diff_subset` /
+  `cpython_json_function_annotate_assignment_metadata_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset` /
   `cpython_json_function_closure_none_metadata_subset`,
   `cpython_json_function_builtins_metadata_diff_subset` /
@@ -2557,6 +2560,14 @@ file APIs, module `__all__`, or encoder/decoder classes.
 (`json.loads.__annotate__` and
 `json.dumps.__annotate__` are `None`) aligned with CPython without adding
 function `__globals__`, function `__code__`, file APIs, module `__all__`, or
+encoder/decoder classes.
+
+`cpython_json_function_annotate_assignment_metadata_subset`, backed by
+`cpython_json_function_annotate_assignment_metadata_diff_subset`, keeps json public function `__annotate__` assignment
+and deletion errors aligned with CPython for `loads` / `dumps`, including
+callable replacement identity, `None` reset, non-callable assignment
+`TypeError`, and deletion `TypeError`, without adding lazy annotation
+evaluation, function `__code__`, file APIs, module `__all__`, or
 encoder/decoder classes.
 
 `cpython_json_function_closure_none_metadata_subset`, backed by

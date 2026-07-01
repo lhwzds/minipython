@@ -8714,6 +8714,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_module_package_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_annotate_metadata_subset",
+            "cpython_json_function_annotate_assignment_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_identity_metadata_subset",
@@ -8859,6 +8860,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_module_package_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
         "cpython_json_function_annotate_metadata_diff_subset",
+        "cpython_json_function_annotate_assignment_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
         "cpython_json_function_builtins_metadata_diff_subset",
         "cpython_json_function_builtins_identity_metadata_diff_subset",
@@ -9140,6 +9142,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_annotate_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_annotate_metadata_subset",
+    );
+    let json_function_annotate_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_annotate_assignment_metadata_diff_subset",
+    );
+    let json_function_annotate_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_annotate_assignment_metadata_subset",
     );
     let json_function_closure_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10320,6 +10330,61 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_annotate_subset_body.contains(required),
             "json public function __annotate__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "def marker():",
+        "original = function.__annotate__",
+        "function.__annotate__ is function.__annotate__",
+        "function.__annotate__ = marker",
+        "function.__annotate__ is marker",
+        "function.__annotate__.__name__",
+        "function.__annotate__ = None",
+        "function.__annotate__ is None",
+        "function.__annotate__ = []",
+        "del function.__annotate__",
+        "function.__annotate__ = original",
+        "json.loads.__annotate__",
+        "json.dumps.__annotate__",
+    ] {
+        assert!(
+            json_function_annotate_assignment_diff_body.contains(required)
+                && json_function_annotate_assignment_subset_body.contains(required),
+            "json public function __annotate__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial NoneType None True\"",
+        "\"loads set-callable True marker\"",
+        "\"loads set-none True None\"",
+        "\"loads set-list TypeError __annotate__ must be callable or None",
+        "\"loads del-error TypeError __annotate__ cannot be deleted",
+        "\"dumps initial NoneType None True\"",
+        "\"dumps set-callable True marker\"",
+        "\"dumps set-none True None\"",
+        "\"dumps set-list TypeError __annotate__ must be callable or None",
+        "\"dumps del-error TypeError __annotate__ cannot be deleted",
+        "\"None None\"",
+    ] {
+        assert!(
+            json_function_annotate_assignment_subset_body.contains(required),
+            "json public function __annotate__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_ANNOTATE: RefCell<HashMap<String, Value>>",
+        "fn json_builtin_annotate(name: &str) -> Value",
+        "fn set_json_builtin_annotate(",
+        "Ok(json_builtin_annotate(&function_name))",
+        "JSON_BUILTIN_ANNOTATE.with",
+        "is_callable_value(&value)",
+        "__annotate__ must be callable or None",
+        "\"__annotate__\" => return set_json_builtin_annotate(function_name, value)",
+        "\"__annotate__\" => return Err(\"TypeError: __annotate__ cannot be deleted\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __annotate__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11539,8 +11604,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains("name == \"__annotate__\" && is_json_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(Value::None)"),
-        "VM must expose CPython-compatible json function __annotate__ metadata"
+            && VM_SOURCE.contains("Ok(json_builtin_annotate(&function_name))")
+            && VM_SOURCE.contains("static JSON_BUILTIN_ANNOTATE: RefCell<HashMap<String, Value>>")
+            && VM_SOURCE.contains("fn json_builtin_annotate(name: &str) -> Value"),
+        "VM must expose persistent CPython-compatible json function __annotate__ metadata"
     );
     assert!(
         VM_SOURCE.contains("name == \"__closure__\" && is_json_builtin(&function_name)")
@@ -11879,6 +11946,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_annotate_metadata_diff_subset",
+            "cpython_json_function_annotate_assignment_metadata_subset",
+            "cpython_json_function_annotate_assignment_metadata_diff_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_closure_none_metadata_diff_subset",
             "cpython_json_function_builtins_metadata_subset",
@@ -11982,6 +12051,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__globals__` shared identity",
             "json public function `__doc__` identity",
             "json public function `__dict__` identity",
+            "json public function `__annotate__` assignment",
             "json public function `__annotations__` identity",
             "json public function `__annotations__` assignment",
             "json public function `__kwdefaults__` identity",

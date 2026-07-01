@@ -38171,6 +38171,46 @@ print(json.loads.__annotate__ is json.dumps.__annotate__ is None)"#,
 }
 
 #[test]
+fn cpython_json_function_annotate_assignment_metadata_subset() {
+    assert_output(
+        r#"import json
+def marker():
+    return {'x': int}
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__annotate__
+    print(name, 'initial', type(original).__name__, original, function.__annotate__ is function.__annotate__)
+    function.__annotate__ = marker
+    print(name, 'set-callable', function.__annotate__ is marker, function.__annotate__.__name__)
+    function.__annotate__ = None
+    print(name, 'set-none', function.__annotate__ is None, function.__annotate__)
+    try:
+        function.__annotate__ = []
+    except TypeError as error:
+        print(name, 'set-list', type(error).__name__, str(error), error.args)
+    try:
+        del function.__annotate__
+    except TypeError as error:
+        print(name, 'del-error', type(error).__name__, str(error), error.args)
+    function.__annotate__ = original
+print(json.loads.__annotate__, json.dumps.__annotate__)"#,
+        &[
+            "loads initial NoneType None True",
+            "loads set-callable True marker",
+            "loads set-none True None",
+            "loads set-list TypeError __annotate__ must be callable or None ('__annotate__ must be callable or None',)",
+            "loads del-error TypeError __annotate__ cannot be deleted ('__annotate__ cannot be deleted',)",
+            "dumps initial NoneType None True",
+            "dumps set-callable True marker",
+            "dumps set-none True None",
+            "dumps set-list TypeError __annotate__ must be callable or None ('__annotate__ must be callable or None',)",
+            "dumps del-error TypeError __annotate__ cannot be deleted ('__annotate__ cannot be deleted',)",
+            "None None",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_closure_none_metadata_subset() {
     assert_output(
         r#"import json
