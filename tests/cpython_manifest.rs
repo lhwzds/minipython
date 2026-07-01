@@ -16941,6 +16941,10 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
         "test_dunder_is_original",
         "public module metadata and alias",
         "without depending on CPython's `_operator` accelerator",
+        "operator.__package__",
+        "object.__getattribute__(operator, '__package__')",
+        "'__package__' in dir(operator)",
+        "operator.__dict__['__package__']",
         "expected = ['abs', 'add', 'and_', 'attrgetter', 'call'",
         "'is_none'",
         "'is_not_none'",
@@ -16971,11 +16975,21 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
             "operator module metadata subset evidence must cover `{required}`"
         );
     }
+    for required in ["\"operator ''\"", "\"True ''\""] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator module metadata subset output must pin `{required}`"
+        );
+    }
 
     let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_module_metadata_diff_subset");
     for required in [
         "OperatorTestCase::test___all__ and ::test_dunder_is_original",
         "operator-module-metadata",
+        "operator.__package__",
+        "object.__getattribute__(operator, '__package__')",
+        "'__package__' in dir(operator)",
+        "operator.__dict__['__package__']",
         "for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']",
         "getattr(value, '__name__', None)",
         "getattr(value, '__qualname__', None)",
@@ -17006,10 +17020,25 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
         );
     }
 
+    let operator_start = STDLIB_SOURCE
+        .find("fn operator_module_value()")
+        .expect("stdlib.rs must define operator_module_value()");
+    let operator_end = operator_start
+        + STDLIB_SOURCE[operator_start..]
+            .find("\nfn builtin_type_value")
+            .expect("operator_module_value() must precede builtin_type_value()");
+    let operator_registry = &STDLIB_SOURCE[operator_start..operator_end];
+    assert!(
+        operator_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "operator stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+
     assert!(
         CPYTHON_COVERAGE.contains("cpython_operator_module_metadata_subset")
             && CPYTHON_COVERAGE.contains("cpython_operator_module_metadata_diff_subset")
             && CPYTHON_COVERAGE.contains("exported `operator.__all__` names")
+            && CPYTHON_COVERAGE.contains("operator module `__package__` metadata")
+            && CPYTHON_COVERAGE.contains("`operator.__package__`")
             && CPYTHON_COVERAGE.contains("callable `__module__`")
             && CPYTHON_COVERAGE.contains("__name__")
             && CPYTHON_COVERAGE.contains("__qualname__")
@@ -17024,6 +17053,8 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("cpython_operator_module_metadata_diff_subset")
             && CPYTHON_MIGRATION.contains("operator.__all__")
             && CPYTHON_MIGRATION.contains("public helper list")
+            && CPYTHON_MIGRATION.contains("operator module `__package__` metadata")
+            && CPYTHON_MIGRATION.contains("`operator.__package__`")
             && CPYTHON_MIGRATION.contains("operator.*` builtin callable")
             && CPYTHON_MIGRATION.contains("__name__")
             && CPYTHON_MIGRATION.contains("__module__")

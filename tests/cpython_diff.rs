@@ -20847,6 +20847,9 @@ fn cpython_operator_module_metadata_diff_subset() {
         origin: "Lib/test/test_operator.py::OperatorTestCase::test___all__ and ::test_dunder_is_original public metadata subset stable on CPython 3.9",
         name: "operator-module-metadata",
         source: r#"import operator
+print(operator.__name__, repr(operator.__package__))
+print(repr(object.__getattribute__(operator, '__package__')))
+print('__package__' in dir(operator), repr(operator.__dict__['__package__']))
 for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:
     value = getattr(operator, name)
     print(name, getattr(value, '__name__', None), getattr(value, '__qualname__', None), getattr(value, '__module__', None) in ('operator', '_operator'))

@@ -2851,7 +2851,8 @@ fn operator_builtin(name: &str) -> Value {
 }
 
 fn operator_module_value() -> Value {
-    let mut attrs = Vec::with_capacity(OPERATOR_ALL.len() + OPERATOR_DUNDER_ALIASES.len() + 1);
+    let mut attrs = Vec::with_capacity(OPERATOR_ALL.len() + OPERATOR_DUNDER_ALIASES.len() + 2);
+    attrs.push(("__package__", Value::String(String::new())));
     for name in OPERATOR_ALL {
         attrs.push((*name, operator_builtin(name)));
     }

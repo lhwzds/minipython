@@ -47914,6 +47914,9 @@ fn cpython_operator_module_metadata_subset() {
     assert_output(
         concat!(
             "import operator\n",
+            "print(operator.__name__, repr(operator.__package__))\n",
+            "print(repr(object.__getattribute__(operator, '__package__')))\n",
+            "print('__package__' in dir(operator), repr(operator.__dict__['__package__']))\n",
             "expected = ['abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']\n",
             "print(operator.__all__ == expected)\n",
             "computed_all = set()\n",
@@ -47947,6 +47950,9 @@ fn cpython_operator_module_metadata_subset() {
             "    print(type(helper).__name__, helper.__module__, type(helper.__doc__).__name__, bool(helper.__doc__), hasattr(helper, '__dict__'))\n",
         ),
         &[
+            "operator ''",
+            "''",
+            "True ''",
             "True",
             "57 57 True",
             "add operator",

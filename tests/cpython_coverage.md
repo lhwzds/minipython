@@ -3193,11 +3193,12 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_module_metadata_subset`, covering CPython
   `test_operator.py::test___all__` and `::test_dunder_is_original` public
-  module metadata: the exported `operator.__all__` names, `operator.*`
-  callable `__module__` / `__name__` / `__qualname__` / `__doc__`
-  introspection, helper instance `attrgetter` / `itemgetter` / `methodcaller`
-  type names plus `__doc__` metadata and gated `__module__` metadata, and
-  dunder aliases such as
+  module metadata: operator module `__package__` metadata
+  (`operator.__package__` is `''`), the exported `operator.__all__` names,
+  `operator.*` callable `__module__` / `__name__` / `__qualname__` /
+  `__doc__` introspection, helper instance `attrgetter` / `itemgetter` /
+  `methodcaller` type names plus `__doc__` metadata and gated `__module__`
+  metadata, and dunder aliases such as
   `__add__`, `__not__`, `__iconcat__`, and `__call__` preserving object
   identity with their public helpers. Direct CPython diff evidence for the
   default-oracle stable metadata slice is in
@@ -3207,8 +3208,7 @@ without adding general custom encoder/decoder class support.
   `operator.call` entry has gated direct CPython evidence in
   `cpython_operator_call_helper_diff_subset`. Helper instance `__module__`
   metadata is covered locally by
-  `cpython_operator_helper_instance_module_metadata_subset` and has gated direct
-  CPython evidence in
+  `cpython_operator_helper_instance_module_metadata_subset` and has gated direct CPython evidence in
   `cpython_operator_helper_instance_module_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_signature_helper_subset`, covering CPython

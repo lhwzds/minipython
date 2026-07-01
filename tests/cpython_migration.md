@@ -2783,13 +2783,15 @@ Completed in the differential parity harness pass:
   oracles with legacy int-subclass result behavior.
 - Added `cpython_operator_module_metadata_subset`, migrating public behavior
   from CPython `test_operator.py::OperatorTestCase::test___all__` and
-  `::test_dunder_is_original`. MiniPython now exposes `operator.__all__` using
-  CPython's current public helper list, exposes `operator.*` builtin callable
-  `__name__` / `__module__` metadata needed for the public export calculation,
-  exposes `attrgetter` / `itemgetter` / `methodcaller` helper instance type
-  names plus `__doc__` metadata and gated `__module__` metadata, and binds
-  dunder aliases like `__add__`, `__not__`, `__iconcat__`, and `__call__` to
-  the same helper objects. CPython's signature and pickle tests for helper
+  `::test_dunder_is_original`. MiniPython now exposes operator module `__package__` metadata
+  (`operator.__package__` is `''`), exposes
+  `operator.__all__` using CPython's current public helper list, exposes
+  `operator.*` builtin callable `__name__` / `__module__` metadata needed for
+  the public export calculation, exposes `attrgetter` / `itemgetter` /
+  `methodcaller` helper instance type names plus `__doc__` metadata and gated
+  `__module__` metadata, and binds dunder aliases like `__add__`, `__not__`,
+  `__iconcat__`, and `__call__` to the same helper objects. CPython's
+  signature and pickle tests for helper
   objects remain separate metadata/pickling work, not a requirement for this
   slice. Direct CPython diff evidence for the default-oracle stable
   metadata slice is in `cpython_operator_module_metadata_diff_subset`; the
