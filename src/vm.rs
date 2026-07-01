@@ -50128,6 +50128,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__doc__",
                 "__func__",
                 "__call__",
+                "__get__",
                 "__getattribute__",
                 "__name__",
                 "__repr__",
@@ -61232,6 +61233,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__call__" => {
             Ok(Value::String("Call self as a function.".to_string()))
         }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__get__" => {
+            Ok(Value::String("method.__get__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__get__" => {
+            Ok(Value::String("Return an attribute of instance, which is of type owner.".to_string()))
+        }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_name_value(&function_name))
         }
@@ -63047,6 +63054,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
         "method.__repr__"
             | "method.__str__"
             | "method.__call__"
+            | "method.__get__"
             | "method.__getattribute__"
             | "json.function.__call__"
             | "json.function.__repr__"

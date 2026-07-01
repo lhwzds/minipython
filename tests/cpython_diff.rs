@@ -1164,6 +1164,36 @@ for name, receiver, owner, keyword_call in [
 }
 
 #[test]
+fn cpython_json_function_bound_method_get_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __get__ wrapper subset",
+        name: "json-function-bound-method-get-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    getter = bound.__get__
+    print(name, '__get__' in dir(bound), type(getter).__name__, getter.__class__.__name__)
+    print(name, getter(None, object) is bound, getter('other', str) is bound)
+    print(name, getter.__self__ is bound, getter.__name__, getter.__qualname__, bool(getter.__doc__))
+    print(name, type(getter.__repr__).__name__, getter.__repr__().__class__.__name__, getter.__str__() == getter.__repr__())
+    for label, call in [
+        ('missing-obj', lambda getter=getter: getter()),
+        ('too-many', lambda getter=getter: getter(None, object, object)),
+        ('keyword-obj', lambda getter=getter: getter(obj=None)),
+        ('none-none', lambda getter=getter: getter(None, None)),
+        ('repr-extra', lambda getter=getter: getter.__repr__(1)),
+        ('repr-keyword', lambda getter=getter: getter.__repr__(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+        else:
+            print(name, label, 'OK')"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __getattribute__ wrapper subset",
