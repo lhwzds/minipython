@@ -60589,6 +60589,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(copy_builtin_doc(&function_name).to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__type_params__" && is_copy_builtin(&function_name) =>
+        {
+            Ok(tuple_value(Vec::new()))
+        }
+        Value::Builtin(function_name)
             if name == "__defaults__" && is_copy_none_defaults_builtin(&function_name) =>
         {
             Ok(Value::None)

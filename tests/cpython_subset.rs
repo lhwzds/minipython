@@ -22410,6 +22410,24 @@ print(all(isinstance(getattr(copy, name).__doc__, str) and bool(getattr(copy, na
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_type_params_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__type_params__, type(value.__type_params__).__name__, value.__type_params__ == ())
+print(copy.copy.__type_params__ == copy.deepcopy.__type_params__ == copy.replace.__type_params__ == ())"#,
+        &[
+            "copy () tuple True",
+            "deepcopy () tuple True",
+            "replace () tuple True",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_defaults_none_metadata_subset() {
     assert_output(
         r#"import copy

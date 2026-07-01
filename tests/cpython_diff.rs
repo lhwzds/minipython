@@ -21155,6 +21155,19 @@ print(all(isinstance(getattr(copy, name).__doc__, str) and bool(getattr(copy, na
 }
 
 #[test]
+fn cpython_copy_function_type_params_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __type_params__ metadata subset",
+        name: "copy-function-type-params-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__type_params__, type(value.__type_params__).__name__, value.__type_params__ == ())
+print(copy.copy.__type_params__ == copy.deepcopy.__type_params__ == copy.replace.__type_params__ == ())"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_defaults_none_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __defaults__ None metadata subset",
