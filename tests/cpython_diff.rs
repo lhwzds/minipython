@@ -16238,6 +16238,69 @@ for label, call in [
 }
 
 #[test]
+fn cpython_list_subclass_new_storage_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
+        name: "list-subclass-new-storage",
+        source: r#"class L(list):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, value, type(value).__name__, isinstance(value, list), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: list.__new__()),
+    ('exact-empty', lambda: list.__new__(list)),
+    ('exact-extra', lambda: list.__new__(list, [1, 2], iterable=[3])),
+    ('sub-empty', lambda: list.__new__(L)),
+    ('bad-class', lambda: list.__new__(tuple)),
+    ('bad-user-class', lambda: list.__new__(C)),
+    ('int-arg', lambda: list.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(list, '__new__'), '__new__' in dir(list), '__new__' in dir(L))
+class WithNew(list):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        obj = list.__new__(cls)
+        obj.append('pre')
+        return obj
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', empty, filled, type(filled).__name__, isinstance(filled, list))
+class WithInit(list):
+    def __new__(cls):
+        obj = list.__new__(cls)
+        obj.append('pre')
+        return obj
+    def __init__(self):
+        print('custom-init', self)
+with_init = WithInit()
+print('with-init', with_init)
+class Other(list):
+    pass
+class ReturnsOther(list):
+    def __new__(cls):
+        return list.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, type(other).__name__)
+class ReturnsPlain(list):
+    def __new__(cls):
+        return []
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, type(plain).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",

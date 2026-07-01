@@ -39,6 +39,12 @@ Recent runtime migration notes:
   return behavior, and `__init__` only when `__new__` returns a matching tuple subclass,
   without expanding into pickle helpers, tuple C-layout internals, or
   full immutable-sequence method-table parity.
+- `cpython_list_subclass_new_storage_subset`, backed by
+  `cpython_list_subclass_new_storage_diff_subset`, now pins list subclass `__new__` storage,
+  `list.__new__` direct allocation, non-type and non-subtype error classification,
+  and `list.__init__` storage clearing/refill after matching `__new__`, without
+  expanding into dict/set constructor `__new__` parity or full mutable-sequence
+  C-layout behavior.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

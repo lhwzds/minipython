@@ -200,6 +200,102 @@ fn tuple_subclass_new_storage_docs_cover_core_runtime() {
 }
 
 #[test]
+fn list_subclass_new_storage_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_subclass_new_storage_diff_subset";
+    let subset_name = "cpython_list_subclass_new_storage_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list subclass __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list subclass __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class L(list):",
+        "list.__new__()",
+        "list.__new__(list)",
+        "list.__new__(list, [1, 2], iterable=[3])",
+        "list.__new__(L)",
+        "list.__new__(tuple)",
+        "list.__new__(C)",
+        "list.__new__(1)",
+        "hasattr(list, '__new__')",
+        "class WithNew(list):",
+        "obj = list.__new__(cls)",
+        "obj.append('pre')",
+        "filled = WithNew([1, 2])",
+        "class WithInit(list):",
+        "class ReturnsOther(list):",
+        "return list.__new__(Other)",
+        "class ReturnsPlain(list):",
+        "return []",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list subclass __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"missing TypeError list.__new__(): not enough arguments",
+        "\"exact-empty [] list True 0\"",
+        "\"exact-extra [] list True 0\"",
+        "\"sub-empty [] L True 0\"",
+        "\"bad-class TypeError list.__new__(tuple): tuple is not a subtype of list",
+        "\"bad-user-class TypeError list.__new__(C): C is not a subtype of list",
+        "\"int-arg TypeError list.__new__(X): X is not a type object (int)",
+        "\"visible True True True\"",
+        "\"new WithNew []\"",
+        "\"new WithNew [1, 2]\"",
+        "\"with-new [] [1, 2] WithNew True\"",
+        "\"custom-init ['pre']\"",
+        "\"with-init ['pre']\"",
+        "\"other [] Other\"",
+        "\"plain [] list\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list subclass __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_list_new(",
+        "Value::Builtin(name) if name == \"list.__new__\"",
+        "fn initialize_list_storage(",
+        "self.initialize_list_storage(&instance, args, keywords)?;",
+        "LIST_SUBCLASS_STORAGE_FIELD.to_string()",
+        "list.__new__(X): X is not a type object",
+        "list.__new__({}): {} is not a subtype of list",
+        "\"__new__\"",
+        "function_name == \"list\" && is_builtin_list_type_method(name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list subclass __new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "list subclass `__new__` storage",
+            "`list.__new__` direct allocation",
+            "`list.__init__` storage clearing/refill after matching `__new__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "list subclass __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

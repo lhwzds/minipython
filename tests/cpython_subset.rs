@@ -28935,6 +28935,85 @@ for label, call in [
     );
 }
 
+#[test]
+fn cpython_list_subclass_new_storage_subset() {
+    assert_output_with_stack(
+        r#"class L(list):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, value, type(value).__name__, isinstance(value, list), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: list.__new__()),
+    ('exact-empty', lambda: list.__new__(list)),
+    ('exact-extra', lambda: list.__new__(list, [1, 2], iterable=[3])),
+    ('sub-empty', lambda: list.__new__(L)),
+    ('bad-class', lambda: list.__new__(tuple)),
+    ('bad-user-class', lambda: list.__new__(C)),
+    ('int-arg', lambda: list.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(list, '__new__'), '__new__' in dir(list), '__new__' in dir(L))
+class WithNew(list):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        obj = list.__new__(cls)
+        obj.append('pre')
+        return obj
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', empty, filled, type(filled).__name__, isinstance(filled, list))
+class WithInit(list):
+    def __new__(cls):
+        obj = list.__new__(cls)
+        obj.append('pre')
+        return obj
+    def __init__(self):
+        print('custom-init', self)
+with_init = WithInit()
+print('with-init', with_init)
+class Other(list):
+    pass
+class ReturnsOther(list):
+    def __new__(cls):
+        return list.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, type(other).__name__)
+class ReturnsPlain(list):
+    def __new__(cls):
+        return []
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, type(plain).__name__)"#,
+        &[
+            "missing TypeError list.__new__(): not enough arguments ('list.__new__(): not enough arguments',)",
+            "exact-empty [] list True 0",
+            "exact-extra [] list True 0",
+            "sub-empty [] L True 0",
+            "bad-class TypeError list.__new__(tuple): tuple is not a subtype of list ('list.__new__(tuple): tuple is not a subtype of list',)",
+            "bad-user-class TypeError list.__new__(C): C is not a subtype of list ('list.__new__(C): C is not a subtype of list',)",
+            "int-arg TypeError list.__new__(X): X is not a type object (int) ('list.__new__(X): X is not a type object (int)',)",
+            "visible True True True",
+            "new WithNew []",
+            "new WithNew [1, 2]",
+            "with-new [] [1, 2] WithNew True",
+            "custom-init ['pre']",
+            "with-init ['pre']",
+            "other [] Other",
+            "plain [] list",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

@@ -9432,6 +9432,7 @@ impl Vm {
 
                 self.call_reversed(args)
             }
+            Value::Builtin(name) if name == "list.__new__" => self.call_list_new(args, keywords),
             Value::Builtin(name) if name == "list" => {
                 if !keywords.is_empty() {
                     return Err(format!("TypeError: {name}() takes no keyword arguments"));
@@ -13304,6 +13305,35 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let has_own_new = attrs.borrow().contains_key("__new__");
+        if has_own_new {
+            let class = Value::Class {
+                name: name.clone(),
+                type_params: Vec::new(),
+                metaclass: None,
+                bases: bases.clone(),
+                attrs: attrs.clone(),
+            };
+            let instance =
+                self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), "__new__")?;
+            if !value_matches_class_value(&instance, &class) {
+                return Ok(instance);
+            }
+            if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+                let result = self.call_value_with_keywords(
+                    bind_method(init, instance.clone()),
+                    args,
+                    keywords,
+                )?;
+                if !matches!(result, Value::None) {
+                    return Err("__init__() should return None".to_string());
+                }
+            } else {
+                self.initialize_list_storage(&instance, args, keywords)?;
+            }
+            return Ok(instance);
+        }
+
         let has_own_init = attrs.borrow().contains_key("__init__");
         let storage = if has_own_init {
             list_value(Vec::new())
@@ -13338,6 +13368,30 @@ impl Vm {
         }
 
         Ok(instance)
+    }
+
+    fn initialize_list_storage(
+        &mut self,
+        instance: &Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<(), String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: list() takes no keyword arguments".to_string());
+        }
+        let values = match args.as_slice() {
+            [] => Vec::new(),
+            [value] => self.collect_iterable_values(value.clone())?,
+            values => {
+                return Err(format!(
+                    "list() expected at most 1 argument, got {}",
+                    values.len()
+                ));
+            }
+        };
+        let storage = list_subclass_storage(instance).expect("matching list subclass has storage");
+        *storage.borrow_mut() = values;
+        Ok(())
     }
 
     fn call_set_subclass(
@@ -23363,6 +23417,45 @@ impl Vm {
             values => Err(format!(
                 "list() expected at most 1 argument, got {}",
                 values.len()
+            )),
+        }
+    }
+
+    fn call_list_new(
+        &mut self,
+        args: Vec<Value>,
+        _keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((class, _rest)) = args.split_first() else {
+            return Err("TypeError: list.__new__(): not enough arguments".to_string());
+        };
+        match class {
+            Value::Builtin(name) if name == "list" => Ok(list_value(Vec::new())),
+            Value::Class {
+                name, attrs, bases, ..
+            } if class_bases_include_builtin(bases, "list") => {
+                let fields = new_scope();
+                fields.borrow_mut().insert(
+                    LIST_SUBCLASS_STORAGE_FIELD.to_string(),
+                    list_value(Vec::new()),
+                );
+                Ok(Value::Instance {
+                    class_name: name.clone(),
+                    fields,
+                    class_attrs: attrs.clone(),
+                    class_bases: bases.clone(),
+                })
+            }
+            value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                Err(format!(
+                    "TypeError: list.__new__({}): {} is not a subtype of list",
+                    class_display_name(value),
+                    class_display_name(value)
+                ))
+            }
+            value => Err(format!(
+                "TypeError: list.__new__(X): X is not a type object ({})",
+                type_name(value)
             )),
         }
     }
@@ -50889,6 +50982,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__len__",
             "__mul__",
             "__ne__",
+            "__new__",
             "__rmul__",
             "__setitem__",
             "append",
@@ -50915,6 +51009,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__len__",
             "__mul__",
             "__ne__",
+            "__new__",
             "__radd__",
             "__rmul__",
             "__setitem__",
@@ -53538,6 +53633,7 @@ fn is_builtin_list_type_method(name: &str) -> bool {
             | "__iter__"
             | "__len__"
             | "__ne__"
+            | "__new__"
             | "__setitem__"
             | "append"
             | "clear"
