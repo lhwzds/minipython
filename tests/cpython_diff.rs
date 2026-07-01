@@ -1070,6 +1070,43 @@ print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__, jso
 }
 
 #[test]
+fn cpython_json_function_dict_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __dict__ assignment metadata subset",
+        name: "json-function-dict-assignment-metadata",
+        source: r#"import json
+class D(dict):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    function.__dict__ = {}
+    print(name, 'start', function.__dict__, function.__dict__ is function.__dict__)
+    function.mini_probe = 1
+    print(name, 'custom', function.__dict__, function.mini_probe, 'mini_probe' in dir(function))
+    replacement = {'replacement': 2}
+    function.__dict__ = replacement
+    print(name, 'assigned-dict', function.__dict__ is replacement, function.__dict__, hasattr(function, 'mini_probe'), function.replacement, 'replacement' in dir(function))
+    subclass = D({'sub': 3})
+    function.__dict__ = subclass
+    print(name, 'assigned-subclass', function.__dict__ is subclass, type(function.__dict__).__name__, function.sub, 'sub' in dir(function))
+    function.extra = 4
+    print(name, 'subclass-extra', function.__dict__, function.extra)
+    for label, call in [
+        ('assign-list', lambda function=function: setattr(function, '__dict__', [])),
+        ('del-direct', lambda function=function: delattr(function, '__dict__')),
+        ('del-wrapper', lambda function=function: function.__delattr__('__dict__')),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', type(function.__dict__).__name__, function.__dict__)
+    function.__dict__ = {}
+print(json.loads.__dict__, json.dumps.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",

@@ -38091,6 +38091,62 @@ print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__, jso
 }
 
 #[test]
+fn cpython_json_function_dict_assignment_metadata_subset() {
+    assert_output(
+        r#"import json
+class D(dict):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    function.__dict__ = {}
+    print(name, 'start', function.__dict__, function.__dict__ is function.__dict__)
+    function.mini_probe = 1
+    print(name, 'custom', function.__dict__, function.mini_probe, 'mini_probe' in dir(function))
+    replacement = {'replacement': 2}
+    function.__dict__ = replacement
+    print(name, 'assigned-dict', function.__dict__ is replacement, function.__dict__, hasattr(function, 'mini_probe'), function.replacement, 'replacement' in dir(function))
+    subclass = D({'sub': 3})
+    function.__dict__ = subclass
+    print(name, 'assigned-subclass', function.__dict__ is subclass, type(function.__dict__).__name__, function.sub, 'sub' in dir(function))
+    function.extra = 4
+    print(name, 'subclass-extra', function.__dict__, function.extra)
+    for label, call in [
+        ('assign-list', lambda function=function: setattr(function, '__dict__', [])),
+        ('del-direct', lambda function=function: delattr(function, '__dict__')),
+        ('del-wrapper', lambda function=function: function.__delattr__('__dict__')),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', type(function.__dict__).__name__, function.__dict__)
+    function.__dict__ = {}
+print(json.loads.__dict__, json.dumps.__dict__)"#,
+        &[
+            "loads start {} True",
+            "loads custom {'mini_probe': 1} 1 True",
+            "loads assigned-dict True {'replacement': 2} False 2 True",
+            "loads assigned-subclass True D 3 True",
+            "loads subclass-extra {'sub': 3, 'extra': 4} 4",
+            "loads assign-list TypeError __dict__ must be set to a dictionary, not a 'list' (\"__dict__ must be set to a dictionary, not a 'list'\",)",
+            "loads del-direct TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "loads del-wrapper TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "loads after-errors D {'sub': 3, 'extra': 4}",
+            "dumps start {} True",
+            "dumps custom {'mini_probe': 1} 1 True",
+            "dumps assigned-dict True {'replacement': 2} False 2 True",
+            "dumps assigned-subclass True D 3 True",
+            "dumps subclass-extra {'sub': 3, 'extra': 4} 4",
+            "dumps assign-list TypeError __dict__ must be set to a dictionary, not a 'list' (\"__dict__ must be set to a dictionary, not a 'list'\",)",
+            "dumps del-direct TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "dumps del-wrapper TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "dumps after-errors D {'sub': 3, 'extra': 4}",
+            "{} {}",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_subset() {
     assert_output(
         r#"import json

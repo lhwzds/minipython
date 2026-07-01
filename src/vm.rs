@@ -50234,9 +50234,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         }
         Value::Builtin(name) if is_json_builtin(name) => {
             names.extend(json_builtin_function_dir_names());
-            if let Value::Dict(attrs) = json_builtin_dict(name) {
-                names.extend(dict_string_names(&attrs));
-            }
+            names.extend(dict_string_names(&json_builtin_dict_entries(name)));
         }
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
@@ -62227,6 +62225,32 @@ fn json_builtin_dict(name: &str) -> Value {
     })
 }
 
+fn set_json_builtin_dict(name: &str, value: Value) -> Result<(), String> {
+    let replacement_is_dict = matches!(value, Value::Dict(_) | Value::OrderedDict(_))
+        || dict_subclass_entries(&value).is_some();
+    if !replacement_is_dict {
+        return Err(format!(
+            "TypeError: __dict__ must be set to a dictionary, not a '{}'",
+            type_name(&value)
+        ));
+    }
+    JSON_BUILTIN_DICTS.with(|dicts| {
+        dicts.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
+}
+
+fn json_builtin_dict_entries(name: &str) -> DictRef {
+    let value = json_builtin_dict(name);
+    match value {
+        Value::Dict(entries) | Value::OrderedDict(entries) => entries,
+        value if dict_subclass_entries(&value).is_some() => {
+            dict_subclass_entries(&value).expect("dict subclass entries exist after guard")
+        }
+        _ => unreachable!("json builtin __dict__ is always dictionary-like"),
+    }
+}
+
 fn json_builtin_controlled_attribute(name: &str) -> bool {
     matches!(
         name,
@@ -62248,9 +62272,7 @@ fn json_builtin_controlled_attribute(name: &str) -> bool {
 }
 
 fn json_builtin_custom_attribute(function_name: &str, name: &str) -> Option<Value> {
-    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
-        unreachable!("json_builtin_dict always returns a dict")
-    };
+    let attrs = json_builtin_dict_entries(function_name);
     lookup_string_key(&attrs, name)
 }
 
@@ -62268,11 +62290,10 @@ fn store_json_builtin_attribute(
             set_json_builtin_module(function_name, value);
             return Ok(());
         }
+        "__dict__" => return set_json_builtin_dict(function_name, value),
         _ => {}
     }
-    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
-        unreachable!("json_builtin_dict always returns a dict")
-    };
+    let attrs = json_builtin_dict_entries(function_name);
     insert_live_dict_entry(
         &mut attrs.borrow_mut(),
         Value::String(name.to_string()),
@@ -62290,11 +62311,10 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             delete_json_builtin_module(function_name);
             return Ok(());
         }
+        "__dict__" => return Err("TypeError: cannot delete __dict__".to_string()),
         _ => {}
     }
-    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
-        unreachable!("json_builtin_dict always returns a dict")
-    };
+    let attrs = json_builtin_dict_entries(function_name);
     let mut attrs = attrs.borrow_mut();
     if let Some(position) = attrs.iter().position(|(key, _)| {
         matches!(key, Value::String(key_name) | Value::IdentityString { value: key_name, .. } if key_name == name)
