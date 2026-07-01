@@ -60612,6 +60612,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(dict_value(Vec::new()))
         }
         Value::Builtin(function_name)
+            if name == "__defaults__" && function_name == "copy.deepcopy" =>
+        {
+            Ok(tuple_value(vec![Value::None, list_value(Vec::new())]))
+        }
+        Value::Builtin(function_name)
             if name == "__defaults__" && is_copy_none_defaults_builtin(&function_name) =>
         {
             Ok(Value::None)

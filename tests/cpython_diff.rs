@@ -21235,6 +21235,19 @@ print(copy.copy.__defaults__ is copy.replace.__defaults__ is None)"#,
 }
 
 #[test]
+fn cpython_copy_function_deepcopy_defaults_shape_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function deepcopy __defaults__ shape metadata subset",
+        name: "copy-function-deepcopy-defaults-shape-metadata",
+        source: r#"import copy
+defaults = copy.deepcopy.__defaults__
+print(type(defaults).__name__, len(defaults), defaults[0] is None)
+print(type(defaults[1]).__name__, defaults[1] == [], len(defaults[1]))
+print(copy.copy.__defaults__, copy.replace.__defaults__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_kwdefaults_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __kwdefaults__ metadata subset",

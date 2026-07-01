@@ -953,6 +953,7 @@ Recent runtime migration notes:
   `cpython_copy_function_annotations_empty_metadata_diff_subset`,
   `cpython_copy_function_dict_empty_metadata_diff_subset`,
   `cpython_copy_function_defaults_none_metadata_diff_subset`,
+  `cpython_copy_function_deepcopy_defaults_shape_metadata_diff_subset`,
   `cpython_copy_function_kwdefaults_metadata_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
@@ -3113,6 +3114,7 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_function_annotations_empty_metadata_subset`,
   `cpython_copy_function_dict_empty_metadata_subset`,
   `cpython_copy_function_defaults_none_metadata_subset`,
+  `cpython_copy_function_deepcopy_defaults_shape_metadata_subset`,
   `cpython_copy_function_kwdefaults_metadata_subset`,
   `cpython_copy_public_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
@@ -3143,6 +3145,8 @@ without adding general custom encoder/decoder class support.
   `copy.deepcopy.__dict__`, and `copy.replace.__dict__` are empty dicts),
   copy public function `__defaults__` None metadata (`copy.copy.__defaults__`
   and `copy.replace.__defaults__` are `None`),
+  copy public function `deepcopy.__defaults__` shape metadata
+  (`copy.deepcopy.__defaults__` has shape `(None, [])`),
   copy public function `__kwdefaults__` metadata (`copy.copy.__kwdefaults__`,
   `copy.deepcopy.__kwdefaults__`, and `copy.replace.__kwdefaults__` are `None`),
   CPython public `copy.Error` / `copy.error` exception metadata,

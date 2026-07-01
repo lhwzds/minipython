@@ -22813,6 +22813,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_annotations_empty_metadata_subset",
             "cpython_copy_function_dict_empty_metadata_subset",
             "cpython_copy_function_defaults_none_metadata_subset",
+            "cpython_copy_function_deepcopy_defaults_shape_metadata_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
             "cpython_copy_public_subset",
             "cpython_collections_defaultdict_copy_module_subset",
@@ -22841,6 +22842,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_function_annotations_empty_metadata_diff_subset",
         "cpython_copy_function_dict_empty_metadata_diff_subset",
         "cpython_copy_function_defaults_none_metadata_diff_subset",
+        "cpython_copy_function_deepcopy_defaults_shape_metadata_diff_subset",
         "cpython_copy_function_kwdefaults_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
         "cpython_collections_defaultdict_copy_module_diff_subset",
@@ -22947,6 +22949,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     let function_defaults_none_subset = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_copy_function_defaults_none_metadata_subset",
+    );
+    let function_deepcopy_defaults_shape_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_function_deepcopy_defaults_shape_metadata_diff_subset",
+    );
+    let function_deepcopy_defaults_shape_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_function_deepcopy_defaults_shape_metadata_subset",
     );
     let function_kwdefaults_diff = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -23199,6 +23209,27 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "copy.deepcopy.__defaults__",
+        "type(defaults).__name__",
+        "len(defaults)",
+        "defaults[0] is None",
+        "type(defaults[1]).__name__",
+        "defaults[1] == []",
+        "len(defaults[1])",
+    ] {
+        assert!(
+            function_deepcopy_defaults_shape_diff.contains(required)
+                && function_deepcopy_defaults_shape_subset.contains(required),
+            "copy public function deepcopy __defaults__ shape diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"tuple 2 True\"", "\"list True 0\"", "\"None None\""] {
+        assert!(
+            function_deepcopy_defaults_shape_subset.contains(required),
+            "copy public function deepcopy __defaults__ shape subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value.__kwdefaults__",
         "copy.copy.__kwdefaults__",
         "copy.deepcopy.__kwdefaults__",
@@ -23251,6 +23282,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("name == \"__closure__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains("name == \"__annotations__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains("name == \"__dict__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains("name == \"__defaults__\" && function_name == \"copy.deepcopy\"")
             && VM_SOURCE.contains(
                 "name == \"__defaults__\" && is_copy_none_defaults_builtin(&function_name)"
             )
@@ -23261,9 +23293,10 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("Ok(Value::String(\"copy\".to_string()))")
             && VM_SOURCE.contains("Ok(Value::String(builtin_public_name(&function_name)))")
             && VM_SOURCE.contains("Ok(tuple_value(Vec::new()))")
+            && VM_SOURCE.contains("Ok(tuple_value(vec![Value::None, list_value(Vec::new())]))")
             && VM_SOURCE.contains("Ok(dict_value(Vec::new()))")
             && VM_SOURCE.contains("Ok(Value::None)"),
-        "VM must expose CPython-compatible copy function __module__, __qualname__, __doc__, __type_params__, __annotate__, __closure__, __annotations__, __dict__, __defaults__, and __kwdefaults__ metadata"
+        "VM must expose CPython-compatible copy function __module__, __qualname__, __doc__, __type_params__, __annotate__, __closure__, __annotations__, __dict__, __defaults__, deepcopy __defaults__, and __kwdefaults__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -23289,6 +23322,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_dict_empty_metadata_diff_subset",
             "cpython_copy_function_defaults_none_metadata_subset",
             "cpython_copy_function_defaults_none_metadata_diff_subset",
+            "cpython_copy_function_deepcopy_defaults_shape_metadata_subset",
+            "cpython_copy_function_deepcopy_defaults_shape_metadata_diff_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
             "cpython_copy_function_kwdefaults_metadata_diff_subset",
             "copy module `__package__` metadata",
@@ -23313,6 +23348,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "`copy.copy.__dict__`",
             "copy public function `__defaults__` None metadata",
             "`copy.copy.__defaults__`",
+            "copy public function `deepcopy.__defaults__` shape metadata",
+            "`copy.deepcopy.__defaults__`",
             "copy public function `__kwdefaults__` metadata",
             "`copy.copy.__kwdefaults__`",
         ] {

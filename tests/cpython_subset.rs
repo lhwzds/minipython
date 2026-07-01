@@ -22515,6 +22515,19 @@ print(copy.copy.__defaults__ is copy.replace.__defaults__ is None)"#,
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_deepcopy_defaults_shape_metadata_subset() {
+    assert_output(
+        r#"import copy
+defaults = copy.deepcopy.__defaults__
+print(type(defaults).__name__, len(defaults), defaults[0] is None)
+print(type(defaults[1]).__name__, defaults[1] == [], len(defaults[1]))
+print(copy.copy.__defaults__, copy.replace.__defaults__)"#,
+        &["tuple 2 True", "list True 0", "None None"],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_kwdefaults_metadata_subset() {
     assert_output(
         r#"import copy
