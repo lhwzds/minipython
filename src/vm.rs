@@ -108,6 +108,7 @@ thread_local! {
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
@@ -61016,6 +61017,16 @@ fn collections_namedtuple_doc() -> &'static str {
 }
 
 fn json_builtin_kwdefaults(name: &str) -> Value {
+    JSON_BUILTIN_KWDEFAULTS.with(|kwdefaults| {
+        let mut kwdefaults = kwdefaults.borrow_mut();
+        kwdefaults
+            .entry(name.to_string())
+            .or_insert_with(|| json_builtin_kwdefaults_initial(name))
+            .clone()
+    })
+}
+
+fn json_builtin_kwdefaults_initial(name: &str) -> Value {
     let entries = match name {
         "json.loads" => vec![
             ("cls", Value::None),

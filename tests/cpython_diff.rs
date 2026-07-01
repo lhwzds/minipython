@@ -845,6 +845,29 @@ print(json.loads.__annotations__ == {}, json.dumps.__annotations__ == {})"#,
 }
 
 #[test]
+fn cpython_json_function_kwdefaults_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __kwdefaults__ identity metadata subset",
+        name: "json-function-kwdefaults-identity-metadata",
+        source: r#"import json
+print(json.loads.__kwdefaults__ is json.loads.__kwdefaults__)
+print(json.loads.__kwdefaults__ is json.dumps.__kwdefaults__)
+for name in ['loads', 'dumps']:
+    kw = getattr(json, name).__kwdefaults__
+    print(name, type(kw).__name__, len(kw), sorted(kw))
+json.loads.__kwdefaults__['mini_probe_key'] = 42
+json.dumps.__kwdefaults__['other_probe_key'] = 7
+print(json.loads.__kwdefaults__['mini_probe_key'])
+print('mini_probe_key' in json.dumps.__kwdefaults__)
+print(json.dumps.__kwdefaults__['other_probe_key'])
+print('other_probe_key' in json.loads.__kwdefaults__)
+del json.loads.__kwdefaults__['mini_probe_key']
+del json.dumps.__kwdefaults__['other_probe_key']
+print('mini_probe_key' in json.loads.__kwdefaults__, 'other_probe_key' in json.dumps.__kwdefaults__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

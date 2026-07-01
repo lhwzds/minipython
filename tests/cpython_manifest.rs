@@ -8720,6 +8720,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
+            "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8826,6 +8827,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_globals_identity_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
+        "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -8982,6 +8984,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_annotations_identity_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_annotations_identity_metadata_subset",
+    );
+    let json_function_kwdefaults_identity_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
+    );
+    let json_function_kwdefaults_identity_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_kwdefaults_identity_metadata_subset",
     );
     for required in [
         "json.__package__",
@@ -9177,6 +9187,35 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function __annotations__ identity subset output must pin `{required}`"
         );
     }
+    for required in [
+        "json.loads.__kwdefaults__ is json.loads.__kwdefaults__",
+        "json.loads.__kwdefaults__ is json.dumps.__kwdefaults__",
+        "getattr(json, name).__kwdefaults__",
+        "json.loads.__kwdefaults__['mini_probe_key'] = 42",
+        "json.dumps.__kwdefaults__['other_probe_key'] = 7",
+        "del json.loads.__kwdefaults__['mini_probe_key']",
+        "del json.dumps.__kwdefaults__['other_probe_key']",
+    ] {
+        assert!(
+            json_function_kwdefaults_identity_diff_body.contains(required)
+                && json_function_kwdefaults_identity_subset_body.contains(required),
+            "json public function __kwdefaults__ identity diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"True\"",
+        "\"False\"",
+        "\"loads dict 6 ['cls', 'object_hook', 'object_pairs_hook', 'parse_constant', 'parse_float', 'parse_int']\"",
+        "\"dumps dict 9 ['allow_nan', 'check_circular', 'cls', 'default', 'ensure_ascii', 'indent', 'separators', 'skipkeys', 'sort_keys']\"",
+        "\"42\"",
+        "\"7\"",
+        "\"False False\"",
+    ] {
+        assert!(
+            json_function_kwdefaults_identity_subset_body.contains(required),
+            "json public function __kwdefaults__ identity subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9231,6 +9270,16 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains(".or_insert_with(|| dict_value(Vec::new()))"),
         "VM must keep separate persistent json function __annotations__ metadata"
     );
+    assert!(
+        VM_SOURCE.contains("static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>>")
+            && VM_SOURCE.contains("name == \"__kwdefaults__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(json_builtin_kwdefaults(&function_name))")
+            && VM_SOURCE.contains("fn json_builtin_kwdefaults(name: &str) -> Value")
+            && VM_SOURCE.contains("fn json_builtin_kwdefaults_initial(name: &str) -> Value")
+            && VM_SOURCE.contains("JSON_BUILTIN_KWDEFAULTS.with")
+            && VM_SOURCE.contains(".or_insert_with(|| json_builtin_kwdefaults_initial(name))"),
+        "VM must keep separate persistent json function __kwdefaults__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_json_module_package_metadata_subset",
@@ -9251,6 +9300,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_identity_metadata_diff_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_diff_subset",
+            "cpython_json_function_kwdefaults_identity_metadata_subset",
+            "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9273,6 +9324,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__globals__` shared identity",
             "json public function `__dict__` identity",
             "json public function `__annotations__` identity",
+            "json public function `__kwdefaults__` identity",
         ] {
             assert!(
                 document.contains(required),
