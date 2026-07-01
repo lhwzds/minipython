@@ -38443,6 +38443,47 @@ print(json.dumps.__globals__['mini_probe_key'])"#,
 }
 
 #[test]
+fn cpython_json_function_globals_assignment_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__globals__
+    print(name, 'initial', type(original).__name__, original is function.__globals__, original['__name__'], original['loads'] is json.loads, original['dumps'] is json.dumps)
+    for label, action in [
+        ('set-dict', lambda function=function: setattr(function, '__globals__', {'x': 1})),
+        ('set-none', lambda function=function: setattr(function, '__globals__', None)),
+        ('del-direct', lambda function=function: delattr(function, '__globals__')),
+        ('set-wrapper', lambda function=function: function.__setattr__('__globals__', {'x': 1})),
+        ('del-wrapper', lambda function=function: function.__delattr__('__globals__')),
+    ]:
+        try:
+            action()
+        except Exception as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', function.__globals__ is original, function.__globals__['__name__'])
+print(json.loads.__globals__ is json.dumps.__globals__)"#,
+        &[
+            "loads initial dict True json True True",
+            "loads set-dict AttributeError readonly attribute ('readonly attribute',)",
+            "loads set-none AttributeError readonly attribute ('readonly attribute',)",
+            "loads del-direct AttributeError readonly attribute ('readonly attribute',)",
+            "loads set-wrapper AttributeError readonly attribute ('readonly attribute',)",
+            "loads del-wrapper AttributeError readonly attribute ('readonly attribute',)",
+            "loads after-errors True json",
+            "dumps initial dict True json True True",
+            "dumps set-dict AttributeError readonly attribute ('readonly attribute',)",
+            "dumps set-none AttributeError readonly attribute ('readonly attribute',)",
+            "dumps del-direct AttributeError readonly attribute ('readonly attribute',)",
+            "dumps set-wrapper AttributeError readonly attribute ('readonly attribute',)",
+            "dumps del-wrapper AttributeError readonly attribute ('readonly attribute',)",
+            "dumps after-errors True json",
+            "True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_doc_identity_metadata_subset() {
     assert_output(
         r#"import json

@@ -62459,6 +62459,7 @@ fn store_json_builtin_attribute(
         "__annotate__" => return set_json_builtin_annotate(function_name, value),
         "__annotations__" => return set_json_builtin_annotations(function_name, value),
         "__defaults__" => return set_json_builtin_defaults(function_name, value),
+        "__globals__" => return Err("AttributeError: readonly attribute".to_string()),
         "__kwdefaults__" => return set_json_builtin_kwdefaults(function_name, value),
         _ => {}
     }
@@ -62499,6 +62500,7 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             delete_json_builtin_defaults(function_name);
             return Ok(());
         }
+        "__globals__" => return Err("AttributeError: readonly attribute".to_string()),
         "__kwdefaults__" => {
             delete_json_builtin_kwdefaults(function_name);
             return Ok(());

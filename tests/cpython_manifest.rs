@@ -8721,6 +8721,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_builtins_identity_metadata_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_identity_metadata_subset",
+            "cpython_json_function_globals_assignment_metadata_subset",
             "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_name_assignment_metadata_subset",
@@ -8872,6 +8873,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_builtins_identity_metadata_diff_subset",
         "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_function_globals_identity_metadata_diff_subset",
+        "cpython_json_function_globals_assignment_metadata_diff_subset",
         "cpython_json_function_module_identity_metadata_diff_subset",
         "cpython_json_function_name_qualname_identity_metadata_diff_subset",
         "cpython_json_function_name_assignment_metadata_diff_subset",
@@ -9240,6 +9242,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_globals_identity_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_globals_identity_metadata_subset",
+    );
+    let json_function_globals_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_globals_assignment_metadata_diff_subset",
+    );
+    let json_function_globals_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_globals_assignment_metadata_subset",
     );
     let json_function_doc_identity_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10859,6 +10869,55 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "original = function.__globals__",
+        "original is function.__globals__",
+        "original['loads'] is json.loads",
+        "original['dumps'] is json.dumps",
+        "setattr(function, '__globals__', {'x': 1})",
+        "setattr(function, '__globals__', None)",
+        "delattr(function, '__globals__')",
+        "function.__setattr__('__globals__', {'x': 1})",
+        "function.__delattr__('__globals__')",
+        "function.__globals__ is original",
+        "json.loads.__globals__ is json.dumps.__globals__",
+    ] {
+        assert!(
+            json_function_globals_assignment_diff_body.contains(required)
+                && json_function_globals_assignment_subset_body.contains(required),
+            "json public function __globals__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial dict True json True True\"",
+        "\"loads set-dict AttributeError readonly attribute",
+        "\"loads set-none AttributeError readonly attribute",
+        "\"loads del-direct AttributeError readonly attribute",
+        "\"loads set-wrapper AttributeError readonly attribute",
+        "\"loads del-wrapper AttributeError readonly attribute",
+        "\"loads after-errors True json\"",
+        "\"dumps initial dict True json True True\"",
+        "\"dumps set-dict AttributeError readonly attribute",
+        "\"dumps set-none AttributeError readonly attribute",
+        "\"dumps del-direct AttributeError readonly attribute",
+        "\"dumps set-wrapper AttributeError readonly attribute",
+        "\"dumps del-wrapper AttributeError readonly attribute",
+        "\"dumps after-errors True json\"",
+    ] {
+        assert!(
+            json_function_globals_assignment_subset_body.contains(required),
+            "json public function __globals__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "Ok(json_builtin_globals())",
+        "\"__globals__\" => return Err(\"AttributeError: readonly attribute\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __globals__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
         "function.__doc__ is function.__doc__",
         "bound.__doc__ is function.__doc__",
         "bound.__getattribute__('__doc__') is function.__doc__",
@@ -12340,6 +12399,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_globals_metadata_diff_subset",
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_globals_identity_metadata_diff_subset",
+            "cpython_json_function_globals_assignment_metadata_subset",
+            "cpython_json_function_globals_assignment_metadata_diff_subset",
             "cpython_json_function_doc_identity_metadata_subset",
             "cpython_json_function_doc_identity_metadata_diff_subset",
             "cpython_json_function_dict_identity_metadata_subset",
@@ -12438,6 +12499,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "`json.loads.__globals__`",
             "`json.dumps.__globals__`",
             "json public function `__globals__` shared identity",
+            "json public function `__globals__` assignment",
             "json public function `__doc__` identity",
             "json public function `__dict__` identity",
             "json public function `__annotate__` assignment",

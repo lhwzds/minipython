@@ -1071,6 +1071,7 @@ Recent runtime migration notes:
   `cpython_json_function_builtins_identity_metadata_diff_subset`,
   `cpython_json_function_globals_metadata_diff_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset`,
+  `cpython_json_function_globals_assignment_metadata_diff_subset`,
   `cpython_json_function_doc_identity_metadata_diff_subset`,
   `cpython_json_function_dict_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset`,
@@ -1767,6 +1768,8 @@ Recent runtime migration notes:
   `cpython_json_function_dict_assignment_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
+  `cpython_json_function_globals_assignment_metadata_diff_subset` /
+  `cpython_json_function_globals_assignment_metadata_subset`,
   `cpython_json_function_doc_identity_metadata_diff_subset` /
   `cpython_json_function_doc_identity_metadata_subset`,
   `cpython_json_function_dict_identity_metadata_diff_subset` /
@@ -2642,6 +2645,13 @@ module `__all__`, or encoder/decoder classes.
 and mutation visibility aligned with CPython for the supported globals dict
 surface without adding function `__code__`, full module globals, file APIs,
 module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_globals_assignment_metadata_subset`, backed by
+`cpython_json_function_globals_assignment_metadata_diff_subset`, keeps json public function `__globals__` assignment
+and deletion errors aligned with CPython for `loads` / `dumps`, including
+direct assignment, direct deletion, and `__setattr__` / `__delattr__` wrapper
+entry points, without adding writable function globals, function `__code__`,
+full module globals, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_doc_identity_metadata_subset`, backed by
 `cpython_json_function_doc_identity_metadata_diff_subset`, keeps json public function `__doc__` identity
