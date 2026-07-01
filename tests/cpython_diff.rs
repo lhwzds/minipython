@@ -950,6 +950,22 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method repr subset",
+        name: "json-function-bound-method-repr",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    for receiver in ['receiver', {'a': 1}]:
+        bound = function.__get__(receiver, str)
+        rendered = repr(bound)
+        print(name, type(receiver).__name__, rendered, str(bound) == rendered)
+        print(name, 'public-name-only', ('json.' + name) not in rendered, name in rendered)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

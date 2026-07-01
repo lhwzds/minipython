@@ -1897,8 +1897,18 @@ fn bound_method_display_name(function: &Value) -> String {
             _ => name.clone(),
         },
         Value::Function { name, .. } => name.clone(),
-        Value::Builtin(name) => name.clone(),
+        Value::Builtin(name) => json_builtin_bound_method_display_name(name)
+            .unwrap_or(name)
+            .to_string(),
         _ => "?".to_string(),
+    }
+}
+
+fn json_builtin_bound_method_display_name(name: &str) -> Option<&'static str> {
+    match name {
+        "json.loads" => Some("loads"),
+        "json.dumps" => Some("dumps"),
+        _ => None,
     }
 }
 
