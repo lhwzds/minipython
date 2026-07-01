@@ -21195,6 +21195,20 @@ print(copy.copy.__annotations__ == copy.deepcopy.__annotations__ == copy.replace
 }
 
 #[test]
+fn cpython_copy_function_dict_empty_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __dict__ empty metadata subset",
+        name: "copy-function-dict-empty-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    namespace = value.__dict__
+    print(name, type(namespace).__name__, namespace == {}, len(namespace))
+print(copy.copy.__dict__ == copy.deepcopy.__dict__ == copy.replace.__dict__ == {})"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_defaults_none_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __defaults__ None metadata subset",

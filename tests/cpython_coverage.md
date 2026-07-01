@@ -950,6 +950,7 @@ Recent runtime migration notes:
   `cpython_copy_function_type_params_metadata_diff_subset`,
   `cpython_copy_function_annotate_metadata_diff_subset`,
   `cpython_copy_function_annotations_empty_metadata_diff_subset`,
+  `cpython_copy_function_dict_empty_metadata_diff_subset`,
   `cpython_copy_function_defaults_none_metadata_diff_subset`,
   `cpython_copy_function_kwdefaults_metadata_diff_subset`,
   `cpython_copy_public_diff_subset`,
@@ -3108,6 +3109,7 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_function_type_params_metadata_subset`,
   `cpython_copy_function_annotate_metadata_subset`,
   `cpython_copy_function_annotations_empty_metadata_subset`,
+  `cpython_copy_function_dict_empty_metadata_subset`,
   `cpython_copy_function_defaults_none_metadata_subset`,
   `cpython_copy_function_kwdefaults_metadata_subset`,
   `cpython_copy_public_subset`, and
@@ -3133,6 +3135,8 @@ without adding general custom encoder/decoder class support.
   copy public function `__annotations__` empty metadata
   (`copy.copy.__annotations__`, `copy.deepcopy.__annotations__`, and
   `copy.replace.__annotations__` are empty dicts),
+  copy public function `__dict__` empty metadata (`copy.copy.__dict__`,
+  `copy.deepcopy.__dict__`, and `copy.replace.__dict__` are empty dicts),
   copy public function `__defaults__` None metadata (`copy.copy.__defaults__`
   and `copy.replace.__defaults__` are `None`),
   copy public function `__kwdefaults__` metadata (`copy.copy.__kwdefaults__`,

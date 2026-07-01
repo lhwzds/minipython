@@ -22810,6 +22810,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_type_params_metadata_subset",
             "cpython_copy_function_annotate_metadata_subset",
             "cpython_copy_function_annotations_empty_metadata_subset",
+            "cpython_copy_function_dict_empty_metadata_subset",
             "cpython_copy_function_defaults_none_metadata_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
             "cpython_copy_public_subset",
@@ -22836,6 +22837,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_function_type_params_metadata_diff_subset",
         "cpython_copy_function_annotate_metadata_diff_subset",
         "cpython_copy_function_annotations_empty_metadata_diff_subset",
+        "cpython_copy_function_dict_empty_metadata_diff_subset",
         "cpython_copy_function_defaults_none_metadata_diff_subset",
         "cpython_copy_function_kwdefaults_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
@@ -22919,6 +22921,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     let function_annotations_empty_subset = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_copy_function_annotations_empty_metadata_subset",
+    );
+    let function_dict_empty_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_function_dict_empty_metadata_diff_subset",
+    );
+    let function_dict_empty_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_function_dict_empty_metadata_subset",
     );
     let function_defaults_none_diff = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -23114,6 +23124,30 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "value.__dict__",
+        "copy.copy.__dict__",
+        "copy.deepcopy.__dict__",
+        "copy.replace.__dict__",
+        "namespace == {}",
+        "len(namespace)",
+    ] {
+        assert!(
+            function_dict_empty_diff.contains(required)
+                && function_dict_empty_subset.contains(required),
+            "copy public function __dict__ empty diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"copy dict True 0\"",
+        "\"deepcopy dict True 0\"",
+        "\"replace dict True 0\"",
+    ] {
+        assert!(
+            function_dict_empty_subset.contains(required),
+            "copy public function __dict__ empty subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value.__defaults__",
         "copy.copy.__defaults__",
         "copy.replace.__defaults__",
@@ -23182,6 +23216,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("name == \"__type_params__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains("name == \"__annotate__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains("name == \"__annotations__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains("name == \"__dict__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains(
                 "name == \"__defaults__\" && is_copy_none_defaults_builtin(&function_name)"
             )
@@ -23194,7 +23229,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("Ok(tuple_value(Vec::new()))")
             && VM_SOURCE.contains("Ok(dict_value(Vec::new()))")
             && VM_SOURCE.contains("Ok(Value::None)"),
-        "VM must expose CPython-compatible copy function __module__, __qualname__, __doc__, __type_params__, __annotate__, __annotations__, __defaults__, and __kwdefaults__ metadata"
+        "VM must expose CPython-compatible copy function __module__, __qualname__, __doc__, __type_params__, __annotate__, __annotations__, __dict__, __defaults__, and __kwdefaults__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -23214,6 +23249,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_annotate_metadata_diff_subset",
             "cpython_copy_function_annotations_empty_metadata_subset",
             "cpython_copy_function_annotations_empty_metadata_diff_subset",
+            "cpython_copy_function_dict_empty_metadata_subset",
+            "cpython_copy_function_dict_empty_metadata_diff_subset",
             "cpython_copy_function_defaults_none_metadata_subset",
             "cpython_copy_function_defaults_none_metadata_diff_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
@@ -23234,6 +23271,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "`copy.copy.__annotate__`",
             "copy public function `__annotations__` empty metadata",
             "`copy.copy.__annotations__`",
+            "copy public function `__dict__` empty metadata",
+            "`copy.copy.__dict__`",
             "copy public function `__defaults__` None metadata",
             "`copy.copy.__defaults__`",
             "copy public function `__kwdefaults__` metadata",

@@ -22465,6 +22465,25 @@ print(copy.copy.__annotations__ == copy.deepcopy.__annotations__ == copy.replace
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_dict_empty_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    namespace = value.__dict__
+    print(name, type(namespace).__name__, namespace == {}, len(namespace))
+print(copy.copy.__dict__ == copy.deepcopy.__dict__ == copy.replace.__dict__ == {})"#,
+        &[
+            "copy dict True 0",
+            "deepcopy dict True 0",
+            "replace dict True 0",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_defaults_none_metadata_subset() {
     assert_output(
         r#"import copy
