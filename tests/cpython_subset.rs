@@ -27679,6 +27679,42 @@ for label, expected, expr in [
     );
 }
 
+// Mirrors CPython's public AttributeError text for `super` object attributes
+// without adding super instance dictionaries.
+#[test]
+fn cpython_super_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+s = Child().make()
+def show(label, expr):
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for name in ['__thisclass__', '__self__', '__self_class__']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+show('set-extra', lambda: setattr(s, 'extra', 99))
+show('del-extra', lambda: delattr(s, 'extra'))"#,
+        &[
+            "set-__thisclass__ AttributeError readonly attribute",
+            "del-__thisclass__ AttributeError readonly attribute",
+            "set-__self__ AttributeError readonly attribute",
+            "del-__self__ AttributeError readonly attribute",
+            "set-__self_class__ AttributeError readonly attribute",
+            "del-__self_class__ AttributeError readonly attribute",
+            "set-extra AttributeError 'super' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'super' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
 // MiniPython checks the BaseException args/display/repr subset needed by
 // migrated exception behavior tests.

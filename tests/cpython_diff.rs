@@ -11085,6 +11085,32 @@ check('deque.set.missing', '__set__ expected 2 arguments, got 0', lambda: deque_
 }
 
 #[test]
+fn cpython_super_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_super.py public super attribute assignment errors",
+        name: "super-attribute-assignment-errors",
+        source: r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+s = Child().make()
+def show(label, expr):
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for name in ['__thisclass__', '__self__', '__self_class__']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+show('set-extra', lambda: setattr(s, 'extra', 99))
+show('del-extra', lambda: delattr(s, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",

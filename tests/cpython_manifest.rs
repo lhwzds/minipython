@@ -24187,6 +24187,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_no_getter_error_subset",
             "cpython_property_no_setter_deleter_error_subset",
             "cpython_property_doc_metadata_subset",
+            "cpython_super_attribute_assignment_errors_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_object_constructor_argument_error_subset",
@@ -24252,6 +24253,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_no_getter_error_diff_subset",
         "cpython_property_no_setter_deleter_error_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
+        "cpython_super_attribute_assignment_errors_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_object_constructor_argument_error_diff_subset",
@@ -26071,6 +26073,72 @@ fn descriptor_get_method_wrapper_arity_errors_have_modern_diff_evidence() {
             document.contains("modern `__get__` / `__set__ expected ...` descriptor arity text")
                 && document.contains("cpython_descriptor_method_wrapper_arity_diff_subset"),
             "docs must link modern descriptor arity text to subset and diff evidence"
+        );
+    }
+}
+
+#[test]
+fn super_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_super_attribute_assignment_errors_subset(",
+        "class Child(Base):",
+        "return super()",
+        "for name in ['__thisclass__', '__self__', '__self_class__']",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "setattr(s, 'extra', 99)",
+        "delattr(s, 'extra')",
+        "\"set-__thisclass__ AttributeError readonly attribute\"",
+        "\"del-__self_class__ AttributeError readonly attribute\"",
+        "\"set-extra AttributeError 'super' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "without adding super instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_super_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_super.py public super attribute assignment errors",
+        "name: \"super-attribute-assignment-errors\"",
+        "class Child(Base):",
+        "return super()",
+        "for name in ['__thisclass__', '__self__', '__self_class__']",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "setattr(s, 'extra', 99)",
+        "delattr(s, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "super attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Super { .. } => Err(super_attribute_assignment_error(name))",
+        "fn super_attribute_assignment_error(name: &str) -> String",
+        "matches!(name, \"__thisclass__\" | \"__self__\" | \"__self_class__\")",
+        "'super' object has no attribute '{name}' and no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_super_attribute_assignment_errors_subset")
+                && document.contains("cpython_super_attribute_assignment_errors_diff_subset")
+                && document.contains("super object attribute assignment/deletion errors")
+                && document.contains("super instance dictionaries"),
+            "super attribute assignment evidence must be documented in coverage and migration notes"
         );
     }
 }

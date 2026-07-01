@@ -61089,6 +61089,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
+        Value::Super { .. } => Err(super_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot set attribute '{name}' on {value}"
@@ -61123,6 +61124,16 @@ fn is_property_readonly_instance_attribute(name: &str) -> bool {
         name,
         "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" | "__set_name__"
     )
+}
+
+fn super_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "__thisclass__" | "__self__" | "__self_class__") {
+        "AttributeError: readonly attribute".to_string()
+    } else {
+        format!(
+            "AttributeError: 'super' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
 }
 
 fn store_class_metadata_attribute(attrs: &Scope, name: &str, value: Value) -> Result<(), String> {
@@ -61396,6 +61407,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
+        Value::Super { .. } => Err(super_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
