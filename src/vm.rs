@@ -109,6 +109,7 @@ thread_local! {
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_MODULE: RefCell<Option<Value>> = RefCell::new(None);
+    static JSON_BUILTIN_NAMES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -60858,7 +60859,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__qualname__" && is_json_builtin(&function_name) =>
         {
-            Ok(Value::String(builtin_public_name(&function_name)))
+            Ok(json_builtin_name_value(&function_name))
         }
         Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_doc_value(&function_name))
@@ -61065,6 +61066,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "Built-in function in the MiniPython sandbox.".to_string(),
             ))
         }
+        Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
+            Ok(json_builtin_name_value(&function_name))
+        }
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
@@ -61239,6 +61243,16 @@ fn json_builtin_doc_value(name: &str) -> Value {
         let mut docs = docs.borrow_mut();
         docs.entry(name.to_string())
             .or_insert_with(|| identity_string_value(json_builtin_doc(name).to_string()))
+            .clone()
+    })
+}
+
+fn json_builtin_name_value(name: &str) -> Value {
+    JSON_BUILTIN_NAMES.with(|names| {
+        let mut names = names.borrow_mut();
+        names
+            .entry(name.to_string())
+            .or_insert_with(|| identity_string_value(builtin_public_name(name)))
             .clone()
     })
 }

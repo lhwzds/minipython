@@ -8720,6 +8720,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_module_identity_metadata_subset",
+            "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
@@ -8842,6 +8843,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_function_globals_identity_metadata_diff_subset",
         "cpython_json_function_module_identity_metadata_diff_subset",
+        "cpython_json_function_name_qualname_identity_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
@@ -8958,6 +8960,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_module_identity_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_module_identity_metadata_subset",
+    );
+    let json_function_name_qualname_identity_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_name_qualname_identity_metadata_diff_subset",
+    );
+    let json_function_name_qualname_identity_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_name_qualname_identity_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9232,6 +9242,41 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_module_identity_subset_body.contains(required),
             "json public function __module__ identity subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "value is getattr(function, attr)",
+        "getattr(bound, attr) is value",
+        "bound.__getattribute__(attr) is value",
+        "getattr(json.loads, attr) is getattr(json.dumps, attr)",
+        "function.__name__ is function.__qualname__",
+        "bound.__name__ is function.__name__",
+        "bound.__qualname__ is function.__qualname__",
+        "bound.__name__ is bound.__qualname__",
+    ] {
+        assert!(
+            json_function_name_qualname_identity_diff_body.contains(required)
+                && json_function_name_qualname_identity_subset_body.contains(required),
+            "json public function __name__ / __qualname__ identity diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"__name__ loads str loads True\"",
+        "\"__name__ loads True True\"",
+        "\"__name__ dumps str dumps True\"",
+        "\"__name__ dumps True True\"",
+        "\"__name__ False False\"",
+        "\"__qualname__ loads str loads True\"",
+        "\"__qualname__ loads True True\"",
+        "\"__qualname__ dumps str dumps True\"",
+        "\"__qualname__ dumps True True\"",
+        "\"__qualname__ False False\"",
+        "\"loads True True True True\"",
+        "\"dumps True True True True\"",
+    ] {
+        assert!(
+            json_function_name_qualname_identity_subset_body.contains(required),
+            "json public function __name__ / __qualname__ identity subset output must pin `{required}`"
         );
     }
     for required in [
@@ -9987,6 +10032,16 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must keep shared persistent json function __module__ identity metadata"
     );
     assert!(
+        VM_SOURCE.contains("static JSON_BUILTIN_NAMES: RefCell<HashMap<String, Value>>")
+            && VM_SOURCE.contains("name == \"__name__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("name == \"__qualname__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(json_builtin_name_value(&function_name))")
+            && VM_SOURCE.contains("fn json_builtin_name_value(name: &str) -> Value")
+            && VM_SOURCE.contains("JSON_BUILTIN_NAMES.with")
+            && VM_SOURCE.contains("identity_string_value(builtin_public_name(name))"),
+        "VM must keep shared persistent json function __name__ / __qualname__ identity metadata"
+    );
+    assert!(
         VM_SOURCE.contains("name == \"__type_params__\" && is_json_builtin(&function_name)")
             && VM_SOURCE.contains("Ok(json_builtin_type_params())")
             && VM_SOURCE.contains("static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>>")
@@ -10209,6 +10264,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_module_package_metadata_diff_subset",
             "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_module_identity_metadata_diff_subset",
+            "cpython_json_function_name_qualname_identity_metadata_subset",
+            "cpython_json_function_name_qualname_identity_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
@@ -10272,6 +10329,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "`json.loads.__module__`",
             "`json.dumps.__module__`",
             "json public function `__module__` identity",
+            "json public function `__name__` / `__qualname__` identity",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",

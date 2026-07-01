@@ -736,6 +736,27 @@ print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__ == j
 }
 
 #[test]
+fn cpython_json_function_name_qualname_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __name__ / __qualname__ identity metadata subset",
+        name: "json-function-name-qualname-identity-metadata",
+        source: r#"import json
+for attr in ['__name__', '__qualname__']:
+    for name in ['loads', 'dumps']:
+        function = getattr(json, name)
+        bound = function.__get__('receiver', str)
+        value = getattr(function, attr)
+        print(attr, name, type(value).__name__, value, value is getattr(function, attr))
+        print(attr, name, getattr(bound, attr) is value, bound.__getattribute__(attr) is value)
+    print(attr, getattr(json.loads, attr) is getattr(json.dumps, attr), getattr(json.loads, attr) == getattr(json.dumps, attr))
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    print(name, function.__name__ is function.__qualname__, bound.__name__ is function.__name__, bound.__qualname__ is function.__qualname__, bound.__name__ is bound.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",
