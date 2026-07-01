@@ -60586,6 +60586,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__defaults__" && is_copy_none_defaults_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__kwdefaults__" && is_copy_builtin(&function_name) =>
         {
             Ok(Value::None)
@@ -60924,6 +60929,10 @@ fn is_json_builtin(name: &str) -> bool {
 
 fn is_copy_builtin(name: &str) -> bool {
     matches!(name, "copy.copy" | "copy.deepcopy" | "copy.replace")
+}
+
+fn is_copy_none_defaults_builtin(name: &str) -> bool {
+    matches!(name, "copy.copy" | "copy.replace")
 }
 
 fn json_builtin_doc(name: &str) -> &'static str {

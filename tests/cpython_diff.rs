@@ -21142,6 +21142,19 @@ print(copy.copy.__qualname__, copy.deepcopy.__qualname__, copy.replace.__qualnam
 }
 
 #[test]
+fn cpython_copy_function_defaults_none_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __defaults__ None metadata subset",
+        name: "copy-function-defaults-none-metadata",
+        source: r#"import copy
+for name in ['copy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__defaults__, value.__defaults__ is None)
+print(copy.copy.__defaults__ is copy.replace.__defaults__ is None)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_kwdefaults_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __kwdefaults__ metadata subset",

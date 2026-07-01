@@ -22392,6 +22392,19 @@ print(copy.copy.__qualname__, copy.deepcopy.__qualname__, copy.replace.__qualnam
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_defaults_none_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__defaults__, value.__defaults__ is None)
+print(copy.copy.__defaults__ is copy.replace.__defaults__ is None)"#,
+        &["copy None True", "replace None True", "True"],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_kwdefaults_metadata_subset() {
     assert_output(
         r#"import copy

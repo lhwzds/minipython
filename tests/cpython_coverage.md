@@ -946,6 +946,7 @@ Recent runtime migration notes:
   `cpython_copy_module_all_exports_diff_subset`,
   `cpython_copy_function_module_metadata_diff_subset`,
   `cpython_copy_function_qualname_metadata_diff_subset`,
+  `cpython_copy_function_defaults_none_metadata_diff_subset`,
   `cpython_copy_function_kwdefaults_metadata_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
@@ -3099,6 +3100,7 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_module_all_exports_subset`,
   `cpython_copy_function_module_metadata_subset`,
   `cpython_copy_function_qualname_metadata_subset`,
+  `cpython_copy_function_defaults_none_metadata_subset`,
   `cpython_copy_function_kwdefaults_metadata_subset`,
   `cpython_copy_public_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
@@ -3114,6 +3116,8 @@ without adding general custom encoder/decoder class support.
   copy public function `__qualname__` metadata (`copy.copy.__qualname__`,
   `copy.deepcopy.__qualname__`, and `copy.replace.__qualname__` are `copy`,
   `deepcopy`, and `replace`),
+  copy public function `__defaults__` None metadata (`copy.copy.__defaults__`
+  and `copy.replace.__defaults__` are `None`),
   copy public function `__kwdefaults__` metadata (`copy.copy.__kwdefaults__`,
   `copy.deepcopy.__kwdefaults__`, and `copy.replace.__kwdefaults__` are `None`),
   CPython public `copy.Error` / `copy.error` exception metadata,

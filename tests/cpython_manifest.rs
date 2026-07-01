@@ -22806,6 +22806,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_module_all_exports_subset",
             "cpython_copy_function_module_metadata_subset",
             "cpython_copy_function_qualname_metadata_subset",
+            "cpython_copy_function_defaults_none_metadata_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
             "cpython_copy_public_subset",
             "cpython_collections_defaultdict_copy_module_subset",
@@ -22827,6 +22828,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_module_all_exports_diff_subset",
         "cpython_copy_function_module_metadata_diff_subset",
         "cpython_copy_function_qualname_metadata_diff_subset",
+        "cpython_copy_function_defaults_none_metadata_diff_subset",
         "cpython_copy_function_kwdefaults_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
         "cpython_collections_defaultdict_copy_module_diff_subset",
@@ -22879,6 +22881,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     let function_qualname_subset = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_copy_function_qualname_metadata_subset",
+    );
+    let function_defaults_none_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_function_defaults_none_metadata_diff_subset",
+    );
+    let function_defaults_none_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_function_defaults_none_metadata_subset",
     );
     let function_kwdefaults_diff = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -22975,6 +22985,24 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "value.__defaults__",
+        "copy.copy.__defaults__",
+        "copy.replace.__defaults__",
+        "is None",
+    ] {
+        assert!(
+            function_defaults_none_diff.contains(required)
+                && function_defaults_none_subset.contains(required),
+            "copy public function __defaults__ None diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"copy None True\"", "\"replace None True\""] {
+        assert!(
+            function_defaults_none_subset.contains(required),
+            "copy public function __defaults__ None subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value.__kwdefaults__",
         "copy.copy.__kwdefaults__",
         "copy.deepcopy.__kwdefaults__",
@@ -23021,11 +23049,16 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
                 .contains("matches!(name, \"copy.copy\" | \"copy.deepcopy\" | \"copy.replace\")")
             && VM_SOURCE.contains("name == \"__module__\" && is_copy_builtin(&function_name)")
             && VM_SOURCE.contains("name == \"__qualname__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains(
+                "name == \"__defaults__\" && is_copy_none_defaults_builtin(&function_name)"
+            )
             && VM_SOURCE.contains("name == \"__kwdefaults__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains("fn is_copy_none_defaults_builtin(name: &str) -> bool")
+            && VM_SOURCE.contains("matches!(name, \"copy.copy\" | \"copy.replace\")")
             && VM_SOURCE.contains("Ok(Value::String(\"copy\".to_string()))")
             && VM_SOURCE.contains("Ok(Value::String(builtin_public_name(&function_name)))")
             && VM_SOURCE.contains("Ok(Value::None)"),
-        "VM must expose CPython-compatible copy function __module__, __qualname__, and __kwdefaults__ metadata"
+        "VM must expose CPython-compatible copy function __module__, __qualname__, __defaults__, and __kwdefaults__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -23037,6 +23070,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_module_metadata_diff_subset",
             "cpython_copy_function_qualname_metadata_subset",
             "cpython_copy_function_qualname_metadata_diff_subset",
+            "cpython_copy_function_defaults_none_metadata_subset",
+            "cpython_copy_function_defaults_none_metadata_diff_subset",
             "cpython_copy_function_kwdefaults_metadata_subset",
             "cpython_copy_function_kwdefaults_metadata_diff_subset",
             "copy module `__package__` metadata",
@@ -23047,6 +23082,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "`copy.copy.__module__`",
             "copy public function `__qualname__` metadata",
             "`copy.copy.__qualname__`",
+            "copy public function `__defaults__` None metadata",
+            "`copy.copy.__defaults__`",
             "copy public function `__kwdefaults__` metadata",
             "`copy.copy.__kwdefaults__`",
         ] {
