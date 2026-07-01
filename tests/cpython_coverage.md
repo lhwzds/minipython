@@ -1045,6 +1045,7 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_diff_subset`,
   `cpython_json_loads_dumps_basic_diff_subset`,
   `cpython_json_module_package_metadata_diff_subset`,
+  `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1656,6 +1657,8 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_module_package_metadata_diff_subset` /
   `cpython_json_module_package_metadata_subset`,
+  `cpython_json_function_type_params_metadata_diff_subset` /
+  `cpython_json_function_type_params_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2276,6 +2279,12 @@ aligned with CPython through `json.__package__`,
 `object.__getattribute__`, `dir()`, and `__dict__`, while preserving
 `json.loads.__module__` and `json.dumps.__module__` and without adding file
 APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_type_params_metadata_subset`, backed by
+`cpython_json_function_type_params_metadata_diff_subset`, keeps json public function `__type_params__` metadata
+(`json.loads.__type_params__` and
+`json.dumps.__type_params__` are `()`) aligned with CPython without adding
+file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,

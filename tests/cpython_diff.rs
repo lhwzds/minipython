@@ -721,6 +721,19 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_function_type_params_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __type_params__ metadata subset",
+        name: "json-function-type-params-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    value = getattr(json, name)
+    print(name, value.__type_params__, type(value.__type_params__).__name__, value.__type_params__ == ())
+print(json.loads.__type_params__ == json.dumps.__type_params__ == ())"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

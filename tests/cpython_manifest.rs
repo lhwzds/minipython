@@ -8712,6 +8712,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json",
         &[
             "cpython_json_module_package_metadata_subset",
+            "cpython_json_function_type_params_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8810,6 +8811,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_diff_subset",
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
+        "cpython_json_function_type_params_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -8903,6 +8905,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_module_package_metadata_subset",
     );
+    let json_function_type_params_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_type_params_metadata_diff_subset",
+    );
+    let json_function_type_params_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_type_params_metadata_subset",
+    );
     for required in [
         "json.__package__",
         "object.__getattribute__(json, '__package__')",
@@ -8923,18 +8933,46 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json module package metadata subset output must pin `{required}`"
         );
     }
+    for required in [
+        "value.__type_params__",
+        "json.loads.__type_params__",
+        "json.dumps.__type_params__",
+        "== ()",
+    ] {
+        assert!(
+            json_function_type_params_diff_body.contains(required)
+                && json_function_type_params_subset_body.contains(required),
+            "json public function __type_params__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"loads () tuple True\"", "\"dumps () tuple True\""] {
+        assert!(
+            json_function_type_params_subset_body.contains(required),
+            "json public function __type_params__ metadata subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
+    );
+    assert!(
+        VM_SOURCE.contains("name == \"__type_params__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(tuple_value(Vec::new()))"),
+        "VM must expose CPython-compatible json function __type_params__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_json_module_package_metadata_subset",
             "cpython_json_module_package_metadata_diff_subset",
+            "cpython_json_function_type_params_metadata_subset",
+            "cpython_json_function_type_params_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
             "`json.dumps.__module__`",
+            "json public function `__type_params__` metadata",
+            "`json.loads.__type_params__`",
+            "`json.dumps.__type_params__`",
         ] {
             assert!(
                 document.contains(required),
