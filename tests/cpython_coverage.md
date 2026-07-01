@@ -1070,6 +1070,7 @@ Recent runtime migration notes:
   `cpython_json_function_doc_identity_metadata_diff_subset`,
   `cpython_json_function_dict_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset`,
+  `cpython_json_function_annotations_assignment_metadata_diff_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset`,
   `cpython_json_function_dir_metadata_diff_subset`,
   `cpython_json_function_get_descriptor_metadata_diff_subset`,
@@ -1758,6 +1759,8 @@ Recent runtime migration notes:
   `cpython_json_function_dict_identity_metadata_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset` /
   `cpython_json_function_annotations_identity_metadata_subset`,
+  `cpython_json_function_annotations_assignment_metadata_diff_subset` /
+  `cpython_json_function_annotations_assignment_metadata_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset` /
   `cpython_json_function_kwdefaults_identity_metadata_subset`,
   `cpython_json_function_dir_metadata_diff_subset` /
@@ -2610,6 +2613,14 @@ and per-function mutation visibility aligned with CPython for the supported
 empty annotations dict surface without adding arbitrary function attribute
 assignment, function `__code__`, file APIs, module `__all__`, or
 encoder/decoder classes.
+
+`cpython_json_function_annotations_assignment_metadata_subset`, backed by
+`cpython_json_function_annotations_assignment_metadata_diff_subset`, keeps json public function `__annotations__` assignment
+and deletion aligned with CPython for `loads` / `dumps`, including exact dict,
+dict-subclass, and OrderedDict replacement identity, `None` / deletion reset
+to a fresh empty dict, and non-dict assignment `TypeError`, without adding
+function `__defaults__` / `__kwdefaults__` call-binding mutation semantics,
+pickle helpers, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_kwdefaults_identity_metadata_subset`, backed by
 `cpython_json_function_kwdefaults_identity_metadata_diff_subset`, keeps json public function `__kwdefaults__` identity

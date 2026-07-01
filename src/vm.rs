@@ -62120,6 +62120,32 @@ fn delete_json_builtin_module(name: &str) {
     set_json_builtin_module(name, Value::None);
 }
 
+fn set_json_builtin_annotations(name: &str, value: Value) -> Result<(), String> {
+    let replacement = if matches!(value, Value::None) {
+        dict_value(Vec::new())
+    } else if matches!(value, Value::Dict(_) | Value::OrderedDict(_))
+        || dict_subclass_entries(&value).is_some()
+    {
+        value
+    } else {
+        return Err("TypeError: __annotations__ must be set to a dict object".to_string());
+    };
+    JSON_BUILTIN_ANNOTATIONS.with(|annotations| {
+        annotations
+            .borrow_mut()
+            .insert(name.to_string(), replacement);
+    });
+    Ok(())
+}
+
+fn delete_json_builtin_annotations(name: &str) {
+    JSON_BUILTIN_ANNOTATIONS.with(|annotations| {
+        annotations
+            .borrow_mut()
+            .insert(name.to_string(), dict_value(Vec::new()));
+    });
+}
+
 fn json_builtin_type_params() -> Value {
     JSON_BUILTIN_TYPE_PARAMS.with(|type_params| {
         let mut type_params = type_params.borrow_mut();
@@ -62291,6 +62317,7 @@ fn store_json_builtin_attribute(
             return Ok(());
         }
         "__dict__" => return set_json_builtin_dict(function_name, value),
+        "__annotations__" => return set_json_builtin_annotations(function_name, value),
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);
@@ -62312,6 +62339,10 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             return Ok(());
         }
         "__dict__" => return Err("TypeError: cannot delete __dict__".to_string()),
+        "__annotations__" => {
+            delete_json_builtin_annotations(function_name);
+            return Ok(());
+        }
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);

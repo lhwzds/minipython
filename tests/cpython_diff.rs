@@ -1269,6 +1269,43 @@ print(json.loads.__annotations__ == {}, json.dumps.__annotations__ == {})"#,
 }
 
 #[test]
+fn cpython_json_function_annotations_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __annotations__ assignment metadata subset",
+        name: "json-function-annotations-assignment-metadata",
+        source: r#"import json
+from collections import OrderedDict
+class D(dict):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__annotations__
+    print(name, 'start', type(original).__name__, original, function.__annotations__ is function.__annotations__)
+    replacement = {'a': 1}
+    function.__annotations__ = replacement
+    print(name, 'set-dict', function.__annotations__ is replacement, function.__annotations__)
+    subclass = D({'b': 2})
+    function.__annotations__ = subclass
+    print(name, 'set-subclass', function.__annotations__ is subclass, type(function.__annotations__).__name__, function.__annotations__)
+    ordered = OrderedDict([('c', 3)])
+    function.__annotations__ = ordered
+    print(name, 'set-ordered', function.__annotations__ is ordered, type(function.__annotations__).__name__, function.__annotations__)
+    function.__annotations__ = None
+    empty_after_none = function.__annotations__
+    print(name, 'set-none', type(empty_after_none).__name__, empty_after_none, empty_after_none is function.__annotations__)
+    try:
+        function.__annotations__ = []
+    except TypeError as error:
+        print(name, 'set-list', type(error).__name__, str(error), error.args)
+    del function.__annotations__
+    empty_after_del = function.__annotations__
+    print(name, 'del', type(empty_after_del).__name__, empty_after_del, empty_after_del is function.__annotations__)
+    function.__annotations__ = original
+print(json.loads.__annotations__, json.dumps.__annotations__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_kwdefaults_identity_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __kwdefaults__ identity metadata subset",

@@ -8736,6 +8736,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_assignment_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
+            "cpython_json_function_annotations_assignment_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
@@ -8880,6 +8881,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_dict_assignment_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
+        "cpython_json_function_annotations_assignment_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_function_get_descriptor_metadata_diff_subset",
@@ -9114,6 +9116,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_dict_assignment_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_dict_assignment_metadata_subset",
+    );
+    let json_function_annotations_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_annotations_assignment_metadata_diff_subset",
+    );
+    let json_function_annotations_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_annotations_assignment_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10206,6 +10216,74 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __dict__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "from collections import OrderedDict",
+        "class D(dict):",
+        "original = function.__annotations__",
+        "replacement = {'a': 1}",
+        "function.__annotations__ = replacement",
+        "function.__annotations__ is replacement",
+        "subclass = D({'b': 2})",
+        "function.__annotations__ = subclass",
+        "function.__annotations__ is subclass",
+        "ordered = OrderedDict([('c', 3)])",
+        "function.__annotations__ = ordered",
+        "function.__annotations__ is ordered",
+        "function.__annotations__ = None",
+        "empty_after_none = function.__annotations__",
+        "function.__annotations__ = []",
+        "del function.__annotations__",
+        "empty_after_del = function.__annotations__",
+        "function.__annotations__ = original",
+        "json.loads.__annotations__",
+        "json.dumps.__annotations__",
+    ] {
+        assert!(
+            json_function_annotations_assignment_diff_body.contains(required)
+                && json_function_annotations_assignment_subset_body.contains(required),
+            "json public function __annotations__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads start dict {} True\"",
+        "\"loads set-dict True {'a': 1}\"",
+        "\"loads set-subclass True D {'b': 2}\"",
+        "\"loads set-ordered True OrderedDict OrderedDict({'c': 3})\"",
+        "\"loads set-none dict {} True\"",
+        "\"loads set-list TypeError __annotations__ must be set to a dict object",
+        "\"loads del dict {} True\"",
+        "\"dumps start dict {} True\"",
+        "\"dumps set-dict True {'a': 1}\"",
+        "\"dumps set-subclass True D {'b': 2}\"",
+        "\"dumps set-ordered True OrderedDict OrderedDict({'c': 3})\"",
+        "\"dumps set-none dict {} True\"",
+        "\"dumps set-list TypeError __annotations__ must be set to a dict object",
+        "\"dumps del dict {} True\"",
+        "\"{} {}\"",
+    ] {
+        assert!(
+            json_function_annotations_assignment_subset_body.contains(required),
+            "json public function __annotations__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn set_json_builtin_annotations(",
+        "fn delete_json_builtin_annotations(",
+        "matches!(value, Value::None)",
+        "matches!(value, Value::Dict(_) | Value::OrderedDict(_))",
+        "dict_subclass_entries(&value).is_some()",
+        "__annotations__ must be set to a dict object",
+        "JSON_BUILTIN_ANNOTATIONS.with",
+        "insert(name.to_string(), replacement)",
+        "insert(name.to_string(), dict_value(Vec::new()))",
+        "\"__annotations__\" => return set_json_builtin_annotations(function_name, value)",
+        "delete_json_builtin_annotations(function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __annotations__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11817,6 +11895,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_identity_metadata_diff_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_diff_subset",
+            "cpython_json_function_annotations_assignment_metadata_subset",
+            "cpython_json_function_annotations_assignment_metadata_diff_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
             "cpython_json_function_dir_metadata_subset",
@@ -11903,6 +11983,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__doc__` identity",
             "json public function `__dict__` identity",
             "json public function `__annotations__` identity",
+            "json public function `__annotations__` assignment",
             "json public function `__kwdefaults__` identity",
             "json public function `dir()` supported metadata",
             "json public function `__get__` descriptor",
