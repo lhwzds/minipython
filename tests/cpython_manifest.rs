@@ -29226,6 +29226,73 @@ fn list_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn tuple_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_tuple_attribute_assignment_errors_subset(",
+        "items = (1, 2, 1)",
+        "setattr(items, name, 99)",
+        "delattr(items, name)",
+        "['extra', 'count', 'index']",
+        "\"set-extra AttributeError 'tuple' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'tuple' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-count AttributeError 'tuple' object attribute 'count' is read-only\"",
+        "\"del-index AttributeError 'tuple' object attribute 'index' is read-only\"",
+        "\"read 3 2 1\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused tuple attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_tuple_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/seq_tests.py public tuple instance attribute assignment errors subset",
+        "name: \"tuple-attribute-assignment-errors\"",
+        "items = (1, 2, 1)",
+        "setattr(items, name, 99)",
+        "delattr(items, name)",
+        "['extra', 'count', 'index']",
+        "items.count(1)",
+        "items.index(2)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused tuple attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Tuple(_) => Err(tuple_attribute_assignment_error(name))",
+        "fn tuple_attribute_assignment_error(name: &str) -> String",
+        "fn is_tuple_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"tuple\")",
+        "'tuple' object attribute '{name}' is read-only",
+        "'tuple' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_tuple_attribute_assignment_errors_subset")
+                && document.contains("cpython_tuple_attribute_assignment_errors_diff_subset")
+                && document.contains("tuple attribute assignment errors")
+                && document.contains("read-only tuple method attributes")
+                && document.contains("without adding tuple instance dictionaries"),
+            "focused tuple attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

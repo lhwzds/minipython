@@ -61068,6 +61068,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Bytes(_) => Err(bytes_attribute_assignment_error(name)),
         Value::ByteArray(_) => Err(bytearray_attribute_assignment_error(name)),
         Value::List(_) => Err(list_attribute_assignment_error(name)),
+        Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61341,6 +61342,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Bytes(_) => Err(bytes_attribute_assignment_error(name)),
         Value::ByteArray(_) => Err(bytearray_attribute_assignment_error(name)),
         Value::List(_) => Err(list_attribute_assignment_error(name)),
+        Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61448,6 +61450,23 @@ fn list_attribute_assignment_error(name: &str) -> String {
 fn is_list_readonly_instance_attribute(name: &str) -> bool {
     !name.starts_with("__")
         && builtin_type_dir_names("list")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
+}
+
+fn tuple_attribute_assignment_error(name: &str) -> String {
+    if is_tuple_readonly_instance_attribute(name) {
+        format!("AttributeError: 'tuple' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'tuple' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_tuple_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("tuple")
             .iter()
             .any(|candidate| candidate.as_str() == name)
 }

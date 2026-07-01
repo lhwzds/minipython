@@ -26524,6 +26524,36 @@ print('mutated', items)"#,
     );
 }
 
+// Adapted from CPython's public `tuple` instance attribute assignment errors.
+// MiniPython keeps tuple elements immutable without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_tuple_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+items = (1, 2, 1)
+for name in ['extra', 'count', 'index']:
+    show('set-' + name, lambda name=name: setattr(items, name, 99))
+    show('del-' + name, lambda name=name: delattr(items, name))
+print('read', len(items), items.count(1), items.index(2))"#,
+        &[
+            "set-extra AttributeError 'tuple' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'tuple' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-count AttributeError 'tuple' object attribute 'count' is read-only",
+            "del-count AttributeError 'tuple' object attribute 'count' is read-only",
+            "set-index AttributeError 'tuple' object attribute 'index' is read-only",
+            "del-index AttributeError 'tuple' object attribute 'index' is read-only",
+            "read 3 2 1",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.
