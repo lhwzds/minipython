@@ -798,6 +798,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userdict_instance_doc_attribute_diff_subset`,
+  `cpython_collections_userdict_type_doc_attribute_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userlist_mutating_eq_diff_subset`,
@@ -5067,8 +5068,14 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userdict_instance_doc_attribute_diff_subset` and
   `cpython_collections_userdict_instance_doc_attribute_subset`, covering
   `UserDict` instance `__doc__` lookup for empty and populated UserDicts,
-  CPython's None-valued type attribute, and `dir()` visibility without adding
-  broader UserDict type metadata.
+  CPython's None-valued type attribute, and `dir()` visibility without changing
+  UserDict mapping storage semantics.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_type_doc_attribute_diff_subset` and
+  `cpython_collections_userdict_type_doc_attribute_subset`, covering
+  `UserDict` type-object `__doc__` as CPython's None-valued metadata for
+  direct and `object.__getattribute__` lookup plus `dir(UserDict)` visibility,
+  without expanding unrelated UserDict metadata.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

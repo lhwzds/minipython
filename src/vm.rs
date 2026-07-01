@@ -59429,6 +59429,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 Ok(Value::Builtin("builtin_function_or_method".to_string()))
             }
         }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "UserDict" => {
+            Ok(Value::None)
+        }
         Value::Builtin(function_name)
             if name == "__doc__" && builtin_type_doc(&function_name).is_some() =>
         {

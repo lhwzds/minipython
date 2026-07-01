@@ -57937,7 +57937,7 @@ fn cpython_collections_namedtuple_public_subset() {
 }
 
 // Mirrors CPython's public `UserDict` instance `__doc__` type-attribute
-// lookup without adding broader UserDict type metadata coverage.
+// lookup without changing UserDict mapping storage semantics.
 #[test]
 fn cpython_collections_userdict_instance_doc_attribute_subset() {
     assert_output(
@@ -57948,6 +57948,20 @@ for label, value in [('empty', UserDict()), ('items', UserDict({'a': 1}))]:
         &[
             "empty NoneType True True None",
             "items NoneType True True None",
+        ],
+    );
+}
+
+// Mirrors CPython's public `UserDict` type-object `__doc__` metadata lookup.
+#[test]
+fn cpython_collections_userdict_type_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import UserDict
+for label, value in [('direct', UserDict.__doc__), ('object-getattribute', object.__getattribute__(UserDict, '__doc__'))]:
+    print(label, type(value).__name__, value is None, '__doc__' in dir(UserDict), repr(value))"#,
+        &[
+            "direct NoneType True True None",
+            "object-getattribute NoneType True True None",
         ],
     );
 }

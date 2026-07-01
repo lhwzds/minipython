@@ -17957,6 +17957,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userdict_instance_doc_attribute_subset",
+            "cpython_collections_userdict_type_doc_attribute_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
@@ -19127,11 +19128,70 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_instance_doc_attribute_diff_subset",
             "`UserDict` instance `__doc__`",
             "None-valued type attribute",
-            "broader UserDict type metadata",
+            "mapping storage semantics",
         ] {
             assert!(
                 document.contains(required),
                 "UserDict instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_type_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict type-object __doc__ behavior"
+    );
+    let userdict_type_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_type_doc_attribute_diff_subset",
+    );
+    let userdict_type_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_type_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "('direct', UserDict.__doc__)",
+        "object.__getattribute__(UserDict, '__doc__')",
+        "value is None",
+        "'__doc__' in dir(UserDict)",
+        "repr(value)",
+    ] {
+        assert!(
+            userdict_type_doc_diff_body.contains(required)
+                && userdict_type_doc_subset_body.contains(required),
+            "UserDict type-object __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"direct NoneType True True None\"",
+        "\"object-getattribute NoneType True True None\"",
+    ] {
+        assert!(
+            userdict_type_doc_subset_body.contains(required),
+            "UserDict type-object __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__doc__\" && function_name == \"UserDict\"",
+        "Ok(Value::None)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict type-object __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_type_doc_attribute_subset",
+            "cpython_collections_userdict_type_doc_attribute_diff_subset",
+            "`UserDict` type-object `__doc__`",
+            "direct and `object.__getattribute__` lookup",
+            "unrelated UserDict metadata",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict type-object __doc__ docs must contain `{required}`"
             );
         }
     }
