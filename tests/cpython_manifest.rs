@@ -8723,6 +8723,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
+            "cpython_json_function_get_descriptor_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8832,6 +8833,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
+        "cpython_json_function_get_descriptor_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -9011,6 +9013,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     let json_function_dir_subset_body =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_json_function_dir_metadata_subset");
+    let json_function_get_descriptor_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_get_descriptor_metadata_diff_subset",
+    );
+    let json_function_get_descriptor_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_get_descriptor_metadata_subset",
+    );
     for required in [
         "json.__package__",
         "object.__getattribute__(json, '__package__')",
@@ -9284,6 +9294,41 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function dir() metadata subset output must pin `{required}`"
         );
     }
+    for required in [
+        "function.__get__",
+        "'__get__' in dir(function)",
+        "type(getter).__name__",
+        "getter(None, object) is function",
+        "bound = getter('receiver', str)",
+        "bound.__self__",
+        "bound.__func__ is function",
+        "bound.__name__",
+        "bound.__qualname__",
+        "bound.__module__",
+        "bound.__class__.__name__",
+        "getter(None, None)",
+    ] {
+        assert!(
+            json_function_get_descriptor_diff_body.contains(required)
+                && json_function_get_descriptor_subset_body.contains(required),
+            "json public function __get__ descriptor diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True True method-wrapper\"",
+        "\"loads method receiver True\"",
+        "\"loads loads loads json method\"",
+        "\"loads TypeError __get__(None, None) is invalid\"",
+        "\"dumps True True method-wrapper\"",
+        "\"dumps method receiver True\"",
+        "\"dumps dumps dumps json method\"",
+        "\"dumps TypeError __get__(None, None) is invalid\"",
+    ] {
+        assert!(
+            json_function_get_descriptor_subset_body.contains(required),
+            "json public function __get__ descriptor subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9355,8 +9400,20 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     assert!(
         VM_SOURCE.contains("Value::Builtin(name) if is_json_builtin(name)")
             && VM_SOURCE.contains("names.extend(json_builtin_function_dir_names())")
-            && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>"),
+            && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>")
+            && VM_SOURCE.contains("\"__get__\","),
         "VM must expose supported json function metadata names through dir()"
+    );
+    assert!(
+        VM_SOURCE.contains("name == \"__get__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Value::Builtin(\"json.function.__get__\".to_string())")
+            && VM_SOURCE.contains("Value::Builtin(name) if name == \"json.function.__get__\"")
+            && VM_SOURCE.contains("self.call_json_function_get(args, keywords)")
+            && VM_SOURCE.contains("fn call_json_function_get(")
+            && VM_SOURCE.contains("\"json.function.__get__\"")
+            && VM_SOURCE.contains("Value::BoundMethod {")
+            && VM_SOURCE.contains("is_descriptor_get_wrapper_name(name)"),
+        "VM must expose CPython-compatible json function __get__ descriptor behavior"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -9384,6 +9441,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_dir_metadata_diff_subset",
+            "cpython_json_function_get_descriptor_metadata_subset",
+            "cpython_json_function_get_descriptor_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9409,6 +9468,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__annotations__` identity",
             "json public function `__kwdefaults__` identity",
             "json public function `dir()` supported metadata",
+            "json public function `__get__` descriptor",
         ] {
             assert!(
                 document.contains(required),

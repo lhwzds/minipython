@@ -10000,6 +10000,9 @@ impl Vm {
             Value::Builtin(name) if name == "descriptor.__get__" => {
                 self.call_method_get(args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__get__" => {
+                self.call_json_function_get(args, keywords)
+            }
             Value::Builtin(name) if name == "getset_descriptor.__get__" => {
                 self.call_getset_descriptor_get(args, keywords)
             }
@@ -17425,6 +17428,39 @@ impl Vm {
         }
 
         Ok(descriptor)
+    }
+
+    fn call_json_function_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((function, rest)) = args.split_first() else {
+            return Err("TypeError: __get__() expected a function receiver".to_string());
+        };
+        let function = function.clone();
+        let Value::Builtin(function_name) = &function else {
+            return Err("TypeError: __get__() expected a function receiver".to_string());
+        };
+        if !is_json_builtin(function_name) {
+            return Err("TypeError: __get__() expected a json function receiver".to_string());
+        }
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+        if matches!(rest[0], Value::None) {
+            if rest
+                .get(1)
+                .is_some_and(|owner| matches!(owner, Value::None))
+            {
+                return Err("TypeError: __get__(None, None) is invalid".to_string());
+            }
+            return Ok(function);
+        }
+
+        Ok(Value::BoundMethod {
+            function: Box::new(function),
+            receiver: Box::new(rest[0].clone()),
+            identity: Rc::new(()),
+        })
     }
 
     fn super_descriptor_get(
@@ -50057,6 +50093,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__dir__",
         "__doc__",
         "__globals__",
+        "__get__",
         "__kwdefaults__",
         "__module__",
         "__name__",
@@ -59202,7 +59239,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             identity,
         } => match name {
             "__class__" => Ok(Value::Builtin(
-                if matches!(function.as_ref(), Value::Builtin(_)) {
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
+                    "method"
+                } else if matches!(function.as_ref(), Value::Builtin(_)) {
                     "builtin_function_or_method"
                 } else {
                     "method"
@@ -60699,6 +60738,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__globals__" && is_json_builtin(&function_name) =>
         {
             Ok(json_builtin_globals())
+        }
+        Value::Builtin(function_name) if name == "__get__" && is_json_builtin(&function_name) => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("json.function.__get__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "io.BytesIO" => {
             Ok(Value::String(
@@ -62632,6 +62678,7 @@ fn is_descriptor_get_wrapper_name(name: &str) -> bool {
     matches!(
         name,
         "descriptor.__get__"
+            | "json.function.__get__"
             | "getset_descriptor.__get__"
             | "getset_descriptor.__set__"
             | "getset_descriptor.__delete__"
@@ -64185,6 +64232,9 @@ fn type_name(value: &Value) -> &str {
         Value::Super { .. } => "super",
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name)) => {
             "method-wrapper"
+        }
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) => {
+            "method"
         }
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(_)) => {
             "builtin_function_or_method"
