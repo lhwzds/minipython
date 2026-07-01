@@ -50294,6 +50294,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__repr__",
                 "__self__",
                 "__str__",
+                "__class__",
             ]
             .into_iter()
             .map(str::to_string),

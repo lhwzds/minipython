@@ -37584,6 +37584,20 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_class_dir_visibility_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__([], list)
+    print(name, '__class__' in dir(bound), bound.__class__.__name__, bound.__class__.__module__, bound.__class__ is type(bound), bound.__getattribute__('__class__') is type(bound))"#,
+        &[
+            "loads True method builtins True True",
+            "dumps True method builtins True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_class_metadata_subset() {
     assert_output(
         r#"import json
