@@ -26466,6 +26466,21 @@ print('read', s.upper(), s.split('a'))"#,
     );
 }
 
+// Mirrors CPython's public `str` instance `__doc__` type-attribute lookup
+// without promoting other builtin instance `__doc__` attributes.
+#[test]
+fn cpython_str_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', ''), ('module', super.__module__)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == str.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True str(object='') -> str 404",
+            "module str True True str(object='') -> str 404",
+        ],
+    );
+}
+
 // Adapted from CPython's public `bytes` instance attribute assignment errors.
 // MiniPython exposes bytes methods without adding a writable instance
 // `__dict__`.

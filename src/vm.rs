@@ -57980,6 +57980,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::String(_) | Value::IdentityString { .. } if name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))
         }
+        Value::String(_) | Value::IdentityString { .. } if name == "__doc__" => Ok(Value::String(
+            builtins_module_type_doc("str")
+                .expect("str builtin type doc exists")
+                .to_string(),
+        )),
         Value::String(value) | Value::IdentityString { value, .. } => {
             immutable_sequence_method("str", Value::String(value), name)
         }

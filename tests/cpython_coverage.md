@@ -80,6 +80,10 @@ Recent runtime migration notes:
   `cpython_str_attribute_assignment_errors_diff_subset`, now pins string attribute assignment errors
   for missing attributes and read-only string method attributes (`upper` /
   `split`) without adding str instance dictionaries.
+- `cpython_str_instance_doc_attribute_subset`, backed by
+  `cpython_str_instance_doc_attribute_diff_subset`, now pins str instance `__doc__`
+  lookup for ordinary strings and identity strings such as `super.__module__`, matching
+  `str.__doc__` and `dir(value)` without promoting other builtin instance `__doc__` attributes.
 - `cpython_bytes_attribute_assignment_errors_subset`, backed by
   `cpython_bytes_attribute_assignment_errors_diff_subset`, now pins bytes attribute assignment errors
   for missing attributes and read-only bytes method attributes (`hex` /
@@ -527,6 +531,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
+  `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,

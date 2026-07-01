@@ -11412,6 +11412,17 @@ print('read', s.upper(), s.split('a'))"#,
 }
 
 #[test]
+fn cpython_str_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_unicode.py public str instance __doc__ attribute subset",
+        name: "str-instance-doc-attribute",
+        source: r#"for label, value in [('empty', ''), ('module', super.__module__)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == str.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py public bytes instance attribute assignment errors subset",
