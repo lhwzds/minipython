@@ -45,6 +45,12 @@ Recent runtime migration notes:
   and `list.__init__` storage clearing/refill after matching `__new__`, without
   expanding into dict/set constructor `__new__` parity or full mutable-sequence
   C-layout behavior.
+- `cpython_dict_subclass_new_storage_subset`, backed by
+  `cpython_dict_subclass_new_storage_diff_subset`, now pins dict subclass `__new__` storage,
+  `dict.__new__` direct allocation for exact dict, user dict subclasses, and
+  supported in-memory dict subtypes, non-type and non-subtype error classification,
+  and `dict.__init__` storage update after matching `__new__`, without expanding
+  into set constructor `__new__` parity or full mapping C-layout behavior.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

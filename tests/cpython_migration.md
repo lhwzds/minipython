@@ -57,6 +57,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   and `list.__init__` storage clearing/refill after matching `__new__`, without
   adding dict/set constructor `__new__` parity or full mutable-sequence C-layout
   behavior.
+- Added `cpython_dict_subclass_new_storage_subset` and
+  `cpython_dict_subclass_new_storage_diff_subset` for dict subclass `__new__` storage,
+  `dict.__new__` direct allocation for exact dict, user dict subclasses, and
+  supported in-memory dict subtypes, non-type and non-subtype error classification,
+  and `dict.__init__` storage update after matching `__new__`, without adding
+  set constructor `__new__` parity or full mapping C-layout behavior.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

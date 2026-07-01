@@ -296,6 +296,115 @@ fn list_subclass_new_storage_docs_cover_core_runtime() {
 }
 
 #[test]
+fn dict_subclass_new_storage_docs_cover_core_runtime() {
+    let diff_name = "cpython_dict_subclass_new_storage_diff_subset";
+    let subset_name = "cpython_dict_subclass_new_storage_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict subclass __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict subclass __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from collections import OrderedDict, defaultdict, Counter, UserDict",
+        "class D(dict):",
+        "dict.__new__()",
+        "dict.__new__(dict)",
+        "dict.__new__(dict, {'a': 1}, b=2)",
+        "dict.__new__(D)",
+        "dict.__new__(OrderedDict)",
+        "dict.__new__(defaultdict)",
+        "dict.__new__(Counter)",
+        "dict.__new__(UserDict)",
+        "dict.__new__(list)",
+        "dict.__new__(C)",
+        "dict.__new__(1)",
+        "hasattr(dict, '__new__')",
+        "class WithNew(dict):",
+        "obj = dict.__new__(cls)",
+        "obj['pre'] = 0",
+        "filled = WithNew({'a': 1}, b=2)",
+        "class WithInit(dict):",
+        "class ReturnsOther(dict):",
+        "return dict.__new__(Other)",
+        "class ReturnsPlain(dict):",
+        "return {}",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "dict subclass __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"missing TypeError dict.__new__(): not enough arguments",
+        "\"exact-empty {} dict True 0\"",
+        "\"exact-extra {} dict True 0\"",
+        "\"sub-empty {} D True 0\"",
+        "\"ordered OrderedDict() OrderedDict True 0\"",
+        "\"defaultdict defaultdict(None, {}) defaultdict True 0\"",
+        "\"counter Counter() Counter True 0\"",
+        "\"userdict TypeError dict.__new__(UserDict): UserDict is not a subtype of dict",
+        "\"bad-class TypeError dict.__new__(list): list is not a subtype of dict",
+        "\"bad-user-class TypeError dict.__new__(C): C is not a subtype of dict",
+        "\"int-arg TypeError dict.__new__(X): X is not a type object (int)",
+        "\"visible True True True True\"",
+        "\"new WithNew () []\"",
+        "\"new WithNew {'a': 1} [('b', 2)]\"",
+        "\"with-new {'pre': 0} {'pre': 0, 'a': 1, 'b': 2} WithNew True\"",
+        "\"custom-init {'pre': 0}\"",
+        "\"with-init {'pre': 0}\"",
+        "\"other {} Other\"",
+        "\"plain {} dict\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "dict subclass __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_dict_new(",
+        "Value::Builtin(name) if name == \"dict.__new__\"",
+        "fn initialize_dict_storage(",
+        "self.initialize_dict_storage(&instance, args, keywords)?;",
+        "DICT_SUBCLASS_STORAGE_FIELD.to_string()",
+        "build_ordered_dict(Vec::new())",
+        "build_default_dict(Vec::new())",
+        "Value::Counter {",
+        "dict.__new__(X): X is not a type object",
+        "dict.__new__({}): {} is not a subtype of dict",
+        "function_name == \"dict\" && name == \"__new__\"",
+        "\"dict\" | \"UserDict\"",
+        "Value::OrderedDict(_)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict subclass __new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "dict subclass `__new__` storage",
+            "`dict.__new__` direct allocation",
+            "`dict.__init__` storage update after matching `__new__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict subclass __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

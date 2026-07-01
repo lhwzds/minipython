@@ -16301,6 +16301,74 @@ print('plain', plain, type(plain).__name__)"#,
 }
 
 #[test]
+fn cpython_dict_subclass_new_storage_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py dict subclass __new__ storage subset",
+        name: "dict-subclass-new-storage",
+        source: r#"from collections import OrderedDict, defaultdict, Counter, UserDict
+class D(dict):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, value, type(value).__name__, isinstance(value, dict), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: dict.__new__()),
+    ('exact-empty', lambda: dict.__new__(dict)),
+    ('exact-extra', lambda: dict.__new__(dict, {'a': 1}, b=2)),
+    ('sub-empty', lambda: dict.__new__(D)),
+    ('ordered', lambda: dict.__new__(OrderedDict)),
+    ('defaultdict', lambda: dict.__new__(defaultdict)),
+    ('counter', lambda: dict.__new__(Counter)),
+    ('userdict', lambda: dict.__new__(UserDict)),
+    ('bad-class', lambda: dict.__new__(list)),
+    ('bad-user-class', lambda: dict.__new__(C)),
+    ('int-arg', lambda: dict.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(dict, '__new__'), '__new__' in dir(dict), '__new__' in dir(D), '__new__' in dir(UserDict))
+class WithNew(dict):
+    def __new__(cls, value=(), **kwargs):
+        print('new', cls.__name__, value, sorted(kwargs.items()))
+        obj = dict.__new__(cls)
+        obj['pre'] = 0
+        return obj
+empty = WithNew()
+filled = WithNew({'a': 1}, b=2)
+print('with-new', empty, filled, type(filled).__name__, isinstance(filled, dict))
+class WithInit(dict):
+    def __new__(cls):
+        obj = dict.__new__(cls)
+        obj['pre'] = 0
+        return obj
+    def __init__(self):
+        print('custom-init', dict(self))
+with_init = WithInit()
+print('with-init', with_init)
+class Other(dict):
+    pass
+class ReturnsOther(dict):
+    def __new__(cls):
+        return dict.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, type(other).__name__)
+class ReturnsPlain(dict):
+    def __new__(cls):
+        return {}
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, type(plain).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",

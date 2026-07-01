@@ -9448,6 +9448,7 @@ impl Vm {
 
                 self.call_tuple(args)
             }
+            Value::Builtin(name) if name == "dict.__new__" => self.call_dict_new(args, keywords),
             Value::Builtin(name) if name == "dict" => self.call_dict_constructor(args, keywords),
             Value::Builtin(name) if name == "OrderedDict" => {
                 self.call_ordered_dict_constructor(args, keywords)
@@ -14121,12 +14122,41 @@ impl Vm {
     fn call_dict_subclass(
         &mut self,
         name: String,
-        _type_params: Vec<Value>,
+        type_params: Vec<Value>,
         attrs: Scope,
         bases: Vec<Value>,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let has_own_new = attrs.borrow().contains_key("__new__");
+        if has_own_new {
+            let class = Value::Class {
+                name: name.clone(),
+                type_params,
+                metaclass: None,
+                bases: bases.clone(),
+                attrs: attrs.clone(),
+            };
+            let instance =
+                self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), "__new__")?;
+            if !value_matches_class_value(&instance, &class) {
+                return Ok(instance);
+            }
+            if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+                let result = self.call_value_with_keywords(
+                    bind_method(init, instance.clone()),
+                    args,
+                    keywords,
+                )?;
+                if !matches!(result, Value::None) {
+                    return Err("__init__() should return None".to_string());
+                }
+            } else {
+                self.initialize_dict_storage(&instance, args, keywords)?;
+            }
+            return Ok(instance);
+        }
+
         let fields = new_scope();
         let has_own_init = attrs.borrow().contains_key("__init__");
         let storage = if has_own_init {
@@ -14154,6 +14184,36 @@ impl Vm {
         }
 
         Ok(instance)
+    }
+
+    fn initialize_dict_storage(
+        &mut self,
+        instance: &Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<(), String> {
+        if args.len() > 1 {
+            return Err(format!(
+                "dict expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+        let mut updates = match args.as_slice() {
+            [] => Vec::new(),
+            [source] => self.dict_entries_from_update_source(source.clone())?,
+            _ => unreachable!("dict constructor arity is checked before matching args"),
+        };
+
+        for (key, value) in keywords {
+            insert_dict_entry(&mut updates, Value::String(key), value)?;
+        }
+
+        let storage = dict_subclass_entries(instance).expect("matching dict subclass has storage");
+        let mut storage = storage.borrow_mut();
+        for (key, value) in updates {
+            insert_live_dict_entry(&mut storage, key, value)?;
+        }
+        Ok(())
     }
 
     fn call_user_dict_subclass(
@@ -23568,6 +23628,50 @@ impl Vm {
         }
 
         build_dict(entries)
+    }
+
+    fn call_dict_new(
+        &mut self,
+        args: Vec<Value>,
+        _keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((class, _rest)) = args.split_first() else {
+            return Err("TypeError: dict.__new__(): not enough arguments".to_string());
+        };
+        match class {
+            Value::Builtin(name) if name == "dict" => build_dict(Vec::new()),
+            Value::Builtin(name) if name == "OrderedDict" => build_ordered_dict(Vec::new()),
+            Value::Builtin(name) if name == "defaultdict" => build_default_dict(Vec::new()),
+            Value::Builtin(name) if name == "Counter" => Ok(Value::Counter {
+                entries: dict_ref_from_entries(Vec::new())?,
+            }),
+            Value::Class {
+                name, attrs, bases, ..
+            } if class_bases_include_builtin(bases, "dict") => {
+                let fields = new_scope();
+                fields.borrow_mut().insert(
+                    DICT_SUBCLASS_STORAGE_FIELD.to_string(),
+                    build_dict(Vec::new())?,
+                );
+                Ok(Value::Instance {
+                    class_name: name.clone(),
+                    fields,
+                    class_attrs: attrs.clone(),
+                    class_bases: bases.clone(),
+                })
+            }
+            value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                Err(format!(
+                    "TypeError: dict.__new__({}): {} is not a subtype of dict",
+                    class_display_name(value),
+                    class_display_name(value)
+                ))
+            }
+            value => Err(format!(
+                "TypeError: dict.__new__(X): X is not a type object ({})",
+                type_name(value)
+            )),
+        }
     }
 
     fn call_ordered_dict_constructor(
@@ -51033,6 +51137,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getitem__",
             "__iter__",
             "__len__",
+            "__new__",
             "__repr__",
             "__setitem__",
             "__str__",
@@ -60597,6 +60702,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "dict" && name == "__new__" => {
+            Ok(Value::Builtin("dict.__new__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "OrderedDict" && is_builtin_dict_type_method(name) =>
@@ -84967,6 +85075,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             matches!(
                 subject,
                 Value::Dict(_)
+                    | Value::OrderedDict(_)
                     | Value::DefaultDict { .. }
                     | Value::Counter { .. }
                     | Value::ScopeDict(_)

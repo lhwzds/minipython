@@ -29014,6 +29014,94 @@ print('plain', plain, type(plain).__name__)"#,
     );
 }
 
+#[test]
+fn cpython_dict_subclass_new_storage_subset() {
+    assert_output_with_stack(
+        r#"from collections import OrderedDict, defaultdict, Counter, UserDict
+class D(dict):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, value, type(value).__name__, isinstance(value, dict), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: dict.__new__()),
+    ('exact-empty', lambda: dict.__new__(dict)),
+    ('exact-extra', lambda: dict.__new__(dict, {'a': 1}, b=2)),
+    ('sub-empty', lambda: dict.__new__(D)),
+    ('ordered', lambda: dict.__new__(OrderedDict)),
+    ('defaultdict', lambda: dict.__new__(defaultdict)),
+    ('counter', lambda: dict.__new__(Counter)),
+    ('userdict', lambda: dict.__new__(UserDict)),
+    ('bad-class', lambda: dict.__new__(list)),
+    ('bad-user-class', lambda: dict.__new__(C)),
+    ('int-arg', lambda: dict.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(dict, '__new__'), '__new__' in dir(dict), '__new__' in dir(D), '__new__' in dir(UserDict))
+class WithNew(dict):
+    def __new__(cls, value=(), **kwargs):
+        print('new', cls.__name__, value, sorted(kwargs.items()))
+        obj = dict.__new__(cls)
+        obj['pre'] = 0
+        return obj
+empty = WithNew()
+filled = WithNew({'a': 1}, b=2)
+print('with-new', empty, filled, type(filled).__name__, isinstance(filled, dict))
+class WithInit(dict):
+    def __new__(cls):
+        obj = dict.__new__(cls)
+        obj['pre'] = 0
+        return obj
+    def __init__(self):
+        print('custom-init', dict(self))
+with_init = WithInit()
+print('with-init', with_init)
+class Other(dict):
+    pass
+class ReturnsOther(dict):
+    def __new__(cls):
+        return dict.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, type(other).__name__)
+class ReturnsPlain(dict):
+    def __new__(cls):
+        return {}
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, type(plain).__name__)"#,
+        &[
+            "missing TypeError dict.__new__(): not enough arguments ('dict.__new__(): not enough arguments',)",
+            "exact-empty {} dict True 0",
+            "exact-extra {} dict True 0",
+            "sub-empty {} D True 0",
+            "ordered OrderedDict() OrderedDict True 0",
+            "defaultdict defaultdict(None, {}) defaultdict True 0",
+            "counter Counter() Counter True 0",
+            "userdict TypeError dict.__new__(UserDict): UserDict is not a subtype of dict ('dict.__new__(UserDict): UserDict is not a subtype of dict',)",
+            "bad-class TypeError dict.__new__(list): list is not a subtype of dict ('dict.__new__(list): list is not a subtype of dict',)",
+            "bad-user-class TypeError dict.__new__(C): C is not a subtype of dict ('dict.__new__(C): C is not a subtype of dict',)",
+            "int-arg TypeError dict.__new__(X): X is not a type object (int) ('dict.__new__(X): X is not a type object (int)',)",
+            "visible True True True True",
+            "new WithNew () []",
+            "new WithNew {'a': 1} [('b', 2)]",
+            "with-new {'pre': 0} {'pre': 0, 'a': 1, 'b': 2} WithNew True",
+            "custom-init {'pre': 0}",
+            "with-init {'pre': 0}",
+            "other {} Other",
+            "plain {} dict",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method
