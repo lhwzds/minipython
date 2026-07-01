@@ -11337,6 +11337,26 @@ print('read', sorted(s), s.union({3}), s.copy() is s)"#,
 }
 
 #[test]
+fn cpython_memoryview_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py public memoryview instance attribute assignment errors subset",
+        name: "memoryview-attribute-assignment-errors",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+m = memoryview(b'ab')
+for name in ['extra', 'format', 'readonly', 'hex']:
+    show('set-' + name, lambda name=name: setattr(m, name, 99))
+    show('del-' + name, lambda name=name: delattr(m, name))
+print('read', m.format, m.readonly, m.hex())"#,
+    });
+}
+
+#[test]
 fn cpython_object_repr_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public object descriptor subset",

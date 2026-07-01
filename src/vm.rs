@@ -61072,6 +61072,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
         Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
+        Value::MemoryView(_) => Err(memoryview_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61349,6 +61350,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
         Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
+        Value::MemoryView(_) => Err(memoryview_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61524,6 +61526,43 @@ fn frozenset_attribute_assignment_error(name: &str) -> String {
 fn is_frozenset_readonly_instance_attribute(name: &str) -> bool {
     !name.starts_with("__")
         && builtin_type_dir_names("frozenset")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
+}
+
+fn memoryview_attribute_assignment_error(name: &str) -> String {
+    if is_memoryview_readonly_data_attribute(name) {
+        format!("AttributeError: attribute '{name}' of 'memoryview' objects is not writable")
+    } else if is_memoryview_readonly_instance_attribute(name) {
+        format!("AttributeError: 'memoryview' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'memoryview' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_memoryview_readonly_data_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "c_contiguous"
+            | "contiguous"
+            | "f_contiguous"
+            | "format"
+            | "itemsize"
+            | "nbytes"
+            | "ndim"
+            | "obj"
+            | "readonly"
+            | "shape"
+            | "strides"
+            | "suboffsets"
+    )
+}
+
+fn is_memoryview_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("memoryview")
             .iter()
             .any(|candidate| candidate.as_str() == name)
 }

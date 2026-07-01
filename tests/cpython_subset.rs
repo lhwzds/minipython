@@ -26650,6 +26650,38 @@ print('read', sorted(s), s.union({3}), s.copy() is s)"#,
     );
 }
 
+// Adapted from CPython's public `memoryview` instance attribute assignment
+// errors. MiniPython keeps memoryview views pure-memory and does not add a
+// writable instance `__dict__`.
+#[test]
+fn cpython_memoryview_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+m = memoryview(b'ab')
+for name in ['extra', 'format', 'readonly', 'hex']:
+    show('set-' + name, lambda name=name: setattr(m, name, 99))
+    show('del-' + name, lambda name=name: delattr(m, name))
+print('read', m.format, m.readonly, m.hex())"#,
+        &[
+            "set-extra AttributeError 'memoryview' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'memoryview' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-format AttributeError attribute 'format' of 'memoryview' objects is not writable",
+            "del-format AttributeError attribute 'format' of 'memoryview' objects is not writable",
+            "set-readonly AttributeError attribute 'readonly' of 'memoryview' objects is not writable",
+            "del-readonly AttributeError attribute 'readonly' of 'memoryview' objects is not writable",
+            "set-hex AttributeError 'memoryview' object attribute 'hex' is read-only",
+            "del-hex AttributeError 'memoryview' object attribute 'hex' is read-only",
+            "read B True 6162",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

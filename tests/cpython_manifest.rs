@@ -29496,6 +29496,78 @@ fn frozenset_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn memoryview_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_memoryview_attribute_assignment_errors_subset(",
+        "m = memoryview(b'ab')",
+        "setattr(m, name, 99)",
+        "delattr(m, name)",
+        "['extra', 'format', 'readonly', 'hex']",
+        "\"set-extra AttributeError 'memoryview' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'memoryview' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-format AttributeError attribute 'format' of 'memoryview' objects is not writable\"",
+        "\"del-readonly AttributeError attribute 'readonly' of 'memoryview' objects is not writable\"",
+        "\"set-hex AttributeError 'memoryview' object attribute 'hex' is read-only\"",
+        "\"read B True 6162\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused memoryview attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_memoryview_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_memoryview.py public memoryview instance attribute assignment errors subset",
+        "name: \"memoryview-attribute-assignment-errors\"",
+        "m = memoryview(b'ab')",
+        "setattr(m, name, 99)",
+        "delattr(m, name)",
+        "['extra', 'format', 'readonly', 'hex']",
+        "m.format",
+        "m.readonly",
+        "m.hex()",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused memoryview attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::MemoryView(_) => Err(memoryview_attribute_assignment_error(name))",
+        "fn memoryview_attribute_assignment_error(name: &str) -> String",
+        "fn is_memoryview_readonly_data_attribute(name: &str) -> bool",
+        "fn is_memoryview_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"memoryview\")",
+        "attribute '{name}' of 'memoryview' objects is not writable",
+        "'memoryview' object attribute '{name}' is read-only",
+        "'memoryview' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "memoryview attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_memoryview_attribute_assignment_errors_subset")
+                && document.contains("cpython_memoryview_attribute_assignment_errors_diff_subset")
+                && document.contains("memoryview attribute assignment errors")
+                && document.contains("read-only memoryview data attributes")
+                && document.contains("read-only memoryview method attributes")
+                && document.contains("without adding memoryview instance dictionaries"),
+            "focused memoryview attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

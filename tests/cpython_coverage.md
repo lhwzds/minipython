@@ -106,6 +106,10 @@ Recent runtime migration notes:
   `cpython_frozenset_attribute_assignment_errors_diff_subset`, now pins frozenset attribute assignment errors
   for missing attributes and read-only frozenset method attributes (`union` /
   `copy`) without adding frozenset instance dictionaries.
+- `cpython_memoryview_attribute_assignment_errors_subset`, backed by
+  `cpython_memoryview_attribute_assignment_errors_diff_subset`, now pins memoryview attribute assignment errors
+  for missing attributes, read-only memoryview data attributes (`format` /
+  `readonly`), and read-only memoryview method attributes (`hex`) without adding memoryview instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
