@@ -757,6 +757,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_type_class_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function type / __class__ metadata subset",
+        name: "json-function-type-class-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    print(name, type(function).__name__, type(function).__module__, function.__class__.__name__, function.__class__ is type(function))
+    print(name, repr(type(function)), repr(function.__class__), type(function) is type(json.loads), type(function) is type(json.dumps))
+    print(name, isinstance(function, type(json.loads)), isinstance(function, type(json.dumps)))
+print(type(json.loads) is type(json.dumps), json.loads.__class__ is json.dumps.__class__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",

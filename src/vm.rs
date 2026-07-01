@@ -59655,6 +59655,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
             {
                 Ok(Value::Builtin("type".to_string()))
+            } else if is_json_builtin(&function_name) {
+                Ok(Value::Builtin("function".to_string()))
             } else {
                 Ok(Value::Builtin("builtin_function_or_method".to_string()))
             }
@@ -64411,6 +64413,7 @@ fn type_name(value: &Value) -> &str {
         }
         Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) => "wrapper_descriptor",
         Value::Builtin(name) if is_builtin_method_descriptor_name(name) => "method_descriptor",
+        Value::Builtin(name) if is_json_builtin(name) => "function",
         Value::Builtin(_) => "builtin_function_or_method",
         Value::TypeParam { kind, .. } => kind.as_str(),
         Value::ParamSpecAccess { is_kwargs, .. } => {
@@ -83399,10 +83402,15 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "weakref.CallableProxyType" | "CallableProxyType" => {
             matches!(subject, Value::WeakProxy { callable: true, .. })
         }
-        "function" => matches!(
-            subject,
-            Value::Function { .. } | Value::TypesCoroutineFunction { .. }
-        ),
+        "function" => {
+            matches!(
+                subject,
+                Value::Function { .. } | Value::TypesCoroutineFunction { .. }
+            ) || matches!(
+                subject,
+                Value::Builtin(name) if is_json_builtin(name)
+            )
+        }
         "code" => matches!(subject, Value::CodeObject { .. }),
         "frame" => matches!(subject, Value::Frame { .. }),
         "FrameLocalsProxy" => matches!(subject, Value::FrameLocalsProxy { .. }),
@@ -83419,6 +83427,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             Value::Builtin(name) => {
                 !is_builtin_type_object_name(name)
                     && !is_exception_type_name(name)
+                    && !is_json_builtin(name)
                     && !is_builtin_getset_descriptor_name(name)
                     && !is_builtin_wrapper_descriptor_name(name)
                     && !is_builtin_method_descriptor_name(name)

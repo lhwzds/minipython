@@ -2409,6 +2409,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
         name,
         "object"
             | "type"
+            | "function"
             | "bool"
             | "int"
             | "float"
