@@ -307,6 +307,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ ChainMap type-object __bases__ metadata
   behavior, object.__getattribute__ defaultdict type-object __base__ metadata
   behavior, object.__getattribute__ defaultdict type-object __bases__ metadata
+  behavior, object.__getattribute__ defaultdict type-object __mro__ metadata
   behavior, object.__getattribute__ UserDict type-object __module__ metadata
   behavior, object.__getattribute__ UserDict type-object __base__ metadata
   behavior, object.__getattribute__ UserDict type-object __bases__ metadata
@@ -824,6 +825,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
   `cpython_collections_defaultdict_type_base_metadata_diff_subset`,
+  `cpython_collections_defaultdict_type_mro_metadata_diff_subset`,
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset`,
   `cpython_collections_defaultdict_attribute_assignment_errors_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
@@ -1460,6 +1462,11 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_type_base_metadata_subset`, covering
   `defaultdict` direct base metadata through `__base__` and `__bases__`,
   pinned to `builtins.dict` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_type_mro_metadata_diff_subset` and
+  `cpython_collections_defaultdict_type_mro_metadata_subset`, covering
+  `defaultdict` type-object MRO metadata through `__mro__`, pinned to the
+  public `defaultdict`, `dict`, `object` chain without promoting broader collections type MRO parity.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`,

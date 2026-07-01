@@ -19987,6 +19987,72 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_defaultdict_type_mro_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict MRO metadata"
+    );
+    let defaultdict_type_mro_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_type_mro_metadata_diff_subset",
+    );
+    let defaultdict_type_mro_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_type_mro_metadata_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "object.__getattribute__(defaultdict, '__mro__')",
+        "mro[0] is defaultdict",
+        "mro[1] is dict",
+        "mro[2] is object",
+        "cls.__module__",
+        "cls.__qualname__",
+    ] {
+        assert!(
+            defaultdict_type_mro_diff_body.contains(required)
+                && defaultdict_type_mro_subset_body.contains(required),
+            "defaultdict MRO metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"mro-len tuple 3\"",
+        "\"mro-item True False False collections defaultdict\"",
+        "\"mro-item False True False builtins dict\"",
+        "\"mro-item False False True builtins object\"",
+        "\"mro-shape True True True\"",
+    ] {
+        assert!(
+            defaultdict_type_mro_subset_body.contains(required),
+            "defaultdict MRO metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn builtin_class_bases",
+        "\"defaultdict\" => vec![builtin_type_value(\"dict\")]",
+        "fn builtin_class_mro",
+        "mro_for_bases",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict MRO metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_type_mro_metadata_subset",
+            "cpython_collections_defaultdict_type_mro_metadata_diff_subset",
+            "`defaultdict` type-object MRO metadata",
+            "`defaultdict`, `dict`, `object`",
+            "`__mro__`",
+            "without promoting broader collections type MRO parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict MRO metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_defaultdict_default_factory_descriptor_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for defaultdict default_factory descriptor behavior"
     );

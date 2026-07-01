@@ -19242,6 +19242,20 @@ print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__mo
 }
 
 #[test]
+fn cpython_collections_defaultdict_type_mro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict public MRO metadata subset",
+        name: "collections-defaultdict-type-mro-metadata",
+        source: r#"from collections import defaultdict
+mro = object.__getattribute__(defaultdict, '__mro__')
+print('mro-len', type(mro).__name__, len(mro))
+for cls in mro:
+    print('mro-item', cls is defaultdict, cls is dict, cls is object, cls.__module__, cls.__qualname__)
+print('mro-shape', mro[0] is defaultdict, mro[1] is dict, mro[2] is object)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_default_factory_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict default_factory member descriptor subset",
