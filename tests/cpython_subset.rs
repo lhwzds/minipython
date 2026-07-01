@@ -27744,6 +27744,78 @@ print('supported-order', [name for name in dir(s) if name in supported])"#,
     );
 }
 
+// Mirrors CPython's public type-level descriptors for `super` without
+// requiring descriptor object identity caching.
+#[test]
+fn cpython_super_type_public_descriptors_subset() {
+    assert_output(
+        r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+c = Child()
+s = c.make()
+unbound = super(Child)
+member_names = ['__thisclass__', '__self__', '__self_class__']
+mp = super.__dict__
+for name in member_names:
+    descriptor = getattr(super, name)
+    print('member', name, type(descriptor).__name__, repr(descriptor), name in dir(super), name in mp)
+    print('member-meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__)
+    value = descriptor.__get__(s, Child)
+    print('member-get', name, value is getattr(s, name), value is Child, value is c, value is type(c))
+    for label, expr in [
+        ('member-get-none', lambda descriptor=descriptor: descriptor.__get__(None, super)),
+        ('member-set-readonly', lambda descriptor=descriptor: descriptor.__set__(s, 1)),
+        ('member-delete-readonly', lambda descriptor=descriptor: descriptor.__delete__(s)),
+        ('member-get-wrong', lambda descriptor=descriptor: descriptor.__get__({}, dict)),
+    ]:
+        try:
+            value = expr()
+            print(label, name, type(value).__name__, repr(value))
+        except Exception as error:
+            print(label, name, type(error).__name__, str(error))
+wrapper = super.__get__
+print('wrapper', type(wrapper).__name__, repr(wrapper), '__get__' in dir(super), '__get__' in mp, mp['__get__'] is wrapper)
+print('wrapper-class', wrapper.__class__.__name__)
+print('wrapper-meta', wrapper.__name__, wrapper.__qualname__, wrapper.__objclass__ is super, wrapper.__doc__, wrapper.__text_signature__)
+print('wrapper-direct-bound', isinstance(wrapper(unbound, c), super), wrapper(unbound, c).__self__ is c)
+print('wrapper-direct-class', isinstance(wrapper(unbound, Child), super), wrapper(unbound, Child).__self__ is Child)
+print('wrapper-direct-none-owner', wrapper(unbound, None, Child) is unbound)"#,
+        &[
+            "member __thisclass__ member_descriptor <member '__thisclass__' of 'super' objects> True True",
+            "member-meta __thisclass__ super.__thisclass__ True the class invoking super()",
+            "member-get __thisclass__ True True False True",
+            "member-get-none __thisclass__ member_descriptor <member '__thisclass__' of 'super' objects>",
+            "member-set-readonly __thisclass__ AttributeError readonly attribute",
+            "member-delete-readonly __thisclass__ AttributeError readonly attribute",
+            "member-get-wrong __thisclass__ TypeError descriptor '__thisclass__' for 'super' objects doesn't apply to a 'dict' object",
+            "member __self__ member_descriptor <member '__self__' of 'super' objects> True True",
+            "member-meta __self__ super.__self__ True the instance invoking super(); may be None",
+            "member-get __self__ True False True False",
+            "member-get-none __self__ member_descriptor <member '__self__' of 'super' objects>",
+            "member-set-readonly __self__ AttributeError readonly attribute",
+            "member-delete-readonly __self__ AttributeError readonly attribute",
+            "member-get-wrong __self__ TypeError descriptor '__self__' for 'super' objects doesn't apply to a 'dict' object",
+            "member __self_class__ member_descriptor <member '__self_class__' of 'super' objects> True True",
+            "member-meta __self_class__ super.__self_class__ True the type of the instance invoking super(); may be None",
+            "member-get __self_class__ True True False True",
+            "member-get-none __self_class__ member_descriptor <member '__self_class__' of 'super' objects>",
+            "member-set-readonly __self_class__ AttributeError readonly attribute",
+            "member-delete-readonly __self_class__ AttributeError readonly attribute",
+            "member-get-wrong __self_class__ TypeError descriptor '__self_class__' for 'super' objects doesn't apply to a 'dict' object",
+            "wrapper wrapper_descriptor <slot wrapper '__get__' of 'super' objects> True True True",
+            "wrapper-class wrapper_descriptor",
+            "wrapper-meta __get__ super.__get__ True Return an attribute of instance, which is of type owner. ($self, instance, owner=None, /)",
+            "wrapper-direct-bound True True",
+            "wrapper-direct-class True True",
+            "wrapper-direct-none-owner True",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
 // MiniPython checks the BaseException args/display/repr subset needed by
 // migrated exception behavior tests.

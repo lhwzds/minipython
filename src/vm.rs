@@ -17109,6 +17109,9 @@ impl Vm {
             return default_dict_default_factory_descriptor_value(&object)
                 .map(|factory| factory.borrow().clone());
         }
+        if owner_name == "super" && is_super_member_descriptor_name(&name) {
+            return super_member_descriptor_get(&object, &name);
+        }
 
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         fields
@@ -17135,6 +17138,10 @@ impl Vm {
             *default_factory.borrow_mut() = value;
             return Ok(());
         }
+        if owner_name == "super" && is_super_member_descriptor_name(&name) {
+            ensure_super_member_descriptor_object(&object, &name)?;
+            return Err("AttributeError: readonly attribute".to_string());
+        }
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         fields.borrow_mut().insert(name, value);
         Ok(())
@@ -17151,6 +17158,10 @@ impl Vm {
             let default_factory = default_dict_default_factory_descriptor_value(&object)?;
             *default_factory.borrow_mut() = Value::None;
             return Ok(());
+        }
+        if owner_name == "super" && is_super_member_descriptor_name(&name) {
+            ensure_super_member_descriptor_object(&object, &name)?;
+            return Err("AttributeError: readonly attribute".to_string());
         }
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
         if fields.borrow_mut().remove(&name).is_some() {
@@ -50547,6 +50558,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "real",
         ],
         "slice" => &["indices", "start", "stop", "step"],
+        "super" => &["__get__", "__self__", "__self_class__", "__thisclass__"],
         "object" => &[
             "__dir__",
             "__format__",
@@ -50983,6 +50995,59 @@ fn default_dict_default_factory_descriptor() -> Value {
     }
 }
 
+fn super_member_descriptor_names() -> &'static [&'static str] {
+    &["__thisclass__", "__self__", "__self_class__"]
+}
+
+fn is_super_member_descriptor_name(name: &str) -> bool {
+    super_member_descriptor_names().contains(&name)
+}
+
+fn super_member_descriptor(name: &str) -> Value {
+    debug_assert!(is_super_member_descriptor_name(name));
+    Value::MemberDescriptor {
+        name: name.to_string(),
+        owner_name: "super".to_string(),
+        identity: Rc::new(()),
+    }
+}
+
+fn super_member_descriptor_get(object: &Value, name: &str) -> Result<Value, String> {
+    let Value::Super {
+        class,
+        object: super_object,
+        ..
+    } = object
+    else {
+        return Err(super_member_descriptor_wrong_object_error(name, object));
+    };
+
+    match name {
+        "__thisclass__" => Ok(class.as_ref().clone()),
+        "__self__" => Ok(super_object.as_ref().clone()),
+        "__self_class__" if matches!(super_object.as_ref(), Value::None) => Ok(Value::None),
+        "__self_class__" => super_lookup_owner_class(class.as_ref(), super_object.as_ref()),
+        _ => Err(format!(
+            "AttributeError: member_descriptor has no attribute '{name}'"
+        )),
+    }
+}
+
+fn ensure_super_member_descriptor_object(object: &Value, name: &str) -> Result<(), String> {
+    if matches!(object, Value::Super { .. }) {
+        Ok(())
+    } else {
+        Err(super_member_descriptor_wrong_object_error(name, object))
+    }
+}
+
+fn super_member_descriptor_wrong_object_error(name: &str, object: &Value) -> String {
+    format!(
+        "TypeError: descriptor '{name}' for 'super' objects doesn't apply to a '{}' object",
+        type_name(object)
+    )
+}
+
 fn default_dict_default_factory_descriptor_value(
     object: &Value,
 ) -> Result<Rc<RefCell<Value>>, String> {
@@ -51002,12 +51067,23 @@ fn member_descriptor_doc_value(descriptor_name: &str, owner_name: &str) -> Value
     if descriptor_name == "default_factory" && owner_name == "collections.defaultdict" {
         return Value::String("Factory for default value called by __missing__().".to_string());
     }
+    if owner_name == "super" {
+        return match descriptor_name {
+            "__thisclass__" => Value::String("the class invoking super()".to_string()),
+            "__self__" => Value::String("the instance invoking super(); may be None".to_string()),
+            "__self_class__" => {
+                Value::String("the type of the instance invoking super(); may be None".to_string())
+            }
+            _ => Value::None,
+        };
+    }
     Value::None
 }
 
 fn member_descriptor_objclass_value(owner_name: &str) -> Option<Value> {
     match owner_name {
         "collections.defaultdict" => Some(Value::Builtin("defaultdict".to_string())),
+        "super" => Some(Value::Builtin("super".to_string())),
         _ => None,
     }
 }
@@ -59031,6 +59107,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(default_dict_default_factory_descriptor())
         }
         Value::Builtin(function_name)
+            if function_name == "super" && is_super_member_descriptor_name(name) =>
+        {
+            Ok(super_member_descriptor(name))
+        }
+        Value::Builtin(function_name) if function_name == "super" && name == "__get__" => {
+            Ok(Value::Builtin("super.__get__".to_string()))
+        }
+        Value::Builtin(function_name)
             if function_name == "defaultdict" && name == "__getattribute__" =>
         {
             Ok(Value::Builtin("defaultdict.__getattribute__".to_string()))
@@ -59082,6 +59166,32 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 _ => Err(format!(
                     "AttributeError: 'getset_descriptor' object has no attribute '{name}'"
                 )),
+            }
+        }
+        Value::Builtin(function_name)
+            if function_name == "super.__get__"
+                && matches!(
+                    name,
+                    "__class__"
+                        | "__name__"
+                        | "__qualname__"
+                        | "__objclass__"
+                        | "__doc__"
+                        | "__text_signature__"
+                ) =>
+        {
+            match name {
+                "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
+                "__name__" => Ok(Value::String("__get__".to_string())),
+                "__qualname__" => Ok(Value::String("super.__get__".to_string())),
+                "__objclass__" => Ok(Value::Builtin("super".to_string())),
+                "__doc__" => Ok(Value::String(
+                    "Return an attribute of instance, which is of type owner.".to_string(),
+                )),
+                "__text_signature__" => Ok(Value::String(
+                    "($self, instance, owner=None, /)".to_string(),
+                )),
+                _ => unreachable!("guard checked super.__get__ descriptor metadata"),
             }
         }
         Value::Builtin(function_name) if name == "__class__" => {
@@ -60016,6 +60126,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("__init__".to_string()),
                     Value::Builtin("defaultdict.__init__".to_string()),
+                ));
+            }
+            if class_name == "super" {
+                for name in super_member_descriptor_names() {
+                    entries.push((
+                        Value::String(name.to_string()),
+                        super_member_descriptor(name),
+                    ));
+                }
+                entries.push((
+                    Value::String("__get__".to_string()),
+                    Value::Builtin("super.__get__".to_string()),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))
@@ -61958,6 +62080,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__hash__"
         ),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
+        "super" => matches!(method, "__get__"),
         _ => false,
     }
 }

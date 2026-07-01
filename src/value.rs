@@ -1591,6 +1591,9 @@ impl fmt::Display for Value {
                     "<slot wrapper '__init__' of 'collections.defaultdict' objects>"
                 )
             }
+            Value::Builtin(name) if is_super_get_wrapper_descriptor(name) => {
+                write!(f, "<slot wrapper '__get__' of 'super' objects>")
+            }
             Value::Builtin(name) if is_defaultdict_class_getitem_classmethod_descriptor(name) => {
                 write!(
                     f,
@@ -2047,6 +2050,9 @@ fn format_value_repr(value: &Value) -> String {
         }
         Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
             "<attribute 'maxlen' of 'collections.deque' objects>".to_string()
+        }
+        Value::Builtin(name) if is_super_get_wrapper_descriptor(name) => {
+            "<slot wrapper '__get__' of 'super' objects>".to_string()
         }
         Value::MemberDescriptor {
             name, owner_name, ..
@@ -2513,6 +2519,10 @@ fn is_defaultdict_getattribute_wrapper_descriptor(name: &str) -> bool {
 
 fn is_defaultdict_init_wrapper_descriptor(name: &str) -> bool {
     name == "defaultdict.__init__"
+}
+
+fn is_super_get_wrapper_descriptor(name: &str) -> bool {
+    name == "super.__get__"
 }
 
 fn is_defaultdict_class_getitem_classmethod_descriptor(name: &str) -> bool {

@@ -11133,6 +11133,49 @@ print('supported-order', [name for name in dir(s) if name in supported])"#,
 }
 
 #[test]
+fn cpython_super_type_public_descriptors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_super.py public super type descriptors",
+        name: "super-type-public-descriptors",
+        source: r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+c = Child()
+s = c.make()
+unbound = super(Child)
+member_names = ['__thisclass__', '__self__', '__self_class__']
+mp = super.__dict__
+for name in member_names:
+    descriptor = getattr(super, name)
+    print('member', name, type(descriptor).__name__, repr(descriptor), name in dir(super), name in mp)
+    print('member-meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__)
+    value = descriptor.__get__(s, Child)
+    print('member-get', name, value is getattr(s, name), value is Child, value is c, value is type(c))
+    for label, expr in [
+        ('member-get-none', lambda descriptor=descriptor: descriptor.__get__(None, super)),
+        ('member-set-readonly', lambda descriptor=descriptor: descriptor.__set__(s, 1)),
+        ('member-delete-readonly', lambda descriptor=descriptor: descriptor.__delete__(s)),
+        ('member-get-wrong', lambda descriptor=descriptor: descriptor.__get__({}, dict)),
+    ]:
+        try:
+            value = expr()
+            print(label, name, type(value).__name__, repr(value))
+        except Exception as error:
+            print(label, name, type(error).__name__, str(error))
+wrapper = super.__get__
+print('wrapper', type(wrapper).__name__, repr(wrapper), '__get__' in dir(super), '__get__' in mp, mp['__get__'] is wrapper)
+print('wrapper-class', wrapper.__class__.__name__)
+print('wrapper-meta', wrapper.__name__, wrapper.__qualname__, wrapper.__objclass__ is super, wrapper.__doc__, wrapper.__text_signature__)
+print('wrapper-direct-bound', isinstance(wrapper(unbound, c), super), wrapper(unbound, c).__self__ is c)
+print('wrapper-direct-class', isinstance(wrapper(unbound, Child), super), wrapper(unbound, Child).__self__ is Child)
+print('wrapper-direct-none-owner', wrapper(unbound, None, Child) is unbound)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",

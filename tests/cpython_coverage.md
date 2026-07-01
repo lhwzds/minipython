@@ -144,6 +144,12 @@ Recent runtime migration notes:
   `cpython_super_object_dir_supported_attributes_diff_subset`, now pins super object dir() supported attributes
   for `__thisclass__`, `__self__`, `__self_class__`, `__get__`, and
   `__class__` without adding super instance dictionaries or target class methods to `dir(super_obj)`.
+- `cpython_super_type_public_descriptors_subset`, backed by
+  `cpython_super_type_public_descriptors_diff_subset`, now pins super type public descriptors
+  for `__thisclass__`, `__self__`, `__self_class__`, and `__get__`, including
+  `dir(super)`, `super.__dict__`, descriptor metadata, direct member descriptor access,
+  readonly descriptor set/delete errors, and the `super.__get__` wrapper descriptor
+  without requiring descriptor object identity caching.
 - `cpython_complex_public_attributes_subset`, backed by
   `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and
@@ -523,6 +529,7 @@ Recent runtime migration notes:
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_super_attribute_assignment_errors_diff_subset`,
   `cpython_super_object_dir_supported_attributes_diff_subset`,
+  `cpython_super_type_public_descriptors_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_object_constructor_argument_error_diff_subset`,

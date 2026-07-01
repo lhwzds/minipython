@@ -24189,6 +24189,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_doc_metadata_subset",
             "cpython_super_attribute_assignment_errors_subset",
             "cpython_super_object_dir_supported_attributes_subset",
+            "cpython_super_type_public_descriptors_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_object_constructor_argument_error_subset",
@@ -24256,6 +24257,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_doc_metadata_diff_subset",
         "cpython_super_attribute_assignment_errors_diff_subset",
         "cpython_super_object_dir_supported_attributes_diff_subset",
+        "cpython_super_type_public_descriptors_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_object_constructor_argument_error_diff_subset",
@@ -26206,6 +26208,88 @@ fn super_object_dir_supported_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("super object dir() supported attributes")
                 && document.contains("super instance dictionaries"),
             "super object dir evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn super_type_public_descriptors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_super_type_public_descriptors_subset(",
+        "member_names = ['__thisclass__', '__self__', '__self_class__']",
+        "mp = super.__dict__",
+        "getattr(super, name)",
+        "descriptor.__get__(s, Child)",
+        "descriptor.__set__(s, 1)",
+        "descriptor.__delete__(s)",
+        "descriptor.__get__({}, dict)",
+        "wrapper = super.__get__",
+        "wrapper.__class__.__name__",
+        "wrapper.__text_signature__",
+        "wrapper(unbound, c)",
+        "member __thisclass__ member_descriptor <member '__thisclass__' of 'super' objects> True True",
+        "member-set-readonly __self__ AttributeError readonly attribute",
+        "wrapper wrapper_descriptor <slot wrapper '__get__' of 'super' objects> True True True",
+        "requiring descriptor object identity caching",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super type public descriptor subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_super_type_public_descriptors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_super.py public super type descriptors",
+        "name: \"super-type-public-descriptors\"",
+        "member_names = ['__thisclass__', '__self__', '__self_class__']",
+        "mp = super.__dict__",
+        "getattr(super, name)",
+        "descriptor.__set__(s, 1)",
+        "descriptor.__delete__(s)",
+        "wrapper = super.__get__",
+    ] {
+        assert!(
+            body.contains(required),
+            "super type public descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"super\" && is_super_member_descriptor_name(name)",
+        "fn super_member_descriptor_names() -> &'static [&'static str]",
+        "fn super_member_descriptor_get(object: &Value, name: &str) -> Result<Value, String>",
+        "owner_name == \"super\" && is_super_member_descriptor_name(&name)",
+        "function_name == \"super.__get__\"",
+        "\"super\" => &[\"__get__\", \"__self__\", \"__self_class__\", \"__thisclass__\"]",
+        "\"super\" => matches!(method, \"__get__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super type public descriptor implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_super_get_wrapper_descriptor(name: &str) -> bool",
+        "<slot wrapper '__get__' of 'super' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "super.__get__ wrapper descriptor display must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_super_type_public_descriptors_subset")
+                && document.contains("cpython_super_type_public_descriptors_diff_subset")
+                && document.contains("super type public descriptors")
+                && document.contains("descriptor object identity caching"),
+            "super type public descriptor evidence must be documented in coverage and migration notes"
         );
     }
 }
