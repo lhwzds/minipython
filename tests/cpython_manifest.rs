@@ -30465,6 +30465,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_mappingproxy_type_richcompare_subset",
             "cpython_types_mappingproxy_keyword_constructor_subset",
             "cpython_types_mappingproxy_method_surface_subset",
+            "cpython_types_mappingproxy_attribute_assignment_errors_subset",
             "cpython_types_mappingproxy_custom_mapping_subset",
             "cpython_types_mappingproxy_union_subset",
             "cpython_types_mappingproxy_hash_subset",
@@ -30587,6 +30588,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_type_richcompare_diff_subset",
         "cpython_types_mappingproxy_keyword_constructor_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
+        "cpython_types_mappingproxy_attribute_assignment_errors_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
         "cpython_types_mappingproxy_hash_diff_subset",
         "cpython_types_mappingproxy_contains_diff_subset",
@@ -30739,6 +30741,78 @@ fn types_mappingproxy_keyword_constructor_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_mappingproxy_keyword_constructor_diff_subset")
                 && document.contains("MappingProxyType(mapping={'a': 1})"),
             "types MappingProxyType keyword-constructor evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_attribute_assignment_errors_subset",
+    );
+    for required in [
+        "proxy = MappingProxyType({'a': 1})",
+        "setattr(proxy, name, 99)",
+        "delattr(proxy, name)",
+        "['extra', 'keys']",
+        "\"set-extra AttributeError 'mappingproxy' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'mappingproxy' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-keys AttributeError 'mappingproxy' object attribute 'keys' is read-only\"",
+        "\"del-keys AttributeError 'mappingproxy' object attribute 'keys' is read-only\"",
+        "\"read mappingproxy 1 ['a']\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types mappingproxy attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests public mappingproxy instance attribute assignment errors subset",
+        "name: \"types-mappingproxy-attribute-assignment-errors\"",
+        "proxy = MappingProxyType({'a': 1})",
+        "setattr(proxy, name, 99)",
+        "delattr(proxy, name)",
+        "['extra', 'keys']",
+        "type(proxy).__name__",
+        "list(proxy)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types mappingproxy attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::MappingProxy { .. } | Value::MappingProxyObject { .. } =>",
+        "Err(mappingproxy_attribute_assignment_error(name))",
+        "fn mappingproxy_attribute_assignment_error(name: &str) -> String",
+        "fn is_mappingproxy_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"mappingproxy\")",
+        "'mappingproxy' object attribute '{name}' is read-only",
+        "'mappingproxy' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types mappingproxy attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_attribute_assignment_errors_subset")
+                && document
+                    .contains("cpython_types_mappingproxy_attribute_assignment_errors_diff_subset")
+                && document.contains("mappingproxy attribute assignment errors")
+                && document.contains("read-only mappingproxy method attributes")
+                && document.contains("without adding mappingproxy instance dictionaries"),
+            "types mappingproxy attribute assignment evidence must be documented in coverage and migration notes"
         );
     }
 }

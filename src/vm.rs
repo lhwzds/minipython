@@ -61076,6 +61076,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::DictView { kind, ordered, .. } => {
             Err(dict_view_attribute_assignment_error(kind, ordered, name))
         }
+        Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
+            Err(mappingproxy_attribute_assignment_error(name))
+        }
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61357,6 +61360,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::DictView { kind, ordered, .. } => {
             Err(dict_view_attribute_assignment_error(kind, ordered, name))
         }
+        Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
+            Err(mappingproxy_attribute_assignment_error(name))
+        }
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61592,6 +61598,23 @@ fn is_dict_view_readonly_instance_attribute(
     name: &str,
 ) -> bool {
     !name.starts_with("__") && name == "isdisjoint" && dict_view_is_set_like(kind)
+}
+
+fn mappingproxy_attribute_assignment_error(name: &str) -> String {
+    if is_mappingproxy_readonly_instance_attribute(name) {
+        format!("AttributeError: 'mappingproxy' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'mappingproxy' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_mappingproxy_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("mappingproxy")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn complex_attribute_assignment_error(name: &str) -> String {

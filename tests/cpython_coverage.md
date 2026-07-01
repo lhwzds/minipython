@@ -114,6 +114,10 @@ Recent runtime migration notes:
   `cpython_dict_view_attribute_assignment_errors_diff_subset`, now pins dict view attribute assignment errors
   for missing attributes, read-only dict view data attributes (`mapping`), and
   read-only dict view method attributes (`isdisjoint`) without adding dict view instance dictionaries.
+- `cpython_types_mappingproxy_attribute_assignment_errors_subset`, backed by
+  `cpython_types_mappingproxy_attribute_assignment_errors_diff_subset`, now pins mappingproxy attribute assignment errors
+  for missing attributes and read-only mappingproxy method attributes (`keys`)
+  without adding mappingproxy instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
@@ -590,6 +594,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_type_richcompare_diff_subset`,
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
+  `cpython_types_mappingproxy_attribute_assignment_errors_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
   `cpython_types_mappingproxy_hash_diff_subset`,
   `cpython_types_mappingproxy_contains_diff_subset`,
@@ -4862,6 +4867,12 @@ without adding general custom encoder/decoder class support.
   mappingproxy public method surface plus forwarding of lookup, containment,
   length, iteration, display, empty-format, copy, get, keys, items, and values
   calls to user-defined mapping objects.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_mappingproxy_attribute_assignment_errors_subset`, backed by
+  `cpython_types_mappingproxy_attribute_assignment_errors_diff_subset`, covering
+  mappingproxy attribute assignment errors for missing attributes and
+  read-only mappingproxy method attributes without adding mappingproxy instance
+  dictionaries.
 - `CONTAINER_RUNTIME` also includes `cpython_types_mappingproxy_hash_subset`,
   covering unhashable exact-dict proxies and hash forwarding for proxies over
   hashable user-defined mapping objects.

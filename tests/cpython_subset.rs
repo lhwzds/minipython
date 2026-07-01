@@ -60341,6 +60341,36 @@ fn cpython_types_mappingproxy_method_surface_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py::MappingProxyTests public
+// mappingproxy instance attribute assignment errors. MiniPython keeps
+// mappingproxy objects pure-memory and does not add writable instance
+// dictionaries.
+#[test]
+fn cpython_types_mappingproxy_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+proxy = MappingProxyType({'a': 1})
+for name in ['extra', 'keys']:
+    show('set-' + name, lambda name=name: setattr(proxy, name, 99))
+    show('del-' + name, lambda name=name: delattr(proxy, name))
+print('read', type(proxy).__name__, len(proxy), list(proxy))"#,
+        &[
+            "set-extra AttributeError 'mappingproxy' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'mappingproxy' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-keys AttributeError 'mappingproxy' object attribute 'keys' is read-only",
+            "del-keys AttributeError 'mappingproxy' object attribute 'keys' is read-only",
+            "read mappingproxy 1 ['a']",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests::test_union.
 // MiniPython covers exact dict and mappingproxy operands here; arbitrary
 // mapping union operands remain future object-protocol work.
