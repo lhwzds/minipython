@@ -1324,7 +1324,8 @@ Recent runtime migration notes:
   `cpython_math_keyword_error_messages_subset`,
   `cpython_math_constants_and_classification_diff_subset` gated for newer
   CPython oracles, and `cpython_math_constants_and_classification_subset`,
-  covering CPython public function `__qualname__` / `__doc__` metadata,
+  covering math module `__package__` metadata (`math.__package__` is `''`),
+  CPython public function `__qualname__` / `__doc__` metadata,
   `pi` / `e` / `tau` / `inf` / `nan` constants plus
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed

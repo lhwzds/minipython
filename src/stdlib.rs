@@ -583,6 +583,7 @@ pub(crate) fn create_module(
         "math" => Ok(module_value(
             "math",
             vec![
+                ("__package__", Value::String(String::new())),
                 ("pi", float_value(std::f64::consts::PI)),
                 ("e", float_value(std::f64::consts::E)),
                 ("tau", float_value(std::f64::consts::TAU)),

@@ -4478,6 +4478,9 @@ fn cpython_math_core_diff_subset() {
         origin: "Lib/test/test_math.py public pure-memory core subset",
         name: "math-core-values",
         source: r#"import math
+print(math.__name__, repr(math.__package__))
+print(repr(object.__getattribute__(math, '__package__')))
+print('__package__' in dir(math), repr(math.__dict__['__package__']))
 print(math.sqrt.__qualname__, math.gcd.__qualname__, math.isfinite.__qualname__)
 print(type(math.sqrt.__doc__).__name__, bool(math.sqrt.__doc__))
 print(type(math.gcd.__doc__).__name__, bool(math.gcd.__doc__))

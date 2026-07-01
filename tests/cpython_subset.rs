@@ -7828,6 +7828,9 @@ fn cpython_math_core_subset() {
     assert_output(
         concat!(
             "import math\n",
+            "print(math.__name__, repr(math.__package__))\n",
+            "print(repr(object.__getattribute__(math, '__package__')))\n",
+            "print('__package__' in dir(math), repr(math.__dict__['__package__']))\n",
             "print(math.sqrt.__qualname__, math.gcd.__qualname__, math.isfinite.__qualname__)\n",
             "print(type(math.sqrt.__doc__).__name__, bool(math.sqrt.__doc__))\n",
             "print(type(math.gcd.__doc__).__name__, bool(math.gcd.__doc__))\n",
@@ -7844,6 +7847,9 @@ fn cpython_math_core_subset() {
             "        print(error.__class__.__name__)"
         ),
         &[
+            "math ''",
+            "''",
+            "True ''",
             "sqrt gcd isfinite",
             "str True",
             "str True",

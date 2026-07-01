@@ -23821,6 +23821,51 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let core_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_core_diff_subset");
+    let core_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_core_subset");
+    for required in [
+        "math.__package__",
+        "object.__getattribute__(math, '__package__')",
+        "'__package__' in dir(math)",
+        "math.__dict__['__package__']",
+    ] {
+        assert!(
+            core_diff.contains(required) && core_subset.contains(required),
+            "math core diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"math ''\"", "\"True ''\""] {
+        assert!(
+            core_subset.contains(required),
+            "math core subset output must pin `{required}`"
+        );
+    }
+    let math_start = STDLIB_SOURCE
+        .find("\"math\" => Ok(module_value(")
+        .expect("stdlib.rs must define the math module");
+    let math_end = math_start
+        + STDLIB_SOURCE[math_start..]
+            .find("\"math.integer\" => Ok(module_value(")
+            .expect("math module registry must precede math.integer");
+    let math_registry = &STDLIB_SOURCE[math_start..math_end];
+    assert!(
+        math_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "math stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_math_core_subset",
+            "cpython_math_core_diff_subset",
+            "math module `__package__` metadata",
+            "`math.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "math module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+
     let fsum_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_fsum_diff_subset");
     let fsum_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_fsum_subset");
     for required in [

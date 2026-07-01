@@ -6666,6 +6666,9 @@ Completed in the float method/property pass:
   adjacent-float behavior, `steps`, signed-zero/subnormal transitions,
   infinity/NaN cases, ULP magnitudes, real-number input conversion, and
   catchable error classes.
+- Extended `cpython_math_core_subset` and `cpython_math_core_diff_subset` to
+  pin math module `__package__` metadata (`math.__package__` is `''`)
+  alongside the existing pure-memory core function metadata and constants.
 - Added `cpython_math_sqrt_subset`, adapted from CPython
   `Lib/test/test_math.py::MathTests::testSqrt`. The existing `sqrt()` math
   module entry now raises catchable `TypeError`, `ValueError`, and
