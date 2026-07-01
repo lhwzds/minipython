@@ -2604,6 +2604,7 @@ fn copy_module_value() -> Value {
     module_value(
         "copy",
         vec![
+            ("__package__", Value::String(String::new())),
             ("Error", error.clone()),
             ("error", error),
             ("dispatch_table", dict_value(Vec::new())),

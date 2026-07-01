@@ -938,6 +938,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_buffer_info_diff_subset`,
   `cpython_array_one_byte_public_unicode_method_rejection_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
+  `cpython_copy_module_package_metadata_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
@@ -3064,19 +3065,23 @@ without adding general custom encoder/decoder class support.
   current int-subclass result normalization. Full pickle metadata and every CPython helper edge case
   remain outside the default sandbox `operator` surface until separately
   promoted with direct public-behavior evidence.
-- The bundled `copy` module includes `cpython_copy_public_diff_subset`,
+- The bundled `copy` module includes
+  `cpython_copy_module_package_metadata_diff_subset`,
+  `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
   `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
+  `cpython_copy_module_package_metadata_subset`,
   `cpython_copy_public_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
   `cpython_copy_replace_custom_hook_subset`,
   `cpython_copy_replace_hook_unexpected_keyword_error_subset`,
   `cpython_copy_replace_classmethod_hook_arity_error_subset`, and
   `cpython_copy_replace_staticmethod_hook_arity_error_subset`,
-  covering CPython public `copy.Error` / `copy.error` exception metadata,
+  covering copy module `__package__` metadata (`copy.__package__` is `''`),
+  CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
   and identity, pure Python `__copy__` / `__deepcopy__` hook dispatch with

@@ -21053,6 +21053,18 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_copy_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public module __package__ metadata subset",
+        name: "copy-module-package-metadata",
+        source: r#"import copy
+print(copy.__name__, repr(copy.__package__))
+print(repr(object.__getattribute__(copy, '__package__')))
+print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

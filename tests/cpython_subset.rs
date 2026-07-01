@@ -22309,6 +22309,18 @@ for tc, vals in [('B', [65, 66]), ('b', [65, -1])]:
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_module_package_metadata_subset() {
+    assert_output(
+        r#"import copy
+print(copy.__name__, repr(copy.__package__))
+print(repr(object.__getattribute__(copy, '__package__')))
+print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
+        &["copy ''", "''", "True ''"],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_public_subset() {
     assert_output(
         concat!(

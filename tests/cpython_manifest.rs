@@ -22802,6 +22802,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "copy",
         &[
+            "cpython_copy_module_package_metadata_subset",
             "cpython_copy_public_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_copy_replace_custom_hook_subset",
@@ -22818,6 +22819,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "copy")
         .expect("sandbox stdlib manifest must include copy");
     for evidence in [
+        "cpython_copy_module_package_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
         "cpython_collections_defaultdict_copy_module_diff_subset",
         "cpython_copy_replace_custom_hook_diff_subset",
@@ -22841,6 +22843,57 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("dir(copy)"),
         "copy sandbox export test must guard pickle dispatch internals and module __all__"
     );
+
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_module_package_metadata_diff_subset",
+    );
+    let package_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_module_package_metadata_subset",
+    );
+    for required in [
+        "copy.__package__",
+        "object.__getattribute__(copy, '__package__')",
+        "'__package__' in dir(copy)",
+        "copy.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "copy module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"copy ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "copy module package metadata subset output must pin `{required}`"
+        );
+    }
+    let copy_start = STDLIB_SOURCE
+        .find("fn copy_module_value() -> Value")
+        .expect("stdlib.rs must define copy_module_value");
+    let copy_end = copy_start
+        + STDLIB_SOURCE[copy_start..]
+            .find("fn stdlib_exception_class(")
+            .expect("copy module registry must precede stdlib_exception_class");
+    let copy_registry = &STDLIB_SOURCE[copy_start..copy_end];
+    assert!(
+        copy_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "copy stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_copy_module_package_metadata_subset",
+            "cpython_copy_module_package_metadata_diff_subset",
+            "copy module `__package__` metadata",
+            "`copy.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "copy module package metadata docs must contain `{required}`"
+            );
+        }
+    }
 }
 
 #[test]
