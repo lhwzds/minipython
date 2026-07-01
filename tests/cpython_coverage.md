@@ -99,7 +99,11 @@ Recent runtime migration notes:
 - `cpython_list_instance_doc_attribute_subset`, backed by
   `cpython_list_instance_doc_attribute_diff_subset`, now pins list instance `__doc__`
   lookup for empty and populated lists, matching `list.__doc__` and `dir(value)`
-  without promoting tuple, bytes, or bytearray instance `__doc__` attributes.
+  without promoting bytes or bytearray instance `__doc__` attributes.
+- `cpython_tuple_instance_doc_attribute_subset`, backed by
+  `cpython_tuple_instance_doc_attribute_diff_subset`, now pins tuple instance `__doc__`
+  lookup for empty and populated tuples, matching `tuple.__doc__` and `dir(value)`
+  without promoting bytes or bytearray instance `__doc__` attributes.
 - `cpython_tuple_attribute_assignment_errors_subset`, backed by
   `cpython_tuple_attribute_assignment_errors_diff_subset`, now pins tuple attribute assignment errors
   for missing attributes and read-only tuple method attributes (`count` /
@@ -537,6 +541,7 @@ Recent runtime migration notes:
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,
+  `cpython_tuple_instance_doc_attribute_diff_subset`,
   `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,

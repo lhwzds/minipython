@@ -57976,6 +57976,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 _ => Err(missing_type_attribute_error("complex", name)),
             }
         }
+        Value::Tuple(_) if name == "__doc__" => Ok(Value::String(
+            builtins_module_type_doc("tuple")
+                .expect("tuple builtin type doc exists")
+                .to_string(),
+        )),
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),
         Value::String(_) | Value::IdentityString { .. } if name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))

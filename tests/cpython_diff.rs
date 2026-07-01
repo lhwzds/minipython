@@ -11498,6 +11498,17 @@ print('mutated', items)"#,
 }
 
 #[test]
+fn cpython_tuple_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/seq_tests.py public tuple instance __doc__ attribute subset",
+        name: "tuple-instance-doc-attribute",
+        source: r#"for label, value in [('empty', ()), ('items', (1, 2))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == tuple.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/seq_tests.py public tuple instance attribute assignment errors subset",
