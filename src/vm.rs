@@ -60599,6 +60599,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__closure__" && is_copy_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__annotations__" && is_copy_builtin(&function_name) =>
         {
             Ok(dict_value(Vec::new()))

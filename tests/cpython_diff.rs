@@ -21181,6 +21181,19 @@ print(copy.copy.__annotate__ is copy.deepcopy.__annotate__ is copy.replace.__ann
 }
 
 #[test]
+fn cpython_copy_function_closure_none_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __closure__ None metadata subset",
+        name: "copy-function-closure-none-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__closure__, value.__closure__ is None)
+print(copy.copy.__closure__ is copy.deepcopy.__closure__ is copy.replace.__closure__ is None)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_annotations_empty_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __annotations__ empty metadata subset",
