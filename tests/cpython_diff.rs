@@ -21212,6 +21212,18 @@ for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy
 }
 
 #[test]
+fn cpython_io_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/io public module __package__ metadata subset",
+        name: "io-module-package-metadata",
+        source: r#"import io
+print(io.__name__, repr(io.__package__))
+print(repr(object.__getattribute__(io, '__package__')))
+print('__package__' in dir(io), repr(io.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO pure-memory subset",

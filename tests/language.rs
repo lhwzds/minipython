@@ -1125,11 +1125,12 @@ fn sandbox_policy_allows_required_sandbox_stdlib_surface() {
 fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
     assert_eq!(
         run_source(
-            "import io\nfor name in ['BytesIO', 'UnsupportedOperation', 'SEEK_SET', 'SEEK_CUR', 'SEEK_END']:\n    print(name, hasattr(io, name))\nfor name in ['open', 'FileIO', 'TextIOWrapper', 'StringIO', 'BufferedReader', 'BufferedWriter', 'RawIOBase', 'IOBase', '__all__']:\n    print(name, hasattr(io, name))\nprint(dir(io))"
+            "import io\nfor name in ['BytesIO', 'UnsupportedOperation', '__package__', 'SEEK_SET', 'SEEK_CUR', 'SEEK_END']:\n    print(name, hasattr(io, name))\nfor name in ['open', 'FileIO', 'TextIOWrapper', 'StringIO', 'BufferedReader', 'BufferedWriter', 'RawIOBase', 'IOBase', '__all__']:\n    print(name, hasattr(io, name))\nprint(dir(io))"
         ),
         Ok(output_lines(&[
             "BytesIO True",
             "UnsupportedOperation True",
+            "__package__ True",
             "SEEK_SET True",
             "SEEK_CUR True",
             "SEEK_END True",
@@ -1142,7 +1143,7 @@ fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
             "RawIOBase False",
             "IOBase False",
             "__all__ False",
-            "['BytesIO', 'SEEK_CUR', 'SEEK_END', 'SEEK_SET', 'UnsupportedOperation', '__name__']",
+            "['BytesIO', 'SEEK_CUR', 'SEEK_END', 'SEEK_SET', 'UnsupportedOperation', '__name__', '__package__']",
         ]))
     );
 }

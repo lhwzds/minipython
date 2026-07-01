@@ -571,6 +571,7 @@ pub(crate) fn create_module(
         "io" => Ok(module_value(
             "io",
             vec![
+                ("__package__", Value::String(String::new())),
                 ("BytesIO", Value::Builtin("io.BytesIO".to_string())),
                 (
                     "UnsupportedOperation",

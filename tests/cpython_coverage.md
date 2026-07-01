@@ -946,6 +946,7 @@ Recent runtime migration notes:
   `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
+  `cpython_io_module_package_metadata_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
@@ -3112,6 +3113,9 @@ without adding general custom encoder/decoder class support.
   outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
   remain outside the sandbox `copy` subset.
 - The bundled `io.BytesIO` subset includes
+  `cpython_io_module_package_metadata_diff_subset` /
+  `cpython_io_module_package_metadata_subset`, covering io module `__package__` metadata
+  (`io.__package__` is `''`), plus
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `read1()`, `readline()`,

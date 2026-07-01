@@ -23404,6 +23404,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "io.BytesIO",
         &[
+            "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
             "cpython_memoryview_bytesio_readinto_subset",
         ],
@@ -23422,6 +23423,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include io.BytesIO");
     assert!(
         row.diff_evidence
+            .contains("cpython_io_module_package_metadata_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for io module package metadata"
+    );
+    assert!(
+        row.diff_evidence
             .contains("cpython_io_bytesio_public_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for public BytesIO behavior"
     );
@@ -23435,6 +23441,43 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_array_one_byte_public_file_methods_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for array tofile/fromfile BytesIO behavior"
     );
+
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_module_package_metadata_diff_subset",
+    );
+    let package_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_module_package_metadata_subset");
+    for required in [
+        "io.__package__",
+        "object.__getattribute__(io, '__package__')",
+        "'__package__' in dir(io)",
+        "io.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "io module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"io ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "io module package metadata subset output must pin `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_module_package_metadata_subset",
+            "cpython_io_module_package_metadata_diff_subset",
+            "io module `__package__` metadata",
+            "`io.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "io module package metadata docs must contain `{required}`"
+            );
+        }
+    }
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_public_diff_subset");
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_bytesio_public_subset");
@@ -23641,6 +23684,7 @@ fn io_stdlib_registry_stays_bytesio_only() {
 
     for required in [
         "\"io\"",
+        "(\"__package__\", Value::String(String::new()))",
         "(\"BytesIO\", Value::Builtin(\"io.BytesIO\".to_string()))",
         "\"UnsupportedOperation\"",
         "Value::Builtin(\"io.UnsupportedOperation\".to_string())",
@@ -23673,17 +23717,22 @@ fn io_stdlib_registry_stays_bytesio_only() {
 
     assert!(
         LANGUAGE_TESTS.contains("io_bytesio_sandbox_subset_excludes_host_io_apis")
+            && LANGUAGE_TESTS.contains("'__package__'")
             && LANGUAGE_TESTS.contains("'open', 'FileIO', 'TextIOWrapper'")
             && LANGUAGE_TESTS.contains("'StringIO', 'BufferedReader', 'BufferedWriter'")
             && LANGUAGE_TESTS.contains("'RawIOBase', 'IOBase', '__all__'")
             && LANGUAGE_TESTS.contains("dir(io)"),
-        "language tests must keep host io APIs and module export metadata unavailable at runtime"
+        "language tests must keep host io APIs unavailable and io module __package__ explicit at runtime"
     );
 }
 
 #[test]
 fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
     for (subset, diff) in [
+        (
+            "cpython_io_module_package_metadata_subset",
+            "cpython_io_module_package_metadata_diff_subset",
+        ),
         (
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_public_diff_subset",

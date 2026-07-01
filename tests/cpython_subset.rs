@@ -22661,6 +22661,18 @@ for label, expr in [
     );
 }
 
+// Pins CPython's public module metadata for the sandbox `io` module.
+#[test]
+fn cpython_io_module_package_metadata_subset() {
+    assert_output(
+        r#"import io
+print(io.__name__, repr(io.__package__))
+print(repr(object.__getattribute__(io, '__package__')))
+print('__package__' in dir(io), repr(io.__dict__['__package__']))"#,
+        &["io ''", "''", "True ''"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]
