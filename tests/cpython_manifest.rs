@@ -8742,6 +8742,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_annotations_assignment_metadata_subset",
             "cpython_json_function_defaults_assignment_metadata_subset",
+            "cpython_json_function_kwdefaults_assignment_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
@@ -8892,6 +8893,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_annotations_assignment_metadata_diff_subset",
         "cpython_json_function_defaults_assignment_metadata_diff_subset",
+        "cpython_json_function_kwdefaults_assignment_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_function_get_descriptor_metadata_diff_subset",
@@ -9158,6 +9160,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_defaults_assignment_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_defaults_assignment_metadata_subset",
+    );
+    let json_function_kwdefaults_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_kwdefaults_assignment_metadata_diff_subset",
+    );
+    let json_function_kwdefaults_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_kwdefaults_assignment_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10521,6 +10531,77 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __defaults__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "from collections import OrderedDict",
+        "class D(dict):",
+        "original = function.__kwdefaults__",
+        "sorted(function.__kwdefaults__)",
+        "replacement = {'x': 1}",
+        "function.__kwdefaults__ = replacement",
+        "function.__kwdefaults__ is replacement",
+        "subclass = D({'y': 2})",
+        "function.__kwdefaults__ = subclass",
+        "function.__kwdefaults__ is subclass",
+        "ordered = OrderedDict([('z', 3)])",
+        "function.__kwdefaults__ = ordered",
+        "function.__kwdefaults__ is ordered",
+        "function.__kwdefaults__ = {}",
+        "function.__kwdefaults__ = None",
+        "function.__kwdefaults__ = value",
+        "del function.__kwdefaults__",
+        "function.__kwdefaults__ = original",
+        "json.loads.__kwdefaults__",
+        "json.dumps.__kwdefaults__",
+    ] {
+        assert!(
+            json_function_kwdefaults_assignment_diff_body.contains(required)
+                && json_function_kwdefaults_assignment_subset_body.contains(required),
+            "json public function __kwdefaults__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial dict ['cls', 'object_hook', 'object_pairs_hook', 'parse_constant', 'parse_float', 'parse_int'] True\"",
+        "\"loads set-dict True dict {'x': 1}\"",
+        "\"loads set-subclass True D {'y': 2}\"",
+        "\"loads set-ordered True OrderedDict OrderedDict({'z': 3})\"",
+        "\"loads set-empty True False dict\"",
+        "\"loads set-none None True\"",
+        "\"loads set-list TypeError __kwdefaults__ must be set to a dict object",
+        "\"loads set-str TypeError __kwdefaults__ must be set to a dict object",
+        "\"loads after-del None True\"",
+        "\"dumps initial dict ['allow_nan', 'check_circular', 'cls', 'default', 'ensure_ascii', 'indent', 'separators', 'skipkeys', 'sort_keys'] True\"",
+        "\"dumps set-dict True dict {'x': 1}\"",
+        "\"dumps set-subclass True D {'y': 2}\"",
+        "\"dumps set-ordered True OrderedDict OrderedDict({'z': 3})\"",
+        "\"dumps set-empty True False dict\"",
+        "\"dumps set-none None True\"",
+        "\"dumps set-list TypeError __kwdefaults__ must be set to a dict object",
+        "\"dumps set-str TypeError __kwdefaults__ must be set to a dict object",
+        "\"dumps after-del None True\"",
+        "\"dict dict False\"",
+    ] {
+        assert!(
+            json_function_kwdefaults_assignment_subset_body.contains(required),
+            "json public function __kwdefaults__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>>",
+        "fn json_builtin_kwdefaults(name: &str) -> Value",
+        "fn set_json_builtin_kwdefaults(",
+        "fn delete_json_builtin_kwdefaults(",
+        "Ok(json_builtin_kwdefaults(&function_name))",
+        "Value::None | Value::Dict(_) | Value::OrderedDict(_)",
+        "dict_subclass_entries(&value).is_none()",
+        "__kwdefaults__ must be set to a dict object",
+        "\"__kwdefaults__\" => return set_json_builtin_kwdefaults(function_name, value)",
+        "delete_json_builtin_kwdefaults(function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __kwdefaults__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12269,6 +12350,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotations_assignment_metadata_diff_subset",
             "cpython_json_function_defaults_assignment_metadata_subset",
             "cpython_json_function_defaults_assignment_metadata_diff_subset",
+            "cpython_json_function_kwdefaults_assignment_metadata_subset",
+            "cpython_json_function_kwdefaults_assignment_metadata_diff_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
             "cpython_json_function_dir_metadata_subset",
@@ -12361,6 +12444,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__annotations__` identity",
             "json public function `__annotations__` assignment",
             "json public function `__defaults__` assignment",
+            "json public function `__kwdefaults__` assignment",
             "json public function `__kwdefaults__` identity",
             "json public function `dir()` supported metadata",
             "json public function `__get__` descriptor",

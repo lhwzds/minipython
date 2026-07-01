@@ -62285,6 +62285,26 @@ fn json_builtin_kwdefaults(name: &str) -> Value {
     })
 }
 
+fn set_json_builtin_kwdefaults(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::None | Value::Dict(_) | Value::OrderedDict(_))
+        && dict_subclass_entries(&value).is_none()
+    {
+        return Err("TypeError: __kwdefaults__ must be set to a dict object".to_string());
+    }
+    JSON_BUILTIN_KWDEFAULTS.with(|kwdefaults| {
+        kwdefaults.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
+}
+
+fn delete_json_builtin_kwdefaults(name: &str) {
+    JSON_BUILTIN_KWDEFAULTS.with(|kwdefaults| {
+        kwdefaults
+            .borrow_mut()
+            .insert(name.to_string(), Value::None);
+    });
+}
+
 fn json_builtin_kwdefaults_initial(name: &str) -> Value {
     let entries = match name {
         "json.loads" => vec![
@@ -62439,6 +62459,7 @@ fn store_json_builtin_attribute(
         "__annotate__" => return set_json_builtin_annotate(function_name, value),
         "__annotations__" => return set_json_builtin_annotations(function_name, value),
         "__defaults__" => return set_json_builtin_defaults(function_name, value),
+        "__kwdefaults__" => return set_json_builtin_kwdefaults(function_name, value),
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);
@@ -62476,6 +62497,10 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
         }
         "__defaults__" => {
             delete_json_builtin_defaults(function_name);
+            return Ok(());
+        }
+        "__kwdefaults__" => {
+            delete_json_builtin_kwdefaults(function_name);
             return Ok(());
         }
         _ => {}
