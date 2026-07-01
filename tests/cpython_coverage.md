@@ -80,6 +80,10 @@ Recent runtime migration notes:
   readonly public integer attributes, read-only inherited int method attributes
   such as `bit_length`, `conjugate`, and `as_integer_ratio`, and CPython's
   bool-specific no-`__dict__` assignment/deletion errors without adding bool instance dictionaries.
+- `cpython_bool_instance_doc_attribute_subset`, backed by
+  `cpython_bool_instance_doc_attribute_diff_subset`, now pins bool instance `__doc__`
+  lookup for `False` and `True`, matching `bool.__doc__` rather than
+  `int.__doc__`, and `dir(value)` without adding writable instance dictionaries.
 - `cpython_str_attribute_assignment_errors_subset`, backed by
   `cpython_str_attribute_assignment_errors_diff_subset`, now pins string attribute assignment errors
   for missing attributes and read-only string method attributes (`upper` /
@@ -567,6 +571,7 @@ Recent runtime migration notes:
   `cpython_unicode_error_attributes_diff_subset`,
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
+  `cpython_bool_instance_doc_attribute_diff_subset`,
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,
   `cpython_complex_instance_doc_attribute_diff_subset`,

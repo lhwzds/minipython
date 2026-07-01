@@ -23322,6 +23322,72 @@ fn bool_public_attributes_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bool_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_bool_instance_doc_attribute_subset(",
+        "for label, value in [('false', False), ('true', True)]",
+        "doc = value.__doc__",
+        "doc == bool.__doc__",
+        "doc == int.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"false str True False True Returns True when the argument is true, False otherwise. 203\"",
+        "\"true str True False True Returns True when the argument is true, False otherwise. 203\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bool instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_bool_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_bool.py public bool instance __doc__ attribute subset",
+        "name: \"bool-instance-doc-attribute\"",
+        "for label, value in [('false', False), ('true', True)]",
+        "doc = value.__doc__",
+        "doc == bool.__doc__",
+        "doc == int.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "bool instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Bool(_) if name == \"__doc__\"",
+        "builtins_module_type_doc(\"bool\")",
+        "expect(\"bool builtin type doc exists\")",
+        "Value::Number(_) | Value::BigInt(_) if name == \"__doc__\"",
+        "receiver @ (Value::Bool(_) | Value::Number(_) | Value::BigInt(_))",
+        "Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {",
+        "names.extend(builtin_type_dir_names(\"int\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bool instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_bool_instance_doc_attribute_subset")
+                && document.contains("cpython_bool_instance_doc_attribute_diff_subset")
+                && document.contains("bool instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "bool instance __doc__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn float_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_float_public_attributes_subset(",
@@ -24365,6 +24431,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_unicode_error_attributes_subset",
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
+            "cpython_bool_instance_doc_attribute_subset",
             "cpython_int_instance_doc_attribute_subset",
             "cpython_float_instance_doc_attribute_subset",
             "cpython_complex_instance_doc_attribute_subset",
@@ -24445,6 +24512,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_unicode_error_attributes_diff_subset",
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
+        "cpython_bool_instance_doc_attribute_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",
         "cpython_float_instance_doc_attribute_diff_subset",
         "cpython_complex_instance_doc_attribute_diff_subset",

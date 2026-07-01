@@ -27353,6 +27353,17 @@ show('bad', lambda: float(Foo4(42)))"#,
 }
 
 #[test]
+fn cpython_bool_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bool.py public bool instance __doc__ attribute subset",
+        name: "bool-instance-doc-attribute",
+        source: r#"for label, value in [('false', False), ('true', True)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == bool.__doc__, doc == int.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_float_bytes_like_input_types_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_float.py::GeneralFloatCases::test_non_numeric_input_types and ::test_float_memoryview",

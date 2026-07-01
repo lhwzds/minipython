@@ -5597,6 +5597,21 @@ except TypeError as error:
     );
 }
 
+// Mirrors CPython's public `bool` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_bool_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('false', False), ('true', True)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == bool.__doc__, doc == int.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "false str True False True Returns True when the argument is true, False otherwise. 203",
+            "true str True False True Returns True when the argument is true, False otherwise. 203",
+        ],
+    );
+}
+
 // Adapted from CPython's public `float` object attributes. MiniPython exposes
 // `real` and `imag` as readonly data attributes without exposing an instance
 // `__dict__`.
