@@ -112,6 +112,7 @@ thread_local! {
     static JSON_BUILTIN_MODULE: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_MODULE_OVERRIDES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_NAMES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static JSON_BUILTIN_QUALNAMES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATE: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -61426,7 +61427,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__qualname__" && is_json_builtin(&function_name) =>
         {
-            Ok(json_builtin_name_value(&function_name))
+            Ok(json_builtin_qualname_value(&function_name))
         }
         Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_doc_value(&function_name))
@@ -62081,10 +62082,22 @@ fn json_builtin_doc_value(name: &str) -> Value {
 fn json_builtin_name_value(name: &str) -> Value {
     JSON_BUILTIN_NAMES.with(|names| {
         let mut names = names.borrow_mut();
-        names
-            .entry(name.to_string())
-            .or_insert_with(|| identity_string_value(builtin_public_name(name)))
-            .clone()
+        if let Some(value) = names.get(name).cloned() {
+            return value;
+        }
+        let value = JSON_BUILTIN_QUALNAMES
+            .with(|qualnames| qualnames.borrow().get(name).cloned())
+            .unwrap_or_else(|| {
+                let value = identity_string_value(builtin_public_name(name));
+                JSON_BUILTIN_QUALNAMES.with(|qualnames| {
+                    qualnames
+                        .borrow_mut()
+                        .insert(name.to_string(), value.clone());
+                });
+                value
+            });
+        names.insert(name.to_string(), value.clone());
+        value
     })
 }
 
@@ -62100,6 +62113,37 @@ fn json_builtin_module(name: &str) -> Value {
             .get_or_insert_with(|| identity_string_value("json".to_string()))
             .clone()
     })
+}
+
+fn json_builtin_qualname_value(name: &str) -> Value {
+    JSON_BUILTIN_QUALNAMES.with(|qualnames| {
+        let mut qualnames = qualnames.borrow_mut();
+        if let Some(value) = qualnames.get(name).cloned() {
+            return value;
+        }
+        let builtin_name = builtin_public_name(name);
+        let value = JSON_BUILTIN_NAMES
+            .with(|names| names.borrow().get(name).cloned())
+            .and_then(|value| match &value {
+                Value::IdentityString { value: text, .. } if text == &builtin_name => Some(value),
+                _ => None,
+            })
+            .unwrap_or_else(|| identity_string_value(builtin_name));
+        qualnames.insert(name.to_string(), value.clone());
+        value
+    })
+}
+
+fn set_json_builtin_name(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::String(_) | Value::IdentityString { .. })
+        && str_subclass_string(&value).is_none()
+    {
+        return Err("TypeError: __name__ must be set to a string object".to_string());
+    }
+    JSON_BUILTIN_NAMES.with(|names| {
+        names.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
 }
 
 fn set_json_builtin_doc(name: &str, value: Value) {
@@ -62343,6 +62387,7 @@ fn store_json_builtin_attribute(
     value: Value,
 ) -> Result<(), String> {
     match name {
+        "__name__" => return set_json_builtin_name(function_name, value),
         "__doc__" => {
             set_json_builtin_doc(function_name, value);
             return Ok(());
@@ -62367,6 +62412,9 @@ fn store_json_builtin_attribute(
 
 fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), String> {
     match name {
+        "__name__" => {
+            return Err("TypeError: __name__ must be set to a string object".to_string());
+        }
         "__doc__" => {
             delete_json_builtin_doc(function_name);
             return Ok(());

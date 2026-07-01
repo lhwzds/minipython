@@ -757,6 +757,40 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_name_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __name__ assignment metadata subset",
+        name: "json-function-name-assignment-metadata",
+        source: r#"import json
+class S(str):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original_name = function.__name__
+    print(name, 'initial', function.__name__, function.__qualname__, function.__name__ is function.__qualname__)
+    function.__name__ = name + '_renamed'
+    print(name, 'set-str', type(function.__name__).__name__, function.__name__, function.__qualname__)
+    subclass = S(name + '_sub')
+    function.__name__ = subclass
+    print(name, 'set-subclass', function.__name__ is subclass, type(function.__name__).__name__, function.__name__, function.__qualname__)
+    function.__name__ = ''
+    print(name, 'set-empty', function.__name__ == '', function.__qualname__)
+    for label, value in [('none', None), ('bytes', b'x')]:
+        try:
+            function.__name__ = value
+        except TypeError as error:
+            print(name, 'set-' + label, type(error).__name__, str(error), error.args)
+    try:
+        del function.__name__
+    except TypeError as error:
+        print(name, 'del-error', type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', type(function.__name__).__name__, function.__name__, function.__qualname__)
+    function.__name__ = original_name
+print(json.loads.__name__, json.dumps.__name__, json.loads.__name__ is json.loads.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_name_dir_visibility_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method name dir visibility subset",
