@@ -94,6 +94,10 @@ Recent runtime migration notes:
   `cpython_tuple_attribute_assignment_errors_diff_subset`, now pins tuple attribute assignment errors
   for missing attributes and read-only tuple method attributes (`count` /
   `index`) without adding tuple instance dictionaries.
+- `cpython_dict_attribute_assignment_errors_subset`, backed by
+  `cpython_dict_attribute_assignment_errors_diff_subset`, now pins dict attribute assignment errors
+  for missing attributes and read-only dict method attributes (`keys` /
+  `update`) while preserving dict mutation without adding dict instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

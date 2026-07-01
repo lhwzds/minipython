@@ -26554,6 +26554,39 @@ print('read', len(items), items.count(1), items.index(2))"#,
     );
 }
 
+// Adapted from CPython's public `dict` instance attribute assignment errors.
+// MiniPython keeps dict entries mutable without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_dict_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+d = {'a': 1, 'b': 2}
+for name in ['extra', 'keys', 'update']:
+    show('set-' + name, lambda name=name: setattr(d, name, 99))
+    show('del-' + name, lambda name=name: delattr(d, name))
+print('read', list(d.keys()), d.get('a'), d.update.__self__ is d)
+d['c'] = 3
+print('mutated', d)"#,
+        &[
+            "set-extra AttributeError 'dict' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'dict' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-keys AttributeError 'dict' object attribute 'keys' is read-only",
+            "del-keys AttributeError 'dict' object attribute 'keys' is read-only",
+            "set-update AttributeError 'dict' object attribute 'update' is read-only",
+            "del-update AttributeError 'dict' object attribute 'update' is read-only",
+            "read ['a', 'b'] 1 True",
+            "mutated {'a': 1, 'b': 2, 'c': 3}",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

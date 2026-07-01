@@ -61069,6 +61069,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::ByteArray(_) => Err(bytearray_attribute_assignment_error(name)),
         Value::List(_) => Err(list_attribute_assignment_error(name)),
         Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
+        Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61343,6 +61344,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::ByteArray(_) => Err(bytearray_attribute_assignment_error(name)),
         Value::List(_) => Err(list_attribute_assignment_error(name)),
         Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
+        Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61467,6 +61469,23 @@ fn tuple_attribute_assignment_error(name: &str) -> String {
 fn is_tuple_readonly_instance_attribute(name: &str) -> bool {
     !name.starts_with("__")
         && builtin_type_dir_names("tuple")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
+}
+
+fn dict_attribute_assignment_error(name: &str) -> String {
+    if is_dict_readonly_instance_attribute(name) {
+        format!("AttributeError: 'dict' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'dict' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_dict_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("dict")
             .iter()
             .any(|candidate| candidate.as_str() == name)
 }
