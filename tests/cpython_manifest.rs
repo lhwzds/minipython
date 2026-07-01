@@ -8724,6 +8724,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
+            "cpython_json_function_get_missing_owner_error_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8834,6 +8835,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_function_get_descriptor_metadata_diff_subset",
+        "cpython_json_function_get_missing_owner_error_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -9020,6 +9022,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_get_descriptor_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_get_descriptor_metadata_subset",
+    );
+    let json_function_get_missing_owner_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_get_missing_owner_error_diff_subset",
+    );
+    let json_function_get_missing_owner_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_get_missing_owner_error_subset",
     );
     for required in [
         "json.__package__",
@@ -9329,6 +9339,29 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function __get__ descriptor subset output must pin `{required}`"
         );
     }
+    for required in [
+        "getter = getattr(json, name).__get__",
+        "('missing-owner', lambda: getter(None))",
+        "('explicit-none-owner', lambda: getter(None, None))",
+        "except TypeError as error",
+    ] {
+        assert!(
+            json_function_get_missing_owner_diff_body.contains(required)
+                && json_function_get_missing_owner_subset_body.contains(required),
+            "json public function __get__ missing owner error diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads missing-owner TypeError __get__(None, None) is invalid\"",
+        "\"loads explicit-none-owner TypeError __get__(None, None) is invalid\"",
+        "\"dumps missing-owner TypeError __get__(None, None) is invalid\"",
+        "\"dumps explicit-none-owner TypeError __get__(None, None) is invalid\"",
+    ] {
+        assert!(
+            json_function_get_missing_owner_subset_body.contains(required),
+            "json public function __get__ missing owner error subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9410,6 +9443,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("Value::Builtin(name) if name == \"json.function.__get__\"")
             && VM_SOURCE.contains("self.call_json_function_get(args, keywords)")
             && VM_SOURCE.contains("fn call_json_function_get(")
+            && VM_SOURCE.contains("owner_missing_or_none")
             && VM_SOURCE.contains("\"json.function.__get__\"")
             && VM_SOURCE.contains("Value::BoundMethod {")
             && VM_SOURCE.contains("is_descriptor_get_wrapper_name(name)"),
@@ -9443,6 +9477,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dir_metadata_diff_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
             "cpython_json_function_get_descriptor_metadata_diff_subset",
+            "cpython_json_function_get_missing_owner_error_subset",
+            "cpython_json_function_get_missing_owner_error_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9469,6 +9505,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__kwdefaults__` identity",
             "json public function `dir()` supported metadata",
             "json public function `__get__` descriptor",
+            "json public function `__get__` missing-owner error",
         ] {
             assert!(
                 document.contains(required),

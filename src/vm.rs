@@ -17447,10 +17447,11 @@ impl Vm {
         }
         descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
         if matches!(rest[0], Value::None) {
-            if rest
-                .get(1)
-                .is_some_and(|owner| matches!(owner, Value::None))
-            {
+            let owner_missing_or_none = match rest.get(1) {
+                Some(owner) => matches!(owner, Value::None),
+                None => true,
+            };
+            if owner_missing_or_none {
                 return Err("TypeError: __get__(None, None) is invalid".to_string());
             }
             return Ok(function);

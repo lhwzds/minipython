@@ -929,6 +929,27 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_get_missing_owner_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __get__ missing owner error subset",
+        name: "json-function-get-missing-owner-error",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    getter = getattr(json, name).__get__
+    for label, call in [
+        ('missing-owner', lambda: getter(None)),
+        ('explicit-none-owner', lambda: getter(None, None)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error))
+        else:
+            print(name, label, 'OK')"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

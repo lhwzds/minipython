@@ -1057,6 +1057,7 @@ Recent runtime migration notes:
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset`,
   `cpython_json_function_dir_metadata_diff_subset`,
   `cpython_json_function_get_descriptor_metadata_diff_subset`,
+  `cpython_json_function_get_missing_owner_error_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1692,6 +1693,8 @@ Recent runtime migration notes:
   `cpython_json_function_dir_metadata_subset`,
   `cpython_json_function_get_descriptor_metadata_diff_subset` /
   `cpython_json_function_get_descriptor_metadata_subset`,
+  `cpython_json_function_get_missing_owner_error_diff_subset` /
+  `cpython_json_function_get_missing_owner_error_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2393,6 +2396,13 @@ binding aligned with CPython for the supported `loads` / `dumps` function
 metadata surface, including unbound lookup, bound method metadata, and
 `__get__(None, None)` `TypeError`, without adding function `__code__`, file
 APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_get_missing_owner_error_subset`, backed by
+`cpython_json_function_get_missing_owner_error_diff_subset`, keeps json public function `__get__` missing-owner error
+classification aligned with CPython when `loads.__get__(None)` or
+`dumps.__get__(None)` is called, treating the omitted owner as `None` without
+adding function `__code__`, file APIs, module `__all__`, or encoder/decoder
+classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
