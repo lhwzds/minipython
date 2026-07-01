@@ -10321,6 +10321,39 @@ show('del-extra', lambda: delattr(r, 'extra'))"#,
 }
 
 #[test]
+fn cpython_range_new_direct_allocation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_range.py public range.__new__ behavior subset",
+        name: "range-new-direct-allocation",
+        source: r#"class C:
+    pass
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, type(value).__name__, value, list(value), value.start, value.stop, value.step)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+print('visible', hasattr(range, '__new__'), '__new__' in dir(range), hasattr(range(0), '__new__'), '__new__' in dir(range(0)))
+for label, call in [
+    ('missing', lambda: range.__new__()),
+    ('no-values', lambda: range.__new__(range)),
+    ('exact-stop', lambda: range.__new__(range, 4)),
+    ('exact-start-stop', lambda: range.__new__(range, 1, 5)),
+    ('exact-step', lambda: range.__new__(range, 1, 6, 2)),
+    ('instance-stop', lambda: range(0).__new__(range, 2)),
+    ('too-many', lambda: range.__new__(range, 1, 2, 3, 4)),
+    ('bad-step', lambda: range.__new__(range, 1, 3, 0)),
+    ('bad-class', lambda: range.__new__(list, 4)),
+    ('bad-user-class', lambda: range.__new__(C, 4)),
+    ('int-arg', lambda: range.__new__(1, 4)),
+    ('keyword', lambda: range.__new__(range, stop=4)),
+]:
+    show(label, call)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_hasattr_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hasattr public supported subset",

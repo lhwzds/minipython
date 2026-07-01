@@ -9329,6 +9329,7 @@ impl Vm {
             Value::Builtin(name) if name == "__import__" => {
                 call_import_builtin(self, args, keywords)
             }
+            Value::Builtin(name) if name == "range.__new__" => self.call_range_new(args, keywords),
             Value::Builtin(name) if name == "range" => {
                 if !keywords.is_empty() {
                     return Err(format!("TypeError: {name}() takes no keyword arguments"));
@@ -20320,6 +20321,34 @@ impl Vm {
             values => Err(format!(
                 "range expected at most 3 arguments, got {}",
                 values.len()
+            )),
+        }
+    }
+
+    fn call_range_new(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: range() takes no keyword arguments".to_string());
+        }
+        let Some((class, values)) = args.split_first() else {
+            return Err("TypeError: range.__new__(): not enough arguments".to_string());
+        };
+
+        match class {
+            Value::Builtin(name) if name == "range" => self.call_range(values.to_vec()),
+            value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                Err(format!(
+                    "TypeError: range.__new__({}): {} is not a subtype of range",
+                    class_display_name(value),
+                    class_display_name(value)
+                ))
+            }
+            value => Err(format!(
+                "TypeError: range.__new__(X): X is not a type object ({})",
+                type_name(value)
             )),
         }
     }
@@ -51438,7 +51467,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "rotate",
         ],
         "tuple" => &["__new__", "count", "index"],
-        "range" => &["count", "index", "start", "stop", "step"],
+        "range" => &["__new__", "count", "index", "start", "stop", "step"],
         "bytes" => &[
             "__bytes__",
             "__format__",
@@ -59117,6 +59146,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("range builtin type doc exists")
                     .to_string(),
             )),
+            "__new__" => Ok(Value::Builtin("range.__new__".to_string())),
             "start" => Ok(normalize_big_int(start)),
             "stop" => Ok(normalize_big_int(stop)),
             "step" => Ok(normalize_big_int(step)),
@@ -60849,6 +60879,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__new__" => {
             Ok(Value::Builtin("str.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "range" && name == "__new__" => {
+            Ok(Value::Builtin("range.__new__".to_string()))
         }
         Value::Builtin(function_name)
             if is_immutable_sequence_type_method(&function_name, name) =>
@@ -67106,6 +67139,7 @@ fn is_value_error_message(message: &str) -> bool {
         || message.starts_with("too many values to unpack")
         || message.starts_with("dictionary update sequence element")
         || message == "negative shift count"
+        || message == "range() arg 3 must not be zero"
 }
 
 fn is_type_error_message(message: &str) -> bool {

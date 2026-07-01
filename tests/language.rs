@@ -5685,11 +5685,11 @@ fn reports_non_iterable_for_source() {
 fn reports_range_argument_errors() {
     assert_eq!(
         run_source("print(range())"),
-        Err("runtime error: range expected at least 1 argument, got 0".to_string())
+        Err("runtime error: TypeError: range expected at least 1 argument, got 0".to_string())
     );
     assert_eq!(
         run_source("for x in range(1, 3, 0):\n    print(x)"),
-        Err("runtime error: range() arg 3 must not be zero".to_string())
+        Err("runtime error: ValueError: range() arg 3 must not be zero".to_string())
     );
 }
 

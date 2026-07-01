@@ -61,6 +61,11 @@ Recent runtime migration notes:
   positional iterable construction, frozenset subtype error classification, and
   frozenset `__new__` keyword handling without expanding into full immutable-set
   C-layout behavior.
+- `cpython_range_new_direct_allocation_subset`, backed by
+  `cpython_range_new_direct_allocation_diff_subset`, now pins `range.__new__` direct allocation,
+  type and instance `__new__` visibility, range constructor arity reuse, zero-step
+  ValueError propagation, keyword rejection, and exact range subtype error classification
+  without adding range subclassing or class-base validation parity.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

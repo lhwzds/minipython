@@ -67611,6 +67611,56 @@ show('del-extra', lambda: delattr(r, 'extra'))"#,
     );
 }
 
+// Adapted from CPython's public `range.__new__` behavior. MiniPython exposes
+// the direct type allocation entry point but does not expand this slice into
+// range subclassing, which CPython disallows at class creation time.
+#[test]
+fn cpython_range_new_direct_allocation_subset() {
+    assert_output_with_stack(
+        r#"class C:
+    pass
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, type(value).__name__, value, list(value), value.start, value.stop, value.step)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+print('visible', hasattr(range, '__new__'), '__new__' in dir(range), hasattr(range(0), '__new__'), '__new__' in dir(range(0)))
+for label, call in [
+    ('missing', lambda: range.__new__()),
+    ('no-values', lambda: range.__new__(range)),
+    ('exact-stop', lambda: range.__new__(range, 4)),
+    ('exact-start-stop', lambda: range.__new__(range, 1, 5)),
+    ('exact-step', lambda: range.__new__(range, 1, 6, 2)),
+    ('instance-stop', lambda: range(0).__new__(range, 2)),
+    ('too-many', lambda: range.__new__(range, 1, 2, 3, 4)),
+    ('bad-step', lambda: range.__new__(range, 1, 3, 0)),
+    ('bad-class', lambda: range.__new__(list, 4)),
+    ('bad-user-class', lambda: range.__new__(C, 4)),
+    ('int-arg', lambda: range.__new__(1, 4)),
+    ('keyword', lambda: range.__new__(range, stop=4)),
+]:
+    show(label, call)"#,
+        &[
+            "visible True True True True",
+            "missing TypeError range.__new__(): not enough arguments ('range.__new__(): not enough arguments',)",
+            "no-values TypeError range expected at least 1 argument, got 0 ('range expected at least 1 argument, got 0',)",
+            "exact-stop range range(0, 4) [0, 1, 2, 3] 0 4 1",
+            "exact-start-stop range range(1, 5) [1, 2, 3, 4] 1 5 1",
+            "exact-step range range(1, 6, 2) [1, 3, 5] 1 6 2",
+            "instance-stop range range(0, 2) [0, 1] 0 2 1",
+            "too-many TypeError range expected at most 3 arguments, got 4 ('range expected at most 3 arguments, got 4',)",
+            "bad-step ValueError range() arg 3 must not be zero ('range() arg 3 must not be zero',)",
+            "bad-class TypeError range.__new__(list): list is not a subtype of range ('range.__new__(list): list is not a subtype of range',)",
+            "bad-user-class TypeError range.__new__(C): C is not a subtype of range ('range.__new__(C): C is not a subtype of range',)",
+            "int-arg TypeError range.__new__(X): X is not a type object (int) ('range.__new__(X): X is not a type object (int)',)",
+            "keyword TypeError range() takes no keyword arguments ('range() takes no keyword arguments',)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython grammar `break_stmt` and `continue_stmt` coverage in
 // Lib/test/test_grammar.py. These cases make jump behavior observable through
 // output instead of checking CPython's internal AST/compiler objects.

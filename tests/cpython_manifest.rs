@@ -2394,7 +2394,7 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "\"start\" => Ok(normalize_big_int(start))",
         "\"stop\" => Ok(normalize_big_int(stop))",
         "\"step\" => Ok(normalize_big_int(step))",
-        "\"range\" => &[\"count\", \"index\", \"start\", \"stop\", \"step\"]",
+        "\"range\" => &[\"__new__\", \"count\", \"index\", \"start\", \"stop\", \"step\"]",
         "fn range_attribute_assignment_error(name: &str) -> String",
         "fn is_range_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"start\" | \"stop\" | \"step\")",
@@ -2420,6 +2420,102 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("without adding range instance dictionaries"),
             "focused range public attribute evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn range_new_direct_allocation_docs_cover_core_runtime() {
+    let diff_name = "cpython_range_new_direct_allocation_diff_subset";
+    let subset_name = "cpython_range_new_direct_allocation_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "range.__new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "range.__new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "hasattr(range, '__new__')",
+        "'__new__' in dir(range)",
+        "hasattr(range(0), '__new__')",
+        "'__new__' in dir(range(0))",
+        "range.__new__()",
+        "range.__new__(range)",
+        "range.__new__(range, 4)",
+        "range.__new__(range, 1, 5)",
+        "range.__new__(range, 1, 6, 2)",
+        "range(0).__new__(range, 2)",
+        "range.__new__(range, 1, 2, 3, 4)",
+        "range.__new__(range, 1, 3, 0)",
+        "range.__new__(list, 4)",
+        "range.__new__(C, 4)",
+        "range.__new__(1, 4)",
+        "range.__new__(range, stop=4)",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "range.__new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible True True True True\"",
+        "\"missing TypeError range.__new__(): not enough arguments",
+        "\"no-values TypeError range expected at least 1 argument, got 0",
+        "\"exact-stop range range(0, 4) [0, 1, 2, 3] 0 4 1\"",
+        "\"exact-start-stop range range(1, 5) [1, 2, 3, 4] 1 5 1\"",
+        "\"exact-step range range(1, 6, 2) [1, 3, 5] 1 6 2\"",
+        "\"instance-stop range range(0, 2) [0, 1] 0 2 1\"",
+        "\"too-many TypeError range expected at most 3 arguments, got 4",
+        "\"bad-step ValueError range() arg 3 must not be zero",
+        "\"bad-class TypeError range.__new__(list): list is not a subtype of range",
+        "\"bad-user-class TypeError range.__new__(C): C is not a subtype of range",
+        "\"int-arg TypeError range.__new__(X): X is not a type object (int)",
+        "\"keyword TypeError range() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "range.__new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"range.__new__\"",
+        "fn call_range_new(",
+        "Value::Builtin(name) if name == \"range\" => self.call_range(values.to_vec())",
+        "range.__new__({}): {} is not a subtype of range",
+        "range.__new__(X): X is not a type object",
+        "message == \"range() arg 3 must not be zero\"",
+        "function_name == \"range\" && name == \"__new__\"",
+        "\"__new__\" => Ok(Value::Builtin(\"range.__new__\".to_string()))",
+        "\"range\" => &[\"__new__\", \"count\", \"index\", \"start\", \"stop\", \"step\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "range.__new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`range.__new__` direct allocation",
+            "type and instance `__new__` visibility",
+            "range constructor arity reuse",
+            "zero-step",
+            "keyword rejection",
+            "without adding range subclassing or class-base validation parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "range.__new__ docs must contain `{required}`"
+            );
+        }
     }
 }
 

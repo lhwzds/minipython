@@ -73,6 +73,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   positional iterable construction, frozenset subtype error classification, and
   frozenset `__new__` keyword handling without adding full immutable-set C-layout
   behavior.
+- Added `cpython_range_new_direct_allocation_subset` and
+  `cpython_range_new_direct_allocation_diff_subset` for `range.__new__` direct allocation,
+  type and instance `__new__` visibility, range constructor arity reuse, zero-step
+  ValueError propagation, keyword rejection, and exact range subtype error classification
+  without adding range subclassing or class-base validation parity.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
