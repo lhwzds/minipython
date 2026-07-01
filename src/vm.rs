@@ -58795,6 +58795,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ => Err(missing_type_attribute_error("set", name)),
         },
         Value::FrozenSet(items) => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("frozenset")
+                    .expect("frozenset builtin type doc exists")
+                    .to_string(),
+            )),
             "copy"
             | "difference"
             | "intersection"

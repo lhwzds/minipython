@@ -26826,6 +26826,21 @@ print('mutated', sorted(s))"#,
     );
 }
 
+// Mirrors CPython's public `frozenset` instance `__doc__` type-attribute
+// lookup without adding writable instance dictionaries.
+#[test]
+fn cpython_frozenset_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', frozenset()), ('items', frozenset([1, 2]))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == frozenset.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True Build an immutable unordered collection of unique elements. 59",
+            "items str True True Build an immutable unordered collection of unique elements. 59",
+        ],
+    );
+}
+
 // Adapted from CPython's public `frozenset` instance attribute assignment
 // errors. MiniPython keeps frozenset immutable without adding a writable
 // instance `__dict__`.

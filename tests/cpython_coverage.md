@@ -148,6 +148,10 @@ Recent runtime migration notes:
   `cpython_set_attribute_assignment_errors_diff_subset`, now pins set attribute assignment errors
   for missing attributes and read-only set method attributes (`add` /
   `update`) while preserving set mutation without adding set instance dictionaries.
+- `cpython_frozenset_instance_doc_attribute_subset`, backed by
+  `cpython_frozenset_instance_doc_attribute_diff_subset`, now pins frozenset instance `__doc__`
+  lookup for empty and populated frozensets, matching `frozenset.__doc__` and
+  `dir(value)` without adding writable instance dictionaries.
 - `cpython_frozenset_attribute_assignment_errors_subset`, backed by
   `cpython_frozenset_attribute_assignment_errors_diff_subset`, now pins frozenset attribute assignment errors
   for missing attributes and read-only frozenset method attributes (`union` /
@@ -585,6 +589,7 @@ Recent runtime migration notes:
   `cpython_complex_instance_doc_attribute_diff_subset`,
   `cpython_dict_instance_doc_attribute_diff_subset`,
   `cpython_set_instance_doc_attribute_diff_subset`,
+  `cpython_frozenset_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

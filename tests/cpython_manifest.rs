@@ -24437,6 +24437,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_complex_instance_doc_attribute_subset",
             "cpython_dict_instance_doc_attribute_subset",
             "cpython_set_instance_doc_attribute_subset",
+            "cpython_frozenset_instance_doc_attribute_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
@@ -24520,6 +24521,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_complex_instance_doc_attribute_diff_subset",
         "cpython_dict_instance_doc_attribute_diff_subset",
         "cpython_set_instance_doc_attribute_diff_subset",
+        "cpython_frozenset_instance_doc_attribute_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",
@@ -31007,6 +31009,68 @@ fn set_attribute_assignment_errors_subset_has_focused_diff_evidence() {
                 && document.contains("read-only set method attributes")
                 && document.contains("without adding set instance dictionaries"),
             "focused set attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn frozenset_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_frozenset_instance_doc_attribute_subset(",
+        "for label, value in [('empty', frozenset()), ('items', frozenset([1, 2]))]",
+        "doc = value.__doc__",
+        "doc == frozenset.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"empty str True True Build an immutable unordered collection of unique elements. 59\"",
+        "\"items str True True Build an immutable unordered collection of unique elements. 59\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "frozenset instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_frozenset_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_set.py public frozenset instance __doc__ attribute subset",
+        "name: \"frozenset-instance-doc-attribute\"",
+        "for label, value in [('empty', frozenset()), ('items', frozenset([1, 2]))]",
+        "doc = value.__doc__",
+        "doc == frozenset.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "frozenset instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::FrozenSet(items) => match name",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtins_module_type_doc(\"frozenset\")",
+        "expect(\"frozenset builtin type doc exists\")",
+        "names.extend(builtin_type_dir_names(\"frozenset\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "frozenset instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_frozenset_instance_doc_attribute_subset")
+                && document.contains("cpython_frozenset_instance_doc_attribute_diff_subset")
+                && document.contains("frozenset instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "frozenset instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }
