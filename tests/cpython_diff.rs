@@ -907,6 +907,41 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_rich_compare_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __eq__ and __ne__ wrapper metadata subset",
+        name: "json-function-rich-compare-wrapper-metadata",
+        source: r#"import json
+pairs = [('__eq__', json.loads, json.loads, json.dumps), ('__ne__', json.loads, json.loads, json.dumps)]
+for attr, function, same, different in pairs:
+    wrapper = getattr(function, attr)
+    print(attr, attr in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, other in [
+        ('self', function),
+        ('same', same),
+        ('different-function', different),
+        ('non-function', 1),
+    ]:
+        value = wrapper(other)
+        print(attr, label, value, value is NotImplemented, type(value).__name__)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(function, 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(value=function)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(attr, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __getattribute__ wrapper metadata subset",

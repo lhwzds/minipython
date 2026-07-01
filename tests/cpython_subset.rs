@@ -37783,6 +37783,61 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_rich_compare_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+pairs = [('__eq__', json.loads, json.loads, json.dumps), ('__ne__', json.loads, json.loads, json.dumps)]
+for attr, function, same, different in pairs:
+    wrapper = getattr(function, attr)
+    print(attr, attr in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, other in [
+        ('self', function),
+        ('same', same),
+        ('different-function', different),
+        ('non-function', 1),
+    ]:
+        value = wrapper(other)
+        print(attr, label, value, value is NotImplemented, type(value).__name__)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(function, 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(value=function)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "__eq__ True method-wrapper method-wrapper",
+            "__eq__ True __eq__ object.__eq__ Return self==value. MISSING ($self, value, /)",
+            "__eq__ self True False bool",
+            "__eq__ same True False bool",
+            "__eq__ different-function NotImplemented True NotImplementedType",
+            "__eq__ non-function NotImplemented True NotImplementedType",
+            "__eq__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__eq__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__eq__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__eq__ keyword TypeError wrapper __eq__() takes no keyword arguments ('wrapper __eq__() takes no keyword arguments',)",
+            "__ne__ True method-wrapper method-wrapper",
+            "__ne__ True __ne__ object.__ne__ Return self!=value. MISSING ($self, value, /)",
+            "__ne__ self False False bool",
+            "__ne__ same False False bool",
+            "__ne__ different-function NotImplemented True NotImplementedType",
+            "__ne__ non-function NotImplemented True NotImplementedType",
+            "__ne__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__ne__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__ne__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__ne__ keyword TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_subset() {
     assert_output(
         r#"import json

@@ -8728,6 +8728,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
+            "cpython_json_function_rich_compare_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -8867,6 +8868,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_call_wrapper_metadata_diff_subset",
         "cpython_json_function_format_wrapper_metadata_diff_subset",
         "cpython_json_function_hash_wrapper_metadata_diff_subset",
+        "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -9056,6 +9058,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_hash_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_hash_wrapper_metadata_subset",
+    );
+    let json_function_rich_compare_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
+    );
+    let json_function_rich_compare_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_rich_compare_wrapper_metadata_subset",
     );
     let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9753,6 +9763,76 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __hash__ wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "('__eq__', json.loads, json.loads, json.dumps)",
+        "('__ne__', json.loads, json.loads, json.dumps)",
+        "attr in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is function",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "value is NotImplemented",
+        "type(value).__name__",
+        "wrapper.__module__",
+        "except AttributeError as error",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper: wrapper(function, 1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(value=function))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_rich_compare_wrapper_diff_body.contains(required)
+                && json_function_rich_compare_wrapper_subset_body.contains(required),
+            "json public function rich-compare wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"__eq__ True method-wrapper method-wrapper\"",
+        "\"__eq__ True __eq__ object.__eq__ Return self==value. MISSING ($self, value, /)\"",
+        "\"__eq__ self True False bool\"",
+        "\"__eq__ different-function NotImplemented True NotImplementedType\"",
+        "\"__eq__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__eq__ missing TypeError expected 1 argument, got 0",
+        "\"__eq__ extra TypeError expected 1 argument, got 2",
+        "\"__eq__ keyword TypeError wrapper __eq__() takes no keyword arguments",
+        "\"__ne__ True method-wrapper method-wrapper\"",
+        "\"__ne__ True __ne__ object.__ne__ Return self!=value. MISSING ($self, value, /)\"",
+        "\"__ne__ self False False bool\"",
+        "\"__ne__ different-function NotImplemented True NotImplementedType\"",
+        "\"__ne__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__ne__ missing TypeError expected 1 argument, got 0",
+        "\"__ne__ extra TypeError expected 1 argument, got 2",
+        "\"__ne__ keyword TypeError wrapper __ne__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_rich_compare_wrapper_subset_body.contains(required),
+            "json public function rich-compare wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_rich_compare(",
+        "json.function.__eq__",
+        "json.function.__ne__",
+        "wrapper {method}() takes no keyword arguments",
+        "expected 1 argument, got {}",
+        "is_identical(receiver, other)",
+        "Ok(Value::Bool(method == \"__eq__\"))",
+        "json_function_rich_compare_wrapper_name",
+        "json_function_method_wrapper_missing_module_name",
+        "object.{}",
+        "Return self==value.",
+        "Return self!=value.",
+        "($self, value, /)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function rich-compare wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11124,6 +11204,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>")
             && VM_SOURCE.contains("\"__get__\",")
             && VM_SOURCE.contains("\"__call__\",")
+            && VM_SOURCE.contains("\"__eq__\",")
+            && VM_SOURCE.contains("\"__ne__\",")
             && VM_SOURCE.contains("\"__getattribute__\",")
             && VM_SOURCE.contains("\"__hash__\",")
             && VM_SOURCE.contains("\"__repr__\",")
@@ -11370,6 +11452,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_format_wrapper_metadata_diff_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
             "cpython_json_function_hash_wrapper_metadata_diff_subset",
+            "cpython_json_function_rich_compare_wrapper_metadata_subset",
+            "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
