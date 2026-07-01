@@ -10009,6 +10009,9 @@ impl Vm {
             {
                 self.call_json_function_repr_str(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__call__" => {
+                self.call_json_function_call(args, keywords)
+            }
             Value::Builtin(name) if name == "json.function.__getattribute__" => {
                 self.call_json_function_getattribute(args, keywords)
             }
@@ -17498,6 +17501,24 @@ impl Vm {
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_json_function_call(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
     }
 
     fn call_json_function_getattribute(
@@ -50227,6 +50248,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__annotate__",
         "__annotations__",
         "__builtins__",
+        "__call__",
         "__class__",
         "__closure__",
         "__defaults__",
@@ -60968,6 +60990,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
+        Value::Builtin(function_name) if name == "__call__" && is_json_builtin(&function_name) => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("json.function.__call__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name)
             if name == "__getattribute__" && is_json_builtin(&function_name) =>
         {
@@ -61155,6 +61184,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(
                 "Built-in function in the MiniPython sandbox.".to_string(),
             ))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "json.function.__call__" =>
+        {
+            Ok(Value::String("function.__call__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__call__" =>
+        {
+            Ok(Value::String("Call self as a function.".to_string()))
         }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_name_value(&function_name))
@@ -62971,6 +63010,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
         "method.__repr__"
             | "method.__str__"
             | "method.__getattribute__"
+            | "json.function.__call__"
             | "json.function.__repr__"
             | "json.function.__str__"
             | "json.function.__getattribute__"

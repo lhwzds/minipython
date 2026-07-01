@@ -8723,6 +8723,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
+            "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -8849,6 +8850,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_name_qualname_identity_metadata_diff_subset",
         "cpython_json_function_type_class_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
+        "cpython_json_function_call_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -8990,6 +8992,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_repr_str_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_repr_str_wrapper_metadata_subset",
+    );
+    let json_function_call_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_call_wrapper_metadata_diff_subset",
+    );
+    let json_function_call_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_call_wrapper_metadata_subset",
     );
     let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9387,6 +9397,52 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "function.__call__",
+        "'__call__' in dir(function)",
+        "type(caller).__name__",
+        "caller.__class__.__name__",
+        "positional = caller('{\"a\": 1}') if name == 'loads' else caller({'a': 1})",
+        "keyword = caller(s='{\"b\": 2}') if name == 'loads' else caller(obj={'b': 2})",
+        "caller.__self__ is function",
+        "caller.__name__",
+        "caller.__qualname__",
+        "bool(caller.__doc__)",
+        "type(caller.__repr__).__name__",
+        "caller.__repr__().__class__.__name__",
+        "caller.__str__() == caller.__repr__()",
+        "('missing-arg', lambda caller=caller: caller())",
+        "('repr-extra', lambda caller=caller: caller.__repr__(1))",
+        "('repr-keyword', lambda caller=caller: caller.__repr__(x=1))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_call_wrapper_diff_body.contains(required)
+                && json_function_call_wrapper_subset_body.contains(required),
+            "json public function __call__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True method-wrapper method-wrapper\"",
+        "\"loads {'a': 1} {'b': 2}\"",
+        "\"loads True __call__ function.__call__ True\"",
+        "\"loads method-wrapper str True\"",
+        "\"loads missing-arg TypeError loads() missing 1 required positional argument: 's'",
+        "\"loads repr-extra TypeError expected 0 arguments, got 1",
+        "\"loads repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+        "\"dumps True method-wrapper method-wrapper\"",
+        "\"dumps {\\\"a\\\": 1} {\\\"b\\\": 2}\"",
+        "\"dumps True __call__ function.__call__ True\"",
+        "\"dumps method-wrapper str True\"",
+        "\"dumps missing-arg TypeError dumps() missing 1 required positional argument: 'obj'",
+        "\"dumps repr-extra TypeError expected 0 arguments, got 1",
+        "\"dumps repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_call_wrapper_subset_body.contains(required),
+            "json public function __call__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "function.__getattribute__",
         "'__getattribute__' in dir(function)",
         "type(getter).__name__",
@@ -9683,6 +9739,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "supported = ['__annotate__'",
+        "'__call__'",
         "'__getattribute__'",
         "'__repr__'",
         "'__str__'",
@@ -9700,10 +9757,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
+        "\"loads True ['__annotate__', '__annotations__', '__builtins__', '__call__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
         "\"loads True True\"",
         "\"loads False False\"",
-        "\"dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
+        "\"dumps True ['__annotate__', '__annotations__', '__builtins__', '__call__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
         "\"dumps True True\"",
         "\"dumps False False\"",
     ] {
@@ -10289,6 +10346,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("names.extend(json_builtin_function_dir_names())")
             && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>")
             && VM_SOURCE.contains("\"__get__\",")
+            && VM_SOURCE.contains("\"__call__\",")
             && VM_SOURCE.contains("\"__getattribute__\",")
             && VM_SOURCE.contains("\"__repr__\",")
             && VM_SOURCE.contains("\"__str__\","),
@@ -10312,6 +10370,18 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VALUE_SOURCE.contains("\"<function {name} at 0x0>\"")
             && VALUE_SOURCE.contains("json_builtin_function_repr(name).is_some()"),
         "VM must expose CPython-compatible json public function repr / str wrappers"
+    );
+    assert!(
+        VM_SOURCE.contains("fn call_json_function_call(")
+            && VM_SOURCE.contains("name == \"json.function.__call__\"")
+            && VM_SOURCE.contains("self.call_json_function_call(args, keywords)")
+            && VM_SOURCE.contains("name == \"__call__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Value::Builtin(\"json.function.__call__\".to_string())")
+            && VM_SOURCE.contains("function_name == \"json.function.__call__\"")
+            && VM_SOURCE.contains("function.__call__")
+            && VM_SOURCE.contains("Call self as a function.")
+            && VM_SOURCE.contains("descriptor method wrapper requires a function object"),
+        "VM must expose CPython-compatible json public function __call__ wrapper"
     );
     assert!(
         VM_SOURCE.contains("fn call_json_function_getattribute(")
@@ -10473,6 +10543,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_type_class_metadata_diff_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
+            "cpython_json_function_call_wrapper_metadata_subset",
+            "cpython_json_function_call_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
@@ -10541,6 +10613,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__name__` / `__qualname__` identity",
             "json public function type / `__class__` metadata",
             "json public function repr / str wrapper metadata",
+            "json public function `__call__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",

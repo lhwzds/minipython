@@ -1049,6 +1049,7 @@ Recent runtime migration notes:
   `cpython_json_function_name_qualname_identity_metadata_diff_subset`,
   `cpython_json_function_type_class_metadata_diff_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
+  `cpython_json_function_call_wrapper_metadata_diff_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
@@ -1710,6 +1711,8 @@ Recent runtime migration notes:
   `cpython_json_function_type_class_metadata_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset` /
   `cpython_json_function_repr_str_wrapper_metadata_subset`,
+  `cpython_json_function_call_wrapper_metadata_diff_subset` /
+  `cpython_json_function_call_wrapper_metadata_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset` /
   `cpython_json_function_getattribute_wrapper_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
@@ -2406,6 +2409,14 @@ aligned with CPython for `loads` / `dumps`, including `repr()`, `str()`,
 `__repr__` / `__str__` wrapper visibility, `method-wrapper` type shape, and
 wrapper argument error text, without adding function `__code__`, file APIs,
 module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_call_wrapper_metadata_subset`, backed by
+`cpython_json_function_call_wrapper_metadata_diff_subset`, keeps json public function `__call__` wrapper metadata
+aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
+`method-wrapper` type shape, `__self__` / `__name__` / `__qualname__` /
+`__doc__` metadata, positional and keyword forwarding, and wrapper repr arity /
+keyword error text, without adding function `__code__`, file APIs, module
+`__all__`, or encoder/decoder classes.
 
 `cpython_json_function_getattribute_wrapper_metadata_subset`, backed by
 `cpython_json_function_getattribute_wrapper_metadata_diff_subset`, keeps json public function `__getattribute__` wrapper metadata
