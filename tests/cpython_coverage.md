@@ -118,6 +118,10 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_attribute_assignment_errors_diff_subset`, now pins mappingproxy attribute assignment errors
   for missing attributes and read-only mappingproxy method attributes (`keys`)
   without adding mappingproxy instance dictionaries.
+- `cpython_collections_deque_attribute_assignment_errors_subset`, backed by
+  `cpython_collections_deque_attribute_assignment_errors_diff_subset`, now pins deque attribute assignment errors
+  for missing attributes, read-only deque data attributes (`maxlen`), and
+  read-only deque method attributes (`append` / `clear`) without adding deque instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
@@ -411,6 +415,12 @@ Recent runtime migration notes:
   thread-safety stress, and unported ABC edge matrices also remain outside
   `collections` / `collections.abc` until separately promoted with direct
   public-behavior evidence.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_deque_attribute_assignment_errors_subset`, backed by
+  `cpython_collections_deque_attribute_assignment_errors_diff_subset`, covering
+  deque attribute assignment errors for missing attributes, read-only deque
+  data attributes, and read-only deque method attributes without adding deque
+  instance dictionaries.
 - `cpython_collections_deque_error_messages_subset` and
   `cpython_collections_deque_error_messages_diff_subset` pin the public
   deque `maxlen` integer acceptance and rejection boundary plus
@@ -679,6 +689,7 @@ Recent runtime migration notes:
   `cpython_collections_defaultdict_missing_descriptor_diff_subset`,
   `cpython_collections_defaultdict_format_error_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
+  `cpython_collections_deque_attribute_assignment_errors_diff_subset`,
   `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
   `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`,

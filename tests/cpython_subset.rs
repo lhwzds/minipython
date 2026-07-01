@@ -55653,6 +55653,39 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
     );
 }
 
+// Adapted from CPython's public `deque` instance attribute assignment errors.
+// MiniPython keeps deque objects pure-memory and does not add writable
+// instance dictionaries.
+#[test]
+fn cpython_collections_deque_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"from collections import deque
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+d = deque([1, 2], maxlen=3)
+for name in ['extra', 'maxlen', 'append', 'clear']:
+    show('set-' + name, lambda name=name: setattr(d, name, 99))
+    show('del-' + name, lambda name=name: delattr(d, name))
+print('read', type(d).__name__, d.maxlen, list(d))"#,
+        &[
+            "set-extra AttributeError 'collections.deque' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'collections.deque' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-maxlen AttributeError attribute 'maxlen' of 'collections.deque' objects is not writable",
+            "del-maxlen AttributeError attribute 'maxlen' of 'collections.deque' objects is not writable",
+            "set-append AttributeError 'collections.deque' object attribute 'append' is read-only",
+            "del-append AttributeError 'collections.deque' object attribute 'append' is read-only",
+            "set-clear AttributeError 'collections.deque' object attribute 'clear' is read-only",
+            "del-clear AttributeError 'collections.deque' object attribute 'clear' is read-only",
+            "read deque 3 [1, 2]",
+        ],
+    );
+}
+
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
 // append/extend/insert/remove/pop operations, simple queries/reordering,

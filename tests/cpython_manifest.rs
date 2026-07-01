@@ -17730,6 +17730,79 @@ fn runtime_newer_oracle_diff_evidence_stays_capability_gated() {
 }
 
 #[test]
+fn collections_deque_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_deque_attribute_assignment_errors_subset",
+    );
+    for required in [
+        "d = deque([1, 2], maxlen=3)",
+        "setattr(d, name, 99)",
+        "delattr(d, name)",
+        "['extra', 'maxlen', 'append', 'clear']",
+        "\"set-extra AttributeError 'collections.deque' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-maxlen AttributeError attribute 'maxlen' of 'collections.deque' objects is not writable\"",
+        "\"set-append AttributeError 'collections.deque' object attribute 'append' is read-only\"",
+        "\"del-clear AttributeError 'collections.deque' object attribute 'clear' is read-only\"",
+        "\"read deque 3 [1, 2]\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections deque attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_deque_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py deque public instance attribute assignment errors subset",
+        "name: \"collections-deque-attribute-assignment-errors\"",
+        "d = deque([1, 2], maxlen=3)",
+        "setattr(d, name, 99)",
+        "delattr(d, name)",
+        "['extra', 'maxlen', 'append', 'clear']",
+        "type(d).__name__",
+        "list(d)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections deque attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Deque { .. } => Err(deque_attribute_assignment_error(name))",
+        "fn deque_attribute_assignment_error(name: &str) -> String",
+        "fn is_deque_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"deque\")",
+        "attribute 'maxlen' of 'collections.deque' objects is not writable",
+        "'collections.deque' object attribute '{name}' is read-only",
+        "'collections.deque' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "collections deque attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_deque_attribute_assignment_errors_subset")
+                && document
+                    .contains("cpython_collections_deque_attribute_assignment_errors_diff_subset")
+                && document.contains("deque attribute assignment errors")
+                && document.contains("read-only deque data attributes")
+                && document.contains("read-only deque method attributes")
+                && document.contains("without adding deque instance dictionaries"),
+            "collections deque attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn collections_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "collections / collections.abc",
@@ -17794,6 +17867,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_defaultdict_missing_descriptor_subset",
             "cpython_collections_defaultdict_format_error_subset",
             "cpython_collections_deque_public_surface_subset",
+            "cpython_collections_deque_attribute_assignment_errors_subset",
             "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
             "cpython_collections_chainmap_iter_does_not_call_getitem_subset",
@@ -17873,8 +17947,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_deque_public_surface_diff_subset")
             && row
                 .diff_evidence
+                .contains("cpython_collections_deque_attribute_assignment_errors_diff_subset")
+            && row
+                .diff_evidence
                 .contains("cpython_collections_deque_mutating_eq_diff_subset"),
-        "collections sandbox manifest must cite CPython diff evidence for deque public surface and mutating-eq behavior"
+        "collections sandbox manifest must cite CPython diff evidence for deque public surface, attribute assignment errors, and mutating-eq behavior"
     );
     let deque_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,

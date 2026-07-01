@@ -6453,6 +6453,27 @@ print(operator.truth([]), operator.is_(None, None), operator.contains([1, 2], 2)
 }
 
 #[test]
+fn cpython_collections_deque_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py deque public instance attribute assignment errors subset",
+        name: "collections-deque-attribute-assignment-errors",
+        source: r#"from collections import deque
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+d = deque([1, 2], maxlen=3)
+for name in ['extra', 'maxlen', 'append', 'clear']:
+    show('set-' + name, lambda name=name: setattr(d, name, 99))
+    show('del-' + name, lambda name=name: delattr(d, name))
+print('read', type(d).__name__, d.maxlen, list(d))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_deque_public_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py deque public pure-memory subset",

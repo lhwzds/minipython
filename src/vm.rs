@@ -61651,11 +61651,20 @@ fn deque_attribute_assignment_error(name: &str) -> String {
     if name == "maxlen" {
         "AttributeError: attribute 'maxlen' of 'collections.deque' objects is not writable"
             .to_string()
+    } else if is_deque_readonly_instance_attribute(name) {
+        format!("AttributeError: 'collections.deque' object attribute '{name}' is read-only")
     } else {
         format!(
             "AttributeError: 'collections.deque' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn is_deque_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("deque")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn default_dict_attribute_assignment_error(name: &str) -> String {
