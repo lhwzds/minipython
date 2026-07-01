@@ -27867,6 +27867,57 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public `super.__getattribute__` slot wrapper without
+// promoting unrelated super slot wrappers.
+#[test]
+fn cpython_super_getattribute_wrapper_descriptor_subset() {
+    assert_output(
+        r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+c = Child()
+s = c.make()
+descriptor = super.__getattribute__
+mp = super.__dict__
+print('descriptor', type(descriptor).__name__, repr(descriptor), '__getattribute__' in dir(super), '__getattribute__' in mp, mp['__getattribute__'] is descriptor)
+print('descriptor-class', descriptor.__class__.__name__)
+print('meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__, descriptor.__text_signature__)
+for attr in ['__thisclass__', '__self__', '__self_class__', '__class__']:
+    value = descriptor(s, attr)
+    print('get', attr, type(value).__name__, value is getattr(s, attr), value is Child, value is c, value is type(c), value is super)
+for label, expr in [
+    ('noargs', lambda: descriptor()),
+    ('missing-name', lambda: descriptor(s)),
+    ('extra', lambda: descriptor(s, '__self__', 1)),
+    ('kw', lambda: descriptor(s, '__self__', x=1)),
+    ('wrong', lambda: descriptor({} , '__self__')),
+    ('non-string', lambda: descriptor(s, 1)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "descriptor wrapper_descriptor <slot wrapper '__getattribute__' of 'super' objects> True True True",
+            "descriptor-class wrapper_descriptor",
+            "meta __getattribute__ super.__getattribute__ True Return getattr(self, name). ($self, name, /)",
+            "get __thisclass__ type True True False True False",
+            "get __self__ Child True False True False False",
+            "get __self_class__ type True True False True False",
+            "get __class__ type True False False False True",
+            "noargs TypeError descriptor '__getattribute__' of 'super' object needs an argument",
+            "missing-name TypeError expected 1 argument, got 0",
+            "extra TypeError expected 1 argument, got 2",
+            "kw TypeError wrapper __getattribute__() takes no keyword arguments",
+            "wrong TypeError descriptor '__getattribute__' requires a 'super' object but received a 'dict'",
+            "non-string TypeError attribute name must be string, not 'int'",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
 // MiniPython checks the BaseException args/display/repr subset needed by
 // migrated exception behavior tests.

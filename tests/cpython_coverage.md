@@ -156,6 +156,12 @@ Recent runtime migration notes:
   calls, `repr(super(...))` for unbound, `None`, instance, class, builtin, and type-object
   receivers, plus no-arg, extra-arg, keyword, and wrong-receiver errors without promoting
   the rest of super's type-level slot surface.
+- `cpython_super_getattribute_wrapper_descriptor_subset`, backed by
+  `cpython_super_getattribute_wrapper_descriptor_diff_subset`, now pins the super getattribute wrapper descriptor,
+  including `dir(super)`, `super.__dict__`, descriptor metadata, direct
+  `super.__getattribute__()` access for supported super attributes, and no-receiver,
+  missing-name, extra-arg, keyword, wrong-receiver, and non-string-name errors without
+  promoting unrelated super slot wrappers.
 - `cpython_complex_public_attributes_subset`, backed by
   `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and
@@ -537,6 +543,7 @@ Recent runtime migration notes:
   `cpython_super_object_dir_supported_attributes_diff_subset`,
   `cpython_super_type_public_descriptors_diff_subset`,
   `cpython_super_repr_wrapper_descriptor_diff_subset`,
+  `cpython_super_getattribute_wrapper_descriptor_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_object_constructor_argument_error_diff_subset`,

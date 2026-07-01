@@ -2529,6 +2529,7 @@ fn super_wrapper_descriptor_method_name(name: &str) -> Option<&str> {
     match name {
         "super.__get__" => Some("__get__"),
         "super.__repr__" => Some("__repr__"),
+        "super.__getattribute__" => Some("__getattribute__"),
         _ => None,
     }
 }

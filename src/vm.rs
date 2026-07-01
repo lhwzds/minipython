@@ -9986,6 +9986,9 @@ impl Vm {
             Value::Builtin(name) if name == "super.__repr__" => {
                 self.call_super_repr(args, keywords)
             }
+            Value::Builtin(name) if name == "super.__getattribute__" => {
+                self.call_super_getattribute(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__get__" => {
                 self.call_method_get(args, keywords)
             }
@@ -17363,6 +17366,39 @@ impl Vm {
         Ok(Value::String(super_repr_value(class, object)))
     }
 
+    fn call_super_getattribute(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__getattribute__' of 'super' object needs an argument"
+                    .to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Super { .. }) {
+            return Err(format!(
+                "TypeError: descriptor '__getattribute__' requires a 'super' object but received a '{}'",
+                type_name(receiver)
+            ));
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+
+        let name = attribute_name_arg(name)?;
+        self.load_attribute_without_custom_getattribute(receiver.clone(), &name)
+    }
+
     fn call_method_get(
         &mut self,
         args: Vec<Value>,
@@ -17434,6 +17470,9 @@ impl Vm {
         identity: Rc<()>,
         name: &str,
     ) -> Result<Value, String> {
+        if name == "__class__" {
+            return Ok(Value::Builtin("super".to_string()));
+        }
         if name == "__thisclass__" {
             return Ok(class);
         }
@@ -50593,6 +50632,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "slice" => &["indices", "start", "stop", "step"],
         "super" => &[
             "__get__",
+            "__getattribute__",
             "__repr__",
             "__self__",
             "__self_class__",
@@ -51043,7 +51083,7 @@ fn is_super_member_descriptor_name(name: &str) -> bool {
 }
 
 fn super_wrapper_descriptor_names() -> &'static [&'static str] {
-    &["__get__", "__repr__"]
+    &["__get__", "__repr__", "__getattribute__"]
 }
 
 fn is_super_wrapper_descriptor_name(name: &str) -> bool {
@@ -51063,6 +51103,7 @@ fn super_wrapper_descriptor_doc(name: &str) -> &'static str {
     match name {
         "__get__" => "Return an attribute of instance, which is of type owner.",
         "__repr__" => "Return repr(self).",
+        "__getattribute__" => "Return getattr(self, name).",
         _ => unreachable!("guard checked super wrapper descriptor name"),
     }
 }
@@ -51071,6 +51112,7 @@ fn super_wrapper_descriptor_text_signature(name: &str) -> &'static str {
     match name {
         "__get__" => "($self, instance, owner=None, /)",
         "__repr__" => "($self, /)",
+        "__getattribute__" => "($self, name, /)",
         _ => unreachable!("guard checked super wrapper descriptor name"),
     }
 }

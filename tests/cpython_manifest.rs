@@ -24191,6 +24191,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_super_object_dir_supported_attributes_subset",
             "cpython_super_type_public_descriptors_subset",
             "cpython_super_repr_wrapper_descriptor_subset",
+            "cpython_super_getattribute_wrapper_descriptor_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_object_constructor_argument_error_subset",
@@ -24260,6 +24261,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_super_object_dir_supported_attributes_diff_subset",
         "cpython_super_type_public_descriptors_diff_subset",
         "cpython_super_repr_wrapper_descriptor_diff_subset",
+        "cpython_super_getattribute_wrapper_descriptor_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_object_constructor_argument_error_diff_subset",
@@ -26267,7 +26269,7 @@ fn super_type_public_descriptors_subset_has_focused_diff_evidence() {
         "owner_name == \"super\" && is_super_member_descriptor_name(&name)",
         "is_super_wrapper_descriptor_builtin(&function_name)",
         "fn super_wrapper_descriptor_names() -> &'static [&'static str]",
-        "&[\"__get__\", \"__repr__\"]",
+        "&[\"__get__\", \"__repr__\", \"__getattribute__\"]",
         "\"super\" => is_super_wrapper_descriptor_name(method)",
     ] {
         assert!(
@@ -26378,6 +26380,88 @@ fn super_repr_wrapper_descriptor_subset_has_focused_diff_evidence() {
                 && document.contains("super repr wrapper descriptor")
                 && document.contains("type-level slot surface"),
             "super repr wrapper descriptor evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn super_getattribute_wrapper_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_super_getattribute_wrapper_descriptor_subset(",
+        "descriptor = super.__getattribute__",
+        "mp = super.__dict__",
+        "'__getattribute__' in dir(super)",
+        "descriptor.__text_signature__",
+        "descriptor(s, attr)",
+        "value is getattr(s, attr)",
+        "descriptor(s, '__self__', 1)",
+        "descriptor(s, '__self__', x=1)",
+        "descriptor({} , '__self__')",
+        "descriptor(s, 1)",
+        "descriptor wrapper_descriptor <slot wrapper '__getattribute__' of 'super' objects> True True True",
+        "meta __getattribute__ super.__getattribute__ True Return getattr(self, name). ($self, name, /)",
+        "get __self__ Child True False True False False",
+        "wrong TypeError descriptor '__getattribute__' requires a 'super' object but received a 'dict'",
+        "promoting unrelated super slot wrappers",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super getattribute wrapper descriptor subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_super_getattribute_wrapper_descriptor_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_super.py public super getattribute wrapper descriptor",
+        "name: \"super-getattribute-wrapper-descriptor\"",
+        "descriptor = super.__getattribute__",
+        "mp = super.__dict__",
+        "for attr in ['__thisclass__', '__self__', '__self_class__', '__class__']",
+        "descriptor(s, '__self__', x=1)",
+        "descriptor({} , '__self__')",
+        "descriptor(s, 1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "super getattribute wrapper descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"super.__getattribute__\"",
+        "fn call_super_getattribute(",
+        "self.load_attribute_without_custom_getattribute(receiver.clone(), &name)",
+        "return Ok(Value::Builtin(\"super\".to_string()))",
+        "\"__getattribute__\" => \"Return getattr(self, name).\"",
+        "\"__getattribute__\" => \"($self, name, /)\"",
+        "\"__getattribute__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super getattribute wrapper descriptor implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "\"super.__getattribute__\" => Some(\"__getattribute__\")",
+        "<slot wrapper '{method}' of 'super' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "super getattribute wrapper descriptor display must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_super_getattribute_wrapper_descriptor_subset")
+                && document.contains("cpython_super_getattribute_wrapper_descriptor_diff_subset")
+                && document.contains("super getattribute wrapper descriptor")
+                && document.contains("unrelated super slot wrappers"),
+            "super getattribute wrapper descriptor evidence must be documented in coverage and migration notes"
         );
     }
 }

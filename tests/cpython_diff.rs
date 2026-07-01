@@ -11212,6 +11212,42 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_super_getattribute_wrapper_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_super.py public super getattribute wrapper descriptor",
+        name: "super-getattribute-wrapper-descriptor",
+        source: r#"class Base:
+    pass
+class Child(Base):
+    def make(self):
+        return super()
+
+c = Child()
+s = c.make()
+descriptor = super.__getattribute__
+mp = super.__dict__
+print('descriptor', type(descriptor).__name__, repr(descriptor), '__getattribute__' in dir(super), '__getattribute__' in mp, mp['__getattribute__'] is descriptor)
+print('descriptor-class', descriptor.__class__.__name__)
+print('meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__, descriptor.__text_signature__)
+for attr in ['__thisclass__', '__self__', '__self_class__', '__class__']:
+    value = descriptor(s, attr)
+    print('get', attr, type(value).__name__, value is getattr(s, attr), value is Child, value is c, value is type(c), value is super)
+for label, expr in [
+    ('noargs', lambda: descriptor()),
+    ('missing-name', lambda: descriptor(s)),
+    ('extra', lambda: descriptor(s, '__self__', 1)),
+    ('kw', lambda: descriptor(s, '__self__', x=1)),
+    ('wrong', lambda: descriptor({} , '__self__')),
+    ('non-string', lambda: descriptor(s, 1)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",
