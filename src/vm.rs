@@ -58036,6 +58036,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }),
         Value::ByteArray(_) => Err(missing_type_attribute_error("bytearray", name)),
         Value::MemoryView(view) => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("memoryview")
+                    .expect("memoryview builtin type doc exists")
+                    .to_string(),
+            )),
             "format" => Ok(Value::String(memoryview_format(&view)?)),
             "itemsize" => Ok(Value::Number(
                 i64::try_from(memoryview_itemsize(&view)?).unwrap_or(i64::MAX),

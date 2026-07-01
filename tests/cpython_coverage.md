@@ -156,6 +156,10 @@ Recent runtime migration notes:
   `cpython_frozenset_attribute_assignment_errors_diff_subset`, now pins frozenset attribute assignment errors
   for missing attributes and read-only frozenset method attributes (`union` /
   `copy`) without adding frozenset instance dictionaries.
+- `cpython_memoryview_instance_doc_attribute_subset`, backed by
+  `cpython_memoryview_instance_doc_attribute_diff_subset`, now pins memoryview instance `__doc__`
+  lookup for bytes, bytearray, and empty views, matching `memoryview.__doc__`
+  and `dir(value)` without adding writable instance dictionaries.
 - `cpython_memoryview_attribute_assignment_errors_subset`, backed by
   `cpython_memoryview_attribute_assignment_errors_diff_subset`, now pins memoryview attribute assignment errors
   for missing attributes, read-only memoryview data attributes (`format` /
@@ -590,6 +594,7 @@ Recent runtime migration notes:
   `cpython_dict_instance_doc_attribute_diff_subset`,
   `cpython_set_instance_doc_attribute_diff_subset`,
   `cpython_frozenset_instance_doc_attribute_diff_subset`,
+  `cpython_memoryview_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

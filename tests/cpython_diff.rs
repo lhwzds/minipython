@@ -11681,6 +11681,17 @@ print('read', sorted(s), s.union({3}), s.copy() is s)"#,
 }
 
 #[test]
+fn cpython_memoryview_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py public memoryview instance __doc__ attribute subset",
+        name: "memoryview-instance-doc-attribute",
+        source: r#"for label, value in [('bytes', memoryview(b'ab')), ('bytearray', memoryview(bytearray(b'ab'))), ('empty', memoryview(b''))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == memoryview.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py public memoryview instance attribute assignment errors subset",

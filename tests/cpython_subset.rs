@@ -26871,6 +26871,22 @@ print('read', sorted(s), s.union({3}), s.copy() is s)"#,
     );
 }
 
+// Mirrors CPython's public `memoryview` instance `__doc__` type-attribute
+// lookup without adding writable instance dictionaries.
+#[test]
+fn cpython_memoryview_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('bytes', memoryview(b'ab')), ('bytearray', memoryview(bytearray(b'ab'))), ('empty', memoryview(b''))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == memoryview.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "bytes str True True Create a new memoryview object which references the given object. 65",
+            "bytearray str True True Create a new memoryview object which references the given object. 65",
+            "empty str True True Create a new memoryview object which references the given object. 65",
+        ],
+    );
+}
+
 // Adapted from CPython's public `memoryview` instance attribute assignment
 // errors. MiniPython keeps memoryview views pure-memory and does not add a
 // writable instance `__dict__`.
