@@ -33099,7 +33099,8 @@ for value in [0j, 3 + 4j, complex(-1.5, 2.25)]:
     print('attrs', value.real, value.imag, repr(value))
 
 z = 3 + 4j
-for name in ['real', 'imag']:
+print('visible', 'conjugate' in dir(z))
+for name in ['real', 'imag', 'conjugate']:
     show('set-' + name, lambda name=name: setattr(z, name, 99))
     show('del-' + name, lambda name=name: delattr(z, name))
 show('set-extra', lambda: setattr(z, 'extra', 99))

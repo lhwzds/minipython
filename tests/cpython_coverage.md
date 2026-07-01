@@ -135,7 +135,8 @@ Recent runtime migration notes:
 - `cpython_complex_public_attributes_subset`, backed by
   `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and
-  signed-component complex values, plus CPython's readonly and no-`__dict__`
+  signed-component complex values, CPython's read-only complex method attributes
+  such as `conjugate`, plus readonly and no-`__dict__`
   assignment/deletion errors without adding complex instance dictionaries.
 - `cpython_float_public_attributes_subset`, backed by
   `cpython_float_public_attributes_diff_subset`, now pins `float.real` and

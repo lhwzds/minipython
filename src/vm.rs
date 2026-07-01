@@ -61620,11 +61620,20 @@ fn is_mappingproxy_readonly_instance_attribute(name: &str) -> bool {
 fn complex_attribute_assignment_error(name: &str) -> String {
     if matches!(name, "real" | "imag") {
         "AttributeError: readonly attribute".to_string()
+    } else if is_complex_readonly_instance_attribute(name) {
+        format!("AttributeError: 'complex' object attribute '{name}' is read-only")
     } else {
         format!(
             "AttributeError: 'complex' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn is_complex_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("complex")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn range_attribute_assignment_error(name: &str) -> String {

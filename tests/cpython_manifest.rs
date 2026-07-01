@@ -3393,6 +3393,7 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
         "3 + 4j",
         "complex(-1.5, 2.25)",
         "value.real, value.imag",
+        "'conjugate' in dir(z)",
         "setattr(z, name, 99)",
         "delattr(z, name)",
         "setattr(z, 'extra', 99)",
@@ -3400,8 +3401,11 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
         "\"attrs 0.0 0.0 0j\"",
         "\"attrs 3.0 4.0 (3+4j)\"",
         "\"attrs -1.5 2.25 (-1.5+2.25j)\"",
+        "\"visible True\"",
         "\"set-real AttributeError readonly attribute\"",
         "\"del-imag AttributeError readonly attribute\"",
+        "\"set-conjugate AttributeError 'complex' object attribute 'conjugate' is read-only\"",
+        "\"del-conjugate AttributeError 'complex' object attribute 'conjugate' is read-only\"",
         "\"set-extra AttributeError 'complex' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
     ] {
         assert!(
@@ -3421,6 +3425,7 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
         "3 + 4j",
         "complex(-1.5, 2.25)",
         "value.real, value.imag",
+        "'conjugate' in dir(z)",
         "setattr(z, name, 99)",
         "delattr(z, name)",
         "setattr(z, 'extra', 99)",
@@ -3435,8 +3440,11 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "Value::Complex { .. } => Err(complex_attribute_assignment_error(name))",
         "fn complex_attribute_assignment_error(name: &str) -> String",
+        "fn is_complex_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"real\" | \"imag\")",
+        "builtin_type_dir_names(\"complex\")",
         "\"AttributeError: readonly attribute\"",
+        "'complex' object attribute '{name}' is read-only",
         "'complex' object has no attribute",
         "no __dict__ for setting new attributes",
     ] {
@@ -3452,6 +3460,7 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_complex_public_attributes_diff_subset")
                 && document.contains("complex.real")
                 && document.contains("readonly public float attributes")
+                && document.contains("read-only complex method attributes")
                 && document.contains("without adding complex instance dictionaries"),
             "focused complex public attribute evidence must be documented in coverage and migration notes"
         );
