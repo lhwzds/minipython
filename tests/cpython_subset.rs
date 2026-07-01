@@ -4915,7 +4915,8 @@ for value in [False, True]:
 
 for label, x in [('false', False), ('true', True)]:
     print('target', label)
-    for name in ['real', 'imag', 'numerator', 'denominator']:
+    print('visible', 'bit_length' in dir(x), 'conjugate' in dir(x), 'as_integer_ratio' in dir(x))
+    for name in ['real', 'imag', 'numerator', 'denominator', 'bit_length', 'conjugate', 'as_integer_ratio']:
         show(label + '-set-' + name, lambda name=name, x=x: setattr(x, name, 99))
         show(label + '-del-' + name, lambda name=name, x=x: delattr(x, name))
     show(label + '-set-extra', lambda x=x: setattr(x, 'extra', 99))
@@ -4924,6 +4925,7 @@ for label, x in [('false', False), ('true', True)]:
             "attrs False 0 0 0 1 0 (0, 1) 0 0",
             "attrs True 1 0 1 1 1 (1, 1) 1 1",
             "target false",
+            "visible True True True",
             "false-set-real AttributeError attribute 'real' of 'int' objects is not writable",
             "false-del-real AttributeError attribute 'real' of 'int' objects is not writable",
             "false-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
@@ -4932,9 +4934,16 @@ for label, x in [('false', False), ('true', True)]:
             "false-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
             "false-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
             "false-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "false-set-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only",
+            "false-del-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only",
+            "false-set-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only",
+            "false-del-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only",
+            "false-set-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only",
+            "false-del-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only",
             "false-set-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "false-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "target true",
+            "visible True True True",
             "true-set-real AttributeError attribute 'real' of 'int' objects is not writable",
             "true-del-real AttributeError attribute 'real' of 'int' objects is not writable",
             "true-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
@@ -4943,6 +4952,12 @@ for label, x in [('false', False), ('true', True)]:
             "true-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
             "true-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
             "true-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "true-set-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only",
+            "true-del-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only",
+            "true-set-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only",
+            "true-del-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only",
+            "true-set-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only",
+            "true-del-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only",
             "true-set-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "true-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
         ],

@@ -73,8 +73,9 @@ Recent runtime migration notes:
 - `cpython_bool_public_attributes_subset`, backed by
   `cpython_bool_public_attributes_diff_subset`, now pins how bool inherits int public numeric attributes
   and methods across `False` and `True`, including
-  readonly public integer attributes and CPython's bool-specific no-`__dict__`
-  assignment/deletion errors without adding bool instance dictionaries.
+  readonly public integer attributes, read-only inherited int method attributes
+  such as `bit_length`, `conjugate`, and `as_integer_ratio`, and CPython's
+  bool-specific no-`__dict__` assignment/deletion errors without adding bool instance dictionaries.
 - `cpython_str_attribute_assignment_errors_subset`, backed by
   `cpython_str_attribute_assignment_errors_diff_subset`, now pins string attribute assignment errors
   for missing attributes and read-only string method attributes (`upper` /

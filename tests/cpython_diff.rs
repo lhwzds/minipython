@@ -5082,7 +5082,8 @@ for value in [False, True]:
 
 for label, x in [('false', False), ('true', True)]:
     print('target', label)
-    for name in ['real', 'imag', 'numerator', 'denominator']:
+    print('visible', 'bit_length' in dir(x), 'conjugate' in dir(x), 'as_integer_ratio' in dir(x))
+    for name in ['real', 'imag', 'numerator', 'denominator', 'bit_length', 'conjugate', 'as_integer_ratio']:
         show(label + '-set-' + name, lambda name=name, x=x: setattr(x, name, 99))
         show(label + '-del-' + name, lambda name=name, x=x: delattr(x, name))
     show(label + '-set-extra', lambda x=x: setattr(x, 'extra', 99))

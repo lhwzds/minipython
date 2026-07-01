@@ -23088,15 +23088,25 @@ fn bool_public_attributes_subset_has_focused_diff_evidence() {
         "True",
         "value.real, value.imag, value.numerator, value.denominator",
         "value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count()",
+        "'bit_length' in dir(x)",
+        "'conjugate' in dir(x)",
+        "'as_integer_ratio' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
         "delattr(x, 'extra')",
         "\"attrs False 0 0 0 1 0 (0, 1) 0 0\"",
         "\"attrs True 1 0 1 1 1 (1, 1) 1 1\"",
+        "\"visible True True True\"",
         "\"false-set-real AttributeError attribute 'real' of 'int' objects is not writable\"",
         "\"false-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable\"",
+        "\"false-set-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only\"",
+        "\"false-del-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only\"",
+        "\"false-set-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only\"",
         "\"true-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable\"",
+        "\"true-del-bit_length AttributeError 'bool' object attribute 'bit_length' is read-only\"",
+        "\"true-set-conjugate AttributeError 'bool' object attribute 'conjugate' is read-only\"",
+        "\"true-del-as_integer_ratio AttributeError 'bool' object attribute 'as_integer_ratio' is read-only\"",
         "\"true-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
     ] {
         assert!(
@@ -23113,6 +23123,9 @@ fn bool_public_attributes_subset_has_focused_diff_evidence() {
         "True",
         "value.real, value.imag, value.numerator, value.denominator",
         "value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count()",
+        "'bit_length' in dir(x)",
+        "'conjugate' in dir(x)",
+        "'as_integer_ratio' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
@@ -23127,8 +23140,11 @@ fn bool_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "Value::Bool(_) => Err(bool_attribute_assignment_error(name))",
         "fn bool_attribute_assignment_error(name: &str) -> String",
+        "fn is_bool_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"real\" | \"imag\" | \"numerator\" | \"denominator\")",
+        "builtin_type_dir_names(\"bool\")",
         "attribute '{name}' of 'int' objects is not writable",
+        "'bool' object attribute '{name}' is read-only",
         "'bool' object has no attribute",
         "no __dict__ for setting new attributes",
     ] {
@@ -23144,6 +23160,7 @@ fn bool_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_bool_public_attributes_diff_subset")
                 && document.contains("bool inherits int public numeric attributes")
                 && document.contains("readonly public integer attributes")
+                && document.contains("read-only inherited int method attributes")
                 && document.contains("without adding bool instance dictionaries"),
             "focused bool public attribute evidence must be documented in coverage and migration notes"
         );
