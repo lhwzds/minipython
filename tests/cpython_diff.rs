@@ -11617,6 +11617,17 @@ print('mutated', d)"#,
 }
 
 #[test]
+fn cpython_set_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_set.py public set instance __doc__ attribute subset",
+        name: "set-instance-doc-attribute",
+        source: r#"for label, value in [('empty', set()), ('items', {1, 2})]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == set.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_set_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_set.py public set instance attribute assignment errors subset",

@@ -58752,6 +58752,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Set(items) => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("set")
+                    .expect("set builtin type doc exists")
+                    .to_string(),
+            )),
             "add"
             | "clear"
             | "copy"

@@ -24436,6 +24436,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_float_instance_doc_attribute_subset",
             "cpython_complex_instance_doc_attribute_subset",
             "cpython_dict_instance_doc_attribute_subset",
+            "cpython_set_instance_doc_attribute_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
@@ -24518,6 +24519,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_float_instance_doc_attribute_diff_subset",
         "cpython_complex_instance_doc_attribute_diff_subset",
         "cpython_dict_instance_doc_attribute_diff_subset",
+        "cpython_set_instance_doc_attribute_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",
@@ -30875,6 +30877,68 @@ fn dict_instance_doc_attribute_subset_has_focused_diff_evidence() {
                 && document.contains("dict instance `__doc__`")
                 && document.contains("without adding writable instance dictionaries"),
             "dict instance __doc__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn set_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_instance_doc_attribute_subset(",
+        "for label, value in [('empty', set()), ('items', {1, 2})]",
+        "doc = value.__doc__",
+        "doc == set.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"empty str True True Build an unordered collection of unique elements. 49\"",
+        "\"items str True True Build an unordered collection of unique elements. 49\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "set instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_set_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_set.py public set instance __doc__ attribute subset",
+        "name: \"set-instance-doc-attribute\"",
+        "for label, value in [('empty', set()), ('items', {1, 2})]",
+        "doc = value.__doc__",
+        "doc == set.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "set instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Set(items) => match name",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtins_module_type_doc(\"set\")",
+        "expect(\"set builtin type doc exists\")",
+        "names.extend(builtin_type_dir_names(\"set\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_set_instance_doc_attribute_subset")
+                && document.contains("cpython_set_instance_doc_attribute_diff_subset")
+                && document.contains("set instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "set instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -26778,6 +26778,21 @@ print('mutated', d)"#,
     );
 }
 
+// Mirrors CPython's public `set` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_set_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', set()), ('items', {1, 2})]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == set.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True Build an unordered collection of unique elements. 49",
+            "items str True True Build an unordered collection of unique elements. 49",
+        ],
+    );
+}
+
 // Adapted from CPython's public `set` instance attribute assignment errors.
 // MiniPython keeps set entries mutable without adding a writable instance
 // `__dict__`.
