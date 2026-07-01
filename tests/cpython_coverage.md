@@ -1055,6 +1055,7 @@ Recent runtime migration notes:
   `cpython_json_function_class_assignment_metadata_diff_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset`,
+  `cpython_json_function_init_wrapper_metadata_diff_subset`,
   `cpython_json_function_format_wrapper_metadata_diff_subset`,
   `cpython_json_function_hash_wrapper_metadata_diff_subset`,
   `cpython_json_function_rich_compare_wrapper_metadata_diff_subset`,
@@ -1757,6 +1758,8 @@ Recent runtime migration notes:
   `cpython_json_function_repr_str_wrapper_metadata_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset` /
   `cpython_json_function_call_wrapper_metadata_subset`,
+  `cpython_json_function_init_wrapper_metadata_diff_subset` /
+  `cpython_json_function_init_wrapper_metadata_subset`,
   `cpython_json_function_format_wrapper_metadata_diff_subset` /
   `cpython_json_function_format_wrapper_metadata_subset`,
   `cpython_json_function_hash_wrapper_metadata_diff_subset` /
@@ -2525,6 +2528,16 @@ aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
 `__doc__` metadata, positional and keyword forwarding, and wrapper repr arity /
 keyword error text, without adding function `__code__`, file APIs, module
 `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_init_wrapper_metadata_subset`, backed by
+`cpython_json_function_init_wrapper_metadata_diff_subset`, keeps json public function `__init__` wrapper metadata
+aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
+`method-wrapper` type shape, `__self__` / `__name__` / `__qualname__` /
+`__doc__` / missing `__module__` / `__text_signature__` metadata, bound calls,
+direct `object.__init__(function, ...)` calls, and CPython's permissive
+extra-argument / keyword behavior for function objects, without adding function
+`__code__`, `__sizeof__`, pickle helpers, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_format_wrapper_metadata_subset`, backed by
 `cpython_json_function_format_wrapper_metadata_diff_subset`, keeps json public

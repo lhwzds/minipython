@@ -8734,6 +8734,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_class_assignment_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
+            "cpython_json_function_init_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
             "cpython_json_function_rich_compare_wrapper_metadata_subset",
@@ -8889,6 +8890,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_class_assignment_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
         "cpython_json_function_call_wrapper_metadata_diff_subset",
+        "cpython_json_function_init_wrapper_metadata_diff_subset",
         "cpython_json_function_format_wrapper_metadata_diff_subset",
         "cpython_json_function_hash_wrapper_metadata_diff_subset",
         "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
@@ -9096,6 +9098,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_call_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_call_wrapper_metadata_subset",
+    );
+    let json_function_init_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_init_wrapper_metadata_diff_subset",
+    );
+    let json_function_init_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_init_wrapper_metadata_subset",
     );
     let json_function_format_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9962,6 +9972,73 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_call_wrapper_subset_body.contains(required),
             "json public function __call__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function.__init__",
+        "'__init__' in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is function",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "('bound-call', lambda wrapper=wrapper: wrapper())",
+        "('bound-extra', lambda wrapper=wrapper: wrapper(1))",
+        "('bound-keyword', lambda wrapper=wrapper: wrapper(x=1))",
+        "('direct-call', lambda function=function: object.__init__(function))",
+        "('direct-extra', lambda function=function: object.__init__(function, 1))",
+        "('direct-keyword', lambda function=function: object.__init__(function, x=1))",
+        "wrapper.__module__",
+        "error.args",
+    ] {
+        assert!(
+            json_function_init_wrapper_diff_body.contains(required)
+                && json_function_init_wrapper_subset_body.contains(required),
+            "json public function __init__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True method-wrapper method-wrapper\"",
+        "\"loads True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)\"",
+        "\"loads bound-call None\"",
+        "\"loads bound-extra None\"",
+        "\"loads bound-keyword None\"",
+        "\"loads direct-call None\"",
+        "\"loads direct-extra None\"",
+        "\"loads direct-keyword None\"",
+        "\"loads module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"dumps True method-wrapper method-wrapper\"",
+        "\"dumps True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)\"",
+        "\"dumps bound-call None\"",
+        "\"dumps bound-extra None\"",
+        "\"dumps bound-keyword None\"",
+        "\"dumps direct-call None\"",
+        "\"dumps direct-extra None\"",
+        "\"dumps direct-keyword None\"",
+        "\"dumps module AttributeError 'method-wrapper' object has no attribute '__module__'",
+    ] {
+        assert!(
+            json_function_init_wrapper_subset_body.contains(required),
+            "json public function __init__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_init(",
+        "json.function.__init__",
+        "\"__init__\" && is_json_builtin",
+        "object.__init__",
+        "Initialize self.  See help(type(self)) for accurate signature.",
+        "($self, /, *args, **kwargs)",
+        "matches!(name, \"json.function.__hash__\" | \"json.function.__init__\")",
+        "\"json.function.__init__\"",
+        "\"__init__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __init__ wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12550,6 +12627,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_diff_subset",
+            "cpython_json_function_init_wrapper_metadata_subset",
+            "cpython_json_function_init_wrapper_metadata_diff_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_diff_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
@@ -12668,6 +12747,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__class__` assignment",
             "json public function repr / str wrapper metadata",
             "json public function `__call__` wrapper metadata",
+            "json public function `__init__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",
             "json public function `__doc__` / `__module__` assignment",
             "json public function `__dict__` assignment",

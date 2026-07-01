@@ -9872,6 +9872,10 @@ impl Vm {
                 self.call_property_constructor(args, keywords)
             }
             Value::Builtin(name) if name == "object.__init__" => {
+                if matches!(args.first(), Some(Value::Builtin(function_name)) if is_json_builtin(function_name))
+                {
+                    return Ok(Value::None);
+                }
                 if !keywords.is_empty() {
                     return Err(
                         "TypeError: object.__init__() takes exactly one argument (the instance to initialize)"
@@ -10047,6 +10051,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "json.function.__hash__" => {
                 self.call_json_function_hash(args, keywords)
+            }
+            Value::Builtin(name) if name == "json.function.__init__" => {
+                self.call_json_function_init(args)
             }
             Value::Builtin(name) if json_function_rich_compare_wrapper_name(&name) => {
                 self.call_json_function_rich_compare(&name, args, keywords)
@@ -17765,6 +17772,20 @@ impl Vm {
         }
 
         self.hash_key_value(receiver)
+    }
+
+    fn call_json_function_init(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let Some((receiver, _rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        Ok(Value::None)
     }
 
     fn call_json_function_rich_compare(
@@ -50631,6 +50652,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__ge__",
         "__gt__",
         "__hash__",
+        "__init__",
         "__kwdefaults__",
         "__le__",
         "__lt__",
@@ -59973,6 +59995,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "json.function.__init__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if json_function_rich_compare_wrapper_name(name)) =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -61488,6 +61515,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
+        Value::Builtin(function_name) if name == "__init__" && is_json_builtin(&function_name) => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("json.function.__init__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name)
             if matches!(name, "__setattr__" | "__delattr__")
                 && is_json_builtin(&function_name) =>
@@ -61740,6 +61774,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "json.function.__hash__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "json.function.__init__" =>
+        {
+            Ok(Value::String("object.__init__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__init__" =>
+        {
+            Ok(Value::String(
+                "Initialize self.  See help(type(self)) for accurate signature.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "json.function.__init__" =>
+        {
+            Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && json_function_set_delattr_wrapper_name(&function_name) =>
@@ -64083,7 +64134,7 @@ fn json_function_set_delattr_wrapper_name(name: &str) -> bool {
 }
 
 fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
-    matches!(name, "json.function.__hash__")
+    matches!(name, "json.function.__hash__" | "json.function.__init__")
         || json_function_rich_compare_wrapper_name(name)
         || json_function_set_delattr_wrapper_name(name)
 }
@@ -64111,6 +64162,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "json.function.__gt__"
             | "json.function.__ge__"
             | "json.function.__hash__"
+            | "json.function.__init__"
             | "json.function.__setattr__"
             | "json.function.__delattr__"
             | "json.function.__repr__"

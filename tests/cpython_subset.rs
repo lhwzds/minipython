@@ -37851,6 +37851,54 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_init_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__init__
+    print(name, '__init__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, call in [
+        ('bound-call', lambda wrapper=wrapper: wrapper()),
+        ('bound-extra', lambda wrapper=wrapper: wrapper(1)),
+        ('bound-keyword', lambda wrapper=wrapper: wrapper(x=1)),
+        ('direct-call', lambda function=function: object.__init__(function)),
+        ('direct-extra', lambda function=function: object.__init__(function, 1)),
+        ('direct-keyword', lambda function=function: object.__init__(function, x=1)),
+    ]:
+        try:
+            print(name, label, call())
+        except Exception as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(name, 'module', type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True method-wrapper method-wrapper",
+            "loads True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)",
+            "loads bound-call None",
+            "loads bound-extra None",
+            "loads bound-keyword None",
+            "loads direct-call None",
+            "loads direct-extra None",
+            "loads direct-keyword None",
+            "loads module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps True method-wrapper method-wrapper",
+            "dumps True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)",
+            "dumps bound-call None",
+            "dumps bound-extra None",
+            "dumps bound-keyword None",
+            "dumps direct-call None",
+            "dumps direct-extra None",
+            "dumps direct-keyword None",
+            "dumps module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_format_wrapper_metadata_subset() {
     assert_output(
         r#"import json

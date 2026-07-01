@@ -949,6 +949,36 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_init_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __init__ wrapper metadata subset",
+        name: "json-function-init-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__init__
+    print(name, '__init__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, call in [
+        ('bound-call', lambda wrapper=wrapper: wrapper()),
+        ('bound-extra', lambda wrapper=wrapper: wrapper(1)),
+        ('bound-keyword', lambda wrapper=wrapper: wrapper(x=1)),
+        ('direct-call', lambda function=function: object.__init__(function)),
+        ('direct-extra', lambda function=function: object.__init__(function, 1)),
+        ('direct-keyword', lambda function=function: object.__init__(function, x=1)),
+    ]:
+        try:
+            print(name, label, call())
+        except Exception as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(name, 'module', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_format_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __format__ wrapper metadata subset",
