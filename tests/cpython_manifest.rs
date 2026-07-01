@@ -29158,6 +29158,74 @@ fn bytearray_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn list_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_list_attribute_assignment_errors_subset(",
+        "items = [1, 2]",
+        "setattr(items, name, 99)",
+        "delattr(items, name)",
+        "['extra', 'append', 'clear']",
+        "\"set-extra AttributeError 'list' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'list' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-append AttributeError 'list' object attribute 'append' is read-only\"",
+        "\"del-clear AttributeError 'list' object attribute 'clear' is read-only\"",
+        "\"read 2 True\"",
+        "\"mutated [1, 2, 3]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused list attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_list_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/list_tests.py public list instance attribute assignment errors subset",
+        "name: \"list-attribute-assignment-errors\"",
+        "items = [1, 2]",
+        "setattr(items, name, 99)",
+        "delattr(items, name)",
+        "['extra', 'append', 'clear']",
+        "items.append.__self__ is items",
+        "items.append(3)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused list attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::List(_) => Err(list_attribute_assignment_error(name))",
+        "fn list_attribute_assignment_error(name: &str) -> String",
+        "fn is_list_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"list\")",
+        "'list' object attribute '{name}' is read-only",
+        "'list' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_list_attribute_assignment_errors_subset")
+                && document.contains("cpython_list_attribute_assignment_errors_diff_subset")
+                && document.contains("list attribute assignment errors")
+                && document.contains("read-only list method attributes")
+                && document.contains("without adding list instance dictionaries"),
+            "focused list attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

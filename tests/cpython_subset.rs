@@ -26491,6 +26491,39 @@ print('mutated', b)"#,
     );
 }
 
+// Adapted from CPython's public `list` instance attribute assignment errors.
+// MiniPython keeps list contents mutable without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_list_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+items = [1, 2]
+for name in ['extra', 'append', 'clear']:
+    show('set-' + name, lambda name=name: setattr(items, name, 99))
+    show('del-' + name, lambda name=name: delattr(items, name))
+print('read', len(items), items.append.__self__ is items)
+items.append(3)
+print('mutated', items)"#,
+        &[
+            "set-extra AttributeError 'list' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'list' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-append AttributeError 'list' object attribute 'append' is read-only",
+            "del-append AttributeError 'list' object attribute 'append' is read-only",
+            "set-clear AttributeError 'list' object attribute 'clear' is read-only",
+            "del-clear AttributeError 'list' object attribute 'clear' is read-only",
+            "read 2 True",
+            "mutated [1, 2, 3]",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

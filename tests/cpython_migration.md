@@ -96,6 +96,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_bytearray_attribute_assignment_errors_diff_subset` for bytearray attribute assignment errors
   on missing attributes and read-only bytearray method attributes (`hex` /
   `append`) while preserving bytearray mutation without adding bytearray instance dictionaries.
+- Added `cpython_list_attribute_assignment_errors_subset` and
+  `cpython_list_attribute_assignment_errors_diff_subset` for list attribute assignment errors
+  on missing attributes and read-only list method attributes (`append` /
+  `clear`) while preserving list mutation without adding list instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
