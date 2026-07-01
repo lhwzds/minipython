@@ -60664,6 +60664,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(default_builtins_dict_value())
         }
+        Value::Builtin(function_name)
+            if name == "__globals__" && is_json_builtin(&function_name) =>
+        {
+            Ok(json_builtin_globals())
+        }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "io.BytesIO" => {
             Ok(Value::String(
                 "Buffered I/O implementation using an in-memory bytes buffer.".to_string(),
@@ -61036,6 +61041,31 @@ fn json_builtin_kwdefaults(name: &str) -> Value {
             .map(|(name, value)| (Value::String(name.to_string()), value))
             .collect(),
     )
+}
+
+fn json_builtin_globals() -> Value {
+    dict_value(vec![
+        (
+            Value::String("__name__".to_string()),
+            Value::String("json".to_string()),
+        ),
+        (
+            Value::String("__package__".to_string()),
+            Value::String("json".to_string()),
+        ),
+        (
+            Value::String("__builtins__".to_string()),
+            default_builtins_dict_value(),
+        ),
+        (
+            Value::String("loads".to_string()),
+            Value::Builtin("json.loads".to_string()),
+        ),
+        (
+            Value::String("dumps".to_string()),
+            Value::Builtin("json.dumps".to_string()),
+        ),
+    ])
 }
 
 fn functools_partial_doc() -> &'static str {

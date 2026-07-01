@@ -772,6 +772,19 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_globals_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __globals__ metadata subset",
+        name: "json-function-globals-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    g = getattr(json, name).__globals__
+    print(name, type(g).__name__, g['__name__'], g['__package__'])
+    print(name, g['loads'] is json.loads, g['dumps'] is json.dumps, '__builtins__' in g, g['__builtins__']['len']([1, 2]))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

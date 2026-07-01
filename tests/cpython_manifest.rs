@@ -8716,6 +8716,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_builtins_metadata_subset",
+            "cpython_json_function_globals_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8818,6 +8819,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_annotate_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
         "cpython_json_function_builtins_metadata_diff_subset",
+        "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -8943,6 +8945,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_builtins_metadata_subset",
     );
+    let json_function_globals_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_globals_metadata_diff_subset",
+    );
+    let json_function_globals_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_globals_metadata_subset",
+    );
     for required in [
         "json.__package__",
         "object.__getattribute__(json, '__package__')",
@@ -9035,6 +9045,31 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function __builtins__ metadata subset output must pin `{required}`"
         );
     }
+    for required in [
+        ".__globals__",
+        "g['__name__']",
+        "g['__package__']",
+        "g['loads'] is json.loads",
+        "g['dumps'] is json.dumps",
+        "g['__builtins__']['len']([1, 2])",
+    ] {
+        assert!(
+            json_function_globals_diff_body.contains(required)
+                && json_function_globals_subset_body.contains(required),
+            "json public function __globals__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads dict json json\"",
+        "\"loads True True True 2\"",
+        "\"dumps dict json json\"",
+        "\"dumps True True True 2\"",
+    ] {
+        assert!(
+            json_function_globals_subset_body.contains(required),
+            "json public function __globals__ metadata subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9059,6 +9094,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("Ok(default_builtins_dict_value())"),
         "VM must expose CPython-compatible json function __builtins__ metadata"
     );
+    assert!(
+        VM_SOURCE.contains("name == \"__globals__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(json_builtin_globals())")
+            && VM_SOURCE.contains("fn json_builtin_globals() -> Value"),
+        "VM must expose CPython-compatible json function __globals__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_json_module_package_metadata_subset",
@@ -9071,6 +9112,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_closure_none_metadata_diff_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_metadata_diff_subset",
+            "cpython_json_function_globals_metadata_subset",
+            "cpython_json_function_globals_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9087,6 +9130,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__builtins__` metadata",
             "`json.loads.__builtins__`",
             "`json.dumps.__builtins__`",
+            "json public function `__globals__` metadata",
+            "`json.loads.__globals__`",
+            "`json.dumps.__globals__`",
         ] {
             assert!(
                 document.contains(required),
