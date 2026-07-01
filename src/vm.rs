@@ -62447,6 +62447,7 @@ fn store_json_builtin_attribute(
         "__name__" => return set_json_builtin_name(function_name, value),
         "__qualname__" => return set_json_builtin_qualname(function_name, value),
         "__builtins__" => return Err("AttributeError: readonly attribute".to_string()),
+        "__closure__" => return Err("AttributeError: readonly attribute".to_string()),
         "__doc__" => {
             set_json_builtin_doc(function_name, value);
             return Ok(());
@@ -62481,6 +62482,7 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             return Err("TypeError: __qualname__ must be set to a string object".to_string());
         }
         "__builtins__" => return Err("AttributeError: readonly attribute".to_string()),
+        "__closure__" => return Err("AttributeError: readonly attribute".to_string()),
         "__doc__" => {
             delete_json_builtin_doc(function_name);
             return Ok(());

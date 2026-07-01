@@ -8717,6 +8717,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_annotate_assignment_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
+            "cpython_json_function_closure_assignment_metadata_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_identity_metadata_subset",
             "cpython_json_function_builtins_assignment_metadata_subset",
@@ -8870,6 +8871,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_annotate_metadata_diff_subset",
         "cpython_json_function_annotate_assignment_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
+        "cpython_json_function_closure_assignment_metadata_diff_subset",
         "cpython_json_function_builtins_metadata_diff_subset",
         "cpython_json_function_builtins_identity_metadata_diff_subset",
         "cpython_json_function_builtins_assignment_metadata_diff_subset",
@@ -9212,6 +9214,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_closure_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_closure_none_metadata_subset",
+    );
+    let json_function_closure_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_closure_assignment_metadata_diff_subset",
+    );
+    let json_function_closure_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_closure_assignment_metadata_subset",
     );
     let json_function_builtins_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10792,6 +10802,55 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_closure_subset_body.contains(required),
             "json public function __closure__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "original = function.__closure__",
+        "original is None",
+        "function.__closure__ is original",
+        "setattr(function, '__closure__', None)",
+        "setattr(function, '__closure__', ())",
+        "delattr(function, '__closure__')",
+        "function.__setattr__('__closure__', None)",
+        "function.__delattr__('__closure__')",
+        "function.__closure__ is original",
+        "json.loads.__closure__ is json.dumps.__closure__",
+    ] {
+        assert!(
+            json_function_closure_assignment_diff_body.contains(required)
+                && json_function_closure_assignment_subset_body.contains(required),
+            "json public function __closure__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial None True True\"",
+        "\"loads set-none AttributeError readonly attribute",
+        "\"loads set-tuple AttributeError readonly attribute",
+        "\"loads del-direct AttributeError readonly attribute",
+        "\"loads set-wrapper AttributeError readonly attribute",
+        "\"loads del-wrapper AttributeError readonly attribute",
+        "\"loads after-errors None True\"",
+        "\"dumps initial None True True\"",
+        "\"dumps set-none AttributeError readonly attribute",
+        "\"dumps set-tuple AttributeError readonly attribute",
+        "\"dumps del-direct AttributeError readonly attribute",
+        "\"dumps set-wrapper AttributeError readonly attribute",
+        "\"dumps del-wrapper AttributeError readonly attribute",
+        "\"dumps after-errors None True\"",
+        "\"None None True\"",
+    ] {
+        assert!(
+            json_function_closure_assignment_subset_body.contains(required),
+            "json public function __closure__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "Ok(Value::None)",
+        "\"__closure__\" => return Err(\"AttributeError: readonly attribute\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __closure__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12450,6 +12509,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotate_assignment_metadata_diff_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_closure_none_metadata_diff_subset",
+            "cpython_json_function_closure_assignment_metadata_subset",
+            "cpython_json_function_closure_assignment_metadata_diff_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_metadata_diff_subset",
             "cpython_json_function_builtins_identity_metadata_subset",
@@ -12552,6 +12613,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__closure__` metadata",
             "`json.loads.__closure__`",
             "`json.dumps.__closure__`",
+            "json public function `__closure__` assignment",
             "json public function `__builtins__` metadata",
             "`json.loads.__builtins__`",
             "`json.dumps.__builtins__`",
