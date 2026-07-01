@@ -8685,7 +8685,9 @@ for item in cases:
     print('attrs', item.start, item.stop, item.step, len(item), repr(item))
 
 r = range(1, 5, 2)
+print('data-visible', 'start' in dir(r), 'stop' in dir(r), 'step' in dir(r))
 print('method-visible', 'count' in dir(r), 'index' in dir(r))
+print('type-visible', 'start' in dir(range), 'stop' in dir(range), 'step' in dir(range))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(r, name, 99))
     show('del-' + name, lambda name=name: delattr(r, name))

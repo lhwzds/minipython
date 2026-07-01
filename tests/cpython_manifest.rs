@@ -1833,6 +1833,12 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "range(10, 1, -3)",
         "range(2 ** 65, 2 ** 65 + 3)",
         "item.start, item.stop, item.step",
+        "'start' in dir(r)",
+        "'stop' in dir(r)",
+        "'step' in dir(r)",
+        "'start' in dir(range)",
+        "'stop' in dir(range)",
+        "'step' in dir(range)",
         "'count' in dir(r)",
         "'index' in dir(r)",
         "setattr(r, name, 99)",
@@ -1842,7 +1848,9 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "\"attrs 0 5 1 5 range(0, 5)\"",
         "\"attrs 10 1 -3 3 range(10, 1, -3)\"",
         "\"attrs 36893488147419103232 36893488147419103235 1 3 range(36893488147419103232, 36893488147419103235)\"",
+        "\"data-visible True True True\"",
         "\"method-visible True True\"",
+        "\"type-visible True True True\"",
         "\"set-start AttributeError readonly attribute\"",
         "\"del-step AttributeError readonly attribute\"",
         "\"set-count AttributeError 'range' object attribute 'count' is read-only\"",
@@ -1864,6 +1872,12 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "range(10, 1, -3)",
         "range(2 ** 65, 2 ** 65 + 3)",
         "item.start, item.stop, item.step",
+        "'start' in dir(r)",
+        "'stop' in dir(r)",
+        "'step' in dir(r)",
+        "'start' in dir(range)",
+        "'stop' in dir(range)",
+        "'step' in dir(range)",
         "'count' in dir(r)",
         "'index' in dir(r)",
         "setattr(r, name, 99)",
@@ -1881,6 +1895,7 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "\"start\" => Ok(normalize_big_int(start))",
         "\"stop\" => Ok(normalize_big_int(stop))",
         "\"step\" => Ok(normalize_big_int(step))",
+        "\"range\" => &[\"count\", \"index\", \"start\", \"stop\", \"step\"]",
         "fn range_attribute_assignment_error(name: &str) -> String",
         "fn is_range_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"start\" | \"stop\" | \"step\")",
@@ -1900,6 +1915,7 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
             document.contains("cpython_range_public_attributes_subset")
                 && document.contains("cpython_range_public_attributes_diff_subset")
                 && document.contains("range.start")
+                && document.contains("range data attributes in dir()")
                 && document.contains("readonly public integer attributes")
                 && document.contains("read-only range method attributes")
                 && document.contains("without adding range instance dictionaries"),

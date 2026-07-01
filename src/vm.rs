@@ -50363,7 +50363,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "rotate",
         ],
-        "tuple" | "range" => &["count", "index"],
+        "tuple" => &["count", "index"],
+        "range" => &["count", "index", "start", "stop", "step"],
         "bytes" => &[
             "__bytes__",
             "__format__",

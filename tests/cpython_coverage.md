@@ -127,9 +127,9 @@ Recent runtime migration notes:
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
-  default, explicit, negative-step, and large-integer ranges, plus CPython's
-  read-only range method attributes (`count` and `index`), readonly, and no-`__dict__`
-  assignment/deletion errors without adding range instance dictionaries.
+  default, explicit, negative-step, and large-integer ranges, range data attributes in dir()
+  for both instances and the builtin type, plus CPython's read-only range method attributes
+  (`count` and `index`), readonly, and no-`__dict__` assignment/deletion errors without adding range instance dictionaries.
 - `cpython_slice_public_attributes_subset`, backed by
   `cpython_slice_public_attributes_diff_subset`, now pins `slice.start`,
   `slice.stop`, and `slice.step` as readonly public data attributes across

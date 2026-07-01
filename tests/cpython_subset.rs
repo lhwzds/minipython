@@ -63672,7 +63672,9 @@ for item in cases:
     print('attrs', item.start, item.stop, item.step, len(item), repr(item))
 
 r = range(1, 5, 2)
+print('data-visible', 'start' in dir(r), 'stop' in dir(r), 'step' in dir(r))
 print('method-visible', 'count' in dir(r), 'index' in dir(r))
+print('type-visible', 'start' in dir(range), 'stop' in dir(range), 'step' in dir(range))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(r, name, 99))
     show('del-' + name, lambda name=name: delattr(r, name))
@@ -63687,7 +63689,9 @@ show('del-extra', lambda: delattr(r, 'extra'))"#,
             "attrs 1 10 2 5 range(1, 10, 2)",
             "attrs 10 1 -3 3 range(10, 1, -3)",
             "attrs 36893488147419103232 36893488147419103235 1 3 range(36893488147419103232, 36893488147419103235)",
+            "data-visible True True True",
             "method-visible True True",
+            "type-visible True True True",
             "set-start AttributeError readonly attribute",
             "del-start AttributeError readonly attribute",
             "set-stop AttributeError readonly attribute",
