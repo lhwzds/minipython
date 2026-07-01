@@ -62485,6 +62485,7 @@ fn collections_type_direct_base_name(name: &str) -> Option<&'static str> {
     match name {
         "Counter" => Some("dict"),
         "defaultdict" => Some("dict"),
+        "OrderedDict" => Some("dict"),
         "ChainMap" => Some("MutableMapping"),
         "UserDict" => Some("MutableMapping"),
         "UserList" => Some("MutableSequence"),

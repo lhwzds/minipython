@@ -42270,6 +42270,22 @@ fn cpython_type_namespace_order_subset() {
     );
 }
 
+// Mirrors CPython's public `OrderedDict` direct base metadata.
+#[test]
+fn cpython_ordered_dict_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+base = object.__getattribute__(OrderedDict, '__base__')
+bases = object.__getattribute__(OrderedDict, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True builtins dict",
+            "bases tuple 1 True builtins dict",
+        ],
+    );
+}
+
 // Adapted from CPython public OrderedDict mapping behavior. This keeps the
 // minimal OrderedDict sandbox surface aligned with dict-style mutation helpers
 // without promoting the full OrderedDict API.

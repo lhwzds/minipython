@@ -23677,6 +23677,19 @@ print(repr(OrderedDict.__or__(pair, {'d': 4})))"#,
 }
 
 #[test]
+fn cpython_ordered_dict_type_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ordered_dict.py OrderedDict public direct base metadata subset",
+        name: "ordered-dict-type-base-metadata",
+        source: r#"from collections import OrderedDict
+base = object.__getattribute__(OrderedDict, '__base__')
+bases = object.__getattribute__(OrderedDict, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_program_output_parity_smoke_diff_subset() {
     for case in [
         DiffCase {

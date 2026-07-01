@@ -438,6 +438,8 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ complex type-object __text_signature__ metadata,
   object.__getattribute__ deque type-object __text_signature__ metadata,
   object.__getattribute__ OrderedDict type-object __text_signature__ metadata,
+  object.__getattribute__ OrderedDict type-object __base__ metadata,
+  object.__getattribute__ OrderedDict type-object __bases__ metadata,
   object.__getattribute__ object type-object __doc__ metadata,
   object.__getattribute__ list type-object __doc__ metadata,
   object.__getattribute__ memoryview type-object __doc__ metadata,
@@ -11614,8 +11616,12 @@ Completed in the CPython collections manifest expansion pass:
   `copy()` preserving `OrderedDict`, type/instance `fromkeys()`,
   `popitem(last=...)`, direct equality methods, and mapping union
   operators that preserve `OrderedDict` result type/order and in-place
-  identity. Direct
-  `__reversed__()` now returns reverse key iteration for the supported storage.
+  identity.
+  `cpython_ordered_dict_type_base_metadata_subset`, backed by
+  `cpython_ordered_dict_type_base_metadata_diff_subset`, covers
+  `OrderedDict` direct base metadata through `__base__` and `__bases__`,
+  pinned to `builtins.dict` without expanding full `__mro__` parity. Direct
+  `__reversed__()` returns reverse key iteration for the supported storage.
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by the
   `ordered-dict-move-pop-keyword-subset` diff case, separately covers
   `move_to_end()` / `popitem()` `last=` keyword binding, type-level method

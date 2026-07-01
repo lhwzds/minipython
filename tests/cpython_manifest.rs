@@ -27514,6 +27514,68 @@ fn ordered_dict_modern_repr_has_focused_diff_evidence() {
 }
 
 #[test]
+fn ordered_dict_type_base_metadata_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_ordered_dict_type_base_metadata_subset",
+    );
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_ordered_dict_type_base_metadata_diff_subset",
+    );
+
+    for required in [
+        "from collections import OrderedDict",
+        "object.__getattribute__(OrderedDict, '__base__')",
+        "object.__getattribute__(OrderedDict, '__bases__')",
+        "base is dict",
+        "bases[0] is dict",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "OrderedDict direct base metadata evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True builtins dict\"",
+        "\"bases tuple 1 True builtins dict\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "OrderedDict direct base metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"OrderedDict\" => Some(\"dict\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "OrderedDict direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_ordered_dict_type_base_metadata_subset",
+            "cpython_ordered_dict_type_base_metadata_diff_subset",
+            "`OrderedDict` direct base metadata",
+            "`dict`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "OrderedDict direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
