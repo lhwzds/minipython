@@ -108,6 +108,7 @@ thread_local! {
     static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
+    static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -60859,7 +60860,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
-            Ok(Value::String(json_builtin_doc(&function_name).to_string()))
+            Ok(json_builtin_doc_value(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__type_params__" && is_json_builtin(&function_name) =>
@@ -61230,6 +61231,15 @@ fn json_builtin_doc(name: &str) -> &'static str {
         "json.dumps" => "Serialize a Python object to a JSON formatted string.",
         _ => "",
     }
+}
+
+fn json_builtin_doc_value(name: &str) -> Value {
+    JSON_BUILTIN_DOCS.with(|docs| {
+        let mut docs = docs.borrow_mut();
+        docs.entry(name.to_string())
+            .or_insert_with(|| identity_string_value(json_builtin_doc(name).to_string()))
+            .clone()
+    })
 }
 
 fn json_builtin_type_params() -> Value {

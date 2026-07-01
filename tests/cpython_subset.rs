@@ -37611,6 +37611,24 @@ print(json.dumps.__globals__['mini_probe_key'])"#,
 }
 
 #[test]
+fn cpython_json_function_doc_identity_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    print(name, type(function.__doc__).__name__, bool(function.__doc__), function.__doc__ is function.__doc__)
+    print(name, bound.__doc__ is function.__doc__, bound.__getattribute__('__doc__') is function.__doc__, bound.__doc__ == function.__doc__)"#,
+        &[
+            "loads str True True",
+            "loads True True True",
+            "dumps str True True",
+            "dumps True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_dict_identity_metadata_subset() {
     assert_output(
         r#"import json

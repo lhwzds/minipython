@@ -1052,6 +1052,7 @@ Recent runtime migration notes:
   `cpython_json_function_builtins_identity_metadata_diff_subset`,
   `cpython_json_function_globals_metadata_diff_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset`,
+  `cpython_json_function_doc_identity_metadata_diff_subset`,
   `cpython_json_function_dict_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset`,
@@ -1698,6 +1699,8 @@ Recent runtime migration notes:
   `cpython_json_function_globals_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
+  `cpython_json_function_doc_identity_metadata_diff_subset` /
+  `cpython_json_function_doc_identity_metadata_subset`,
   `cpython_json_function_dict_identity_metadata_diff_subset` /
   `cpython_json_function_dict_identity_metadata_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset` /
@@ -2407,6 +2410,13 @@ module `__all__`, or encoder/decoder classes.
 and mutation visibility aligned with CPython for the supported globals dict
 surface without adding function `__code__`, full module globals, file APIs,
 module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_doc_identity_metadata_subset`, backed by
+`cpython_json_function_doc_identity_metadata_diff_subset`, keeps json public function `__doc__` identity
+stable across repeated lookups and through `loads.__get__(...).__doc__` /
+`dumps.__get__(...).__getattribute__('__doc__')` delegation, without adding
+full CPython docstring text, function `__code__`, file APIs, module `__all__`,
+or encoder/decoder classes.
 
 `cpython_json_function_dict_identity_metadata_subset`, backed by
 `cpython_json_function_dict_identity_metadata_diff_subset`, keeps json public function `__dict__` identity
