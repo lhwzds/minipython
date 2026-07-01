@@ -27405,6 +27405,21 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
     );
 }
 
+// Mirrors CPython's public `slice` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_slice_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', slice(None)), ('items', slice(1, 8, 2))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == slice.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True slice(stop) 115",
+            "items str True True slice(stop) 115",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

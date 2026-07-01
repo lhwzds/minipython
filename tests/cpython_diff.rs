@@ -10072,6 +10072,17 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
 }
 
 #[test]
+fn cpython_slice_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_slice.py public slice instance __doc__ attribute subset",
+        name: "slice-instance-doc-attribute",
+        source: r#"for label, value in [('empty', slice(None)), ('items', slice(1, 8, 2))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == slice.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

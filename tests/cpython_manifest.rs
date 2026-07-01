@@ -24181,6 +24181,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_bytes_instance_doc_attribute_subset",
             "cpython_bytearray_instance_doc_attribute_subset",
             "cpython_range_instance_doc_attribute_subset",
+            "cpython_slice_instance_doc_attribute_subset",
             "cpython_descriptor_constructor_arity_errors_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
@@ -24257,6 +24258,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_bytes_instance_doc_attribute_diff_subset",
         "cpython_bytearray_instance_doc_attribute_diff_subset",
         "cpython_range_instance_doc_attribute_diff_subset",
+        "cpython_slice_instance_doc_attribute_diff_subset",
         "cpython_descriptor_constructor_arity_errors_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
@@ -27282,6 +27284,68 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("readonly public data attributes")
                 && document.contains("without adding slice instance dictionaries"),
             "focused slice public attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn slice_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_slice_instance_doc_attribute_subset(",
+        "for label, value in [('empty', slice(None)), ('items', slice(1, 8, 2))]",
+        "doc = value.__doc__",
+        "doc == slice.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"empty str True True slice(stop) 115\"",
+        "\"items str True True slice(stop) 115\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "slice instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_slice_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_slice.py public slice instance __doc__ attribute subset",
+        "name: \"slice-instance-doc-attribute\"",
+        "for label, value in [('empty', slice(None)), ('items', slice(1, 8, 2))]",
+        "doc = value.__doc__",
+        "doc == slice.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "slice instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__doc__\" => Ok(Value::String(",
+        "builtins_module_type_doc(\"slice\")",
+        "expect(\"slice builtin type doc exists\")",
+        "Value::Slice { .. } => names.extend(builtin_type_dir_names(\"slice\"))",
+        "\"slice\" => &[\"indices\", \"start\", \"stop\", \"step\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "slice instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_slice_instance_doc_attribute_subset")
+                && document.contains("cpython_slice_instance_doc_attribute_diff_subset")
+                && document.contains("slice instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "slice instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -49874,11 +49874,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         }
         Value::Float(_) => names.extend(builtin_type_dir_names("float")),
         Value::Complex { .. } => names.extend(builtin_type_dir_names("complex")),
-        Value::Slice { .. } => names.extend(
-            ["indices", "start", "stop", "step"]
-                .into_iter()
-                .map(str::to_string),
-        ),
+        Value::Slice { .. } => names.extend(builtin_type_dir_names("slice")),
         Value::Super { .. } => names.extend(super_object_dir_names()),
         Value::Frame { .. } => names.extend(
             [
@@ -57915,6 +57911,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             step,
             identity,
         } => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("slice")
+                    .expect("slice builtin type doc exists")
+                    .to_string(),
+            )),
             "start" => Ok(start.map(|value| *value).unwrap_or(Value::None)),
             "stop" => Ok(stop.map(|value| *value).unwrap_or(Value::None)),
             "step" => Ok(step.map(|value| *value).unwrap_or(Value::None)),

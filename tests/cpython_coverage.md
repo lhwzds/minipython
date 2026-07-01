@@ -116,6 +116,10 @@ Recent runtime migration notes:
   `cpython_range_instance_doc_attribute_diff_subset`, now pins range instance `__doc__`
   lookup for empty and stepped ranges, matching `range.__doc__` and `dir(value)`
   without adding writable instance dictionaries.
+- `cpython_slice_instance_doc_attribute_subset`, backed by
+  `cpython_slice_instance_doc_attribute_diff_subset`, now pins slice instance `__doc__`
+  lookup for empty and stepped slices, matching `slice.__doc__` and `dir(value)`
+  without adding writable instance dictionaries.
 - `cpython_tuple_attribute_assignment_errors_subset`, backed by
   `cpython_tuple_attribute_assignment_errors_diff_subset`, now pins tuple attribute assignment errors
   for missing attributes and read-only tuple method attributes (`count` /
@@ -557,6 +561,7 @@ Recent runtime migration notes:
   `cpython_bytes_instance_doc_attribute_diff_subset`,
   `cpython_bytearray_instance_doc_attribute_diff_subset`,
   `cpython_range_instance_doc_attribute_diff_subset`,
+  `cpython_slice_instance_doc_attribute_diff_subset`,
   `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
