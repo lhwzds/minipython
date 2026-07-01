@@ -1044,6 +1044,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_kwdefaults_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __kwdefaults__ metadata subset",
+        name: "json-function-bound-method-kwdefaults-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__kwdefaults__
+    print(name, type(value).__name__, len(value), sorted(value), value is function.__kwdefaults__)
+    print(name, bound.__getattribute__('__kwdefaults__') is function.__kwdefaults__, '__kwdefaults__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",
