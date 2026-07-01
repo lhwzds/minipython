@@ -37905,6 +37905,25 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_annotate_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__annotate__
+    print(name, type(value).__name__, value, value is function.__annotate__)
+    print(name, bound.__getattribute__('__annotate__') is function.__annotate__, '__annotate__' in dir(bound))"#,
+        &[
+            "loads NoneType None True",
+            "loads True False",
+            "dumps NoneType None True",
+            "dumps True False",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_type_params_metadata_subset() {
     assert_output(
         r#"import json

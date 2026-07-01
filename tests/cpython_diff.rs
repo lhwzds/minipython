@@ -1030,6 +1030,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_annotate_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __annotate__ metadata subset",
+        name: "json-function-bound-method-annotate-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__annotate__
+    print(name, type(value).__name__, value, value is function.__annotate__)
+    print(name, bound.__getattribute__('__annotate__') is function.__annotate__, '__annotate__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __type_params__ metadata subset",

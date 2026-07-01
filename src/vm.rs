@@ -59371,6 +59371,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 load_attribute(*function, "__type_params__")
             }
+            "__annotate__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__annotate__")
+            }
             "__closure__"
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
