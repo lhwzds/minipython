@@ -59385,6 +59385,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 load_attribute(*function, "__dict__")
             }
+            "__globals__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__globals__")
+            }
             _ if matches!(function.as_ref(), Value::LruCacheWrapper { .. }) => {
                 load_attribute(*function, name)
             }
