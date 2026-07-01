@@ -19578,6 +19578,18 @@ print(UserDict.clear(class_obj), class_obj)"#,
 }
 
 #[test]
+fn cpython_collections_userdict_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py UserDict public instance __doc__ attribute subset",
+        name: "collections-userdict-instance-doc-attribute",
+        source: r#"from collections import UserDict
+for label, value in [('empty', UserDict()), ('items', UserDict({'a': 1}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc is None, '__doc__' in dir(value), repr(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

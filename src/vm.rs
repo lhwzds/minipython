@@ -49806,6 +49806,11 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names("mappingproxy"))
         }
         Value::Counter { .. } => names.extend(builtin_type_dir_names("Counter")),
+        Value::UserDict { attrs, .. } => {
+            names.extend(builtin_type_dir_names("UserDict"));
+            names.push("data".to_string());
+            names.extend(dict_string_names(attrs));
+        }
         Value::ChainMap { .. } => names.extend(builtin_type_dir_names("ChainMap")),
         Value::List(_) => names.extend(builtin_type_dir_names("list")),
         value if list_subclass_storage(value).is_some() => {
@@ -58374,6 +58379,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
+                "__doc__" => Ok(Value::None),
                 "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
                 | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
                 | "__format__" | "__getitem__" | "__iter__" | "__len__" | "__repr__"

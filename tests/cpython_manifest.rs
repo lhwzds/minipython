@@ -17956,6 +17956,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_new_builtins_globals_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
+            "cpython_collections_userdict_instance_doc_attribute_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
@@ -19074,6 +19075,66 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("fn raise_key_error_empty("),
         "UserDict empty popitem must be backed by a no-arg KeyError helper"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_instance_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict instance __doc__ behavior"
+    );
+    let userdict_instance_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_instance_doc_attribute_diff_subset",
+    );
+    let userdict_instance_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_instance_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "for label, value in [('empty', UserDict()), ('items', UserDict({'a': 1}))]",
+        "doc = value.__doc__",
+        "doc is None",
+        "'__doc__' in dir(value)",
+        "repr(doc)",
+    ] {
+        assert!(
+            userdict_instance_doc_diff_body.contains(required)
+                && userdict_instance_doc_subset_body.contains(required),
+            "UserDict instance __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty NoneType True True None\"",
+        "\"items NoneType True True None\"",
+    ] {
+        assert!(
+            userdict_instance_doc_subset_body.contains(required),
+            "UserDict instance __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserDict { data, attrs } => {",
+        "\"__doc__\" => Ok(Value::None)",
+        "names.extend(builtin_type_dir_names(\"UserDict\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict instance __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_instance_doc_attribute_subset",
+            "cpython_collections_userdict_instance_doc_attribute_diff_subset",
+            "`UserDict` instance `__doc__`",
+            "None-valued type attribute",
+            "broader UserDict type metadata",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_userlist_instance_doc_attribute_diff_subset"),
