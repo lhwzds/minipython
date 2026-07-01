@@ -1062,6 +1062,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_repr_str_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset`,
+  `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset`,
   `cpython_json_function_bound_method_annotate_metadata_diff_subset`,
   `cpython_json_function_bound_method_type_params_metadata_diff_subset`,
   `cpython_json_function_bound_method_closure_none_metadata_diff_subset`,
@@ -1716,6 +1717,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_getattribute_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset` /
   `cpython_json_function_bound_method_getattribute_missing_attr_subset`,
+  `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset` /
+  `cpython_json_function_bound_method_text_signature_missing_attr_subset`,
   `cpython_json_function_bound_method_annotate_metadata_diff_subset` /
   `cpython_json_function_bound_method_annotate_metadata_subset`,
   `cpython_json_function_bound_method_type_params_metadata_diff_subset` /
@@ -2472,6 +2475,13 @@ arity / keyword / name-type `TypeError` text, without adding `__reduce__`,
 `AttributeError` text and `args` aligned with CPython for
 `loads.__get__(...)` and `dumps.__get__(...)`, without adding `__reduce__`,
 `__reduce_ex__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_text_signature_missing_attr_subset`, backed by
+`cpython_json_function_bound_method_text_signature_missing_attr_diff_subset`, keeps json public function bound method `__text_signature__` missing-attribute
+`AttributeError` text, `args`, `__getattribute__('__text_signature__')`, and
+`dir(bound)` visibility aligned with CPython for `loads.__get__(...)` and
+`dumps.__get__(...)`, without adding `__reduce__`, `__reduce_ex__`, function
+`__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_annotate_metadata_subset`, backed by
 `cpython_json_function_bound_method_annotate_metadata_diff_subset`, keeps json public function bound method `__annotate__` metadata

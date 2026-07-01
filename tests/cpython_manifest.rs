@@ -9083,6 +9083,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_getattribute_missing_attr_subset",
     );
+    let json_function_bound_method_text_signature_missing_attr_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_text_signature_missing_attr_diff_subset",
+    );
+    let json_function_bound_method_text_signature_missing_attr_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_text_signature_missing_attr_subset",
+    );
     let json_function_bound_method_annotate_metadata_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_function_bound_method_annotate_metadata_diff_subset",
@@ -9619,6 +9627,32 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "bound.__text_signature__",
+        "bound.__getattribute__('__text_signature__')",
+        "except AttributeError as error",
+        "str(error)",
+        "error.args",
+        "'__text_signature__' in dir(bound)",
+    ] {
+        assert!(
+            json_function_bound_method_text_signature_missing_attr_diff_body.contains(required)
+                && json_function_bound_method_text_signature_missing_attr_subset_body
+                    .contains(required),
+            "json public function bound method __text_signature__ missing attr diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads direct AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+        "\"loads getattribute AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+        "\"dumps direct AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+        "\"dumps getattribute AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+    ] {
+        assert!(
+            json_function_bound_method_text_signature_missing_attr_subset_body.contains(required),
+            "json public function bound method __text_signature__ missing attr subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value = bound.__annotate__",
         "value is function.__annotate__",
         "bound.__getattribute__('__annotate__') is function.__annotate__",
@@ -9975,6 +10009,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must delegate json public function bound method __annotate__ metadata"
     );
     assert!(
+        VM_SOURCE.contains("\"__text_signature__\"")
+            && VM_SOURCE.contains(
+                "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
+            )
+            && VM_SOURCE.contains("AttributeError: 'function' object has no attribute '{name}'"),
+        "VM must expose CPython-compatible json public function bound method __text_signature__ missing attr error"
+    );
+    assert!(
         VM_SOURCE.contains("\"__closure__\"")
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
@@ -10076,6 +10118,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
+            "cpython_json_function_bound_method_text_signature_missing_attr_subset",
+            "cpython_json_function_bound_method_text_signature_missing_attr_diff_subset",
             "cpython_json_function_bound_method_annotate_metadata_subset",
             "cpython_json_function_bound_method_annotate_metadata_diff_subset",
             "cpython_json_function_bound_method_type_params_metadata_subset",
@@ -10125,6 +10169,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method `__repr__`",
             "json public function bound method `__getattribute__`",
             "json public function bound method `__getattribute__` missing-attribute",
+            "json public function bound method `__text_signature__` missing-attribute",
             "json public function bound method `__annotate__` metadata",
             "json public function bound method `__type_params__` metadata",
             "json public function bound method `__closure__` metadata",

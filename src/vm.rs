@@ -59411,6 +59411,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 load_attribute(*function, "__builtins__")
             }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                Err(format!(
+                    "AttributeError: 'function' object has no attribute '{name}'"
+                ))
+            }
             _ if matches!(function.as_ref(), Value::LruCacheWrapper { .. }) => {
                 load_attribute(*function, name)
             }

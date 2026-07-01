@@ -1030,6 +1030,22 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_text_signature_missing_attr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __text_signature__ missing attr subset",
+        name: "json-function-bound-method-text-signature-missing-attr",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    for label, call in [('direct', lambda bound=bound: bound.__text_signature__), ('getattribute', lambda bound=bound: bound.__getattribute__('__text_signature__'))]:
+        try:
+            call()
+        except AttributeError as error:
+            print(name, label, type(error).__name__, str(error), error.args, '__text_signature__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_annotate_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __annotate__ metadata subset",
