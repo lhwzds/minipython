@@ -455,6 +455,7 @@ pub(crate) fn create_module(
         "sys" => Ok(module_value(
             "sys",
             vec![
+                ("__package__", Value::String(String::new())),
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
                 ("warnoptions", list_value(Vec::new())),

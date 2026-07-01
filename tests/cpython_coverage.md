@@ -671,6 +671,7 @@ Recent runtime migration notes:
   `cpython_builtin_breakpoint_passthru_error_diff_subset`,
   `cpython_builtin_negation_sys_maxsize_diff_subset`,
   `cpython_int_max_str_digits_runtime_diff_subset`,
+  `cpython_sys_module_package_metadata_diff_subset`,
   `cpython_float_hash_and_sys_info_diff_subset`,
   `cpython_types_frame_locals_proxy_type_diff_subset`,
   `cpython_types_names_public_surface_diff_subset`,
@@ -1149,6 +1150,10 @@ Recent runtime migration notes:
   str/bytes/bytearray subclasses, memoryview and sliced memoryview inputs,
   `array('B')` bytes-like inputs, original-repr `ValueError` messages, and
   unsupported-input `TypeError` wording.
+- `NUMBER` also includes CPython
+  `cpython_sys_module_package_metadata_subset`, backed by
+  `cpython_sys_module_package_metadata_diff_subset`, covering sys module `__package__` metadata
+  (`sys.__package__` is `''`).
 - `NUMBER` also includes CPython
   `test_float.py::GeneralFloatCases::test_hash` and `::test_hash_nan` through
   `cpython_float_hash_and_sys_info_subset`, covering public `sys.float_info`

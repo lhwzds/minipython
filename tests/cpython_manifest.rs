@@ -24890,6 +24890,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "sys",
         &[
+            "cpython_sys_module_package_metadata_subset",
             "cpython_float_hash_and_sys_info_subset",
             "cpython_builtin_negation_sys_maxsize_subset",
             "cpython_int_max_str_digits_runtime_subset",
@@ -24912,6 +24913,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "sys")
         .expect("sandbox stdlib manifest must include sys");
     for evidence in [
+        "cpython_sys_module_package_metadata_diff_subset",
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_builtin_negation_sys_maxsize_diff_subset",
@@ -24997,6 +24999,54 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
     );
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_sys_module_package_metadata_diff_subset",
+    );
+    let package_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_sys_module_package_metadata_subset");
+    for required in [
+        "sys.__package__",
+        "object.__getattribute__(sys, '__package__')",
+        "'__package__' in dir(sys)",
+        "sys.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "sys module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"sys ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "sys module package metadata subset output must pin `{required}`"
+        );
+    }
+    let sys_start = STDLIB_SOURCE
+        .find("\"sys\" => Ok(module_value(")
+        .expect("stdlib.rs must define the sys module");
+    let sys_end = sys_start
+        + STDLIB_SOURCE[sys_start..]
+            .find("\"time\" => Ok(module_value(")
+            .expect("sys module registry must precede time");
+    let sys_registry = &STDLIB_SOURCE[sys_start..sys_end];
+    assert!(
+        sys_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "sys stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_sys_module_package_metadata_subset",
+            "cpython_sys_module_package_metadata_diff_subset",
+            "sys module `__package__` metadata",
+            "`sys.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "sys module package metadata docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         STDLIB_SOURCE.contains("\"builtin_module_names\"")
             && STDLIB_SOURCE.contains("\"byteorder\"")

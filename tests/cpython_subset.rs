@@ -5674,6 +5674,18 @@ fn cpython_float_instance_doc_attribute_subset() {
     );
 }
 
+// Pins CPython's public module metadata for an imported top-level stdlib module.
+#[test]
+fn cpython_sys_module_package_metadata_subset() {
+    assert_output(
+        r#"import sys
+print(sys.__name__, repr(sys.__package__))
+print(repr(object.__getattribute__(sys, '__package__')))
+print('__package__' in dir(sys), repr(sys.__dict__['__package__']))"#,
+        &["sys ''", "''", "True ''"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_hash
 // and ::test_hash_nan. Exact identity-hash values are process-local, so this
 // pins the public equality relationships instead of numeric addresses.

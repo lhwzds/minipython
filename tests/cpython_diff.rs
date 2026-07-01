@@ -32806,6 +32806,18 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
 }
 
 #[test]
+fn cpython_sys_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/sys public module __package__ metadata subset",
+        name: "sys-module-package-metadata",
+        source: r#"import sys
+print(sys.__name__, repr(sys.__package__))
+print(repr(object.__getattribute__(sys, '__package__')))
+print('__package__' in dir(sys), repr(sys.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_float_hash_and_sys_info_diff_subset() {
     // CPython oracle text: sys.getdefaultencoding() takes no arguments (1 given);
     // sys.getdefaultencoding() takes no keyword arguments
