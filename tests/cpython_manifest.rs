@@ -8738,6 +8738,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_dir_wrapper_subset",
             "cpython_json_function_bound_method_rich_compare_wrapper_subset",
             "cpython_json_function_bound_method_rich_compare_operator_subset",
+            "cpython_json_function_bound_method_order_wrapper_subset",
             "cpython_json_function_bound_method_format_wrapper_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_wrapper_subset",
@@ -8872,6 +8873,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_dir_wrapper_diff_subset",
         "cpython_json_function_bound_method_rich_compare_wrapper_diff_subset",
         "cpython_json_function_bound_method_rich_compare_operator_diff_subset",
+        "cpython_json_function_bound_method_order_wrapper_diff_subset",
         "cpython_json_function_bound_method_format_wrapper_diff_subset",
         "cpython_json_function_bound_method_hash_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
@@ -9188,6 +9190,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_rich_compare_operator_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_rich_compare_operator_subset",
+    );
+    let json_function_bound_method_order_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_order_wrapper_diff_subset",
+    );
+    let json_function_bound_method_order_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_order_wrapper_subset",
     );
     let json_function_bound_method_format_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10242,6 +10252,73 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "['__lt__', '__le__', '__gt__', '__ge__']",
+        "attr in dir(bound)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is bound",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "wrapper(other) is NotImplemented",
+        "wrapper(1) is NotImplemented",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper, other=other: wrapper(other, 1))",
+        "('keyword', lambda wrapper=wrapper, other=other: wrapper(value=other))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_bound_method_order_wrapper_diff_body.contains(required)
+                && json_function_bound_method_order_wrapper_subset_body.contains(required),
+            "json public function bound method ordering wrapper diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads __lt__ True method-wrapper method-wrapper\"",
+        "\"loads __lt__ True __lt__ method.__lt__ Return self<value. MISSING ($self, value, /)\"",
+        "\"loads __lt__ True True\"",
+        "\"loads __lt__ missing TypeError expected 1 argument, got 0",
+        "\"loads __lt__ extra TypeError expected 1 argument, got 2",
+        "\"loads __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments",
+        "\"loads __le__ True __le__ method.__le__ Return self<=value. MISSING ($self, value, /)\"",
+        "\"loads __gt__ True __gt__ method.__gt__ Return self>value. MISSING ($self, value, /)\"",
+        "\"loads __ge__ True __ge__ method.__ge__ Return self>=value. MISSING ($self, value, /)\"",
+        "\"dumps __lt__ True method-wrapper method-wrapper\"",
+        "\"dumps __lt__ True __lt__ method.__lt__ Return self<value. MISSING ($self, value, /)\"",
+        "\"dumps __lt__ True True\"",
+        "\"dumps __lt__ missing TypeError expected 1 argument, got 0",
+        "\"dumps __lt__ extra TypeError expected 1 argument, got 2",
+        "\"dumps __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments",
+        "\"dumps __le__ True __le__ method.__le__ Return self<=value. MISSING ($self, value, /)\"",
+        "\"dumps __gt__ True __gt__ method.__gt__ Return self>value. MISSING ($self, value, /)\"",
+        "\"dumps __ge__ True __ge__ method.__ge__ Return self>=value. MISSING ($self, value, /)\"",
+    ] {
+        assert!(
+            json_function_bound_method_order_wrapper_subset_body.contains(required),
+            "json public function bound method ordering wrapper subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "method_rich_compare_wrapper_name(name)",
+        "method.__lt__",
+        "method.__le__",
+        "method.__gt__",
+        "method.__ge__",
+        "Return self<value.",
+        "Return self<=value.",
+        "Return self>value.",
+        "Return self>=value.",
+        "matches!(method, \"__lt__\" | \"__le__\" | \"__gt__\" | \"__ge__\")",
+        "return Ok(Value::NotImplemented);",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function bound method ordering wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
         "'__format__' in dir(bound)",
         "type(wrapper).__name__",
         "wrapper.__class__.__name__",
@@ -10908,9 +10985,15 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"method.__get__\"")
             && VM_SOURCE.contains("\"method.__eq__\"")
             && VM_SOURCE.contains("\"method.__ne__\"")
+            && VM_SOURCE.contains("\"method.__lt__\"")
+            && VM_SOURCE.contains("\"method.__le__\"")
+            && VM_SOURCE.contains("\"method.__gt__\"")
+            && VM_SOURCE.contains("\"method.__ge__\"")
             && VM_SOURCE.contains("\"__repr__\" | \"__str__\" => Ok(Value::BoundMethod")
             && VM_SOURCE.contains("\"__get__\" => Ok(Value::BoundMethod")
-            && VM_SOURCE.contains("\"__eq__\" | \"__ne__\" => Ok(Value::BoundMethod")
+            && VM_SOURCE.contains(
+                "\"__eq__\" | \"__ne__\" | \"__lt__\" | \"__le__\" | \"__gt__\" | \"__ge__\" => Ok(Value::BoundMethod"
+            )
             && VM_SOURCE.contains("\"__getattribute__\" => Ok(Value::BoundMethod")
             && VM_SOURCE.contains("Value::Builtin(format!(\"method.{name}\"))")
             && VM_SOURCE.contains("\"method.__call__\"")
@@ -10927,14 +11010,21 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"method.__get__\"")
             && VM_SOURCE.contains("\"method.__eq__\"")
             && VM_SOURCE.contains("\"method.__ne__\"")
+            && VM_SOURCE.contains("\"method.__lt__\"")
+            && VM_SOURCE.contains("\"method.__le__\"")
+            && VM_SOURCE.contains("\"method.__gt__\"")
+            && VM_SOURCE.contains("\"method.__ge__\"")
             && VM_SOURCE.contains("\"method.__getattribute__\""),
-        "VM must expose CPython-compatible bound method __call__ / __get__ / __eq__ / __ne__ / __repr__ / __str__ / __getattribute__ method wrappers"
+        "VM must expose CPython-compatible bound method __call__ / __get__ / rich-compare / __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
         VM_SOURCE.contains(
-            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__eq__\",\n                \"__format__\",\n                \"__get__\",\n                \"__getattribute__\","
-        ),
-        "VM bound method dir() names must include CPython-visible __call__, __dir__, __eq__, __ne__, __format__, __get__, and __doc__ metadata"
+            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__eq__\",\n                \"__format__\",\n                \"__ge__\",\n                \"__get__\",\n                \"__getattribute__\","
+        ) && VM_SOURCE.contains("\"__ge__\"")
+            && VM_SOURCE.contains("\"__gt__\"")
+            && VM_SOURCE.contains("\"__le__\"")
+            && VM_SOURCE.contains("\"__lt__\""),
+        "VM bound method dir() names must include CPython-visible __call__, __dir__, rich-compare wrappers, __format__, __get__, and __doc__ metadata"
     );
     assert!(
         VM_SOURCE.contains("\"__type_params__\"")
@@ -11082,6 +11172,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_rich_compare_wrapper_diff_subset",
             "cpython_json_function_bound_method_rich_compare_operator_subset",
             "cpython_json_function_bound_method_rich_compare_operator_diff_subset",
+            "cpython_json_function_bound_method_order_wrapper_subset",
+            "cpython_json_function_bound_method_order_wrapper_diff_subset",
             "cpython_json_function_bound_method_format_wrapper_subset",
             "cpython_json_function_bound_method_format_wrapper_diff_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",

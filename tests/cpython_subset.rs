@@ -38286,6 +38286,81 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_order_wrapper_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    receiver = []
+    bound = getattr(json, name).__get__(receiver, list)
+    other = getattr(json, name).__get__(receiver, list)
+    for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
+        wrapper = getattr(bound, attr)
+        print(name, attr, attr in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+        print(name, attr, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+        print(name, attr, wrapper(other) is NotImplemented, wrapper(1) is NotImplemented)
+        for label, call in [
+            ('missing', lambda wrapper=wrapper: wrapper()),
+            ('extra', lambda wrapper=wrapper, other=other: wrapper(other, 1)),
+            ('keyword', lambda wrapper=wrapper, other=other: wrapper(value=other)),
+        ]:
+            try:
+                call()
+            except TypeError as error:
+                print(name, attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads __lt__ True method-wrapper method-wrapper",
+            "loads __lt__ True __lt__ method.__lt__ Return self<value. MISSING ($self, value, /)",
+            "loads __lt__ True True",
+            "loads __lt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __lt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments ('wrapper __lt__() takes no keyword arguments',)",
+            "loads __le__ True method-wrapper method-wrapper",
+            "loads __le__ True __le__ method.__le__ Return self<=value. MISSING ($self, value, /)",
+            "loads __le__ True True",
+            "loads __le__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __le__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __le__ keyword TypeError wrapper __le__() takes no keyword arguments ('wrapper __le__() takes no keyword arguments',)",
+            "loads __gt__ True method-wrapper method-wrapper",
+            "loads __gt__ True __gt__ method.__gt__ Return self>value. MISSING ($self, value, /)",
+            "loads __gt__ True True",
+            "loads __gt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __gt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __gt__ keyword TypeError wrapper __gt__() takes no keyword arguments ('wrapper __gt__() takes no keyword arguments',)",
+            "loads __ge__ True method-wrapper method-wrapper",
+            "loads __ge__ True __ge__ method.__ge__ Return self>=value. MISSING ($self, value, /)",
+            "loads __ge__ True True",
+            "loads __ge__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __ge__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __ge__ keyword TypeError wrapper __ge__() takes no keyword arguments ('wrapper __ge__() takes no keyword arguments',)",
+            "dumps __lt__ True method-wrapper method-wrapper",
+            "dumps __lt__ True __lt__ method.__lt__ Return self<value. MISSING ($self, value, /)",
+            "dumps __lt__ True True",
+            "dumps __lt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __lt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments ('wrapper __lt__() takes no keyword arguments',)",
+            "dumps __le__ True method-wrapper method-wrapper",
+            "dumps __le__ True __le__ method.__le__ Return self<=value. MISSING ($self, value, /)",
+            "dumps __le__ True True",
+            "dumps __le__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __le__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __le__ keyword TypeError wrapper __le__() takes no keyword arguments ('wrapper __le__() takes no keyword arguments',)",
+            "dumps __gt__ True method-wrapper method-wrapper",
+            "dumps __gt__ True __gt__ method.__gt__ Return self>value. MISSING ($self, value, /)",
+            "dumps __gt__ True True",
+            "dumps __gt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __gt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __gt__ keyword TypeError wrapper __gt__() takes no keyword arguments ('wrapper __gt__() takes no keyword arguments',)",
+            "dumps __ge__ True method-wrapper method-wrapper",
+            "dumps __ge__ True __ge__ method.__ge__ Return self>=value. MISSING ($self, value, /)",
+            "dumps __ge__ True True",
+            "dumps __ge__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __ge__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __ge__ keyword TypeError wrapper __ge__() takes no keyword arguments ('wrapper __ge__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_format_wrapper_subset() {
     assert_output(
         r#"import json

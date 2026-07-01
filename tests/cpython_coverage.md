@@ -1072,6 +1072,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_dir_wrapper_diff_subset`,
   `cpython_json_function_bound_method_rich_compare_wrapper_diff_subset`,
   `cpython_json_function_bound_method_rich_compare_operator_diff_subset`,
+  `cpython_json_function_bound_method_order_wrapper_diff_subset`,
   `cpython_json_function_bound_method_format_wrapper_diff_subset`,
   `cpython_json_function_bound_method_hash_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
@@ -1752,6 +1753,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_rich_compare_wrapper_subset`,
   `cpython_json_function_bound_method_rich_compare_operator_diff_subset` /
   `cpython_json_function_bound_method_rich_compare_operator_subset`,
+  `cpython_json_function_bound_method_order_wrapper_diff_subset` /
+  `cpython_json_function_bound_method_order_wrapper_subset`,
   `cpython_json_function_bound_method_format_wrapper_diff_subset` /
   `cpython_json_function_bound_method_format_wrapper_subset`,
   `cpython_json_function_bound_method_hash_wrapper_diff_subset` /
@@ -2603,6 +2606,16 @@ including `==` / `!=` for same receiver identity, equal-but-distinct receivers,
 different receivers, different functions, and non-method operands, without
 adding `__reduce__`, `__reduce_ex__`, `__sizeof__`, file APIs, module `__all__`,
 or encoder/decoder classes.
+
+`cpython_json_function_bound_method_order_wrapper_subset`, backed by
+`cpython_json_function_bound_method_order_wrapper_diff_subset`, keeps json public
+function bound method `__lt__` / `__le__` / `__gt__` / `__ge__` wrapper access
+aligned with CPython for `loads.__get__(...)` and `dumps.__get__(...)`,
+including `dir()` visibility, `method-wrapper` classification, `__self__` /
+`__name__` / `__qualname__` / `__doc__` / `__text_signature__` metadata,
+`NotImplemented` results, and arity / keyword `TypeError` text, without adding
+`__reduce__`, `__reduce_ex__`, `__sizeof__`, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_bound_method_format_wrapper_subset`, backed by
 `cpython_json_function_bound_method_format_wrapper_diff_subset`, keeps json public function bound method `__format__`
