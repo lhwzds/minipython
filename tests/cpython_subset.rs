@@ -27232,6 +27232,7 @@ for item in cases:
     print('attrs', item.start, item.stop, item.step, repr(item))
 
 s = slice(1, 5, 2)
+print('indices-visible', 'indices' in dir(s), 'indices' in dir(slice))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(s, name, 99))
     show('del-' + name, lambda name=name: delattr(s, name))
@@ -27243,6 +27244,7 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
             "attrs 1 5 None slice(1, 5, None)",
             "attrs 1 10 2 slice(1, 10, 2)",
             "attrs None None -1 slice(None, None, -1)",
+            "indices-visible True True",
             "set-start AttributeError readonly attribute",
             "del-start AttributeError readonly attribute",
             "set-stop AttributeError readonly attribute",

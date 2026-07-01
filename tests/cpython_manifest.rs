@@ -26726,12 +26726,15 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
         "slice(1, 10, 2)",
         "slice(None, None, -1)",
         "item.start, item.stop, item.step",
+        "'indices' in dir(s)",
+        "'indices' in dir(slice)",
         "setattr(s, name, 99)",
         "delattr(s, name)",
         "setattr(s, 'extra', 99)",
         "delattr(s, 'extra')",
         "\"attrs None None None slice(None, None, None)\"",
         "\"attrs 1 10 2 slice(1, 10, 2)\"",
+        "\"indices-visible True True\"",
         "\"set-start AttributeError readonly attribute\"",
         "\"del-step AttributeError readonly attribute\"",
         "\"set-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
@@ -26752,6 +26755,8 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
         "slice(1, 10, 2)",
         "slice(None, None, -1)",
         "item.start, item.stop, item.step",
+        "'indices' in dir(s)",
+        "'indices' in dir(slice)",
         "setattr(s, name, 99)",
         "delattr(s, name)",
         "setattr(s, 'extra', 99)",
@@ -26765,6 +26770,9 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
 
     for required in [
         "Value::Slice { .. } => Err(slice_attribute_assignment_error(name))",
+        "Value::Slice { .. } => names.extend(",
+        "\"slice\" => &[\"indices\", \"start\", \"stop\", \"step\"]",
+        "[\"indices\", \"start\", \"stop\", \"step\"]",
         "fn slice_attribute_assignment_error(name: &str) -> String",
         "matches!(name, \"start\" | \"stop\" | \"step\")",
         "\"AttributeError: readonly attribute\"",
@@ -26782,6 +26790,7 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
             document.contains("cpython_slice_public_attributes_subset")
                 && document.contains("cpython_slice_public_attributes_diff_subset")
                 && document.contains("slice.start")
+                && document.contains("slice.indices in dir()")
                 && document.contains("readonly public data attributes")
                 && document.contains("without adding slice instance dictionaries"),
             "focused slice public attribute evidence must be documented in coverage and migration notes"

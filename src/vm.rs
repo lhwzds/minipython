@@ -49791,9 +49791,11 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         }
         Value::Float(_) => names.extend(builtin_type_dir_names("float")),
         Value::Complex { .. } => names.extend(builtin_type_dir_names("complex")),
-        Value::Slice { .. } => {
-            names.extend(["start", "stop", "step"].into_iter().map(str::to_string))
-        }
+        Value::Slice { .. } => names.extend(
+            ["indices", "start", "stop", "step"]
+                .into_iter()
+                .map(str::to_string),
+        ),
         Value::Frame { .. } => names.extend(
             [
                 "__class__",
@@ -50530,7 +50532,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "imag",
             "real",
         ],
-        "slice" => &["start", "stop", "step"],
+        "slice" => &["indices", "start", "stop", "step"],
         "object" => &[
             "__dir__",
             "__format__",

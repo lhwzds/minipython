@@ -10032,6 +10032,7 @@ for item in cases:
     print('attrs', item.start, item.stop, item.step, repr(item))
 
 s = slice(1, 5, 2)
+print('indices-visible', 'indices' in dir(s), 'indices' in dir(slice))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(s, name, 99))
     show('del-' + name, lambda name=name: delattr(s, name))

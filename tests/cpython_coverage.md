@@ -133,8 +133,9 @@ Recent runtime migration notes:
 - `cpython_slice_public_attributes_subset`, backed by
   `cpython_slice_public_attributes_diff_subset`, now pins `slice.start`,
   `slice.stop`, and `slice.step` as readonly public data attributes across
-  omitted, explicit, stepped, and negative-step slices, plus CPython's readonly
-  and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
+  omitted, explicit, stepped, and negative-step slices, slice.indices in dir()
+  for both instances and the builtin type, plus CPython's readonly and no-`__dict__`
+  assignment/deletion errors without adding slice instance dictionaries.
 - `cpython_complex_public_attributes_subset`, backed by
   `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and

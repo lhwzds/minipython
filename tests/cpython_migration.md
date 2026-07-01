@@ -143,8 +143,9 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_slice_public_attributes_subset` and
   `cpython_slice_public_attributes_diff_subset` for `slice.start`,
   `slice.stop`, and `slice.step` as readonly public data attributes across
-  omitted, explicit, stepped, and negative-step slices, including CPython's
-  readonly and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
+  omitted, explicit, stepped, and negative-step slices, including slice.indices in dir()
+  for both instances and the builtin type, CPython's readonly and no-`__dict__`
+  assignment/deletion errors without adding slice instance dictionaries.
 - Added `cpython_complex_public_attributes_subset` and
   `cpython_complex_public_attributes_diff_subset` for `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and
