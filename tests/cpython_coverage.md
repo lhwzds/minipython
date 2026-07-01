@@ -795,6 +795,7 @@ Recent runtime migration notes:
   `cpython_json_option_truthiness_diff_subset`,
   `cpython_json_dumps_string_escape_diff_subset`,
   `cpython_json_dumps_key_coercion_diff_subset`,
+  `cpython_json_dumps_strenum_diff_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset`,
   `cpython_json_dumps_counter_subclass_diff_subset`,
   `cpython_json_dumps_sequence_subclass_iter_diff_subset`,
@@ -1383,6 +1384,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_string_escape_subset`,
   `cpython_json_dumps_key_coercion_diff_subset` /
   `cpython_json_dumps_key_coercion_subset`,
+  `cpython_json_dumps_strenum_diff_subset` /
+  `cpython_json_dumps_strenum_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset` /
   `cpython_json_dumps_ordered_dict_subset`,
   `cpython_json_dumps_counter_subclass_diff_subset` /
@@ -1562,7 +1565,7 @@ Recent runtime migration notes:
   empty containers, finite and
   default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
-  `None`, circular-reference rejection for list/dict/tuple/namedtuple
+  `None`, `enum.StrEnum` values and keys, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   invalid UTF-8 byte input `UnicodeDecodeError` type classification, and
   first-pass type, structural, literal, and data error classification. File APIs,
@@ -1590,6 +1593,14 @@ without expanding into custom encoder hooks.
 `Counter` mappings, dict subclass `items()` handling, tuple-subclass item pairs,
 and CPython TypeError/ValueError text for malformed `items()` results,
 without expanding into arbitrary encoder or mapping-protocol support.
+
+`cpython_json_dumps_strenum_subset`, backed by
+`cpython_json_dumps_strenum_diff_subset`, keeps `dumps()` treating
+`enum.StrEnum` values and keys as their public string value for the supported
+class-statement string members. The slice covers aliases, value lookup,
+`name` / `value`, and `__members__`, without adding full `enum.Enum`,
+`auto()`, `Flag`, or `IntFlag`.
+
 `cpython_json_dumps_ordered_dict_subset`, backed by
 `cpython_json_dumps_ordered_dict_diff_subset`, keeps `dumps()` treating the
 supported pure-memory `collections.OrderedDict` surface as a dict-style mapping

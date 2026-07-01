@@ -8379,6 +8379,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_option_truthiness_subset",
             "cpython_json_dumps_string_escape_subset",
             "cpython_json_dumps_key_coercion_subset",
+            "cpython_json_dumps_strenum_subset",
             "cpython_json_dumps_ordered_dict_subset",
             "cpython_json_dumps_counter_subclass_subset",
             "cpython_json_dumps_sequence_subclass_iter_subset",
@@ -8473,6 +8474,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_option_truthiness_diff_subset",
         "cpython_json_dumps_string_escape_diff_subset",
         "cpython_json_dumps_key_coercion_diff_subset",
+        "cpython_json_dumps_strenum_diff_subset",
         "cpython_json_dumps_ordered_dict_diff_subset",
         "cpython_json_dumps_counter_subclass_diff_subset",
         "cpython_json_dumps_sequence_subclass_iter_diff_subset",
@@ -8834,6 +8836,84 @@ fn json_dumps_key_coercion_diff_covers_subset_surface() {
             assert!(
                 document.contains(required),
                 "json docs must describe dict-key coercion dumps boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_dumps_strenum_diff_covers_subset_surface() {
+    let diff_name = "cpython_json_dumps_strenum_diff_subset";
+    let subset_name = "cpython_json_dumps_strenum_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json StrEnum dumps CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json StrEnum dumps subset evidence must exist"
+    );
+
+    for required in [
+        "from enum import StrEnum",
+        "class Color(StrEnum):",
+        "crimson = 'r'",
+        "Color.red is Color.crimson",
+        "Color('r') is Color.red",
+        "Color.__members__.items()",
+        "json.dumps(Color.red)",
+        "json.dumps({Color.red: Color.blue}, sort_keys=True)",
+        "Color('x')",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json StrEnum dumps diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "r <Color.red: 'r'> red r True Color",
+        "True True True",
+        "\\\"r\\\" {\\\"r\\\": \\\"b\\\"} [\\\"r\\\"]",
+        "ValueError 'x' is not a valid Color",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json StrEnum dumps subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "\"StrEnum\", builtin_type_value(\"enum.StrEnum\")",
+        "install_str_enum_members(&class_value)",
+        "class_bases_include_builtin(&bases, \"enum.StrEnum\")",
+        "str_enum_member_value",
+        "str_enum_member_repr",
+        "name == \"enum.StrEnum\" && target_name == \"str\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required) || STDLIB_SOURCE.contains(required),
+            "json StrEnum implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`enum.StrEnum` values and keys",
+            "class-statement string members",
+            "aliases, value lookup",
+            "`name` / `value`, and `__members__`",
+            "without adding full `enum.Enum`",
+            "`auto()`, `Flag`, or `IntFlag`",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe StrEnum dumps boundary `{required}`"
             );
         }
     }

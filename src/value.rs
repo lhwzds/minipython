@@ -31,6 +31,8 @@ pub const EXCEPTION_TRACEBACK_ATTR: &str = "\0minipython_traceback";
 pub const INT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_int_storage";
 pub const INT_ENUM_MEMBER_NAME_FIELD: &str = "\0minipython_int_enum_member_name";
 pub const INT_ENUM_MEMBER_VALUE_FIELD: &str = "\0minipython_int_enum_member_value";
+pub const STR_ENUM_MEMBER_NAME_FIELD: &str = "\0minipython_str_enum_member_name";
+pub const STR_ENUM_MEMBER_VALUE_FIELD: &str = "\0minipython_str_enum_member_value";
 pub const FLOAT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_float_storage";
 pub const COMPLEX_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_complex_storage";
 pub const NAMED_TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_namedtuple_storage";
@@ -2029,6 +2031,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::Instance {
             class_name, fields, ..
         } => format_int_enum_member_repr(class_name, fields)
+            .or_else(|| format_str_enum_member_repr(class_name, fields))
             .or_else(|| format_int_subclass(fields))
             .or_else(|| format_float_subclass(fields))
             .or_else(|| format_named_tuple_subclass(class_name, fields))
@@ -4196,6 +4199,19 @@ fn format_int_enum_member_repr(class_name: &str, fields: &Scope) -> Option<Strin
         _ => return None,
     };
     let value = fields_ref.get(INT_ENUM_MEMBER_VALUE_FIELD).cloned()?;
+    Some(format!(
+        "<{class_name}.{member_name}: {}>",
+        format_value_repr(&value)
+    ))
+}
+
+fn format_str_enum_member_repr(class_name: &str, fields: &Scope) -> Option<String> {
+    let fields_ref = fields.borrow();
+    let member_name = match fields_ref.get(STR_ENUM_MEMBER_NAME_FIELD)? {
+        Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        _ => return None,
+    };
+    let value = fields_ref.get(STR_ENUM_MEMBER_VALUE_FIELD).cloned()?;
     Some(format!(
         "<{class_name}.{member_name}: {}>",
         format_value_repr(&value)

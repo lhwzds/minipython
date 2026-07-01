@@ -841,7 +841,10 @@ pub(crate) fn create_module(
         )),
         "enum" => Ok(module_value(
             "enum",
-            vec![("IntEnum", builtin_type_value("enum.IntEnum"))],
+            vec![
+                ("IntEnum", builtin_type_value("enum.IntEnum")),
+                ("StrEnum", builtin_type_value("enum.StrEnum")),
+            ],
         )),
         "fractions" => Ok(module_value(
             "fractions",

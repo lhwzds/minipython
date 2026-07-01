@@ -37,13 +37,14 @@ use crate::value::{
     INT_ENUM_MEMBER_NAME_FIELD, INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef,
     LruCacheState, MemoryViewRef, MockCallsRef, MockSideEffectRef,
     NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType, NamedTupleTypeRef,
-    SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState,
-    TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
-    code_metadata_namespace_entries_equal, complex_value, dict_value, dict_view_value,
-    dict_view_values, float_value, format_float_display, format_iterator_repr,
-    frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
-    identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
-    memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
+    SET_SUBCLASS_STORAGE_FIELD, STR_ENUM_MEMBER_NAME_FIELD, STR_ENUM_MEMBER_VALUE_FIELD, Scope,
+    SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState, TemplateInterpolation, Value,
+    byte_array_value, bytes_io_value, bytes_value, code_metadata_namespace_entries_equal,
+    complex_value, dict_value, dict_view_value, dict_view_values, float_value,
+    format_float_display, format_iterator_repr, frame_locals_proxy_value, frozen_set_value,
+    generic_alias_subclass_alias, identity_string_value, list_value, mapping_proxy_value,
+    mapping_view_value, memory_view_from_byte_array,
+    memory_view_from_parts_with_exported_bytearray,
     memory_view_from_parts_with_exported_bytearray_and_ndim, memory_view_from_parts_with_format,
     memory_view_value, ordered_dict_view_value, set_value, tuple_value,
 };
@@ -1636,6 +1637,12 @@ fn repr_value_checked(value: &Value) -> Result<String, String> {
 fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => Ok(repr_string(value)),
+        Value::Instance {
+            class_name, fields, ..
+        } if str_enum_member_repr(class_name, fields).is_some() => {
+            Ok(str_enum_member_repr(class_name, fields)
+                .expect("StrEnum member repr exists after guard"))
+        }
         value if str_subclass_string(value).is_some() => Ok(repr_string(
             &str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
@@ -2090,6 +2097,12 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
         } if int_enum_member_repr(class_name, fields).is_some() => {
             int_enum_member_repr(class_name, fields)
                 .expect("IntEnum member repr exists after guard")
+        }
+        Value::Instance {
+            class_name, fields, ..
+        } if str_enum_member_repr(class_name, fields).is_some() => {
+            str_enum_member_repr(class_name, fields)
+                .expect("StrEnum member repr exists after guard")
         }
         value if dict_subclass_entries(value).is_some() => {
             let entries =
@@ -12094,6 +12107,7 @@ impl Vm {
             attrs,
         };
         install_int_enum_members(&class_value)?;
+        install_str_enum_members(&class_value)?;
         bind_deferred_type_param_class_values(&class_value);
         let class_setup = class_mro(&class_value)
             .and_then(|_| validate_class_slots(&class_value))
@@ -12146,6 +12160,45 @@ impl Vm {
         }
         Err(format!(
             "ValueError: {} is not a valid IntEnum value",
+            repr_value(&target)
+        ))
+    }
+
+    fn call_str_enum_member(
+        &mut self,
+        class: Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: StrEnum lookup does not accept keyword arguments".to_string());
+        }
+        let [target] = args.as_slice() else {
+            return if args.is_empty() {
+                Err(
+                    "TypeError: EnumType.__call__() missing 1 required positional argument: 'value'"
+                        .to_string(),
+                )
+            } else {
+                Err(format!(
+                    "ValueError: {} is not a valid {}",
+                    repr_value(&tuple_value(args)),
+                    class_display_name(&class)
+                ))
+            };
+        };
+        let Value::Class { attrs, name, .. } = class else {
+            return Err("TypeError: StrEnum lookup requires an enum class".to_string());
+        };
+        let target = str_enum_lookup_storage(target)
+            .ok_or_else(|| format!("ValueError: {} is not a valid {name}", repr_value(target)))?;
+        for (_, value) in scope_dict_entries(&attrs) {
+            if str_enum_member_storage(&value).is_some_and(|storage| storage == target) {
+                return Ok(value);
+            }
+        }
+        Err(format!(
+            "ValueError: {} is not a valid {name}",
             repr_value(&target)
         ))
     }
@@ -12648,6 +12701,20 @@ impl Vm {
 
         if class_bases_include_builtin(&bases, "enum.IntEnum") {
             return self.call_int_enum_member(
+                Value::Class {
+                    name,
+                    type_params,
+                    metaclass: None,
+                    bases,
+                    attrs,
+                },
+                args,
+                keywords,
+            );
+        }
+
+        if class_bases_include_builtin(&bases, "enum.StrEnum") {
+            return self.call_str_enum_member(
                 Value::Class {
                     name,
                     type_params,
@@ -52304,6 +52371,125 @@ fn int_enum_member_value(
     }
 }
 
+fn install_str_enum_members(class_value: &Value) -> Result<(), String> {
+    let Value::Class {
+        name, bases, attrs, ..
+    } = class_value
+    else {
+        return Ok(());
+    };
+    if !class_bases_include_builtin(bases, "enum.StrEnum") {
+        return Ok(());
+    }
+
+    let candidates = scope_dict_entries(attrs)
+        .into_iter()
+        .filter_map(|(member_name, value)| {
+            let Some(member_name) = value_as_string(&member_name).map(str::to_string) else {
+                return None;
+            };
+            if !is_int_enum_member_name(&member_name) {
+                return None;
+            }
+            str_enum_candidate_storage(&value).map(|storage| (member_name, storage))
+        })
+        .collect::<Vec<_>>();
+
+    let mut canonical_members: Vec<(Value, Value)> = Vec::new();
+    let mut member_entries = Vec::new();
+    for (member_name, storage) in candidates {
+        let member = canonical_members
+            .iter()
+            .find(|(existing_storage, _)| existing_storage == &storage)
+            .map(|(_, member)| member.clone())
+            .unwrap_or_else(|| {
+                let member =
+                    str_enum_member_value(name, attrs, bases, member_name.clone(), storage.clone());
+                canonical_members.push((storage.clone(), member.clone()));
+                member
+            });
+        attrs
+            .borrow_mut()
+            .insert(member_name.clone(), member.clone());
+        member_entries.push((Value::String(member_name), member));
+    }
+
+    if !member_entries.is_empty() {
+        attrs.borrow_mut().insert(
+            "__members__".to_string(),
+            mapping_proxy_value(Rc::new(RefCell::new(DictStorage::new(member_entries)))),
+        );
+    }
+    Ok(())
+}
+
+fn str_enum_candidate_storage(value: &Value) -> Option<Value> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => {
+            Some(Value::String(value.clone()))
+        }
+        value if str_subclass_string(value).is_some() => Some(Value::String(
+            str_subclass_string(value).expect("str subclass storage exists after guard"),
+        )),
+        _ => None,
+    }
+}
+
+fn str_enum_lookup_storage(value: &Value) -> Option<Value> {
+    str_enum_member_storage(value).or_else(|| str_enum_candidate_storage(value))
+}
+
+fn str_enum_member_storage(value: &Value) -> Option<Value> {
+    let Value::Instance { fields, .. } = value else {
+        return None;
+    };
+    match fields.borrow().get(STR_ENUM_MEMBER_VALUE_FIELD).cloned() {
+        Some(Value::String(value)) => Some(Value::String(value)),
+        _ => None,
+    }
+}
+
+fn str_enum_member_repr(class_name: &str, fields: &Scope) -> Option<String> {
+    let fields_ref = fields.borrow();
+    let member_name = match fields_ref.get(STR_ENUM_MEMBER_NAME_FIELD)? {
+        Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        _ => return None,
+    };
+    let value = fields_ref.get(STR_ENUM_MEMBER_VALUE_FIELD).cloned()?;
+    Some(format!(
+        "<{class_name}.{member_name}: {}>",
+        repr_value(&value)
+    ))
+}
+
+fn str_enum_member_value(
+    class_name: &str,
+    class_attrs: &Scope,
+    class_bases: &[Value],
+    member_name: String,
+    storage: Value,
+) -> Value {
+    let fields = new_scope();
+    {
+        let mut fields = fields.borrow_mut();
+        fields.insert(STR_SUBCLASS_STORAGE_FIELD.to_string(), storage.clone());
+        fields.insert(
+            STR_ENUM_MEMBER_NAME_FIELD.to_string(),
+            Value::String(member_name.clone()),
+        );
+        fields.insert(STR_ENUM_MEMBER_VALUE_FIELD.to_string(), storage.clone());
+        fields.insert("name".to_string(), Value::String(member_name));
+        fields.insert("value".to_string(), storage);
+    }
+
+    Value::Instance {
+        class_name: class_name.to_string(),
+        fields,
+        class_attrs: class_attrs.clone(),
+        class_bases: class_bases.to_vec(),
+    }
+}
+
 fn int_subclass_attribute(value: Value, name: &str) -> Option<Value> {
     let storage = int_subclass_integer(&value)?;
     match name {
@@ -61758,6 +61944,7 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "UserString"
             | "SimpleNamespace"
             | "enum.IntEnum"
+            | "enum.StrEnum"
             | "module"
             | "property"
             | "super"
@@ -66571,6 +66758,7 @@ fn builtin_class_inherits(name: &str, target_name: &str) -> bool {
         || (name == "Counter" && target_name == "dict")
         || (name == "defaultdict" && target_name == "dict")
         || (name == "enum.IntEnum" && target_name == "int")
+        || (name == "enum.StrEnum" && target_name == "str")
         || (name == "NodeTransformer" && target_name == "NodeVisitor")
         || (name == "bool" && target_name == "int")
         || (is_dict_view_type_object_name(name)

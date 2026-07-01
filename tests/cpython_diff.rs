@@ -708,6 +708,30 @@ fn cpython_json_loads_dumps_basic_diff_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_strenum_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/enum and Lib/json public StrEnum dumps subset",
+        name: "json-dumps-strenum",
+        source: r#"import json
+from enum import StrEnum
+
+class Color(StrEnum):
+    red = 'r'
+    crimson = 'r'
+    blue = 'b'
+
+print(str(Color.red), repr(Color.red), Color.red.name, Color.red.value, isinstance(Color.red, str), type(Color.red).__name__)
+print(Color.red is Color.crimson, Color('r') is Color.red, Color('b') is Color.blue)
+print(tuple((name, repr(value)) for name, value in Color.__members__.items()))
+print(json.dumps(Color.red), json.dumps({Color.red: Color.blue}, sort_keys=True), json.dumps([Color.crimson]))
+try:
+    Color('x')
+except ValueError as error:
+    print(type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_missing_keyerror_payload_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public dict missing-key KeyError args behavior",
