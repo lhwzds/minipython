@@ -106,6 +106,7 @@ thread_local! {
     static FUNCTION_CODE_IDENTITIES: RefCell<HashMap<usize, Rc<()>>> =
         RefCell::new(HashMap::new());
     static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>> = RefCell::new(None);
+    static JSON_BUILTIN_TYPE_PARAM_OVERRIDES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_MODULE: RefCell<Option<Value>> = RefCell::new(None);
@@ -61433,7 +61434,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__type_params__" && is_json_builtin(&function_name) =>
         {
-            Ok(json_builtin_type_params())
+            Ok(json_builtin_type_params(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__annotate__" && is_json_builtin(&function_name) =>
@@ -62162,13 +62163,31 @@ fn delete_json_builtin_annotations(name: &str) {
     });
 }
 
-fn json_builtin_type_params() -> Value {
+fn json_builtin_type_params(name: &str) -> Value {
+    if let Some(value) =
+        JSON_BUILTIN_TYPE_PARAM_OVERRIDES.with(|overrides| overrides.borrow().get(name).cloned())
+    {
+        return value;
+    }
     JSON_BUILTIN_TYPE_PARAMS.with(|type_params| {
         let mut type_params = type_params.borrow_mut();
         type_params
             .get_or_insert_with(|| tuple_value(Vec::new()))
             .clone()
     })
+}
+
+fn set_json_builtin_type_params(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::Tuple(_))
+        && tuple_subclass_items(&value).is_none()
+        && namedtuple_subclass_storage(&value).is_none()
+    {
+        return Err("TypeError: __type_params__ must be set to a tuple".to_string());
+    }
+    JSON_BUILTIN_TYPE_PARAM_OVERRIDES.with(|overrides| {
+        overrides.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
 }
 
 fn collections_namedtuple_doc() -> &'static str {
@@ -62333,6 +62352,7 @@ fn store_json_builtin_attribute(
             return Ok(());
         }
         "__dict__" => return set_json_builtin_dict(function_name, value),
+        "__type_params__" => return set_json_builtin_type_params(function_name, value),
         "__annotate__" => return set_json_builtin_annotate(function_name, value),
         "__annotations__" => return set_json_builtin_annotations(function_name, value),
         _ => {}
@@ -62356,6 +62376,9 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             return Ok(());
         }
         "__dict__" => return Err("TypeError: cannot delete __dict__".to_string()),
+        "__type_params__" => {
+            return Err("TypeError: __type_params__ must be set to a tuple".to_string());
+        }
         "__annotate__" => return Err("TypeError: __annotate__ cannot be deleted".to_string()),
         "__annotations__" => {
             delete_json_builtin_annotations(function_name);

@@ -8713,6 +8713,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_json_module_package_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
+            "cpython_json_function_type_params_assignment_metadata_subset",
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_annotate_assignment_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
@@ -8859,6 +8860,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
+        "cpython_json_function_type_params_assignment_metadata_diff_subset",
         "cpython_json_function_annotate_metadata_diff_subset",
         "cpython_json_function_annotate_assignment_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
@@ -9134,6 +9136,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_type_params_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_type_params_metadata_subset",
+    );
+    let json_function_type_params_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_type_params_assignment_metadata_diff_subset",
+    );
+    let json_function_type_params_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_type_params_assignment_metadata_subset",
     );
     let json_function_annotate_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10312,6 +10322,67 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_type_params_subset_body.contains(required),
             "json public function __type_params__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "class T(tuple):",
+        "json.loads.__type_params__ is json.dumps.__type_params__",
+        "original = function.__type_params__",
+        "replacement = ('T',)",
+        "function.__type_params__ = replacement",
+        "function.__type_params__ is replacement",
+        "subclass = T(('U',))",
+        "function.__type_params__ = subclass",
+        "function.__type_params__ is subclass",
+        "function.__type_params__ = value",
+        "del function.__type_params__",
+        "function.__type_params__ = original",
+        "json.loads.__type_params__",
+        "json.dumps.__type_params__",
+    ] {
+        assert!(
+            json_function_type_params_assignment_diff_body.contains(required)
+                && json_function_type_params_assignment_subset_body.contains(required),
+            "json public function __type_params__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"initial-same True\"",
+        "\"loads initial tuple () True\"",
+        "\"loads set-tuple True ('T',)\"",
+        "\"loads set-subclass True T ('U',)\"",
+        "\"loads set-none TypeError __type_params__ must be set to a tuple",
+        "\"loads set-list TypeError __type_params__ must be set to a tuple",
+        "\"loads del-error TypeError __type_params__ must be set to a tuple",
+        "\"loads after-errors True T ('U',)\"",
+        "\"dumps initial tuple () True\"",
+        "\"dumps set-tuple True ('T',)\"",
+        "\"dumps set-subclass True T ('U',)\"",
+        "\"dumps set-none TypeError __type_params__ must be set to a tuple",
+        "\"dumps set-list TypeError __type_params__ must be set to a tuple",
+        "\"dumps del-error TypeError __type_params__ must be set to a tuple",
+        "\"dumps after-errors True T ('U',)\"",
+        "\"() () True\"",
+    ] {
+        assert!(
+            json_function_type_params_assignment_subset_body.contains(required),
+            "json public function __type_params__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_TYPE_PARAM_OVERRIDES: RefCell<HashMap<String, Value>>",
+        "fn json_builtin_type_params(name: &str) -> Value",
+        "fn set_json_builtin_type_params(",
+        "Ok(json_builtin_type_params(&function_name))",
+        "JSON_BUILTIN_TYPE_PARAM_OVERRIDES.with",
+        "tuple_subclass_items(&value).is_none()",
+        "namedtuple_subclass_storage(&value).is_none()",
+        "__type_params__ must be set to a tuple",
+        "\"__type_params__\" => return set_json_builtin_type_params(function_name, value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __type_params__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11596,9 +11667,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains("name == \"__type_params__\" && is_json_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(json_builtin_type_params())")
+            && VM_SOURCE.contains("Ok(json_builtin_type_params(&function_name))")
             && VM_SOURCE.contains("static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>>")
-            && VM_SOURCE.contains("fn json_builtin_type_params() -> Value")
+            && VM_SOURCE.contains(
+                "static JSON_BUILTIN_TYPE_PARAM_OVERRIDES: RefCell<HashMap<String, Value>>"
+            )
+            && VM_SOURCE.contains("fn json_builtin_type_params(name: &str) -> Value")
             && VM_SOURCE.contains(".get_or_insert_with(|| tuple_value(Vec::new()))"),
         "VM must expose persistent CPython-compatible json function __type_params__ metadata"
     );
@@ -11944,6 +12018,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_assignment_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
+            "cpython_json_function_type_params_assignment_metadata_subset",
+            "cpython_json_function_type_params_assignment_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_annotate_metadata_diff_subset",
             "cpython_json_function_annotate_assignment_metadata_subset",
@@ -12035,6 +12111,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",
+            "json public function `__type_params__` assignment",
             "json public function `__annotate__` metadata",
             "`json.loads.__annotate__`",
             "`json.dumps.__annotate__`",
