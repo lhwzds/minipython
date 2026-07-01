@@ -13838,6 +13838,18 @@ for alias in (types.NoneType, types.NotImplementedType, types.EllipsisType):
 }
 
 #[test]
+fn cpython_types_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py types module __package__ metadata subset",
+        name: "types-module-package-metadata",
+        source: r#"import types
+print(types.__name__, repr(types.__package__))
+print(repr(object.__getattribute__(types, '__package__')))
+print('__package__' in dir(types), repr(types.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py public ModuleType behavior",

@@ -33797,6 +33797,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
         &[
+            "cpython_types_module_package_metadata_subset",
             "cpython_types_names_public_surface_subset",
             "cpython_types_singleton_type_aliases_subset",
             "cpython_types_module_type_subset",
@@ -33876,6 +33877,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "types")
         .expect("sandbox stdlib manifest must include types");
     for evidence in [
+        "cpython_types_module_package_metadata_diff_subset",
         "cpython_types_names_public_surface_diff_subset",
         "cpython_types_singleton_type_aliases_diff_subset",
         "cpython_types_module_type_diff_subset",
@@ -33984,6 +33986,54 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("types.resolve_bases((Base,))"),
         "types sandbox export test must guard public aliases, helpers, and internal/legacy stop lines"
     );
+
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_module_package_metadata_diff_subset",
+    );
+    let package_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_module_package_metadata_subset",
+    );
+    for required in [
+        "types.__package__",
+        "object.__getattribute__(types, '__package__')",
+        "'__package__' in dir(types)",
+        "types.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "types module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"types ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "types module package metadata subset output must pin `{required}`"
+        );
+    }
+    let types_module_source = STDLIB_SOURCE
+        .split("fn types_accelerator_module()")
+        .next()
+        .and_then(|prefix| prefix.rsplit("fn types_module()").next())
+        .expect("stdlib source must include types_module before types_accelerator_module");
+    assert!(
+        types_module_source.contains("(\"__package__\", Value::String(String::new()))"),
+        "types module builder must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_types_module_package_metadata_subset",
+            "cpython_types_module_package_metadata_diff_subset",
+            "types module `__package__` metadata",
+            "`types.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "types module package metadata docs must contain `{required}`"
+            );
+        }
+    }
 
     for required in [
         "CPython object-layout internals",

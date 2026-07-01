@@ -2635,6 +2635,7 @@ fn stdlib_exception_class(name: &str, module: &str) -> Value {
 
 fn types_module() -> Value {
     let mut attrs = Vec::from([
+        ("__package__", Value::String(String::new())),
         ("__all__", string_list_value(TYPES_ALL)),
         ("_GeneratorWrapper", builtin_type_value("_GeneratorWrapper")),
         ("coroutine", Value::Builtin("types.coroutine".to_string())),

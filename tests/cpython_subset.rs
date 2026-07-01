@@ -67549,6 +67549,17 @@ fn cpython_types_singleton_type_aliases_subset() {
 // type alias, construction defaults, keyword construction, and module attribute
 // mutation without copying CPython's module-state internals.
 #[test]
+fn cpython_types_module_package_metadata_subset() {
+    assert_output(
+        r#"import types
+print(types.__name__, repr(types.__package__))
+print(repr(object.__getattribute__(types, '__package__')))
+print('__package__' in dir(types), repr(types.__dict__['__package__']))"#,
+        &["types ''", "''", "True ''"],
+    );
+}
+
+#[test]
 fn cpython_types_module_type_subset() {
     assert_output(
         concat!(
