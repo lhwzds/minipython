@@ -49690,6 +49690,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         {
             names.extend(builtin_function_dir_names())
         }
+        Value::Builtin(name) if is_json_builtin(name) => {
+            names.extend(json_builtin_function_dir_names())
+        }
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
             if name == "deque" {
@@ -50035,6 +50038,29 @@ fn builtin_function_dir_names() -> Vec<String> {
         "__module__",
         "__name__",
         "__qualname__",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
+}
+
+fn json_builtin_function_dir_names() -> Vec<String> {
+    [
+        "__annotate__",
+        "__annotations__",
+        "__builtins__",
+        "__class__",
+        "__closure__",
+        "__defaults__",
+        "__dict__",
+        "__dir__",
+        "__doc__",
+        "__globals__",
+        "__kwdefaults__",
+        "__module__",
+        "__name__",
+        "__qualname__",
+        "__type_params__",
     ]
     .into_iter()
     .map(str::to_string)

@@ -1054,6 +1054,7 @@ Recent runtime migration notes:
   `cpython_json_function_dict_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset`,
+  `cpython_json_function_dir_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1683,6 +1684,8 @@ Recent runtime migration notes:
   `cpython_json_function_annotations_identity_metadata_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset` /
   `cpython_json_function_kwdefaults_identity_metadata_subset`,
+  `cpython_json_function_dir_metadata_diff_subset` /
+  `cpython_json_function_dir_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2363,6 +2366,13 @@ encoder/decoder classes.
 and per-function mutation visibility aligned with CPython for the supported
 keyword-default metadata dict surface without adding arbitrary function
 attribute assignment, function `__code__`, file APIs, module `__all__`, or
+encoder/decoder classes.
+
+`cpython_json_function_dir_metadata_subset`, backed by
+`cpython_json_function_dir_metadata_diff_subset`, keeps json public function `dir()` supported metadata
+visibility aligned with CPython for the supported function metadata names and
+removes builtin-type-only `__base__` / `__bases__` visibility without adding
+function `__code__`, function `__get__`, file APIs, module `__all__`, or
 encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by

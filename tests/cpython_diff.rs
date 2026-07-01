@@ -868,6 +868,22 @@ print('mini_probe_key' in json.loads.__kwdefaults__, 'other_probe_key' in json.d
 }
 
 #[test]
+fn cpython_json_function_dir_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function dir() supported metadata subset",
+        name: "json-function-dir-metadata",
+        source: r#"import json
+supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']
+for name in ['loads', 'dumps']:
+    names = dir(getattr(json, name))
+    visible = [attr for attr in supported if attr in names]
+    print(name, visible == supported, visible)
+    print(name, names == sorted(names), len(names) == len(set(names)))
+    print(name, '__base__' in names, '__bases__' in names)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

@@ -8721,6 +8721,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
+            "cpython_json_function_dir_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8828,6 +8829,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
+        "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -8993,6 +8995,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_kwdefaults_identity_metadata_subset",
     );
+    let json_function_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_dir_metadata_diff_subset",
+    );
+    let json_function_dir_subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_json_function_dir_metadata_subset");
     for required in [
         "json.__package__",
         "object.__getattribute__(json, '__package__')",
@@ -9216,6 +9224,34 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function __kwdefaults__ identity subset output must pin `{required}`"
         );
     }
+    for required in [
+        "supported = ['__annotate__'",
+        "dir(getattr(json, name))",
+        "visible == supported",
+        "names == sorted(names)",
+        "len(names) == len(set(names))",
+        "'__base__' in names",
+        "'__bases__' in names",
+    ] {
+        assert!(
+            json_function_dir_diff_body.contains(required)
+                && json_function_dir_subset_body.contains(required),
+            "json public function dir() metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']\"",
+        "\"loads True True\"",
+        "\"loads False False\"",
+        "\"dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']\"",
+        "\"dumps True True\"",
+        "\"dumps False False\"",
+    ] {
+        assert!(
+            json_function_dir_subset_body.contains(required),
+            "json public function dir() metadata subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9280,6 +9316,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains(".or_insert_with(|| json_builtin_kwdefaults_initial(name))"),
         "VM must keep separate persistent json function __kwdefaults__ metadata"
     );
+    assert!(
+        VM_SOURCE.contains("Value::Builtin(name) if is_json_builtin(name)")
+            && VM_SOURCE.contains("names.extend(json_builtin_function_dir_names())")
+            && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>"),
+        "VM must expose supported json function metadata names through dir()"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_json_module_package_metadata_subset",
@@ -9302,6 +9344,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotations_identity_metadata_diff_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
+            "cpython_json_function_dir_metadata_subset",
+            "cpython_json_function_dir_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9325,6 +9369,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__dict__` identity",
             "json public function `__annotations__` identity",
             "json public function `__kwdefaults__` identity",
+            "json public function `dir()` supported metadata",
         ] {
             assert!(
                 document.contains(required),
