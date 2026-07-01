@@ -1062,6 +1062,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_repr_str_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset`,
+  `cpython_json_function_bound_method_doc_dir_metadata_diff_subset`,
   `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset`,
   `cpython_json_function_bound_method_annotate_metadata_diff_subset`,
   `cpython_json_function_bound_method_type_params_metadata_diff_subset`,
@@ -1717,6 +1718,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_getattribute_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset` /
   `cpython_json_function_bound_method_getattribute_missing_attr_subset`,
+  `cpython_json_function_bound_method_doc_dir_metadata_diff_subset` /
+  `cpython_json_function_bound_method_doc_dir_metadata_subset`,
   `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset` /
   `cpython_json_function_bound_method_text_signature_missing_attr_subset`,
   `cpython_json_function_bound_method_annotate_metadata_diff_subset` /
@@ -2475,6 +2478,14 @@ arity / keyword / name-type `TypeError` text, without adding `__reduce__`,
 `AttributeError` text and `args` aligned with CPython for
 `loads.__get__(...)` and `dumps.__get__(...)`, without adding `__reduce__`,
 `__reduce_ex__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_doc_dir_metadata_subset`, backed by
+`cpython_json_function_bound_method_doc_dir_metadata_diff_subset`, keeps json public function bound method `__doc__` dir metadata
+visibility aligned with CPython for `loads.__get__(...)` and
+`dumps.__get__(...)`, including direct and `__getattribute__('__doc__')`
+lookup content equality with the underlying function doc, without adding
+`__reduce__`, `__reduce_ex__`, stable docstring identity, file APIs, module
+`__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_text_signature_missing_attr_subset`, backed by
 `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset`, keeps json public function bound method `__text_signature__` missing-attribute

@@ -50015,6 +50015,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         ),
         Value::BoundMethod { .. } => names.extend(
             [
+                "__doc__",
                 "__func__",
                 "__getattribute__",
                 "__name__",

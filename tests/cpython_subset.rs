@@ -37905,6 +37905,25 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_doc_dir_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__doc__
+    print(name, '__doc__' in dir(bound), type(value).__name__, bool(value), value == function.__doc__)
+    print(name, bound.__getattribute__('__doc__') == function.__doc__)"#,
+        &[
+            "loads True str True True",
+            "loads True",
+            "dumps True str True True",
+            "dumps True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_text_signature_missing_attr_subset() {
     assert_output(
         r#"import json

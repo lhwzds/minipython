@@ -9083,6 +9083,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_getattribute_missing_attr_subset",
     );
+    let json_function_bound_method_doc_dir_metadata_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_doc_dir_metadata_diff_subset",
+    );
+    let json_function_bound_method_doc_dir_metadata_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_doc_dir_metadata_subset",
+    );
     let json_function_bound_method_text_signature_missing_attr_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_function_bound_method_text_signature_missing_attr_diff_subset",
@@ -9627,6 +9635,31 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "value = bound.__doc__",
+        "'__doc__' in dir(bound)",
+        "type(value).__name__",
+        "bool(value)",
+        "value == function.__doc__",
+        "bound.__getattribute__('__doc__') == function.__doc__",
+    ] {
+        assert!(
+            json_function_bound_method_doc_dir_metadata_diff_body.contains(required)
+                && json_function_bound_method_doc_dir_metadata_subset_body.contains(required),
+            "json public function bound method __doc__ dir metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True str True True\"",
+        "\"loads True\"",
+        "\"dumps True str True True\"",
+        "\"dumps True\"",
+    ] {
+        assert!(
+            json_function_bound_method_doc_dir_metadata_subset_body.contains(required),
+            "json public function bound method __doc__ dir metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "bound.__text_signature__",
         "bound.__getattribute__('__text_signature__')",
         "except AttributeError as error",
@@ -9993,6 +10026,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible bound method __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
+        VM_SOURCE.contains(
+            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__getattribute__\","
+        ),
+        "VM bound method dir() names must include CPython-visible __doc__ metadata"
+    );
+    assert!(
         VM_SOURCE.contains("\"__type_params__\"")
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
@@ -10118,6 +10157,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
+            "cpython_json_function_bound_method_doc_dir_metadata_subset",
+            "cpython_json_function_bound_method_doc_dir_metadata_diff_subset",
             "cpython_json_function_bound_method_text_signature_missing_attr_subset",
             "cpython_json_function_bound_method_text_signature_missing_attr_diff_subset",
             "cpython_json_function_bound_method_annotate_metadata_subset",
@@ -10169,6 +10210,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method `__repr__`",
             "json public function bound method `__getattribute__`",
             "json public function bound method `__getattribute__` missing-attribute",
+            "json public function bound method `__doc__` dir metadata",
             "json public function bound method `__text_signature__` missing-attribute",
             "json public function bound method `__annotate__` metadata",
             "json public function bound method `__type_params__` metadata",
