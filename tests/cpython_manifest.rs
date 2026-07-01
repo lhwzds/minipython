@@ -3495,6 +3495,70 @@ fn complex_public_attributes_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn complex_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_complex_instance_doc_attribute_subset(",
+        "for label, value in [('zero', 0j), ('finite', 3 + 4j), ('signed', complex(-1.5, 2.25)), ('infinite', complex(float('inf'), float('-inf')))]",
+        "doc = value.__doc__",
+        "doc == complex.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"zero str True True Create a complex number from a string or numbers. 282\"",
+        "\"finite str True True Create a complex number from a string or numbers. 282\"",
+        "\"signed str True True Create a complex number from a string or numbers. 282\"",
+        "\"infinite str True True Create a complex number from a string or numbers. 282\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "complex instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_complex_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_complex.py public complex instance __doc__ attribute subset",
+        "name: \"complex-instance-doc-attribute\"",
+        "for label, value in [('zero', 0j), ('finite', 3 + 4j), ('signed', complex(-1.5, 2.25)), ('infinite', complex(float('inf'), float('-inf')))]",
+        "doc = value.__doc__",
+        "doc == complex.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "complex instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Complex { .. } if name == \"__doc__\"",
+        "builtins_module_type_doc(\"complex\")",
+        "expect(\"complex builtin type doc exists\")",
+        "object @ Value::Complex { .. }",
+        "names.extend(builtin_type_dir_names(\"complex\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "complex instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_complex_instance_doc_attribute_subset")
+                && document.contains("cpython_complex_instance_doc_attribute_diff_subset")
+                && document.contains("complex instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "complex instance __doc__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_float_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
@@ -24303,6 +24367,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_object_repr_str_direct_subset",
             "cpython_int_instance_doc_attribute_subset",
             "cpython_float_instance_doc_attribute_subset",
+            "cpython_complex_instance_doc_attribute_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
@@ -24382,6 +24447,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",
         "cpython_float_instance_doc_attribute_diff_subset",
+        "cpython_complex_instance_doc_attribute_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",

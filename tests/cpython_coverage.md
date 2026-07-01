@@ -200,6 +200,11 @@ Recent runtime migration notes:
   signed-component complex values, CPython's read-only complex method attributes
   such as `conjugate`, plus readonly and no-`__dict__`
   assignment/deletion errors without adding complex instance dictionaries.
+- `cpython_complex_instance_doc_attribute_subset`, backed by
+  `cpython_complex_instance_doc_attribute_diff_subset`, now pins complex instance `__doc__`
+  lookup for zero, finite, signed-component, and infinite-component complex
+  values, matching `complex.__doc__` and `dir(value)` without adding writable
+  instance dictionaries.
 - `cpython_float_public_attributes_subset`, backed by
   `cpython_float_public_attributes_diff_subset`, now pins `float.real` and
   `float.imag` as readonly public float attributes across positive zero,
@@ -564,6 +569,7 @@ Recent runtime migration notes:
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,
+  `cpython_complex_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

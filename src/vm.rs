@@ -57971,6 +57971,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "imag" => Ok(float_value(0.0)),
             _ => Err(missing_type_attribute_error("float", name)),
         },
+        Value::Complex { .. } if name == "__doc__" => Ok(Value::String(
+            builtins_module_type_doc("complex")
+                .expect("complex builtin type doc exists")
+                .to_string(),
+        )),
         object @ Value::Complex { .. } => {
             let Value::Complex { real, imag, .. } = &object else {
                 unreachable!("guard matched complex object");

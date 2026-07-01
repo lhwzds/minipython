@@ -33411,6 +33411,17 @@ show('del-extra', lambda: delattr(z, 'extra'))"#,
 }
 
 #[test]
+fn cpython_complex_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py public complex instance __doc__ attribute subset",
+        name: "complex-instance-doc-attribute",
+        source: r#"for label, value in [('zero', 0j), ('finite', 3 + 4j), ('signed', complex(-1.5, 2.25)), ('infinite', complex(float('inf'), float('-inf')))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == complex.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_complex_two_arg_protocol_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_complex.py::ComplexTest::test_constructor two-argument complex protocol rows",

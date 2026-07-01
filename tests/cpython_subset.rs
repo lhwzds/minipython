@@ -51596,6 +51596,23 @@ show('del-extra', lambda: delattr(z, 'extra'))"#,
     );
 }
 
+// Mirrors CPython's public `complex` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_complex_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('zero', 0j), ('finite', 3 + 4j), ('signed', complex(-1.5, 2.25)), ('infinite', complex(float('inf'), float('-inf')))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == complex.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "zero str True True Create a complex number from a string or numbers. 282",
+            "finite str True True Create a complex number from a string or numbers. 282",
+            "signed str True True Create a complex number from a string or numbers. 282",
+            "infinite str True True Create a complex number from a string or numbers. 282",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_getnewargs.
 #[test]
 fn cpython_complex_getnewargs_subset() {
