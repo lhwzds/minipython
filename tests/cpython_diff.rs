@@ -8685,7 +8685,11 @@ for item in cases:
     print('attrs', item.start, item.stop, item.step, len(item), repr(item))
 
 r = range(1, 5, 2)
+print('method-visible', 'count' in dir(r), 'index' in dir(r))
 for name in ['start', 'stop', 'step']:
+    show('set-' + name, lambda name=name: setattr(r, name, 99))
+    show('del-' + name, lambda name=name: delattr(r, name))
+for name in ['count', 'index']:
     show('set-' + name, lambda name=name: setattr(r, name, 99))
     show('del-' + name, lambda name=name: delattr(r, name))
 show('set-extra', lambda: setattr(r, 'extra', 99))

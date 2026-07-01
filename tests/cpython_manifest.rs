@@ -1833,6 +1833,8 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "range(10, 1, -3)",
         "range(2 ** 65, 2 ** 65 + 3)",
         "item.start, item.stop, item.step",
+        "'count' in dir(r)",
+        "'index' in dir(r)",
         "setattr(r, name, 99)",
         "delattr(r, name)",
         "setattr(r, 'extra', 99)",
@@ -1840,8 +1842,11 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "\"attrs 0 5 1 5 range(0, 5)\"",
         "\"attrs 10 1 -3 3 range(10, 1, -3)\"",
         "\"attrs 36893488147419103232 36893488147419103235 1 3 range(36893488147419103232, 36893488147419103235)\"",
+        "\"method-visible True True\"",
         "\"set-start AttributeError readonly attribute\"",
         "\"del-step AttributeError readonly attribute\"",
+        "\"set-count AttributeError 'range' object attribute 'count' is read-only\"",
+        "\"del-index AttributeError 'range' object attribute 'index' is read-only\"",
         "\"set-extra AttributeError 'range' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
     ] {
         assert!(
@@ -1859,6 +1864,8 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "range(10, 1, -3)",
         "range(2 ** 65, 2 ** 65 + 3)",
         "item.start, item.stop, item.step",
+        "'count' in dir(r)",
+        "'index' in dir(r)",
         "setattr(r, name, 99)",
         "delattr(r, name)",
         "setattr(r, 'extra', 99)",
@@ -1875,8 +1882,11 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
         "\"stop\" => Ok(normalize_big_int(stop))",
         "\"step\" => Ok(normalize_big_int(step))",
         "fn range_attribute_assignment_error(name: &str) -> String",
+        "fn is_range_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"start\" | \"stop\" | \"step\")",
+        "builtin_type_dir_names(\"range\")",
         "\"AttributeError: readonly attribute\"",
+        "'range' object attribute '{name}' is read-only",
         "no __dict__ for setting new attributes",
     ] {
         assert!(
@@ -1891,6 +1901,7 @@ fn range_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_range_public_attributes_diff_subset")
                 && document.contains("range.start")
                 && document.contains("readonly public integer attributes")
+                && document.contains("read-only range method attributes")
                 && document.contains("without adding range instance dictionaries"),
             "focused range public attribute evidence must be documented in coverage and migration notes"
         );
