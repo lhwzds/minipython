@@ -107,6 +107,7 @@ thread_local! {
         RefCell::new(HashMap::new());
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
@@ -60710,7 +60711,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__annotations__" && is_json_builtin(&function_name) =>
         {
-            Ok(dict_value(Vec::new()))
+            Ok(json_builtin_annotations(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__module__" && functools_total_ordering_parts(&function_name).is_some() =>
@@ -61081,6 +61082,16 @@ fn json_builtin_dict(name: &str) -> Value {
     JSON_BUILTIN_DICTS.with(|dicts| {
         let mut dicts = dicts.borrow_mut();
         dicts
+            .entry(name.to_string())
+            .or_insert_with(|| dict_value(Vec::new()))
+            .clone()
+    })
+}
+
+fn json_builtin_annotations(name: &str) -> Value {
+    JSON_BUILTIN_ANNOTATIONS.with(|annotations| {
+        let mut annotations = annotations.borrow_mut();
+        annotations
             .entry(name.to_string())
             .or_insert_with(|| dict_value(Vec::new()))
             .clone()

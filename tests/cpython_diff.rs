@@ -822,6 +822,29 @@ print(json.loads.__dict__ == {}, json.dumps.__dict__ == {})"#,
 }
 
 #[test]
+fn cpython_json_function_annotations_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __annotations__ identity metadata subset",
+        name: "json-function-annotations-identity-metadata",
+        source: r#"import json
+print(json.loads.__annotations__ is json.loads.__annotations__)
+print(json.loads.__annotations__ is json.dumps.__annotations__)
+for name in ['loads', 'dumps']:
+    annotations = getattr(json, name).__annotations__
+    print(name, type(annotations).__name__, annotations == {}, len(annotations))
+json.loads.__annotations__['mini_probe_key'] = 42
+json.dumps.__annotations__['other_probe_key'] = 7
+print(json.loads.__annotations__['mini_probe_key'])
+print('mini_probe_key' in json.dumps.__annotations__)
+print(json.dumps.__annotations__['other_probe_key'])
+print('other_probe_key' in json.loads.__annotations__)
+del json.loads.__annotations__['mini_probe_key']
+del json.dumps.__annotations__['other_probe_key']
+print(json.loads.__annotations__ == {}, json.dumps.__annotations__ == {})"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",
