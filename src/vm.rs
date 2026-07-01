@@ -105,6 +105,7 @@ thread_local! {
     static ITERABLE_COROUTINE_FUNCTIONS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
     static FUNCTION_CODE_IDENTITIES: RefCell<HashMap<usize, Rc<()>>> =
         RefCell::new(HashMap::new());
+    static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -59365,6 +59366,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__" => load_attribute(*function, "__module__"),
             "__doc__" => load_attribute(*function, "__doc__"),
+            "__type_params__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__type_params__")
+            }
             "__closure__"
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
@@ -60845,7 +60851,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__type_params__" && is_json_builtin(&function_name) =>
         {
-            Ok(tuple_value(Vec::new()))
+            Ok(json_builtin_type_params())
         }
         Value::Builtin(function_name)
             if name == "__annotate__" && is_json_builtin(&function_name) =>
@@ -61211,6 +61217,15 @@ fn json_builtin_doc(name: &str) -> &'static str {
         "json.dumps" => "Serialize a Python object to a JSON formatted string.",
         _ => "",
     }
+}
+
+fn json_builtin_type_params() -> Value {
+    JSON_BUILTIN_TYPE_PARAMS.with(|type_params| {
+        let mut type_params = type_params.borrow_mut();
+        type_params
+            .get_or_insert_with(|| tuple_value(Vec::new()))
+            .clone()
+    })
 }
 
 fn collections_namedtuple_doc() -> &'static str {

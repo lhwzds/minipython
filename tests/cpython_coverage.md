@@ -1062,6 +1062,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_repr_str_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset`,
+  `cpython_json_function_bound_method_type_params_metadata_diff_subset`,
   `cpython_json_function_bound_method_closure_none_metadata_diff_subset`,
   `cpython_json_function_bound_method_defaults_metadata_diff_subset`,
   `cpython_json_function_bound_method_kwdefaults_metadata_diff_subset`,
@@ -1714,6 +1715,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_getattribute_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset` /
   `cpython_json_function_bound_method_getattribute_missing_attr_subset`,
+  `cpython_json_function_bound_method_type_params_metadata_diff_subset` /
+  `cpython_json_function_bound_method_type_params_metadata_subset`,
   `cpython_json_function_bound_method_closure_none_metadata_diff_subset` /
   `cpython_json_function_bound_method_closure_none_metadata_subset`,
   `cpython_json_function_bound_method_defaults_metadata_diff_subset` /
@@ -2466,6 +2469,15 @@ arity / keyword / name-type `TypeError` text, without adding `__reduce__`,
 `AttributeError` text and `args` aligned with CPython for
 `loads.__get__(...)` and `dumps.__get__(...)`, without adding `__reduce__`,
 `__reduce_ex__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_type_params_metadata_subset`, backed by
+`cpython_json_function_bound_method_type_params_metadata_diff_subset`, keeps json public function bound method `__type_params__` metadata
+and `__getattribute__('__type_params__')` lookup aligned with CPython for
+`loads.__get__(...)` and `dumps.__get__(...)`, including shared identity with
+the underlying function `__type_params__` empty tuple and shared identity
+between `json.loads.__type_params__` and `json.dumps.__type_params__`, while
+keeping `__type_params__` out of `dir(bound)` and without adding function
+`__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_closure_none_metadata_subset`, backed by
 `cpython_json_function_bound_method_closure_none_metadata_diff_subset`, keeps json public function bound method `__closure__` metadata

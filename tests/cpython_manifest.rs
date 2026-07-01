@@ -9083,6 +9083,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_getattribute_missing_attr_subset",
     );
+    let json_function_bound_method_type_params_metadata_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_type_params_metadata_diff_subset",
+    );
+    let json_function_bound_method_type_params_metadata_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_type_params_metadata_subset",
+    );
     let json_function_bound_method_closure_none_metadata_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_function_bound_method_closure_none_metadata_diff_subset",
@@ -9603,6 +9611,33 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "json.loads.__type_params__ is json.loads.__type_params__",
+        "json.loads.__type_params__ is json.dumps.__type_params__",
+        "value = bound.__type_params__",
+        "value == ()",
+        "value is function.__type_params__",
+        "bound.__getattribute__('__type_params__') is function.__type_params__",
+        "'__type_params__' in dir(bound)",
+    ] {
+        assert!(
+            json_function_bound_method_type_params_metadata_diff_body.contains(required)
+                && json_function_bound_method_type_params_metadata_subset_body.contains(required),
+            "json public function bound method __type_params__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"True\"",
+        "\"loads tuple () True True\"",
+        "\"loads True False\"",
+        "\"dumps tuple () True True\"",
+        "\"dumps True False\"",
+    ] {
+        assert!(
+            json_function_bound_method_type_params_metadata_subset_body.contains(required),
+            "json public function bound method __type_params__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value = bound.__closure__",
         "value is function.__closure__",
         "bound.__getattribute__('__closure__') is function.__closure__",
@@ -9780,8 +9815,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains("name == \"__type_params__\" && is_json_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(tuple_value(Vec::new()))"),
-        "VM must expose CPython-compatible json function __type_params__ metadata"
+            && VM_SOURCE.contains("Ok(json_builtin_type_params())")
+            && VM_SOURCE.contains("static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>>")
+            && VM_SOURCE.contains("fn json_builtin_type_params() -> Value")
+            && VM_SOURCE.contains(".get_or_insert_with(|| tuple_value(Vec::new()))"),
+        "VM must expose persistent CPython-compatible json function __type_params__ metadata"
     );
     assert!(
         VM_SOURCE.contains("name == \"__annotate__\" && is_json_builtin(&function_name)")
@@ -9890,6 +9928,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible bound method __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
+        VM_SOURCE.contains("\"__type_params__\"")
+            && VM_SOURCE.contains(
+                "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
+            )
+            && VM_SOURCE.contains("load_attribute(*function, \"__type_params__\")"),
+        "VM must delegate json public function bound method __type_params__ metadata"
+    );
+    assert!(
         VM_SOURCE.contains("\"__closure__\"")
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
@@ -9991,6 +10037,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
+            "cpython_json_function_bound_method_type_params_metadata_subset",
+            "cpython_json_function_bound_method_type_params_metadata_diff_subset",
             "cpython_json_function_bound_method_closure_none_metadata_subset",
             "cpython_json_function_bound_method_closure_none_metadata_diff_subset",
             "cpython_json_function_bound_method_defaults_metadata_subset",
@@ -10036,6 +10084,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method `__repr__`",
             "json public function bound method `__getattribute__`",
             "json public function bound method `__getattribute__` missing-attribute",
+            "json public function bound method `__type_params__` metadata",
             "json public function bound method `__closure__` metadata",
             "json public function bound method `__defaults__` metadata",
             "json public function bound method `__kwdefaults__` metadata",

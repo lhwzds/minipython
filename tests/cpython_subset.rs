@@ -37905,6 +37905,29 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_type_params_metadata_subset() {
+    assert_output(
+        r#"import json
+print(json.loads.__type_params__ is json.loads.__type_params__)
+print(json.loads.__type_params__ is json.dumps.__type_params__)
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__type_params__
+    print(name, type(value).__name__, value, value == (), value is function.__type_params__)
+    print(name, bound.__getattribute__('__type_params__') is function.__type_params__, '__type_params__' in dir(bound))"#,
+        &[
+            "True",
+            "True",
+            "loads tuple () True True",
+            "loads True False",
+            "dumps tuple () True True",
+            "dumps True False",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_closure_none_metadata_subset() {
     assert_output(
         r#"import json
