@@ -26698,6 +26698,53 @@ fn cpython_slice_constructor_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython's public `slice` object attributes. MiniPython exposes
+// `start`, `stop`, and `step` as readonly data attributes without exposing an
+// instance `__dict__`.
+#[test]
+fn cpython_slice_public_attributes_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+cases = [
+    slice(None),
+    slice(1),
+    slice(1, 5),
+    slice(1, 10, 2),
+    slice(None, None, -1),
+]
+for item in cases:
+    print('attrs', item.start, item.stop, item.step, repr(item))
+
+s = slice(1, 5, 2)
+for name in ['start', 'stop', 'step']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+show('set-extra', lambda: setattr(s, 'extra', 99))
+show('del-extra', lambda: delattr(s, 'extra'))"#,
+        &[
+            "attrs None None None slice(None, None, None)",
+            "attrs None 1 None slice(None, 1, None)",
+            "attrs 1 5 None slice(1, 5, None)",
+            "attrs 1 10 2 slice(1, 10, 2)",
+            "attrs None None -1 slice(None, None, -1)",
+            "set-start AttributeError readonly attribute",
+            "del-start AttributeError readonly attribute",
+            "set-stop AttributeError readonly attribute",
+            "del-stop AttributeError readonly attribute",
+            "set-step AttributeError readonly attribute",
+            "del-step AttributeError readonly attribute",
+            "set-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

@@ -69,6 +69,11 @@ Recent runtime migration notes:
   `range.stop`, and `range.step` as readonly public integer attributes across
   default, explicit, negative-step, and large-integer ranges, plus CPython's
   readonly and no-`__dict__` assignment/deletion errors without adding range instance dictionaries.
+- `cpython_slice_public_attributes_subset`, backed by
+  `cpython_slice_public_attributes_diff_subset`, now pins `slice.start`,
+  `slice.stop`, and `slice.step` as readonly public data attributes across
+  omitted, explicit, stepped, and negative-step slices, plus CPython's readonly
+  and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

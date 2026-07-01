@@ -26174,6 +26174,79 @@ fn slice_constructor_keyword_error_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn slice_public_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_slice_public_attributes_subset(",
+        "slice(None)",
+        "slice(1)",
+        "slice(1, 5)",
+        "slice(1, 10, 2)",
+        "slice(None, None, -1)",
+        "item.start, item.stop, item.step",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "setattr(s, 'extra', 99)",
+        "delattr(s, 'extra')",
+        "\"attrs None None None slice(None, None, None)\"",
+        "\"attrs 1 10 2 slice(1, 10, 2)\"",
+        "\"set-start AttributeError readonly attribute\"",
+        "\"del-step AttributeError readonly attribute\"",
+        "\"set-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused slice public attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_slice_public_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_slice.py public slice attributes subset",
+        "name: \"slice-public-attributes\"",
+        "slice(None)",
+        "slice(1)",
+        "slice(1, 5)",
+        "slice(1, 10, 2)",
+        "slice(None, None, -1)",
+        "item.start, item.stop, item.step",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "setattr(s, 'extra', 99)",
+        "delattr(s, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused slice public attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Slice { .. } => Err(slice_attribute_assignment_error(name))",
+        "fn slice_attribute_assignment_error(name: &str) -> String",
+        "matches!(name, \"start\" | \"stop\" | \"step\")",
+        "\"AttributeError: readonly attribute\"",
+        "'slice' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "slice public attributes implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_slice_public_attributes_subset")
+                && document.contains("cpython_slice_public_attributes_diff_subset")
+                && document.contains("slice.start")
+                && document.contains("readonly public data attributes")
+                && document.contains("without adding slice instance dictionaries"),
+            "focused slice public attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

@@ -79,6 +79,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `range.stop`, and `range.step` as readonly public integer attributes across
   default, explicit, negative-step, and large-integer ranges, including
   CPython's readonly and no-`__dict__` assignment/deletion errors without adding range instance dictionaries.
+- Added `cpython_slice_public_attributes_subset` and
+  `cpython_slice_public_attributes_diff_subset` for `slice.start`,
+  `slice.stop`, and `slice.step` as readonly public data attributes across
+  omitted, explicit, stepped, and negative-step slices, including CPython's
+  readonly and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
 - Added `cpython_list_search_mutating_eq_subset` and
   `cpython_list_search_mutating_eq_diff_subset` for list mutation during comparison
   across membership, `__contains__`, `count`, `index`, and `remove`: clear,

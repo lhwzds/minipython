@@ -9931,6 +9931,37 @@ fn cpython_slice_constructor_keyword_error_diff_subset() {
 }
 
 #[test]
+fn cpython_slice_public_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_slice.py public slice attributes subset",
+        name: "slice-public-attributes",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+cases = [
+    slice(None),
+    slice(1),
+    slice(1, 5),
+    slice(1, 10, 2),
+    slice(None, None, -1),
+]
+for item in cases:
+    print('attrs', item.start, item.stop, item.step, repr(item))
+
+s = slice(1, 5, 2)
+for name in ['start', 'stop', 'step']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+show('set-extra', lambda: setattr(s, 'extra', 99))
+show('del-extra', lambda: delattr(s, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

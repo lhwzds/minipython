@@ -61063,6 +61063,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
+        Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot set attribute '{name}' on {value}"
@@ -61325,6 +61326,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
+        Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
@@ -61338,6 +61340,16 @@ fn range_attribute_assignment_error(name: &str) -> String {
     } else {
         format!(
             "AttributeError: 'range' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn slice_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "start" | "stop" | "step") {
+        "AttributeError: readonly attribute".to_string()
+    } else {
+        format!(
+            "AttributeError: 'slice' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
 }
