@@ -507,6 +507,7 @@ Recent runtime migration notes:
   `cpython_classmethod_metadata_diff_subset`,
   `cpython_staticmethod_classmethod_abstractmethod_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
+  `cpython_property_attribute_assignment_errors_diff_subset`,
   `cpython_property_name_metadata_diff_subset`,
   `cpython_property_set_name_metadata_diff_subset`,
   `cpython_property_no_getter_error_diff_subset`,
@@ -6922,6 +6923,11 @@ behavior, and `dir()` visibility.
 `property.__isabstractmethod__` aggregation across getter, setter, and deleter
 callables, plus `dir()` visibility for the supported property descriptor
 surface.
+`cpython_property_attribute_assignment_errors_subset` and direct CPython
+evidence in `cpython_property_attribute_assignment_errors_diff_subset` cover
+CPython's public read-only property slot attributes (`fget`, `fset`, `fdel`),
+read-only property method attributes, `__isabstractmethod__` assignment/deletion
+errors, and missing-attribute no-`__dict__` errors without adding property instance dictionaries.
 `cpython_property_name_metadata_subset` and gated direct CPython evidence in
 `cpython_property_name_metadata_diff_subset` cover newer public
 `property.__name__` metadata: fallback to `fget.__name__`, dynamic getter-name

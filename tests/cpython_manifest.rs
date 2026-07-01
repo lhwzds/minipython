@@ -24181,6 +24181,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_classmethod_metadata_subset",
             "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
+            "cpython_property_attribute_assignment_errors_subset",
             "cpython_property_name_metadata_subset",
             "cpython_property_set_name_metadata_subset",
             "cpython_property_no_getter_error_subset",
@@ -24245,6 +24246,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_classmethod_metadata_diff_subset",
         "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
+        "cpython_property_attribute_assignment_errors_diff_subset",
         "cpython_property_name_metadata_diff_subset",
         "cpython_property_set_name_metadata_diff_subset",
         "cpython_property_no_getter_error_diff_subset",
@@ -25590,6 +25592,81 @@ fn property_abstractmethod_subset_has_focused_diff_evidence() {
                 && document.contains("__isabstractmethod__")
                 && document.contains("property.__name__"),
             "property abstractmethod evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_attribute_assignment_errors_subset(",
+        "for name in ['fget', 'fset', 'fdel']",
+        "for name in ['getter', 'setter', 'deleter', '__get__', '__set__', '__delete__', '__set_name__']",
+        "setattr(p, name, 99)",
+        "delattr(p, name)",
+        "setattr(p, '__isabstractmethod__', 99)",
+        "delattr(p, '__isabstractmethod__')",
+        "setattr(p, 'extra', 99)",
+        "delattr(p, 'extra')",
+        "\"set-fget AttributeError readonly attribute\"",
+        "\"del-fdel AttributeError readonly attribute\"",
+        "\"set-getter AttributeError 'property' object attribute 'getter' is read-only\"",
+        "\"del-__set_name__ AttributeError 'property' object attribute '__set_name__' is read-only\"",
+        "\"set-__isabstractmethod__ AttributeError attribute '__isabstractmethod__' of 'property' objects is not writable\"",
+        "\"del-extra AttributeError 'property' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "without adding property instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_property_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "CPython public property attribute assignment errors",
+        "name: \"property-attribute-assignment-errors\"",
+        "for name in ['fget', 'fset', 'fdel']",
+        "for name in ['getter', 'setter', 'deleter', '__get__', '__set__', '__delete__', '__set_name__']",
+        "setattr(p, name, 99)",
+        "delattr(p, name)",
+        "setattr(p, '__isabstractmethod__', 99)",
+        "delattr(p, '__isabstractmethod__')",
+        "setattr(p, 'extra', 99)",
+        "delattr(p, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "property attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Property { .. } => Err(property_attribute_assignment_error(name))",
+        "fn property_attribute_assignment_error(name: &str) -> String",
+        "fn is_property_readonly_instance_attribute(name: &str) -> bool",
+        "matches!(name, \"fget\" | \"fset\" | \"fdel\")",
+        "attribute '__isabstractmethod__' of 'property' objects is not writable",
+        "'property' object attribute '{name}' is read-only",
+        "'property' object has no attribute '{name}' and no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "property attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_attribute_assignment_errors_subset")
+                && document.contains("cpython_property_attribute_assignment_errors_diff_subset")
+                && document.contains("read-only property method attributes")
+                && document.contains("property instance dictionaries")
+                && document.contains("__isabstractmethod__"),
+            "property attribute assignment evidence must be documented in coverage and migration notes"
         );
     }
 }

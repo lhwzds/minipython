@@ -60919,6 +60919,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             *doc.borrow_mut() = Some(value);
             Ok(())
         }
+        Value::Property { .. } => Err(property_attribute_assignment_error(name)),
         Value::WeakProxy { target, .. } => store_attribute(*target, name, value),
         Value::BytesIO(bytes_io) => {
             bytes_io
@@ -61102,6 +61103,28 @@ fn is_readonly_function_attribute(name: &str) -> bool {
     )
 }
 
+fn property_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "fget" | "fset" | "fdel") {
+        "AttributeError: readonly attribute".to_string()
+    } else if name == "__isabstractmethod__" {
+        "AttributeError: attribute '__isabstractmethod__' of 'property' objects is not writable"
+            .to_string()
+    } else if is_property_readonly_instance_attribute(name) {
+        format!("AttributeError: 'property' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'property' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_property_readonly_instance_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" | "__set_name__"
+    )
+}
+
 fn store_class_metadata_attribute(attrs: &Scope, name: &str, value: Value) -> Result<(), String> {
     let Some(value) = value_as_string(&value) else {
         let field = name.trim_start_matches("__").trim_end_matches("__");
@@ -61232,6 +61255,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             *doc.borrow_mut() = None;
             Ok(())
         }
+        Value::Property { .. } => Err(property_attribute_assignment_error(name)),
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),
         Value::BytesIO(bytes_io) => {
             if bytes_io.borrow().attrs.borrow_mut().remove(name).is_some() {

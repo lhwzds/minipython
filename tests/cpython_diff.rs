@@ -9625,6 +9625,33 @@ print([name in dir(cases[0][1]) for name in names])"#,
 }
 
 #[test]
+fn cpython_property_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property attribute assignment errors",
+        name: "property-attribute-assignment-errors",
+        source: r#"def f(self):
+    return 1
+p = property(f)
+def show(label, expr):
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for name in ['fget', 'fset', 'fdel']:
+    show('set-' + name, lambda name=name: setattr(p, name, 99))
+    show('del-' + name, lambda name=name: delattr(p, name))
+for name in ['getter', 'setter', 'deleter', '__get__', '__set__', '__delete__', '__set_name__']:
+    show('set-' + name, lambda name=name: setattr(p, name, 99))
+    show('del-' + name, lambda name=name: delattr(p, name))
+show('set-__isabstractmethod__', lambda: setattr(p, '__isabstractmethod__', 99))
+show('del-__isabstractmethod__', lambda: delattr(p, '__isabstractmethod__'))
+show('set-extra', lambda: setattr(p, 'extra', 99))
+show('del-extra', lambda: delattr(p, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_property_name_metadata_diff_subset() {
     let probe = run_cpython("print(hasattr(property(lambda self: None), '__name__'))")
         .expect("failed to probe CPython property __name__ support");

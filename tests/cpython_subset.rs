@@ -27009,6 +27009,59 @@ fn cpython_property_abstractmethod_subset() {
     );
 }
 
+// Mirrors CPython's public AttributeError text for read-only property object
+// attributes without adding property instance dictionaries.
+#[test]
+fn cpython_property_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def f(self):
+    return 1
+p = property(f)
+def show(label, expr):
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for name in ['fget', 'fset', 'fdel']:
+    show('set-' + name, lambda name=name: setattr(p, name, 99))
+    show('del-' + name, lambda name=name: delattr(p, name))
+for name in ['getter', 'setter', 'deleter', '__get__', '__set__', '__delete__', '__set_name__']:
+    show('set-' + name, lambda name=name: setattr(p, name, 99))
+    show('del-' + name, lambda name=name: delattr(p, name))
+show('set-__isabstractmethod__', lambda: setattr(p, '__isabstractmethod__', 99))
+show('del-__isabstractmethod__', lambda: delattr(p, '__isabstractmethod__'))
+show('set-extra', lambda: setattr(p, 'extra', 99))
+show('del-extra', lambda: delattr(p, 'extra'))"#,
+        &[
+            "set-fget AttributeError readonly attribute",
+            "del-fget AttributeError readonly attribute",
+            "set-fset AttributeError readonly attribute",
+            "del-fset AttributeError readonly attribute",
+            "set-fdel AttributeError readonly attribute",
+            "del-fdel AttributeError readonly attribute",
+            "set-getter AttributeError 'property' object attribute 'getter' is read-only",
+            "del-getter AttributeError 'property' object attribute 'getter' is read-only",
+            "set-setter AttributeError 'property' object attribute 'setter' is read-only",
+            "del-setter AttributeError 'property' object attribute 'setter' is read-only",
+            "set-deleter AttributeError 'property' object attribute 'deleter' is read-only",
+            "del-deleter AttributeError 'property' object attribute 'deleter' is read-only",
+            "set-__get__ AttributeError 'property' object attribute '__get__' is read-only",
+            "del-__get__ AttributeError 'property' object attribute '__get__' is read-only",
+            "set-__set__ AttributeError 'property' object attribute '__set__' is read-only",
+            "del-__set__ AttributeError 'property' object attribute '__set__' is read-only",
+            "set-__delete__ AttributeError 'property' object attribute '__delete__' is read-only",
+            "del-__delete__ AttributeError 'property' object attribute '__delete__' is read-only",
+            "set-__set_name__ AttributeError 'property' object attribute '__set_name__' is read-only",
+            "del-__set_name__ AttributeError 'property' object attribute '__set_name__' is read-only",
+            "set-__isabstractmethod__ AttributeError attribute '__isabstractmethod__' of 'property' objects is not writable",
+            "del-__isabstractmethod__ AttributeError attribute '__isabstractmethod__' of 'property' objects is not writable",
+            "set-extra AttributeError 'property' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'property' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Mirrors newer CPython's public property.__name__ metadata. The slot falls
 // back to fget.__name__, accepts arbitrary assigned values, and resets to the
 // fallback when deleted.
