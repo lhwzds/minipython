@@ -19229,6 +19229,19 @@ for label, value in [('empty', defaultdict()), ('factory', defaultdict(int)), ('
 }
 
 #[test]
+fn cpython_collections_defaultdict_type_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict public direct base metadata subset",
+        name: "collections-defaultdict-type-base-metadata",
+        source: r#"from collections import defaultdict
+base = object.__getattribute__(defaultdict, '__base__')
+bases = object.__getattribute__(defaultdict, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_default_factory_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict default_factory member descriptor subset",

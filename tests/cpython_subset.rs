@@ -60197,6 +60197,22 @@ for label, value in [('empty', defaultdict()), ('factory', defaultdict(int)), ('
     );
 }
 
+// Mirrors CPython's public `defaultdict` direct base metadata.
+#[test]
+fn cpython_collections_defaultdict_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+base = object.__getattribute__(defaultdict, '__base__')
+bases = object.__getattribute__(defaultdict, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True builtins dict",
+            "bases tuple 1 True builtins dict",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict default_factory
 // behavior. This pins the public type-level member_descriptor for
 // default_factory without promoting pickle, merge operators, or subclassing.

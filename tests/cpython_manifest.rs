@@ -17969,6 +17969,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
+            "cpython_collections_defaultdict_type_base_metadata_subset",
             "cpython_collections_defaultdict_default_factory_descriptor_subset",
             "cpython_collections_defaultdict_attribute_assignment_errors_subset",
             "cpython_collections_defaultdict_copy_module_subset",
@@ -19918,6 +19919,69 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_type_base_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict direct base metadata"
+    );
+    let defaultdict_type_base_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_type_base_metadata_diff_subset",
+    );
+    let defaultdict_type_base_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_type_base_metadata_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "object.__getattribute__(defaultdict, '__base__')",
+        "object.__getattribute__(defaultdict, '__bases__')",
+        "base is dict",
+        "bases[0] is dict",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            defaultdict_type_base_diff_body.contains(required)
+                && defaultdict_type_base_subset_body.contains(required),
+            "defaultdict direct base metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True builtins dict\"",
+        "\"bases tuple 1 True builtins dict\"",
+    ] {
+        assert!(
+            defaultdict_type_base_subset_body.contains(required),
+            "defaultdict direct base metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"defaultdict\" => Some(\"dict\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_type_base_metadata_subset",
+            "cpython_collections_defaultdict_type_base_metadata_diff_subset",
+            "`defaultdict` direct base metadata",
+            "`dict`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict direct base metadata docs must contain `{required}`"
             );
         }
     }
@@ -25957,6 +26021,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ ChainMap type-object __base__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __bases__ metadata")
+                && document
+                    .contains("object.__getattribute__ defaultdict type-object __base__ metadata")
+                && document
+                    .contains("object.__getattribute__ defaultdict type-object __bases__ metadata")
                 && document
                     .contains("object.__getattribute__ UserDict type-object __module__ metadata")
                 && document
