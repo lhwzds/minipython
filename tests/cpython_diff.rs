@@ -21168,6 +21168,19 @@ print(copy.copy.__type_params__ == copy.deepcopy.__type_params__ == copy.replace
 }
 
 #[test]
+fn cpython_copy_function_annotate_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __annotate__ metadata subset",
+        name: "copy-function-annotate-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__annotate__, value.__annotate__ is None)
+print(copy.copy.__annotate__ is copy.deepcopy.__annotate__ is copy.replace.__annotate__ is None)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_defaults_none_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __defaults__ None metadata subset",

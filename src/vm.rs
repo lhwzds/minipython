@@ -60594,6 +60594,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(tuple_value(Vec::new()))
         }
         Value::Builtin(function_name)
+            if name == "__annotate__" && is_copy_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__defaults__" && is_copy_none_defaults_builtin(&function_name) =>
         {
             Ok(Value::None)

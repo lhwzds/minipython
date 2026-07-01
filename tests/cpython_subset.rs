@@ -22428,6 +22428,24 @@ print(copy.copy.__type_params__ == copy.deepcopy.__type_params__ == copy.replace
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_annotate_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__annotate__, value.__annotate__ is None)
+print(copy.copy.__annotate__ is copy.deepcopy.__annotate__ is copy.replace.__annotate__ is None)"#,
+        &[
+            "copy None True",
+            "deepcopy None True",
+            "replace None True",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_defaults_none_metadata_subset() {
     assert_output(
         r#"import copy
