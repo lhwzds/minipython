@@ -8731,6 +8731,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_rich_compare_wrapper_metadata_subset",
             "cpython_json_function_order_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
+            "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
@@ -9084,6 +9085,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_getattribute_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_getattribute_wrapper_metadata_subset",
+    );
+    let json_function_setattr_delattr_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
+    );
+    let json_function_setattr_delattr_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9958,6 +9967,88 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_getattribute_wrapper_subset_body.contains(required),
             "json public function __getattribute__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function.__setattr__",
+        "function.__delattr__",
+        "'__setattr__' in dir(function)",
+        "'__delattr__' in dir(function)",
+        "setter.__self__ is function",
+        "deleter.__self__ is function",
+        "setter('mini_probe_attr', 7)",
+        "function.__dict__['mini_probe_attr']",
+        "'mini_probe_attr' in dir(function)",
+        "setter('__call__', 'shadow-call')",
+        "function.__call__",
+        "deleter('__call__')",
+        "deleter('mini_probe_attr')",
+        "('del-missing', lambda deleter=deleter: deleter('mini_probe_attr'))",
+        "('set-name-nonstr', lambda setter=setter: setter(1, 2))",
+        "('del-name-nonstr', lambda deleter=deleter: deleter(1))",
+        "('set-extra', lambda setter=setter: setter('x', 1, 2))",
+        "('del-extra', lambda deleter=deleter: deleter('x', 1))",
+        "('set-keyword', lambda setter=setter: setter(name='kw', value=3))",
+        "('del-keyword', lambda deleter=deleter: deleter(name='kw'))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_setattr_delattr_wrapper_diff_body.contains(required)
+                && json_function_setattr_delattr_wrapper_subset_body.contains(required),
+            "json public function __setattr__ / __delattr__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True True method-wrapper method-wrapper\"",
+        "\"loads True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)\"",
+        "\"loads True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)\"",
+        "\"loads 7 7 True\"",
+        "\"loads shadow-call shadow-call\"",
+        "\"loads del-missing AttributeError 'function' object has no attribute 'mini_probe_attr'",
+        "\"loads set-extra TypeError __setattr__ expected 2 arguments, got 3",
+        "\"loads del-extra TypeError expected 1 argument, got 2",
+        "\"loads set-keyword TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"loads del-keyword TypeError wrapper __delattr__() takes no keyword arguments",
+        "\"dumps True True method-wrapper method-wrapper\"",
+        "\"dumps True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)\"",
+        "\"dumps True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)\"",
+        "\"dumps 7 7 True\"",
+        "\"dumps shadow-call shadow-call\"",
+        "\"dumps del-missing AttributeError 'function' object has no attribute 'mini_probe_attr'",
+        "\"dumps set-extra TypeError __setattr__ expected 2 arguments, got 3",
+        "\"dumps del-extra TypeError expected 1 argument, got 2",
+        "\"dumps set-keyword TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"dumps del-keyword TypeError wrapper __delattr__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_setattr_delattr_wrapper_subset_body.contains(required),
+            "json public function __setattr__ / __delattr__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_setattr(",
+        "fn call_json_function_delattr(",
+        "json.function.__setattr__",
+        "json.function.__delattr__",
+        "store_json_builtin_attribute(function_name, &name, value.clone())",
+        "delete_json_builtin_attribute(function_name, &name)",
+        "fn store_json_builtin_attribute(",
+        "fn delete_json_builtin_attribute(",
+        "fn json_builtin_custom_attribute(",
+        "fn json_builtin_controlled_attribute(",
+        "names.extend(dict_string_names(&attrs))",
+        "wrapper __setattr__() takes no keyword arguments",
+        "wrapper __delattr__() takes no keyword arguments",
+        "__setattr__ expected 2 arguments, got {}",
+        "expected 1 argument, got {}",
+        "object.__setattr__",
+        "object.__delattr__",
+        "($self, name, value, /)",
+        "($self, name, /)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __setattr__ / __delattr__ wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11540,6 +11631,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_order_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
+            "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
+            "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",

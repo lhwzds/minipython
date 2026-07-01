@@ -37988,6 +37988,68 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_setattr_delattr_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    setter = function.__setattr__
+    deleter = function.__delattr__
+    print(name, '__setattr__' in dir(function), '__delattr__' in dir(function), type(setter).__name__, type(deleter).__name__)
+    print(name, setter.__self__ is function, setter.__name__, setter.__qualname__, setter.__doc__, getattr(setter, '__module__', 'MISSING'), setter.__text_signature__)
+    print(name, deleter.__self__ is function, deleter.__name__, deleter.__qualname__, deleter.__doc__, getattr(deleter, '__module__', 'MISSING'), deleter.__text_signature__)
+    setter('mini_probe_attr', 7)
+    print(name, function.mini_probe_attr, function.__dict__['mini_probe_attr'], 'mini_probe_attr' in dir(function))
+    setter('__call__', 'shadow-call')
+    print(name, function.__call__, function.__dict__['__call__'])
+    deleter('__call__')
+    deleter('mini_probe_attr')
+    print(name, 'mini_probe_attr' in function.__dict__, hasattr(function, 'mini_probe_attr'))
+    for label, call in [
+        ('del-missing', lambda deleter=deleter: deleter('mini_probe_attr')),
+        ('set-name-nonstr', lambda setter=setter: setter(1, 2)),
+        ('del-name-nonstr', lambda deleter=deleter: deleter(1)),
+        ('set-extra', lambda setter=setter: setter('x', 1, 2)),
+        ('del-extra', lambda deleter=deleter: deleter('x', 1)),
+        ('set-keyword', lambda setter=setter: setter(name='kw', value=3)),
+        ('del-keyword', lambda deleter=deleter: deleter(name='kw')),
+    ]:
+        try:
+            call()
+        except (TypeError, AttributeError) as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True True method-wrapper method-wrapper",
+            "loads True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)",
+            "loads True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)",
+            "loads 7 7 True",
+            "loads shadow-call shadow-call",
+            "loads False False",
+            "loads del-missing AttributeError 'function' object has no attribute 'mini_probe_attr' (\"'function' object has no attribute 'mini_probe_attr'\",)",
+            "loads set-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "loads del-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "loads set-extra TypeError __setattr__ expected 2 arguments, got 3 ('__setattr__ expected 2 arguments, got 3',)",
+            "loads del-extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads set-keyword TypeError wrapper __setattr__() takes no keyword arguments ('wrapper __setattr__() takes no keyword arguments',)",
+            "loads del-keyword TypeError wrapper __delattr__() takes no keyword arguments ('wrapper __delattr__() takes no keyword arguments',)",
+            "dumps True True method-wrapper method-wrapper",
+            "dumps True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)",
+            "dumps True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)",
+            "dumps 7 7 True",
+            "dumps shadow-call shadow-call",
+            "dumps False False",
+            "dumps del-missing AttributeError 'function' object has no attribute 'mini_probe_attr' (\"'function' object has no attribute 'mini_probe_attr'\",)",
+            "dumps set-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "dumps del-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "dumps set-extra TypeError __setattr__ expected 2 arguments, got 3 ('__setattr__ expected 2 arguments, got 3',)",
+            "dumps del-extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps set-keyword TypeError wrapper __setattr__() takes no keyword arguments ('wrapper __setattr__() takes no keyword arguments',)",
+            "dumps del-keyword TypeError wrapper __delattr__() takes no keyword arguments ('wrapper __delattr__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_subset() {
     assert_output(
         r#"import json

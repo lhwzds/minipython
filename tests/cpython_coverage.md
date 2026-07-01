@@ -1057,6 +1057,7 @@ Recent runtime migration notes:
   `cpython_json_function_rich_compare_wrapper_metadata_diff_subset`,
   `cpython_json_function_order_wrapper_metadata_diff_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
+  `cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
@@ -1741,6 +1742,8 @@ Recent runtime migration notes:
   `cpython_json_function_order_wrapper_metadata_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset` /
   `cpython_json_function_getattribute_wrapper_metadata_subset`,
+  `cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset` /
+  `cpython_json_function_setattr_delattr_wrapper_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
   `cpython_json_function_doc_identity_metadata_diff_subset` /
@@ -2505,6 +2508,18 @@ aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
 `method-wrapper` type shape, supported metadata lookup, and arity / keyword /
 attribute-name / missing-attribute error text, without adding function
 `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_setattr_delattr_wrapper_metadata_subset`, backed by
+`cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset`, keeps json
+public function `__setattr__` / `__delattr__` wrapper metadata and ordinary
+function-attribute mutation aligned with CPython for `loads` / `dumps`,
+including `dir()` visibility, `method-wrapper` type shape, `__self__` /
+`__name__` / `__qualname__` / `__doc__` / missing `__module__` /
+`__text_signature__` metadata, custom attribute set/read/delete through the
+function `__dict__`, wrapper-name shadowing for `__call__`, missing-attribute
+deletion, and arity / keyword / attribute-name error text, without adding
+function `__code__`, pickle helpers, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_type_params_metadata_subset`, backed by
 `cpython_json_function_type_params_metadata_diff_subset`, keeps json public function `__type_params__` metadata

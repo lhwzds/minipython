@@ -10046,6 +10046,12 @@ impl Vm {
             Value::Builtin(name) if json_function_rich_compare_wrapper_name(&name) => {
                 self.call_json_function_rich_compare(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__setattr__" => {
+                self.call_json_function_setattr(args, keywords)
+            }
+            Value::Builtin(name) if name == "json.function.__delattr__" => {
+                self.call_json_function_delattr(args, keywords)
+            }
             Value::Builtin(name) if name == "json.function.__getattribute__" => {
                 self.call_json_function_getattribute(args, keywords)
             }
@@ -17791,6 +17797,74 @@ impl Vm {
             "__eq__" | "__ne__" => Ok(Value::NotImplemented),
             _ => Ok(Value::NotImplemented),
         }
+    }
+
+    fn call_json_function_setattr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __setattr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        let Value::Builtin(function_name) = receiver else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !is_json_builtin(function_name) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name, value] = rest else {
+            return Err(format!(
+                "TypeError: __setattr__ expected 2 arguments, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        store_json_builtin_attribute(function_name, &name, value.clone())?;
+        Ok(Value::None)
+    }
+
+    fn call_json_function_delattr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __delattr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        let Value::Builtin(function_name) = receiver else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !is_json_builtin(function_name) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        delete_json_builtin_attribute(function_name, &name)?;
+        Ok(Value::None)
     }
 
     fn call_json_function_getattribute(
@@ -50158,7 +50232,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_function_dir_names())
         }
         Value::Builtin(name) if is_json_builtin(name) => {
-            names.extend(json_builtin_function_dir_names())
+            names.extend(json_builtin_function_dir_names());
+            if let Value::Dict(attrs) = json_builtin_dict(name) {
+                names.extend(dict_string_names(&attrs));
+            }
         }
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
@@ -50540,6 +50617,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__closure__",
         "__defaults__",
         "__dict__",
+        "__delattr__",
         "__dir__",
         "__doc__",
         "__eq__",
@@ -50558,6 +50636,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__qualname__",
         "__ne__",
         "__repr__",
+        "__setattr__",
         "__str__",
         "__type_params__",
     ]
@@ -57469,6 +57548,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         return Ok(object_dir_bound_method(object));
     }
 
+    if let Value::Builtin(function_name) = &object
+        && is_json_builtin(function_name)
+        && !json_builtin_controlled_attribute(name)
+        && let Some(value) = json_builtin_custom_attribute(function_name, name)
+    {
+        return Ok(value);
+    }
+
     match object {
         Value::Instance {
             class_name,
@@ -59888,6 +59975,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if json_function_set_delattr_wrapper_name(name)) =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
                 Err(format!(
@@ -61394,6 +61486,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             })
         }
         Value::Builtin(function_name)
+            if matches!(name, "__setattr__" | "__delattr__")
+                && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("json.function.{name}"))),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
             if matches!(name, "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__")
                 && is_json_builtin(&function_name) =>
         {
@@ -61635,6 +61737,38 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "json.function.__hash__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && json_function_set_delattr_wrapper_name(&function_name) =>
+        {
+            Ok(Value::String(format!(
+                "object.{}",
+                method_display_name(&function_name)
+            )))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__setattr__" =>
+        {
+            Ok(Value::String(
+                "Implement setattr(self, name, value).".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__delattr__" =>
+        {
+            Ok(Value::String("Implement delattr(self, name).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && function_name == "json.function.__setattr__" =>
+        {
+            Ok(Value::String("($self, name, value, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && function_name == "json.function.__delattr__" =>
+        {
+            Ok(Value::String("($self, name, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && json_function_rich_compare_wrapper_name(&function_name) =>
@@ -62065,6 +62199,66 @@ fn json_builtin_dict(name: &str) -> Value {
             .or_insert_with(|| dict_value(Vec::new()))
             .clone()
     })
+}
+
+fn json_builtin_controlled_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "__annotate__"
+            | "__annotations__"
+            | "__builtins__"
+            | "__class__"
+            | "__closure__"
+            | "__defaults__"
+            | "__dict__"
+            | "__doc__"
+            | "__globals__"
+            | "__kwdefaults__"
+            | "__module__"
+            | "__name__"
+            | "__qualname__"
+            | "__type_params__"
+    )
+}
+
+fn json_builtin_custom_attribute(function_name: &str, name: &str) -> Option<Value> {
+    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
+        unreachable!("json_builtin_dict always returns a dict")
+    };
+    lookup_string_key(&attrs, name)
+}
+
+fn store_json_builtin_attribute(
+    function_name: &str,
+    name: &str,
+    value: Value,
+) -> Result<(), String> {
+    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
+        unreachable!("json_builtin_dict always returns a dict")
+    };
+    insert_live_dict_entry(
+        &mut attrs.borrow_mut(),
+        Value::String(name.to_string()),
+        value,
+    )
+}
+
+fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), String> {
+    let Value::Dict(attrs) = json_builtin_dict(function_name) else {
+        unreachable!("json_builtin_dict always returns a dict")
+    };
+    let mut attrs = attrs.borrow_mut();
+    if let Some(position) = attrs.iter().position(|(key, _)| {
+        matches!(key, Value::String(key_name) | Value::IdentityString { value: key_name, .. } if key_name == name)
+    }) {
+        attrs.remove(position);
+        mark_dict_changed(&mut attrs);
+        Ok(())
+    } else {
+        Err(format!(
+            "AttributeError: 'function' object has no attribute '{name}'"
+        ))
+    }
 }
 
 fn json_builtin_annotations(name: &str) -> Value {
@@ -62633,6 +62827,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Builtin(function_name) if is_singleton_type_name(&function_name) => Err(format!(
             "TypeError: cannot set '{name}' attribute of immutable type '{function_name}'"
         )),
+        Value::Builtin(function_name) if is_json_builtin(&function_name) => {
+            store_json_builtin_attribute(&function_name, name, value)
+        }
         Value::Builtin(function_name) if function_name == "deque" => {
             Err(deque_type_attribute_assignment_error(name))
         }
@@ -62972,6 +63169,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         }
         Value::Builtin(function_name) if function_name == "deque" => {
             Err(deque_type_attribute_assignment_error(name))
+        }
+        Value::Builtin(function_name) if is_json_builtin(&function_name) => {
+            delete_json_builtin_attribute(&function_name, name)
         }
         Value::DefaultDict {
             default_factory, ..
@@ -63595,8 +63795,17 @@ fn json_function_rich_compare_wrapper_name(name: &str) -> bool {
     )
 }
 
+fn json_function_set_delattr_wrapper_name(name: &str) -> bool {
+    matches!(
+        name,
+        "json.function.__setattr__" | "json.function.__delattr__"
+    )
+}
+
 fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
-    matches!(name, "json.function.__hash__") || json_function_rich_compare_wrapper_name(name)
+    matches!(name, "json.function.__hash__")
+        || json_function_rich_compare_wrapper_name(name)
+        || json_function_set_delattr_wrapper_name(name)
 }
 
 fn is_method_wrapper_name(name: &str) -> bool {
@@ -63622,6 +63831,8 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "json.function.__gt__"
             | "json.function.__ge__"
             | "json.function.__hash__"
+            | "json.function.__setattr__"
+            | "json.function.__delattr__"
             | "json.function.__repr__"
             | "json.function.__str__"
             | "json.function.__getattribute__"

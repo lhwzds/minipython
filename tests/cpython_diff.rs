@@ -1004,6 +1004,42 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __setattr__ / __delattr__ wrapper metadata subset",
+        name: "json-function-setattr-delattr-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    setter = function.__setattr__
+    deleter = function.__delattr__
+    print(name, '__setattr__' in dir(function), '__delattr__' in dir(function), type(setter).__name__, type(deleter).__name__)
+    print(name, setter.__self__ is function, setter.__name__, setter.__qualname__, setter.__doc__, getattr(setter, '__module__', 'MISSING'), setter.__text_signature__)
+    print(name, deleter.__self__ is function, deleter.__name__, deleter.__qualname__, deleter.__doc__, getattr(deleter, '__module__', 'MISSING'), deleter.__text_signature__)
+    setter('mini_probe_attr', 7)
+    print(name, function.mini_probe_attr, function.__dict__['mini_probe_attr'], 'mini_probe_attr' in dir(function))
+    setter('__call__', 'shadow-call')
+    print(name, function.__call__, function.__dict__['__call__'])
+    deleter('__call__')
+    deleter('mini_probe_attr')
+    print(name, 'mini_probe_attr' in function.__dict__, hasattr(function, 'mini_probe_attr'))
+    for label, call in [
+        ('del-missing', lambda deleter=deleter: deleter('mini_probe_attr')),
+        ('set-name-nonstr', lambda setter=setter: setter(1, 2)),
+        ('del-name-nonstr', lambda deleter=deleter: deleter(1)),
+        ('set-extra', lambda setter=setter: setter('x', 1, 2)),
+        ('del-extra', lambda deleter=deleter: deleter('x', 1)),
+        ('set-keyword', lambda setter=setter: setter(name='kw', value=3)),
+        ('del-keyword', lambda deleter=deleter: deleter(name='kw')),
+    ]:
+        try:
+            call()
+        except (TypeError, AttributeError) as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",
