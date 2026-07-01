@@ -17929,6 +17929,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_inplace_operations_subset",
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
+            "cpython_collections_chainmap_instance_doc_attribute_subset",
             "cpython_collections_chainmap_keyword_error_subset",
             "cpython_collections_chainmap_constructor_lazy_mapping_subset",
             "cpython_collections_chainmap_constructor_source_repr_subset",
@@ -18431,6 +18432,69 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_instance_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap instance __doc__ behavior"
+    );
+    let chainmap_instance_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_instance_doc_attribute_diff_subset",
+    );
+    let chainmap_instance_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_instance_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import ChainMap",
+        "for label, value in [('empty', ChainMap()), ('single', ChainMap({'a': 1})), ('multi', ChainMap({'a': 1}, {'b': 2}))]",
+        "doc = value.__doc__",
+        "doc == ChainMap.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            chainmap_instance_doc_diff_body.contains(required)
+                && chainmap_instance_doc_subset_body.contains(required),
+            "ChainMap instance __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty str True True A ChainMap groups multiple dicts (or other mappings) together 407\"",
+        "\"single str True True A ChainMap groups multiple dicts (or other mappings) together 407\"",
+        "\"multi str True True A ChainMap groups multiple dicts (or other mappings) together 407\"",
+    ] {
+        assert!(
+            chainmap_instance_doc_subset_body.contains(required),
+            "ChainMap instance __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::ChainMap { maps } => match name",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtin_type_doc(\"ChainMap\")",
+        "expect(\"ChainMap type doc is defined\")",
+        "Value::ChainMap { .. } => names.extend(builtin_type_dir_names(\"ChainMap\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap instance __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_chainmap_instance_doc_attribute_subset",
+            "cpython_collections_chainmap_instance_doc_attribute_diff_subset",
+            "`ChainMap` instance `__doc__`",
+            "without promoting full writable",
+            "instance dictionaries",
+        ] {
+            assert!(
+                document.contains(required),
+                "ChainMap instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_chainmap_keyword_error_diff_subset"),

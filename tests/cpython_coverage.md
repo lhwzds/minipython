@@ -769,6 +769,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_methods_diff_subset`,
+  `cpython_collections_chainmap_instance_doc_attribute_diff_subset`,
   `cpython_collections_chainmap_keyword_error_diff_subset`,
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
@@ -5082,6 +5083,12 @@ without adding general custom encoder/decoder class support.
   `TestChainMap` public behavior for construction, truthiness, first-map
   assignment/deletion, `maps`, `parents`, `new_child()`, ordering, dict
   coercion, iteration, views, containment, lookup, `get()`, and shallow copies.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_instance_doc_attribute_diff_subset` and
+  `cpython_collections_chainmap_instance_doc_attribute_subset`, covering
+  `ChainMap` instance `__doc__` lookup for empty, single-map, and multi-map
+  ChainMaps, including `dir()` visibility, without promoting full writable
+  instance dictionaries.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_keyword_error_subset`, backed by
   `cpython_collections_chainmap_keyword_error_diff_subset`, covering

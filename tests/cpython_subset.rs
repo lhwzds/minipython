@@ -57481,6 +57481,23 @@ fn cpython_collections_chainmap_public_methods_subset() {
     );
 }
 
+// Mirrors CPython's public `ChainMap` instance `__doc__` type-attribute
+// lookup while leaving full writable instance dictionaries outside this slice.
+#[test]
+fn cpython_collections_chainmap_instance_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import ChainMap
+for label, value in [('empty', ChainMap()), ('single', ChainMap({'a': 1})), ('multi', ChainMap({'a': 1}, {'b': 2}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == ChainMap.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True A ChainMap groups multiple dicts (or other mappings) together 407",
+            "single str True True A ChainMap groups multiple dicts (or other mappings) together 407",
+            "multi str True True A ChainMap groups multiple dicts (or other mappings) together 407",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap constructor
 // keyword rejection.
 #[test]

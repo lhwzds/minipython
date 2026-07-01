@@ -18338,6 +18338,18 @@ print(child.maps[0], child.get('d', 'missing'))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py ChainMap public instance __doc__ attribute subset",
+        name: "collections-chainmap-instance-doc-attribute",
+        source: r#"from collections import ChainMap
+for label, value in [('empty', ChainMap()), ('single', ChainMap({'a': 1})), ('multi', ChainMap({'a': 1}, {'b': 2}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == ChainMap.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_keyword_error_diff_subset() {
     // CPython oracle text: ChainMap.__init__() got an unexpected keyword
     // argument '<name>'.

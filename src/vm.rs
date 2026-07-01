@@ -49805,6 +49805,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
             names.extend(builtin_type_dir_names("mappingproxy"))
         }
+        Value::ChainMap { .. } => names.extend(builtin_type_dir_names("ChainMap")),
         Value::List(_) => names.extend(builtin_type_dir_names("list")),
         value if list_subclass_storage(value).is_some() => {
             names.extend(builtin_type_dir_names("list"))
@@ -58671,6 +58672,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::ChainMap { maps } => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("ChainMap")
+                    .expect("ChainMap type doc is defined")
+                    .to_string(),
+            )),
             "maps" => Ok(list_value(maps.clone())),
             "parents" => chain_map_parents(&maps),
             "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
@@ -60927,6 +60933,19 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "  - an integer"
         )),
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
+        "ChainMap" => Some(concat!(
+            "A ChainMap groups multiple dicts (or other mappings) together\n",
+            "to create a single, updateable view.\n",
+            "\n",
+            "The underlying mappings are stored in a list.  That list is public and can\n",
+            "be accessed or updated using the *maps* attribute.  There is no other\n",
+            "state.\n",
+            "\n",
+            "Lookups search the underlying mappings successively until a key is found.\n",
+            "In contrast, writes, updates, and deletions only operate on the first\n",
+            "mapping.\n",
+            "\n"
+        )),
         "defaultdict" => Some(concat!(
             "defaultdict(default_factory=None, /, [...]) --> dict with default factory\n",
             "\n",
