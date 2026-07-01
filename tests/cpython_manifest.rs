@@ -17684,6 +17684,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_native_long_public_sequence_and_mutation_subset",
             "cpython_array_float_public_sequence_and_mutation_subset",
             "cpython_array_unicode_public_sequence_and_mutation_subset",
+            "cpython_array_module_package_metadata_subset",
             "cpython_array_one_byte_public_mutation_methods_subset",
             "cpython_array_one_byte_public_clear_subset",
             "cpython_array_one_byte_public_subscript_mutation_subset",
@@ -17702,6 +17703,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "array")
         .expect("sandbox stdlib manifest must include array");
     for evidence in [
+        "cpython_array_module_package_metadata_diff_subset",
         "cpython_array_module_and_constructor_public_surface_diff_subset",
         "cpython_array_subclass_public_construction_diff_subset",
         "cpython_array_one_byte_public_sequence_diff_subset",
@@ -17767,6 +17769,56 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array sandbox export test must guard pickle module internals and module __all__"
     );
 
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_array_module_package_metadata_diff_subset",
+    );
+    let package_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_array_module_package_metadata_subset",
+    );
+    for required in [
+        "array.__package__",
+        "object.__getattribute__(array, '__package__')",
+        "'__package__' in dir(array)",
+        "array.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "array module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"array ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "array module package metadata subset output must pin `{required}`"
+        );
+    }
+    let array_start = STDLIB_SOURCE
+        .find("\"array\" => Ok(module_value(")
+        .expect("stdlib.rs must define the array module");
+    let array_end = array_start
+        + STDLIB_SOURCE[array_start..]
+            .find("\"collections.abc\" => Ok(module_value(")
+            .expect("array module registry must precede collections.abc");
+    let array_registry = &STDLIB_SOURCE[array_start..array_end];
+    assert!(
+        array_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "array stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_array_module_package_metadata_subset",
+            "cpython_array_module_package_metadata_diff_subset",
+            "array module `__package__` metadata",
+            "`array.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "array module package metadata docs must contain `{required}`"
+            );
+        }
+    }
     let constructor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_array_module_and_constructor_public_surface_diff_subset",

@@ -919,6 +919,7 @@ Recent runtime migration notes:
   `cpython_math_sumprod_diff_subset`,
   `cpython_math_nextafter_ulp_diff_subset`,
   `cpython_math_pow_diff_subset`,
+  `cpython_array_module_package_metadata_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_subclass_public_construction_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
@@ -6046,6 +6047,10 @@ without adding general custom encoder/decoder class support.
   Real file descriptors and C buffer/allocator internals remain outside the
   sandbox `array` surface; file-oriented behavior is limited to pure in-memory
   `io.BytesIO` evidence.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_array_module_package_metadata_subset`, backed by
+  `cpython_array_module_package_metadata_diff_subset`, covering array module `__package__` metadata
+  (`array.__package__` is `''`).
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_subclass_public_construction_subset`, covering CPython public
   `array.array` subclass construction: ordinary subclasses, custom

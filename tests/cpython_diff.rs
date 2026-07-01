@@ -31976,6 +31976,18 @@ print('index-object', arr.tolist(), view.tolist())"#,
 }
 
 #[test]
+fn cpython_array_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/array public module __package__ metadata subset",
+        name: "array-module-package-metadata",
+        source: r#"import array
+print(array.__name__, repr(array.__package__))
+print(repr(object.__getattribute__(array, '__package__')))
+print('__package__' in dir(array), repr(array.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     // CPython oracle text: array() argument 1 must be a unicode character, not a string of length 0;
     // array() argument 1 must be a unicode character, not a string of length 2

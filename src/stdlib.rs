@@ -978,6 +978,7 @@ pub(crate) fn create_module(
         "array" => Ok(module_value(
             "array",
             vec![
+                ("__package__", Value::String(String::new())),
                 ("array", Value::Builtin("array.array".to_string())),
                 ("typecodes", Value::String("bBuwhHiIlLqQfd".to_string())),
             ],

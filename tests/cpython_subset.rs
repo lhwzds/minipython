@@ -21051,11 +21051,24 @@ fn cpython_memoryview_array_non_byte_writeback_subset() {
     );
 }
 
+// Mirrors CPython's public `array` module `__package__` metadata while keeping
+// the supported sandbox surface pure-memory.
+#[test]
+fn cpython_array_module_package_metadata_subset() {
+    assert_output(
+        r#"import array
+print(array.__name__, repr(array.__package__))
+print(repr(object.__getattribute__(array, '__package__')))
+print('__package__' in dir(array), repr(array.__dict__['__package__']))"#,
+        &["array ''", "''", "True ''"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public array module and
 // constructor behavior.
 #[test]
 fn cpython_array_module_and_constructor_public_surface_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import array
 class S(str):
     pass
@@ -21156,6 +21169,7 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
             "byteswap1 TypeError array.byteswap() takes no arguments (1 given)",
             "empty 0 0 0 0",
         ],
+        16 * 1024 * 1024,
     );
 }
 
