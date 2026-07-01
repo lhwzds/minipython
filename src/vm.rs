@@ -1782,6 +1782,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         } => Ok(format!("{type_name}{}", repr_exception_args_checked(args)?)),
         Value::Frame { .. } => Ok("<frame object>".to_string()),
         Value::Traceback { .. } => Ok("<traceback object>".to_string()),
+        Value::Super { class, object, .. } => Ok(super_repr_value(class, object)),
         Value::AstNode { .. } => ast_repr_value_checked(value),
         Value::BigInt(value) => repr_big_int_checked(value),
         _ => Ok(repr_value(value)),
@@ -9982,6 +9983,9 @@ impl Vm {
                 self.call_classmethod_get(args, keywords)
             }
             Value::Builtin(name) if name == "super.__get__" => self.call_super_get(args, keywords),
+            Value::Builtin(name) if name == "super.__repr__" => {
+                self.call_super_repr(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__get__" => {
                 self.call_method_get(args, keywords)
             }
@@ -17328,6 +17332,35 @@ impl Vm {
         let object = rest[0].clone();
         let owner = rest.get(1).cloned();
         self.super_descriptor_get(descriptor, object, owner)
+    }
+
+    fn call_super_repr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __repr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__repr__' of 'super' object needs an argument".to_string(),
+            );
+        };
+        let Value::Super { class, object, .. } = receiver else {
+            return Err(format!(
+                "TypeError: descriptor '__repr__' requires a 'super' object but received a '{}'",
+                type_name(receiver)
+            ));
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
+
+        Ok(Value::String(super_repr_value(class, object)))
     }
 
     fn call_method_get(
@@ -50558,7 +50591,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "real",
         ],
         "slice" => &["indices", "start", "stop", "step"],
-        "super" => &["__get__", "__self__", "__self_class__", "__thisclass__"],
+        "super" => &[
+            "__get__",
+            "__repr__",
+            "__self__",
+            "__self_class__",
+            "__thisclass__",
+        ],
         "object" => &[
             "__dir__",
             "__format__",
@@ -51001,6 +51040,39 @@ fn super_member_descriptor_names() -> &'static [&'static str] {
 
 fn is_super_member_descriptor_name(name: &str) -> bool {
     super_member_descriptor_names().contains(&name)
+}
+
+fn super_wrapper_descriptor_names() -> &'static [&'static str] {
+    &["__get__", "__repr__"]
+}
+
+fn is_super_wrapper_descriptor_name(name: &str) -> bool {
+    super_wrapper_descriptor_names().contains(&name)
+}
+
+fn is_super_wrapper_descriptor_builtin(name: &str) -> bool {
+    super_wrapper_descriptor_method_name(name).is_some()
+}
+
+fn super_wrapper_descriptor_method_name(name: &str) -> Option<&str> {
+    let method = name.strip_prefix("super.")?;
+    is_super_wrapper_descriptor_name(method).then_some(method)
+}
+
+fn super_wrapper_descriptor_doc(name: &str) -> &'static str {
+    match name {
+        "__get__" => "Return an attribute of instance, which is of type owner.",
+        "__repr__" => "Return repr(self).",
+        _ => unreachable!("guard checked super wrapper descriptor name"),
+    }
+}
+
+fn super_wrapper_descriptor_text_signature(name: &str) -> &'static str {
+    match name {
+        "__get__" => "($self, instance, owner=None, /)",
+        "__repr__" => "($self, /)",
+        _ => unreachable!("guard checked super wrapper descriptor name"),
+    }
 }
 
 fn super_member_descriptor(name: &str) -> Value {
@@ -59111,8 +59183,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(super_member_descriptor(name))
         }
-        Value::Builtin(function_name) if function_name == "super" && name == "__get__" => {
-            Ok(Value::Builtin("super.__get__".to_string()))
+        Value::Builtin(function_name)
+            if function_name == "super" && is_super_wrapper_descriptor_name(name) =>
+        {
+            Ok(Value::Builtin(format!("super.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "defaultdict" && name == "__getattribute__" =>
@@ -59169,7 +59243,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Builtin(function_name)
-            if function_name == "super.__get__"
+            if is_super_wrapper_descriptor_builtin(&function_name)
                 && matches!(
                     name,
                     "__class__"
@@ -59180,18 +59254,20 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__text_signature__"
                 ) =>
         {
+            let method_name = super_wrapper_descriptor_method_name(&function_name)
+                .expect("guard checked super wrapper descriptor name");
             match name {
                 "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
-                "__name__" => Ok(Value::String("__get__".to_string())),
-                "__qualname__" => Ok(Value::String("super.__get__".to_string())),
+                "__name__" => Ok(Value::String(method_name.to_string())),
+                "__qualname__" => Ok(Value::String(format!("super.{method_name}"))),
                 "__objclass__" => Ok(Value::Builtin("super".to_string())),
                 "__doc__" => Ok(Value::String(
-                    "Return an attribute of instance, which is of type owner.".to_string(),
+                    super_wrapper_descriptor_doc(method_name).to_string(),
                 )),
                 "__text_signature__" => Ok(Value::String(
-                    "($self, instance, owner=None, /)".to_string(),
+                    super_wrapper_descriptor_text_signature(method_name).to_string(),
                 )),
-                _ => unreachable!("guard checked super.__get__ descriptor metadata"),
+                _ => unreachable!("guard checked super wrapper descriptor metadata"),
             }
         }
         Value::Builtin(function_name) if name == "__class__" => {
@@ -60135,10 +60211,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         super_member_descriptor(name),
                     ));
                 }
-                entries.push((
-                    Value::String("__get__".to_string()),
-                    Value::Builtin("super.__get__".to_string()),
-                ));
+                for name in super_wrapper_descriptor_names() {
+                    entries.push((
+                        Value::String(name.to_string()),
+                        Value::Builtin(format!("super.{name}")),
+                    ));
+                }
             }
             Ok(mapping_proxy_from_entries(entries))
         }
@@ -62080,7 +62158,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__hash__"
         ),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
-        "super" => matches!(method, "__get__"),
+        "super" => is_super_wrapper_descriptor_name(method),
         _ => false,
     }
 }
@@ -64677,6 +64755,19 @@ impl Vm {
 
 fn default_object_repr(value: &Value) -> String {
     format!("<{} object>", type_name(value))
+}
+
+fn super_repr_value(class: &Value, object: &Value) -> String {
+    let class_name = class_display_name(class);
+    let object_repr = if matches!(object, Value::None) {
+        "NULL".to_string()
+    } else {
+        let object_type = super_lookup_owner_class(class, object)
+            .map(|owner| class_display_name(&owner))
+            .unwrap_or_else(|_| type_name(object).to_string());
+        format!("<{object_type} object>")
+    };
+    format!("<super: <class '{class_name}'>, {object_repr}>")
 }
 
 fn format_spec_string(value: &Value, function: &str) -> Result<String, String> {

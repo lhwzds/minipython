@@ -11176,6 +11176,42 @@ print('wrapper-direct-none-owner', wrapper(unbound, None, Child) is unbound)"#,
 }
 
 #[test]
+fn cpython_super_repr_wrapper_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_super.py public super repr wrapper descriptor",
+        name: "super-repr-wrapper-descriptor",
+        source: r#"class Child:
+    pass
+
+descriptor = super.__repr__
+mp = super.__dict__
+print('descriptor', type(descriptor).__name__, repr(descriptor), '__repr__' in dir(super), '__repr__' in mp, mp['__repr__'] is descriptor)
+print('descriptor-class', descriptor.__class__.__name__)
+print('meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__, descriptor.__text_signature__)
+cases = [
+    ('unbound', super(Child)),
+    ('none', super(Child, None)),
+    ('instance', super(Child, Child())),
+    ('class', super(Child, Child)),
+    ('builtin', super(int, 1)),
+    ('typeobj', super(type, int)),
+]
+for label, value in cases:
+    print(label, repr(value), descriptor(value), repr(value) == descriptor(value))
+for label, expr in [
+    ('noargs', lambda: descriptor()),
+    ('extra', lambda: descriptor(cases[0][1], 1)),
+    ('kw', lambda: descriptor(cases[0][1], x=1)),
+    ('wrong', lambda: descriptor({})),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",

@@ -27816,6 +27816,57 @@ print('wrapper-direct-none-owner', wrapper(unbound, None, Child) is unbound)"#,
     );
 }
 
+// Mirrors CPython's public `super.__repr__` slot wrapper without promoting the
+// rest of super's type-level slot surface.
+#[test]
+fn cpython_super_repr_wrapper_descriptor_subset() {
+    assert_output(
+        r#"class Child:
+    pass
+
+descriptor = super.__repr__
+mp = super.__dict__
+print('descriptor', type(descriptor).__name__, repr(descriptor), '__repr__' in dir(super), '__repr__' in mp, mp['__repr__'] is descriptor)
+print('descriptor-class', descriptor.__class__.__name__)
+print('meta', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is super, descriptor.__doc__, descriptor.__text_signature__)
+cases = [
+    ('unbound', super(Child)),
+    ('none', super(Child, None)),
+    ('instance', super(Child, Child())),
+    ('class', super(Child, Child)),
+    ('builtin', super(int, 1)),
+    ('typeobj', super(type, int)),
+]
+for label, value in cases:
+    print(label, repr(value), descriptor(value), repr(value) == descriptor(value))
+for label, expr in [
+    ('noargs', lambda: descriptor()),
+    ('extra', lambda: descriptor(cases[0][1], 1)),
+    ('kw', lambda: descriptor(cases[0][1], x=1)),
+    ('wrong', lambda: descriptor({})),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "descriptor wrapper_descriptor <slot wrapper '__repr__' of 'super' objects> True True True",
+            "descriptor-class wrapper_descriptor",
+            "meta __repr__ super.__repr__ True Return repr(self). ($self, /)",
+            "unbound <super: <class 'Child'>, NULL> <super: <class 'Child'>, NULL> True",
+            "none <super: <class 'Child'>, NULL> <super: <class 'Child'>, NULL> True",
+            "instance <super: <class 'Child'>, <Child object>> <super: <class 'Child'>, <Child object>> True",
+            "class <super: <class 'Child'>, <Child object>> <super: <class 'Child'>, <Child object>> True",
+            "builtin <super: <class 'int'>, <int object>> <super: <class 'int'>, <int object>> True",
+            "typeobj <super: <class 'type'>, <type object>> <super: <class 'type'>, <type object>> True",
+            "noargs TypeError descriptor '__repr__' of 'super' object needs an argument",
+            "extra TypeError expected 0 arguments, got 1",
+            "kw TypeError wrapper __repr__() takes no keyword arguments",
+            "wrong TypeError descriptor '__repr__' requires a 'super' object but received a 'dict'",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
 // MiniPython checks the BaseException args/display/repr subset needed by
 // migrated exception behavior tests.
