@@ -8171,6 +8171,53 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let core_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "assert_cpython_itertools_core_iterator_diff");
+    let core_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_itertools_core_iterator_subset");
+    for required in [
+        "itertools.__package__",
+        "object.__getattribute__(itertools, '__package__')",
+        "'__package__' in dir(itertools)",
+        "itertools.__dict__['__package__']",
+    ] {
+        assert!(
+            core_diff.contains(required) && core_subset.contains(required),
+            "itertools core diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"itertools ''\"", "\"True ''\""] {
+        assert!(
+            core_subset.contains(required),
+            "itertools core subset output must pin `{required}`"
+        );
+    }
+    let itertools_start = STDLIB_SOURCE
+        .find("\"itertools\" => Ok(module_value(")
+        .expect("stdlib.rs must define the itertools module");
+    let itertools_end = itertools_start
+        + STDLIB_SOURCE[itertools_start..]
+            .find("\"operator\" => Ok(operator_module_value())")
+            .expect("itertools module registry must precede operator");
+    let itertools_registry = &STDLIB_SOURCE[itertools_start..itertools_end];
+    assert!(
+        itertools_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "itertools stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_core_diff_subset",
+            "itertools module `__package__` metadata",
+            "`itertools.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "itertools module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+
     assert!(
         LANGUAGE_TESTS.contains("itertools_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse'")

@@ -790,6 +790,7 @@ pub(crate) fn create_module(
         "itertools" => Ok(module_value(
             "itertools",
             vec![
+                ("__package__", Value::String(String::new())),
                 (
                     "accumulate",
                     Value::Builtin("itertools.accumulate".to_string()),

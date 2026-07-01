@@ -12765,6 +12765,12 @@ Completed in the CPython collections manifest expansion pass:
   `chain()`, `chain.from_iterable()`, `islice()`, and the supported
   `pairwise()` constructor, plus modern unexpected-keyword diagnostics for
   `count()` and `repeat()`.
+- Extended `cpython_itertools_core_iterator_subset`,
+  `cpython_itertools_core_diff_subset`, and
+  `cpython_itertools_core_iterator_diff_subset` to pin itertools module `__package__` metadata
+  (`itertools.__package__` is `''`) alongside the pure
+  in-memory core iterator behavior. This documents itertools module
+  `__package__` metadata as part of the sandbox public iterator surface.
 - Added `cpython_itertools_product_subset` and
   `cpython_itertools_product_diff_subset`, extending the pure in-memory
   `itertools` surface with `product()` over eager pools, generator inputs,

@@ -2301,8 +2301,9 @@ without adding general custom encoder/decoder class support.
   `cpython_itertools_tee_diff_subset`, and
   `cpython_itertools_batched_diff_subset`, and
   `cpython_itertools_groupby_diff_subset`, and
-  `cpython_itertools_repr_diff_subset`, covering the pure in-memory
-  first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
+  `cpython_itertools_repr_diff_subset`, covering itertools module `__package__` metadata
+  (`itertools.__package__` is `''`) and the pure
+  in-memory first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, `pairwise()`, and
   `product()`, `combinations()`, `combinations_with_replacement()`, and

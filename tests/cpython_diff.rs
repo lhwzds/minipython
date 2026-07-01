@@ -22795,6 +22795,9 @@ fn assert_cpython_itertools_core_iterator_diff(name: &'static str) {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
         name,
         source: r#"import itertools
+print(itertools.__name__, repr(itertools.__package__))
+print(repr(object.__getattribute__(itertools, '__package__')))
+print('__package__' in dir(itertools), repr(itertools.__dict__['__package__']))
 c = itertools.count(2, 3)
 print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
 ck = itertools.count(start=-1, step=2)
