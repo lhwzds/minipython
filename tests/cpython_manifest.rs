@@ -17910,6 +17910,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
             "cpython_collections_counter_instance_doc_attribute_subset",
+            "cpython_collections_counter_type_base_metadata_subset",
             "cpython_collections_counter_conversions_subset",
             "cpython_collections_counter_init_update_subset",
             "cpython_collections_counter_comparison_subset",
@@ -18494,6 +18495,69 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "Counter instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_type_base_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter direct base metadata"
+    );
+    let counter_type_base_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_type_base_metadata_diff_subset",
+    );
+    let counter_type_base_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_type_base_metadata_subset",
+    );
+    for required in [
+        "from collections import Counter",
+        "object.__getattribute__(Counter, '__base__')",
+        "object.__getattribute__(Counter, '__bases__')",
+        "base is dict",
+        "bases[0] is dict",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            counter_type_base_diff_body.contains(required)
+                && counter_type_base_subset_body.contains(required),
+            "Counter direct base metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True builtins dict\"",
+        "\"bases tuple 1 True builtins dict\"",
+    ] {
+        assert!(
+            counter_type_base_subset_body.contains(required),
+            "Counter direct base metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"Counter\" => Some(\"dict\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "Counter direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_counter_type_base_metadata_subset",
+            "cpython_collections_counter_type_base_metadata_diff_subset",
+            "`Counter` direct base metadata",
+            "`dict`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "Counter direct base metadata docs must contain `{required}`"
             );
         }
     }
@@ -25883,6 +25947,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ builtin type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ Counter type-object __module__ metadata")
+                && document
+                    .contains("object.__getattribute__ Counter type-object __base__ metadata")
+                && document
+                    .contains("object.__getattribute__ Counter type-object __bases__ metadata")
                 && document
                     .contains("object.__getattribute__ ChainMap type-object __module__ metadata")
                 && document

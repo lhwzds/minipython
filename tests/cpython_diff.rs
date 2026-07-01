@@ -17537,6 +17537,19 @@ for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', C
 }
 
 #[test]
+fn cpython_collections_counter_type_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Counter public direct base metadata subset",
+        name: "collections-counter-type-base-metadata",
+        source: r#"from collections import Counter
+base = object.__getattribute__(Counter, '__base__')
+bases = object.__getattribute__(Counter, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_basics_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter basics subset",

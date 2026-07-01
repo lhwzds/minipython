@@ -58962,6 +58962,22 @@ for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', C
     );
 }
 
+// Mirrors CPython's public `Counter` direct base metadata.
+#[test]
+fn cpython_collections_counter_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import Counter
+base = object.__getattribute__(Counter, '__base__')
+bases = object.__getattribute__(Counter, '__bases__')
+print('base', base is dict, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True builtins dict",
+            "bases tuple 1 True builtins dict",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
 // This first Counter slice covers the public mapping-style behavior and core
 // Counter helpers; arithmetic and multiset-specific methods remain separate.

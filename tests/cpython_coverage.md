@@ -300,6 +300,8 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ builtin type-object missing attribute text
   behavior, object.__getattribute__ builtin type-object __module__ metadata
   behavior, object.__getattribute__ Counter type-object __module__ metadata
+  behavior, object.__getattribute__ Counter type-object __base__ metadata
+  behavior, object.__getattribute__ Counter type-object __bases__ metadata
   behavior, object.__getattribute__ ChainMap type-object __module__ metadata
   behavior, object.__getattribute__ ChainMap type-object __base__ metadata
   behavior, object.__getattribute__ ChainMap type-object __bases__ metadata
@@ -756,6 +758,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_basics_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_instance_doc_attribute_diff_subset`,
+  `cpython_collections_counter_type_base_metadata_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_comparison_diff_subset`,
@@ -1334,6 +1337,11 @@ Recent runtime migration notes:
   `Counter` instance `__doc__` lookup for empty, iterable-backed, and
   mapping-backed Counters, including `dir()` visibility, without promoting
   full writable Counter instance dictionaries.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_counter_type_base_metadata_diff_subset` and
+  `cpython_collections_counter_type_base_metadata_subset`, covering
+  `Counter` direct base metadata through `__base__` and `__bases__`, pinned to
+  `builtins.dict` without expanding full `__mro__` parity.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public
