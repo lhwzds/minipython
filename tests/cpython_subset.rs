@@ -38161,6 +38161,40 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_dir_wrapper_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    wrapper = bound.__dir__
+    print(name, '__dir__' in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+    result = wrapper()
+    print(name, type(result).__name__, isinstance(result, list), '__dir__' in result, '__self__' in result, '__func__' in result, '__call__' in result, '__get__' in result)
+    for label, call in [
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True builtin_function_or_method builtin_function_or_method",
+            "loads True __dir__ method.__dir__ Default dir() implementation. None ($self, /)",
+            "loads list True True True True True True",
+            "loads extra TypeError method.__dir__() takes no arguments (1 given) ('method.__dir__() takes no arguments (1 given)',)",
+            "loads keyword TypeError method.__dir__() takes no keyword arguments ('method.__dir__() takes no keyword arguments',)",
+            "dumps True builtin_function_or_method builtin_function_or_method",
+            "dumps True __dir__ method.__dir__ Default dir() implementation. None ($self, /)",
+            "dumps list True True True True True True",
+            "dumps extra TypeError method.__dir__() takes no arguments (1 given) ('method.__dir__() takes no arguments (1 given)',)",
+            "dumps keyword TypeError method.__dir__() takes no keyword arguments ('method.__dir__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_subset() {
     assert_output(
         r#"import json

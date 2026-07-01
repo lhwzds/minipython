@@ -1194,6 +1194,30 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_dir_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __dir__ wrapper subset",
+        name: "json-function-bound-method-dir-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    wrapper = bound.__dir__
+    print(name, '__dir__' in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+    result = wrapper()
+    print(name, type(result).__name__, isinstance(result, list), '__dir__' in result, '__self__' in result, '__func__' in result, '__call__' in result, '__get__' in result)
+    for label, call in [
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __getattribute__ wrapper subset",

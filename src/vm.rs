@@ -10004,6 +10004,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__call__" => {
                 self.call_method_call(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__dir__" => {
+                self.call_method_dir(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
@@ -17496,6 +17499,36 @@ impl Vm {
             );
         }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
+    }
+
+    fn call_method_dir(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: method.__dir__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: method.__dir__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        Ok(sorted_name_list(
+            self.default_dir_names_value(receiver.clone())?,
+        ))
     }
 
     fn call_json_function_repr_str(
@@ -50128,6 +50161,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__doc__",
                 "__func__",
                 "__call__",
+                "__dir__",
                 "__get__",
                 "__getattribute__",
                 "__name__",
@@ -57188,7 +57222,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
     }
 
     if name == "__dir__"
-        && !matches!(&object, Value::Instance { .. } | Value::Class { .. })
+        && !matches!(
+            &object,
+            Value::Instance { .. } | Value::Class { .. } | Value::BoundMethod { .. }
+        )
         && !matches!(&object, Value::Builtin(builtin) if builtin == "object")
     {
         return Ok(object_dir_bound_method(object));
@@ -59443,6 +59480,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
             "__func__" => Ok(*function),
             "__self__" => Ok(*receiver),
+            "__dir__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("method.__dir__".to_string())),
+                receiver: Box::new(Value::BoundMethod {
+                    function,
+                    receiver,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             "__call__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(
                     if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
@@ -59534,6 +59580,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
                 load_attribute(*function, "__builtins__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
@@ -61232,6 +61283,20 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__call__" => {
             Ok(Value::String("Call self as a function.".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__dir__" => {
+            Ok(Value::String("method.__dir__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__dir__" => {
+            Ok(Value::String("Default dir() implementation.".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "method.__dir__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__dir__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__get__" => {
             Ok(Value::String("method.__get__".to_string()))
