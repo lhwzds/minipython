@@ -22814,6 +22814,77 @@ fn number_int_constructor_error_messages_cover_runtime_subset() {
 }
 
 #[test]
+fn int_public_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_int_public_attributes_subset(",
+        "0",
+        "-7",
+        "2 ** 70",
+        "value.real, value.imag, value.numerator, value.denominator",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+        "\"attrs 0 0 0 1 0\"",
+        "\"attrs -7 0 -7 1 -7\"",
+        "\"attrs 1180591620717411303424 0 1180591620717411303424 1 1180591620717411303424\"",
+        "\"small-set-real AttributeError attribute 'real' of 'int' objects is not writable\"",
+        "\"small-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable\"",
+        "\"large-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable\"",
+        "\"large-del-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused int public attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_int_public_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_long.py public int attributes subset",
+        "name: \"int-public-attributes\"",
+        "0",
+        "-7",
+        "2 ** 70",
+        "value.real, value.imag, value.numerator, value.denominator",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused int public attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name))",
+        "fn int_attribute_assignment_error(name: &str) -> String",
+        "matches!(name, \"real\" | \"imag\" | \"numerator\" | \"denominator\")",
+        "attribute '{name}' of 'int' objects is not writable",
+        "'int' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "int public attributes implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_int_public_attributes_subset")
+                && document.contains("cpython_int_public_attributes_diff_subset")
+                && document.contains("int.real")
+                && document.contains("readonly public integer attributes")
+                && document.contains("without adding int instance dictionaries"),
+            "focused int public attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn float_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_float_public_attributes_subset(",
