@@ -21142,6 +21142,19 @@ print(copy.copy.__qualname__, copy.deepcopy.__qualname__, copy.replace.__qualnam
 }
 
 #[test]
+fn cpython_copy_function_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __doc__ metadata subset",
+        name: "copy-function-doc-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    doc = getattr(copy, name).__doc__
+    print(name, type(doc).__name__, bool(doc))
+print(all(isinstance(getattr(copy, name).__doc__, str) and bool(getattr(copy, name).__doc__) for name in ['copy', 'deepcopy', 'replace']))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_function_defaults_none_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public function __defaults__ None metadata subset",

@@ -60585,6 +60585,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
+        Value::Builtin(function_name) if name == "__doc__" && is_copy_builtin(&function_name) => {
+            Ok(Value::String(copy_builtin_doc(&function_name).to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__defaults__" && is_copy_none_defaults_builtin(&function_name) =>
         {
@@ -60933,6 +60936,15 @@ fn is_copy_builtin(name: &str) -> bool {
 
 fn is_copy_none_defaults_builtin(name: &str) -> bool {
     matches!(name, "copy.copy" | "copy.replace")
+}
+
+fn copy_builtin_doc(name: &str) -> &'static str {
+    match name {
+        "copy.copy" => "Shallow-copy an object.",
+        "copy.deepcopy" => "Deep-copy an object.",
+        "copy.replace" => "Return a copy of an object with selected fields replaced.",
+        _ => "",
+    }
 }
 
 fn json_builtin_doc(name: &str) -> &'static str {
