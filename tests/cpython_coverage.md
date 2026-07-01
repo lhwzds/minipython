@@ -1047,6 +1047,7 @@ Recent runtime migration notes:
   `cpython_json_module_package_metadata_diff_subset`,
   `cpython_json_function_module_identity_metadata_diff_subset`,
   `cpython_json_function_name_qualname_identity_metadata_diff_subset`,
+  `cpython_json_function_bound_method_name_dir_visibility_diff_subset`,
   `cpython_json_function_type_class_metadata_diff_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset`,
@@ -1715,6 +1716,8 @@ Recent runtime migration notes:
   `cpython_json_function_module_identity_metadata_subset`,
   `cpython_json_function_name_qualname_identity_metadata_diff_subset` /
   `cpython_json_function_name_qualname_identity_metadata_subset`,
+  `cpython_json_function_bound_method_name_dir_visibility_diff_subset` /
+  `cpython_json_function_bound_method_name_dir_visibility_subset`,
   `cpython_json_function_type_class_metadata_diff_subset` /
   `cpython_json_function_type_class_metadata_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset` /
@@ -2529,6 +2532,14 @@ encoder/decoder classes.
 visibility aligned with CPython for the supported function metadata names and
 removes builtin-type-only `__base__` / `__bases__` visibility without adding
 function `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_name_dir_visibility_subset`, backed by
+`cpython_json_function_bound_method_name_dir_visibility_diff_subset`, keeps json
+public function bound method name metadata aligned with CPython by preserving
+`bound.__name__` / `bound.__qualname__` / `bound.__module__` lookup while
+keeping those metadata names hidden from `dir(bound)`, without adding
+`__reduce__`, `__reduce_ex__`, `__sizeof__`, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_get_descriptor_metadata_subset`, backed by
 `cpython_json_function_get_descriptor_metadata_diff_subset`, keeps json public function `__get__` descriptor

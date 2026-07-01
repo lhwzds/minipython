@@ -757,6 +757,22 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_name_dir_visibility_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method name dir visibility subset",
+        name: "json-function-bound-method-name-dir-visibility",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    names = dir(bound)
+    print(name, '__name__' in names, '__qualname__' in names, '__module__' in names)
+    print(name, bound.__name__, bound.__qualname__, bound.__module__, bound.__getattribute__('__name__'), bound.__getattribute__('__qualname__'), bound.__getattribute__('__module__'))
+    print(name, bound.__name__ is function.__name__, bound.__qualname__ is function.__qualname__, bound.__module__ is function.__module__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_class_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function type / __class__ metadata subset",

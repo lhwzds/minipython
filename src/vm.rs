@@ -50290,7 +50290,6 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__hash__",
                 "__le__",
                 "__lt__",
-                "__name__",
                 "__ne__",
                 "__repr__",
                 "__self__",

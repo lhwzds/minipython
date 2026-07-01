@@ -8721,6 +8721,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_name_qualname_identity_metadata_subset",
+            "cpython_json_function_bound_method_name_dir_visibility_subset",
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
@@ -8856,6 +8857,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_globals_identity_metadata_diff_subset",
         "cpython_json_function_module_identity_metadata_diff_subset",
         "cpython_json_function_name_qualname_identity_metadata_diff_subset",
+        "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
         "cpython_json_function_type_class_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
         "cpython_json_function_call_wrapper_metadata_diff_subset",
@@ -8992,6 +8994,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_name_qualname_identity_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_name_qualname_identity_metadata_subset",
+    );
+    let json_function_bound_method_name_dir_visibility_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
+    );
+    let json_function_bound_method_name_dir_visibility_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_name_dir_visibility_subset",
     );
     let json_function_type_class_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9399,6 +9409,43 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function __name__ / __qualname__ identity subset output must pin `{required}`"
         );
     }
+    for required in [
+        "names = dir(bound)",
+        "'__name__' in names",
+        "'__qualname__' in names",
+        "'__module__' in names",
+        "bound.__getattribute__('__name__')",
+        "bound.__getattribute__('__qualname__')",
+        "bound.__getattribute__('__module__')",
+        "bound.__name__ is function.__name__",
+        "bound.__qualname__ is function.__qualname__",
+        "bound.__module__ is function.__module__",
+    ] {
+        assert!(
+            json_function_bound_method_name_dir_visibility_diff_body.contains(required)
+                && json_function_bound_method_name_dir_visibility_subset_body.contains(required),
+            "json public function bound method name dir visibility diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads False False False\"",
+        "\"loads loads loads json loads loads json\"",
+        "\"loads True True True\"",
+        "\"dumps False False False\"",
+        "\"dumps dumps dumps json dumps dumps json\"",
+        "\"dumps True True True\"",
+    ] {
+        assert!(
+            json_function_bound_method_name_dir_visibility_subset_body.contains(required),
+            "json public function bound method name dir visibility subset output must pin `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains(
+            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__eq__\",\n                \"__format__\",\n                \"__ge__\",\n                \"__get__\",\n                \"__getattribute__\",\n                \"__gt__\",\n                \"__hash__\",\n                \"__le__\",\n                \"__lt__\",\n                \"__ne__\","
+        ),
+        "VM bound method dir() names must keep __name__ hidden while preserving bound.__name__ lookup"
+    );
     for required in [
         "type(function).__name__",
         "type(function).__module__",
@@ -11122,6 +11169,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_module_identity_metadata_diff_subset",
             "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_name_qualname_identity_metadata_diff_subset",
+            "cpython_json_function_bound_method_name_dir_visibility_subset",
+            "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_type_class_metadata_diff_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",

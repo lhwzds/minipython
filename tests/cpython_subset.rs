@@ -37562,6 +37562,28 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_name_dir_visibility_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    names = dir(bound)
+    print(name, '__name__' in names, '__qualname__' in names, '__module__' in names)
+    print(name, bound.__name__, bound.__qualname__, bound.__module__, bound.__getattribute__('__name__'), bound.__getattribute__('__qualname__'), bound.__getattribute__('__module__'))
+    print(name, bound.__name__ is function.__name__, bound.__qualname__ is function.__qualname__, bound.__module__ is function.__module__)"#,
+        &[
+            "loads False False False",
+            "loads loads loads json loads loads json",
+            "loads True True True",
+            "dumps False False False",
+            "dumps dumps dumps json dumps dumps json",
+            "dumps True True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_class_metadata_subset() {
     assert_output(
         r#"import json
