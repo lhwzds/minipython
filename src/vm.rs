@@ -61688,11 +61688,20 @@ fn is_range_readonly_instance_attribute(name: &str) -> bool {
 fn slice_attribute_assignment_error(name: &str) -> String {
     if matches!(name, "start" | "stop" | "step") {
         "AttributeError: readonly attribute".to_string()
+    } else if is_slice_readonly_instance_attribute(name) {
+        format!("AttributeError: 'slice' object attribute '{name}' is read-only")
     } else {
         format!(
             "AttributeError: 'slice' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn is_slice_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("slice")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn deque_attribute_assignment_error(name: &str) -> String {

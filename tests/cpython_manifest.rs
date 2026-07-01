@@ -26730,6 +26730,9 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
         "'indices' in dir(slice)",
         "setattr(s, name, 99)",
         "delattr(s, name)",
+        "for name in ['indices']",
+        "\"set-indices AttributeError 'slice' object attribute 'indices' is read-only\"",
+        "\"del-indices AttributeError 'slice' object attribute 'indices' is read-only\"",
         "setattr(s, 'extra', 99)",
         "delattr(s, 'extra')",
         "\"attrs None None None slice(None, None, None)\"",
@@ -26759,6 +26762,7 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
         "'indices' in dir(slice)",
         "setattr(s, name, 99)",
         "delattr(s, name)",
+        "for name in ['indices']",
         "setattr(s, 'extra', 99)",
         "delattr(s, 'extra')",
     ] {
@@ -26774,8 +26778,11 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
         "\"slice\" => &[\"indices\", \"start\", \"stop\", \"step\"]",
         "[\"indices\", \"start\", \"stop\", \"step\"]",
         "fn slice_attribute_assignment_error(name: &str) -> String",
+        "fn is_slice_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"slice\")",
         "matches!(name, \"start\" | \"stop\" | \"step\")",
         "\"AttributeError: readonly attribute\"",
+        "'slice' object attribute '{name}' is read-only",
         "'slice' object has no attribute",
         "no __dict__ for setting new attributes",
     ] {
@@ -26791,6 +26798,7 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_slice_public_attributes_diff_subset")
                 && document.contains("slice.start")
                 && document.contains("slice.indices in dir()")
+                && document.contains("read-only slice method attributes")
                 && document.contains("readonly public data attributes")
                 && document.contains("without adding slice instance dictionaries"),
             "focused slice public attribute evidence must be documented in coverage and migration notes"

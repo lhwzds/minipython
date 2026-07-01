@@ -10036,6 +10036,9 @@ print('indices-visible', 'indices' in dir(s), 'indices' in dir(slice))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(s, name, 99))
     show('del-' + name, lambda name=name: delattr(s, name))
+for name in ['indices']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
 show('set-extra', lambda: setattr(s, 'extra', 99))
 show('del-extra', lambda: delattr(s, 'extra'))"#,
     });

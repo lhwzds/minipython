@@ -27236,6 +27236,9 @@ print('indices-visible', 'indices' in dir(s), 'indices' in dir(slice))
 for name in ['start', 'stop', 'step']:
     show('set-' + name, lambda name=name: setattr(s, name, 99))
     show('del-' + name, lambda name=name: delattr(s, name))
+for name in ['indices']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
 show('set-extra', lambda: setattr(s, 'extra', 99))
 show('del-extra', lambda: delattr(s, 'extra'))"#,
         &[
@@ -27251,6 +27254,8 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
             "del-stop AttributeError readonly attribute",
             "set-step AttributeError readonly attribute",
             "del-step AttributeError readonly attribute",
+            "set-indices AttributeError 'slice' object attribute 'indices' is read-only",
+            "del-indices AttributeError 'slice' object attribute 'indices' is read-only",
             "set-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "del-extra AttributeError 'slice' object has no attribute 'extra' and no __dict__ for setting new attributes",
         ],
