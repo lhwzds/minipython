@@ -8726,6 +8726,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
+            "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -8863,6 +8864,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_type_class_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
         "cpython_json_function_call_wrapper_metadata_diff_subset",
+        "cpython_json_function_format_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -9036,6 +9038,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_call_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_call_wrapper_metadata_subset",
+    );
+    let json_function_format_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_format_wrapper_metadata_diff_subset",
+    );
+    let json_function_format_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_format_wrapper_metadata_subset",
     );
     let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9605,6 +9615,70 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_call_wrapper_subset_body.contains(required),
             "json public function __call__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function.__format__",
+        "'__format__' in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is function",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "doc.startswith('Default object formatter.')",
+        "'Return str(self)' in doc",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "wrapper('') == format(function, '')",
+        "wrapper('') == str(function)",
+        "wrapper('').startswith('<function ' + name + ' at 0x')",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper: wrapper('', 1))",
+        "('non-empty', lambda wrapper=wrapper: wrapper('x'))",
+        "('keyword', lambda wrapper=wrapper: wrapper(format_spec=''))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_format_wrapper_diff_body.contains(required)
+                && json_function_format_wrapper_subset_body.contains(required),
+            "json public function __format__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True builtin_function_or_method builtin_function_or_method\"",
+        "\"loads True __format__ function.__format__ True True None ($self, format_spec, /)\"",
+        "\"loads True True True\"",
+        "\"loads missing TypeError function.__format__() takes exactly one argument (0 given)",
+        "\"loads extra TypeError function.__format__() takes exactly one argument (2 given)",
+        "\"loads non-empty TypeError unsupported format string passed to function.__format__",
+        "\"loads keyword TypeError function.__format__() takes no keyword arguments",
+        "\"dumps True builtin_function_or_method builtin_function_or_method\"",
+        "\"dumps True __format__ function.__format__ True True None ($self, format_spec, /)\"",
+        "\"dumps True True True\"",
+        "\"dumps missing TypeError function.__format__() takes exactly one argument (0 given)",
+        "\"dumps extra TypeError function.__format__() takes exactly one argument (2 given)",
+        "\"dumps non-empty TypeError unsupported format string passed to function.__format__",
+        "\"dumps keyword TypeError function.__format__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_format_wrapper_subset_body.contains(required),
+            "json public function __format__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_format(",
+        "json.function.__format__",
+        "\"__format__\" && is_json_builtin",
+        "function.__format__() takes no keyword arguments",
+        "function.__format__() takes exactly one argument",
+        "call_object_format(vec![receiver.clone(), format_spec.clone()])",
+        "function.__format__",
+        "Default object formatter.",
+        "($self, format_spec, /)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __format__ wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11217,6 +11291,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_diff_subset",
+            "cpython_json_function_format_wrapper_metadata_subset",
+            "cpython_json_function_format_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",

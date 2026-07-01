@@ -1052,6 +1052,7 @@ Recent runtime migration notes:
   `cpython_json_function_type_class_metadata_diff_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset`,
+  `cpython_json_function_format_wrapper_metadata_diff_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
@@ -1727,6 +1728,8 @@ Recent runtime migration notes:
   `cpython_json_function_repr_str_wrapper_metadata_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset` /
   `cpython_json_function_call_wrapper_metadata_subset`,
+  `cpython_json_function_format_wrapper_metadata_diff_subset` /
+  `cpython_json_function_format_wrapper_metadata_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset` /
   `cpython_json_function_getattribute_wrapper_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
@@ -2447,6 +2450,16 @@ aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
 `__doc__` metadata, positional and keyword forwarding, and wrapper repr arity /
 keyword error text, without adding function `__code__`, file APIs, module
 `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_format_wrapper_metadata_subset`, backed by
+`cpython_json_function_format_wrapper_metadata_diff_subset`, keeps json public
+function `__format__` wrapper metadata aligned with CPython for `loads` /
+`dumps`, including `dir()` visibility, `builtin_function_or_method` type shape,
+`__self__` / `__name__` / `__qualname__` / `__doc__` / `__module__` /
+`__text_signature__` metadata, empty-format rendering, non-empty-format
+`TypeError`, and arity / keyword error text, without adding function
+`__code__`, rich-comparison wrappers, `__hash__`, file APIs, module `__all__`,
+or encoder/decoder classes.
 
 `cpython_json_function_getattribute_wrapper_metadata_subset`, backed by
 `cpython_json_function_getattribute_wrapper_metadata_diff_subset`, keeps json public function `__getattribute__` wrapper metadata

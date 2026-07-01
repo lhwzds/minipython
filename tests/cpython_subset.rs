@@ -37703,6 +37703,46 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_format_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__format__
+    doc = wrapper.__doc__
+    print(name, '__format__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, doc.startswith('Default object formatter.'), 'Return str(self)' in doc, wrapper.__module__, wrapper.__text_signature__)
+    print(name, wrapper('') == format(function, ''), wrapper('') == str(function), wrapper('').startswith('<function ' + name + ' at 0x'))
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper('', 1)),
+        ('non-empty', lambda wrapper=wrapper: wrapper('x')),
+        ('keyword', lambda wrapper=wrapper: wrapper(format_spec='')),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True builtin_function_or_method builtin_function_or_method",
+            "loads True __format__ function.__format__ True True None ($self, format_spec, /)",
+            "loads True True True",
+            "loads missing TypeError function.__format__() takes exactly one argument (0 given) ('function.__format__() takes exactly one argument (0 given)',)",
+            "loads extra TypeError function.__format__() takes exactly one argument (2 given) ('function.__format__() takes exactly one argument (2 given)',)",
+            "loads non-empty TypeError unsupported format string passed to function.__format__ ('unsupported format string passed to function.__format__',)",
+            "loads keyword TypeError function.__format__() takes no keyword arguments ('function.__format__() takes no keyword arguments',)",
+            "dumps True builtin_function_or_method builtin_function_or_method",
+            "dumps True __format__ function.__format__ True True None ($self, format_spec, /)",
+            "dumps True True True",
+            "dumps missing TypeError function.__format__() takes exactly one argument (0 given) ('function.__format__() takes exactly one argument (0 given)',)",
+            "dumps extra TypeError function.__format__() takes exactly one argument (2 given) ('function.__format__() takes exactly one argument (2 given)',)",
+            "dumps non-empty TypeError unsupported format string passed to function.__format__ ('unsupported format string passed to function.__format__',)",
+            "dumps keyword TypeError function.__format__() takes no keyword arguments ('function.__format__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_subset() {
     assert_output(
         r#"import json

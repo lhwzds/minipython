@@ -10037,6 +10037,9 @@ impl Vm {
             Value::Builtin(name) if name == "json.function.__call__" => {
                 self.call_json_function_call(args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__format__" => {
+                self.call_json_function_format(args, keywords)
+            }
             Value::Builtin(name) if name == "json.function.__getattribute__" => {
                 self.call_json_function_getattribute(args, keywords)
             }
@@ -17688,6 +17691,35 @@ impl Vm {
             );
         }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
+    }
+
+    fn call_json_function_format(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: function.__format__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [format_spec] = rest else {
+            return Err(format!(
+                "TypeError: function.__format__() takes exactly one argument ({} given)",
+                rest.len()
+            ));
+        };
+
+        self.call_object_format(vec![receiver.clone(), format_spec.clone()])
+            .map(Value::String)
     }
 
     fn call_json_function_getattribute(
@@ -50439,6 +50471,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__dict__",
         "__dir__",
         "__doc__",
+        "__format__",
         "__globals__",
         "__getattribute__",
         "__get__",
@@ -59751,6 +59784,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "json.function.__format__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__hash__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -61247,6 +61285,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
+        Value::Builtin(function_name) if name == "__format__" && is_json_builtin(&function_name) => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("json.function.__format__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name)
             if name == "__getattribute__" && is_json_builtin(&function_name) =>
         {
@@ -61444,6 +61489,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__doc__" && function_name == "json.function.__call__" =>
         {
             Ok(Value::String("Call self as a function.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "json.function.__format__" =>
+        {
+            Ok(Value::String("function.__format__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__format__" =>
+        {
+            Ok(Value::String("Default object formatter.\n\nReturn str(self) if format_spec is empty. Raise TypeError otherwise.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "json.function.__format__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "json.function.__format__" =>
+        {
+            Ok(Value::String("($self, format_spec, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "method.__call__" =>

@@ -853,6 +853,32 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_format_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __format__ wrapper metadata subset",
+        name: "json-function-format-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__format__
+    doc = wrapper.__doc__
+    print(name, '__format__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, doc.startswith('Default object formatter.'), 'Return str(self)' in doc, wrapper.__module__, wrapper.__text_signature__)
+    print(name, wrapper('') == format(function, ''), wrapper('') == str(function), wrapper('').startswith('<function ' + name + ' at 0x'))
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper('', 1)),
+        ('non-empty', lambda wrapper=wrapper: wrapper('x')),
+        ('keyword', lambda wrapper=wrapper: wrapper(format_spec='')),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __getattribute__ wrapper metadata subset",
