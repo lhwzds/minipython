@@ -10007,6 +10007,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__hash__" => {
+                self.call_method_hash(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
@@ -17529,6 +17532,34 @@ impl Vm {
         Ok(sorted_name_list(
             self.default_dir_names_value(receiver.clone())?,
         ))
+    }
+
+    fn call_method_hash(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __hash__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
+
+        self.hash_key_value(receiver)
     }
 
     fn call_json_function_repr_str(
@@ -50164,6 +50195,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__dir__",
                 "__get__",
                 "__getattribute__",
+                "__hash__",
                 "__name__",
                 "__repr__",
                 "__self__",
@@ -59514,6 +59546,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__hash__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("method.__hash__".to_string())),
+                receiver: Box::new(Value::BoundMethod {
+                    function,
+                    receiver,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             "__repr__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("method.{name}"))),
                 receiver: Box::new(Value::BoundMethod {
@@ -59583,6 +59624,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__hash__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -61295,6 +61341,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "method.__dir__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__hash__" => {
+            Ok(Value::String("method.__hash__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__hash__" => {
+            Ok(Value::String("Return hash(self).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__hash__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
         }
@@ -63121,6 +63178,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"
+            | "method.__hash__"
             | "json.function.__call__"
             | "json.function.__repr__"
             | "json.function.__str__"

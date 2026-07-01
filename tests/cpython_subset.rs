@@ -38195,6 +38195,43 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_hash_wrapper_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    wrapper = bound.__hash__
+    print(name, '__hash__' in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    value = wrapper()
+    print(name, type(value).__name__, isinstance(value, int), value == hash(bound), wrapper() == wrapper())
+    print(name, isinstance(getattr(json, name).__get__('other', str).__hash__(), int))
+    for label, call in [
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True method-wrapper method-wrapper",
+            "loads True __hash__ method.__hash__ Return hash(self). MISSING ($self, /)",
+            "loads int True True True",
+            "loads True",
+            "loads extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "loads keyword TypeError wrapper __hash__() takes no keyword arguments ('wrapper __hash__() takes no keyword arguments',)",
+            "dumps True method-wrapper method-wrapper",
+            "dumps True __hash__ method.__hash__ Return hash(self). MISSING ($self, /)",
+            "dumps int True True True",
+            "dumps True",
+            "dumps extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "dumps keyword TypeError wrapper __hash__() takes no keyword arguments ('wrapper __hash__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_subset() {
     assert_output(
         r#"import json

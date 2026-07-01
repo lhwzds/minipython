@@ -1070,6 +1070,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_call_wrapper_diff_subset`,
   `cpython_json_function_bound_method_get_wrapper_diff_subset`,
   `cpython_json_function_bound_method_dir_wrapper_diff_subset`,
+  `cpython_json_function_bound_method_hash_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset`,
   `cpython_json_function_bound_method_doc_dir_metadata_diff_subset`,
@@ -1744,6 +1745,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_get_wrapper_subset`,
   `cpython_json_function_bound_method_dir_wrapper_diff_subset` /
   `cpython_json_function_bound_method_dir_wrapper_subset`,
+  `cpython_json_function_bound_method_hash_wrapper_diff_subset` /
+  `cpython_json_function_bound_method_hash_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset` /
   `cpython_json_function_bound_method_getattribute_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset` /
@@ -2572,6 +2575,16 @@ classification, `__self__` / `__name__` / `__qualname__` / `__doc__` /
 `__module__` / `__text_signature__` metadata, returned name-list membership,
 and arity / keyword `TypeError` text, without adding `__reduce__`,
 `__reduce_ex__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_hash_wrapper_subset`, backed by
+`cpython_json_function_bound_method_hash_wrapper_diff_subset`, keeps json public function bound method `__hash__`
+wrapper access aligned with CPython for `loads.__get__(...)` and
+`dumps.__get__(...)`, including `dir()` visibility, `method-wrapper`
+classification, `__self__` / `__name__` / `__qualname__` / `__doc__` /
+`__text_signature__` metadata, integer return shape, equality with
+`hash(bound)`, stable repeated calls, and arity / keyword `TypeError` text,
+without adding `__reduce__`, `__reduce_ex__`, `__sizeof__`, file APIs, module
+`__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_getattribute_wrapper_subset`, backed by
 `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`, keeps json public function bound method `__getattribute__`
