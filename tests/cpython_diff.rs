@@ -708,6 +708,19 @@ fn cpython_json_loads_dumps_basic_diff_subset() {
 }
 
 #[test]
+fn cpython_json_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public module __package__ metadata subset",
+        name: "json-module-package-metadata",
+        source: r#"import json
+print(json.__name__, json.__package__)
+print(object.__getattribute__(json, '__package__'))
+print('__package__' in dir(json), json.__dict__['__package__'])
+print(json.loads.__module__, json.dumps.__module__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

@@ -1025,6 +1025,7 @@ Recent runtime migration notes:
   `cpython_itertools_repr_diff_subset`,
   `cpython_json_loads_dumps_diff_subset`,
   `cpython_json_loads_dumps_basic_diff_subset`,
+  `cpython_json_module_package_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1629,6 +1630,8 @@ Recent runtime migration notes:
 - The bundled `json` module includes `cpython_json_loads_dumps_diff_subset` /
   `cpython_json_loads_dumps_basic_diff_subset` /
   `cpython_json_loads_dumps_basic_subset`,
+  `cpython_json_module_package_metadata_diff_subset` /
+  `cpython_json_module_package_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2242,6 +2245,13 @@ without adding alternate encoders or unpaired surrogate storage.
 standard bool/null/list/dict/scalar round trips, 200-level nested list encoding, and default non-finite float spelling,
 without adding file APIs, module `__all__` exports beyond the sandbox `loads` / `dumps` surface,
 custom encoder classes, or CPython internals.
+
+`cpython_json_module_package_metadata_subset`, backed by
+`cpython_json_module_package_metadata_diff_subset`, keeps json module `__package__` metadata
+aligned with CPython through `json.__package__`,
+`object.__getattribute__`, `dir()`, and `__dict__`, while preserving
+`json.loads.__module__` and `json.dumps.__module__` and without adding file
+APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
