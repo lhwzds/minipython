@@ -9997,6 +9997,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__get__" => {
                 self.call_method_get(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
+                self.call_method_repr_str(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "descriptor.__get__" => {
                 self.call_method_get(args, keywords)
             }
@@ -17428,6 +17431,32 @@ impl Vm {
         }
 
         Ok(descriptor)
+    }
+
+    fn call_method_repr_str(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        Ok(Value::String(repr_value_checked(receiver)?))
     }
 
     fn call_json_function_get(
@@ -49950,7 +49979,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .map(str::to_string),
         ),
         Value::BoundMethod { .. } => names.extend(
-            ["__func__", "__name__", "__self__"]
+            ["__func__", "__name__", "__repr__", "__self__", "__str__"]
                 .into_iter()
                 .map(str::to_string),
         ),
@@ -59240,7 +59269,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             identity,
         } => match name {
             "__class__" => Ok(Value::Builtin(
-                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
+                if matches!(function.as_ref(), Value::Builtin(name) if is_method_wrapper_name(name))
+                {
+                    "method-wrapper"
+                } else if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))
+                {
                     "method"
                 } else if matches!(function.as_ref(), Value::Builtin(_)) {
                     "builtin_function_or_method"
@@ -59262,6 +59295,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("method.__get__".to_string())),
+                receiver: Box::new(Value::BoundMethod {
+                    function,
+                    receiver,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
+            "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("method.{name}"))),
                 receiver: Box::new(Value::BoundMethod {
                     function,
                     receiver,
@@ -62686,6 +62728,10 @@ fn is_descriptor_get_wrapper_name(name: &str) -> bool {
     )
 }
 
+fn is_method_wrapper_name(name: &str) -> bool {
+    matches!(name, "method.__repr__" | "method.__str__")
+}
+
 fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
     match (type_name, name) {
         ("Sequence", "__doc__") => Some(Value::String(
@@ -64231,7 +64277,7 @@ fn type_name(value: &Value) -> &str {
         Value::StaticMethod { .. } => "staticmethod",
         Value::ClassMethod { .. } => "classmethod",
         Value::Super { .. } => "super",
-        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name)) => {
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name) || is_method_wrapper_name(name)) => {
             "method-wrapper"
         }
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) => {
@@ -83224,6 +83270,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
                 Value::Builtin(name)
                     if !is_builtin_wrapper_descriptor_name(name)
                         && !is_descriptor_get_wrapper_name(name)
+                        && !is_method_wrapper_name(name)
             ),
             _ => false,
         },
@@ -83234,7 +83281,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             matches!(
                 subject,
                 Value::BoundMethod { function, .. }
-                    if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name))
+                    if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name) || is_method_wrapper_name(name))
             )
         }
         "method_descriptor" => {

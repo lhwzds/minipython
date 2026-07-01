@@ -966,6 +966,30 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_repr_str_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __repr__ / __str__ wrapper subset",
+        name: "json-function-bound-method-repr-str-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    print(name, '__repr__' in dir(bound), '__str__' in dir(bound), type(bound.__repr__).__name__, type(bound.__str__).__name__)
+    print(name, bound.__repr__.__class__.__name__, bound.__str__.__class__.__name__)
+    print(name, bound.__repr__(), bound.__str__())
+    for label, call in [
+        ('repr-extra', lambda: bound.__repr__(1)),
+        ('str-extra', lambda: bound.__str__(1)),
+        ('repr-keyword', lambda: bound.__repr__(x=1)),
+        ('str-keyword', lambda: bound.__str__(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

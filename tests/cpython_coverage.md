@@ -1059,6 +1059,7 @@ Recent runtime migration notes:
   `cpython_json_function_get_descriptor_metadata_diff_subset`,
   `cpython_json_function_get_missing_owner_error_diff_subset`,
   `cpython_json_function_bound_method_repr_diff_subset`,
+  `cpython_json_function_bound_method_repr_str_wrapper_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1698,6 +1699,8 @@ Recent runtime migration notes:
   `cpython_json_function_get_missing_owner_error_subset`,
   `cpython_json_function_bound_method_repr_diff_subset` /
   `cpython_json_function_bound_method_repr_subset`,
+  `cpython_json_function_bound_method_repr_str_wrapper_diff_subset` /
+  `cpython_json_function_bound_method_repr_str_wrapper_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2414,6 +2417,14 @@ and `str()` rendering aligned with CPython for `loads.__get__(...)` and
 internal `json.loads` / `json.dumps` builtin names without adding function
 `__code__`, method `__repr__` attributes, file APIs, module `__all__`, or
 encoder/decoder classes.
+
+`cpython_json_function_bound_method_repr_str_wrapper_subset`, backed by
+`cpython_json_function_bound_method_repr_str_wrapper_diff_subset`, keeps json public function bound method `__repr__`
+and `__str__` wrapper access aligned with CPython for `loads.__get__(...)` and
+`dumps.__get__(...)`, including `dir()` visibility, `method-wrapper`
+classification, call results, and arity / keyword `TypeError` text, without
+adding `__reduce__`, `__reduce_ex__`, method `__getattribute__`, file APIs,
+module `__all__`, or encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
