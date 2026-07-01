@@ -109,6 +109,7 @@ thread_local! {
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_MODULE: RefCell<Option<Value>> = RefCell::new(None);
+    static JSON_BUILTIN_MODULE_OVERRIDES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_NAMES: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -61359,7 +61360,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__module__" && is_json_builtin(&function_name) =>
         {
-            Ok(json_builtin_module())
+            Ok(json_builtin_module(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__module__" && is_copy_builtin(&function_name) =>
@@ -62087,13 +62088,38 @@ fn json_builtin_name_value(name: &str) -> Value {
     })
 }
 
-fn json_builtin_module() -> Value {
+fn json_builtin_module(name: &str) -> Value {
+    if let Some(value) =
+        JSON_BUILTIN_MODULE_OVERRIDES.with(|overrides| overrides.borrow().get(name).cloned())
+    {
+        return value;
+    }
     JSON_BUILTIN_MODULE.with(|module| {
         let mut module = module.borrow_mut();
         module
             .get_or_insert_with(|| identity_string_value("json".to_string()))
             .clone()
     })
+}
+
+fn set_json_builtin_doc(name: &str, value: Value) {
+    JSON_BUILTIN_DOCS.with(|docs| {
+        docs.borrow_mut().insert(name.to_string(), value);
+    });
+}
+
+fn delete_json_builtin_doc(name: &str) {
+    set_json_builtin_doc(name, Value::None);
+}
+
+fn set_json_builtin_module(name: &str, value: Value) {
+    JSON_BUILTIN_MODULE_OVERRIDES.with(|overrides| {
+        overrides.borrow_mut().insert(name.to_string(), value);
+    });
+}
+
+fn delete_json_builtin_module(name: &str) {
+    set_json_builtin_module(name, Value::None);
 }
 
 fn json_builtin_type_params() -> Value {
@@ -62233,6 +62259,17 @@ fn store_json_builtin_attribute(
     name: &str,
     value: Value,
 ) -> Result<(), String> {
+    match name {
+        "__doc__" => {
+            set_json_builtin_doc(function_name, value);
+            return Ok(());
+        }
+        "__module__" => {
+            set_json_builtin_module(function_name, value);
+            return Ok(());
+        }
+        _ => {}
+    }
     let Value::Dict(attrs) = json_builtin_dict(function_name) else {
         unreachable!("json_builtin_dict always returns a dict")
     };
@@ -62244,6 +62281,17 @@ fn store_json_builtin_attribute(
 }
 
 fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), String> {
+    match name {
+        "__doc__" => {
+            delete_json_builtin_doc(function_name);
+            return Ok(());
+        }
+        "__module__" => {
+            delete_json_builtin_module(function_name);
+            return Ok(());
+        }
+        _ => {}
+    }
     let Value::Dict(attrs) = json_builtin_dict(function_name) else {
         unreachable!("json_builtin_dict always returns a dict")
     };

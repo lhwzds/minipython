@@ -1040,6 +1040,36 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_doc_module_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __doc__ / __module__ assignment metadata subset",
+        name: "json-function-doc-module-assignment-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    original_doc = function.__doc__
+    original_module = function.__module__
+    print(name, type(original_doc).__name__, bool(original_doc), original_module, function.__dict__ == {})
+    function.__doc__ = 123
+    function.__module__ = name + '_module'
+    print(name, function.__doc__, bound.__doc__, function.__module__, bound.__module__, function.__dict__ == {}, '__doc__' in function.__dict__, '__module__' in function.__dict__)
+    function.__setattr__('__doc__', None)
+    function.__setattr__('__module__', 99)
+    print(name, function.__doc__, function.__doc__ is None, function.__module__, type(function.__module__).__name__, bound.__doc__ is function.__doc__, bound.__module__ is function.__module__)
+    del function.__doc__
+    del function.__module__
+    print(name, function.__doc__, function.__doc__ is None, function.__module__, function.__module__ is None, bound.__doc__ is function.__doc__, bound.__module__ is function.__module__)
+    function.__delattr__('__doc__')
+    function.__delattr__('__module__')
+    print(name, function.__doc__ is None, function.__module__ is None, function.__dict__ == {})
+    function.__doc__ = original_doc
+    function.__module__ = original_module
+print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__, json.dumps.__module__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",

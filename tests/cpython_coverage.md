@@ -1058,6 +1058,7 @@ Recent runtime migration notes:
   `cpython_json_function_order_wrapper_metadata_diff_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
   `cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset`,
+  `cpython_json_function_doc_module_assignment_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
@@ -1744,6 +1745,8 @@ Recent runtime migration notes:
   `cpython_json_function_getattribute_wrapper_metadata_subset`,
   `cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset` /
   `cpython_json_function_setattr_delattr_wrapper_metadata_subset`,
+  `cpython_json_function_doc_module_assignment_metadata_diff_subset` /
+  `cpython_json_function_doc_module_assignment_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
   `cpython_json_function_doc_identity_metadata_diff_subset` /
@@ -2520,6 +2523,14 @@ function `__dict__`, wrapper-name shadowing for `__call__`, missing-attribute
 deletion, and arity / keyword / attribute-name error text, without adding
 function `__code__`, pickle helpers, file APIs, module `__all__`, or
 encoder/decoder classes.
+
+`cpython_json_function_doc_module_assignment_metadata_subset`, backed by
+`cpython_json_function_doc_module_assignment_metadata_diff_subset`, keeps json public function `__doc__` / `__module__` assignment and deletion aligned with
+CPython for `loads` / `dumps`, including bound-method delegation, no
+`__dict__` pollution for those controlled attributes, repeated deletion to
+`None`, and restoration of the default shared `json` module identity, without
+adding full Python function object mutation semantics, function `__code__`,
+pickle helpers, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_type_params_metadata_subset`, backed by
 `cpython_json_function_type_params_metadata_diff_subset`, keeps json public function `__type_params__` metadata

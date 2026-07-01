@@ -8732,6 +8732,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_order_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
+            "cpython_json_function_doc_module_assignment_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
@@ -8873,6 +8874,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
         "cpython_json_function_order_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
+        "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
+        "cpython_json_function_doc_module_assignment_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
@@ -9093,6 +9096,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_setattr_delattr_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
+    );
+    let json_function_doc_module_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_doc_module_assignment_metadata_diff_subset",
+    );
+    let json_function_doc_module_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_doc_module_assignment_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10049,6 +10060,69 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __setattr__ / __delattr__ wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "original_doc = function.__doc__",
+        "original_module = function.__module__",
+        "function.__doc__ = 123",
+        "function.__module__ = name + '_module'",
+        "bound.__doc__",
+        "bound.__module__",
+        "function.__dict__ == {}",
+        "'__doc__' in function.__dict__",
+        "'__module__' in function.__dict__",
+        "function.__setattr__('__doc__', None)",
+        "function.__setattr__('__module__', 99)",
+        "del function.__doc__",
+        "del function.__module__",
+        "function.__delattr__('__doc__')",
+        "function.__delattr__('__module__')",
+        "function.__doc__ = original_doc",
+        "function.__module__ = original_module",
+        "json.loads.__module__ is json.dumps.__module__",
+    ] {
+        assert!(
+            json_function_doc_module_assignment_diff_body.contains(required)
+                && json_function_doc_module_assignment_subset_body.contains(required),
+            "json public function __doc__ / __module__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads str True json True\"",
+        "\"loads 123 123 loads_module loads_module True False False\"",
+        "\"loads None True 99 int True True\"",
+        "\"loads None True None True True True\"",
+        "\"loads True True True\"",
+        "\"dumps str True json True\"",
+        "\"dumps 123 123 dumps_module dumps_module True False False\"",
+        "\"dumps None True 99 int True True\"",
+        "\"dumps None True None True True True\"",
+        "\"dumps True True True\"",
+        "\"True json json\"",
+    ] {
+        assert!(
+            json_function_doc_module_assignment_subset_body.contains(required),
+            "json public function __doc__ / __module__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_MODULE_OVERRIDES: RefCell<HashMap<String, Value>>",
+        "Ok(json_builtin_module(&function_name))",
+        "fn json_builtin_module(name: &str) -> Value",
+        "JSON_BUILTIN_MODULE_OVERRIDES.with",
+        "fn set_json_builtin_doc(",
+        "fn delete_json_builtin_doc(",
+        "fn set_json_builtin_module(",
+        "fn delete_json_builtin_module(",
+        "set_json_builtin_doc(function_name, value)",
+        "set_json_builtin_module(function_name, value)",
+        "delete_json_builtin_doc(function_name)",
+        "delete_json_builtin_module(function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __doc__ / __module__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11264,9 +11338,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains("static JSON_BUILTIN_MODULE: RefCell<Option<Value>>")
+            && VM_SOURCE
+                .contains("static JSON_BUILTIN_MODULE_OVERRIDES: RefCell<HashMap<String, Value>>")
             && VM_SOURCE.contains("name == \"__module__\" && is_json_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(json_builtin_module())")
-            && VM_SOURCE.contains("fn json_builtin_module() -> Value")
+            && VM_SOURCE.contains("Ok(json_builtin_module(&function_name))")
+            && VM_SOURCE.contains("fn json_builtin_module(name: &str) -> Value")
+            && VM_SOURCE.contains("JSON_BUILTIN_MODULE_OVERRIDES.with")
             && VM_SOURCE.contains("JSON_BUILTIN_MODULE.with")
             && VM_SOURCE.contains("identity_string_value(\"json\".to_string())"),
         "VM must keep shared persistent json function __module__ identity metadata"
@@ -11633,6 +11710,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
             "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
+            "cpython_json_function_doc_module_assignment_metadata_subset",
+            "cpython_json_function_doc_module_assignment_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
@@ -11717,6 +11796,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function repr / str wrapper metadata",
             "json public function `__call__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",
+            "json public function `__doc__` / `__module__` assignment",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",
