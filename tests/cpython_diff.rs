@@ -11357,6 +11357,28 @@ print('read', m.format, m.readonly, m.hex())"#,
 }
 
 #[test]
+fn cpython_dict_view_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dictviews.py public dict view instance attribute assignment errors subset",
+        name: "dict-view-attribute-assignment-errors",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+d = {'a': 1, 'b': 2}
+views = [('keys', d.keys()), ('items', d.items()), ('values', d.values())]
+for label, view in views:
+    for name in ['extra', 'mapping', 'isdisjoint']:
+        show(label + '-set-' + name, lambda view=view, name=name: setattr(view, name, 99))
+        show(label + '-del-' + name, lambda view=view, name=name: delattr(view, name))
+    print(label + '-read', type(view).__name__, len(view), list(view))"#,
+    });
+}
+
+#[test]
 fn cpython_object_repr_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public object descriptor subset",

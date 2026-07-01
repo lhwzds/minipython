@@ -61073,6 +61073,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
         Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
         Value::MemoryView(_) => Err(memoryview_attribute_assignment_error(name)),
+        Value::DictView { kind, ordered, .. } => {
+            Err(dict_view_attribute_assignment_error(kind, ordered, name))
+        }
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61351,6 +61354,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
         Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
         Value::MemoryView(_) => Err(memoryview_attribute_assignment_error(name)),
+        Value::DictView { kind, ordered, .. } => {
+            Err(dict_view_attribute_assignment_error(kind, ordered, name))
+        }
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61565,6 +61571,27 @@ fn is_memoryview_readonly_instance_attribute(name: &str) -> bool {
         && builtin_type_dir_names("memoryview")
             .iter()
             .any(|candidate| candidate.as_str() == name)
+}
+
+fn dict_view_attribute_assignment_error(kind: DictViewKind, ordered: bool, name: &str) -> String {
+    let type_name = dict_view_display_type_name(kind, ordered);
+    if name == "mapping" {
+        format!("AttributeError: attribute 'mapping' of '{type_name}' objects is not writable")
+    } else if is_dict_view_readonly_instance_attribute(kind, ordered, name) {
+        format!("AttributeError: '{type_name}' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: '{type_name}' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_dict_view_readonly_instance_attribute(
+    kind: DictViewKind,
+    _ordered: bool,
+    name: &str,
+) -> bool {
+    !name.starts_with("__") && name == "isdisjoint" && dict_view_is_set_like(kind)
 }
 
 fn complex_attribute_assignment_error(name: &str) -> String {

@@ -110,6 +110,10 @@ Recent runtime migration notes:
   `cpython_memoryview_attribute_assignment_errors_diff_subset`, now pins memoryview attribute assignment errors
   for missing attributes, read-only memoryview data attributes (`format` /
   `readonly`), and read-only memoryview method attributes (`hex`) without adding memoryview instance dictionaries.
+- `cpython_dict_view_attribute_assignment_errors_subset`, backed by
+  `cpython_dict_view_attribute_assignment_errors_diff_subset`, now pins dict view attribute assignment errors
+  for missing attributes, read-only dict view data attributes (`mapping`), and
+  read-only dict view method attributes (`isdisjoint`) without adding dict view instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

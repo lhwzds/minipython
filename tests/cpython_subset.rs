@@ -26682,6 +26682,52 @@ print('read', m.format, m.readonly, m.hex())"#,
     );
 }
 
+// Adapted from CPython's public dict view instance attribute assignment errors.
+// MiniPython keeps dict view objects pure-memory and does not add writable
+// instance dictionaries.
+#[test]
+fn cpython_dict_view_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+d = {'a': 1, 'b': 2}
+views = [('keys', d.keys()), ('items', d.items()), ('values', d.values())]
+for label, view in views:
+    for name in ['extra', 'mapping', 'isdisjoint']:
+        show(label + '-set-' + name, lambda view=view, name=name: setattr(view, name, 99))
+        show(label + '-del-' + name, lambda view=view, name=name: delattr(view, name))
+    print(label + '-read', type(view).__name__, len(view), list(view))"#,
+        &[
+            "keys-set-extra AttributeError 'dict_keys' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "keys-del-extra AttributeError 'dict_keys' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "keys-set-mapping AttributeError attribute 'mapping' of 'dict_keys' objects is not writable",
+            "keys-del-mapping AttributeError attribute 'mapping' of 'dict_keys' objects is not writable",
+            "keys-set-isdisjoint AttributeError 'dict_keys' object attribute 'isdisjoint' is read-only",
+            "keys-del-isdisjoint AttributeError 'dict_keys' object attribute 'isdisjoint' is read-only",
+            "keys-read dict_keys 2 ['a', 'b']",
+            "items-set-extra AttributeError 'dict_items' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "items-del-extra AttributeError 'dict_items' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "items-set-mapping AttributeError attribute 'mapping' of 'dict_items' objects is not writable",
+            "items-del-mapping AttributeError attribute 'mapping' of 'dict_items' objects is not writable",
+            "items-set-isdisjoint AttributeError 'dict_items' object attribute 'isdisjoint' is read-only",
+            "items-del-isdisjoint AttributeError 'dict_items' object attribute 'isdisjoint' is read-only",
+            "items-read dict_items 2 [('a', 1), ('b', 2)]",
+            "values-set-extra AttributeError 'dict_values' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "values-del-extra AttributeError 'dict_values' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "values-set-mapping AttributeError attribute 'mapping' of 'dict_values' objects is not writable",
+            "values-del-mapping AttributeError attribute 'mapping' of 'dict_values' objects is not writable",
+            "values-set-isdisjoint AttributeError 'dict_values' object has no attribute 'isdisjoint' and no __dict__ for setting new attributes",
+            "values-del-isdisjoint AttributeError 'dict_values' object has no attribute 'isdisjoint' and no __dict__ for setting new attributes",
+            "values-read dict_values 2 [1, 2]",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

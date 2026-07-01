@@ -29568,6 +29568,77 @@ fn memoryview_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_attribute_assignment_errors_subset(",
+        "views = [('keys', d.keys()), ('items', d.items()), ('values', d.values())]",
+        "setattr(view, name, 99)",
+        "delattr(view, name)",
+        "['extra', 'mapping', 'isdisjoint']",
+        "\"keys-set-extra AttributeError 'dict_keys' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"keys-set-mapping AttributeError attribute 'mapping' of 'dict_keys' objects is not writable\"",
+        "\"keys-set-isdisjoint AttributeError 'dict_keys' object attribute 'isdisjoint' is read-only\"",
+        "\"items-set-isdisjoint AttributeError 'dict_items' object attribute 'isdisjoint' is read-only\"",
+        "\"values-set-isdisjoint AttributeError 'dict_values' object has no attribute 'isdisjoint' and no __dict__ for setting new attributes\"",
+        "\"values-read dict_values 2 [1, 2]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dictviews.py public dict view instance attribute assignment errors subset",
+        "name: \"dict-view-attribute-assignment-errors\"",
+        "views = [('keys', d.keys()), ('items', d.items()), ('values', d.values())]",
+        "setattr(view, name, 99)",
+        "delattr(view, name)",
+        "['extra', 'mapping', 'isdisjoint']",
+        "type(view).__name__",
+        "list(view)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::DictView { kind, ordered, .. } =>",
+        "Err(dict_view_attribute_assignment_error(kind, ordered, name))",
+        "fn dict_view_attribute_assignment_error(",
+        "fn is_dict_view_readonly_instance_attribute(",
+        "dict_view_display_type_name(kind, ordered)",
+        "attribute 'mapping' of '{type_name}' objects is not writable",
+        "'{type_name}' object attribute '{name}' is read-only",
+        "'{type_name}' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_attribute_assignment_errors_subset")
+                && document.contains("cpython_dict_view_attribute_assignment_errors_diff_subset")
+                && document.contains("dict view attribute assignment errors")
+                && document.contains("read-only dict view data attributes")
+                && document.contains("read-only dict view method attributes")
+                && document.contains("without adding dict view instance dictionaries"),
+            "focused dict view attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

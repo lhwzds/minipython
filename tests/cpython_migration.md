@@ -120,6 +120,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_memoryview_attribute_assignment_errors_diff_subset` for memoryview attribute assignment errors
   on missing attributes, read-only memoryview data attributes (`format` /
   `readonly`), and read-only memoryview method attributes (`hex`) without adding memoryview instance dictionaries.
+- Added `cpython_dict_view_attribute_assignment_errors_subset` and
+  `cpython_dict_view_attribute_assignment_errors_diff_subset` for dict view attribute assignment errors
+  on missing attributes, read-only dict view data attributes (`mapping`), and
+  read-only dict view method attributes (`isdisjoint`) without adding dict view instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
