@@ -58003,6 +58003,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::ByteArray(_) if name == "maketrans" => {
             Ok(Value::Builtin("bytearray.maketrans".to_string()))
         }
+        Value::ByteArray(_) if name == "__doc__" => Ok(Value::String(
+            builtin_type_doc("bytearray")
+                .expect("bytearray builtin type doc exists")
+                .to_string(),
+        )),
         Value::ByteArray(value) if is_bytearray_instance_method(name) => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("bytearray.{name}"))),
             receiver: Box::new(Value::ByteArray(value)),

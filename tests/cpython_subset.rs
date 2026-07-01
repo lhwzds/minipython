@@ -26467,7 +26467,7 @@ print('read', s.upper(), s.split('a'))"#,
 }
 
 // Mirrors CPython's public `str` instance `__doc__` type-attribute lookup
-// without promoting bytearray instance `__doc__` attributes.
+// without adding writable instance dictionaries.
 #[test]
 fn cpython_str_instance_doc_attribute_subset() {
     assert_output(
@@ -26512,7 +26512,7 @@ print('read', b.hex(), b.split(b'a'))"#,
 }
 
 // Mirrors CPython's public `bytes` instance `__doc__` type-attribute lookup
-// without promoting bytearray instance `__doc__` attributes.
+// without adding writable instance dictionaries.
 #[test]
 fn cpython_bytes_instance_doc_attribute_subset() {
     assert_output(
@@ -26559,8 +26559,23 @@ print('mutated', b)"#,
     );
 }
 
+// Mirrors CPython's public `bytearray` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_bytearray_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', bytearray()), ('items', bytearray(b'spam'))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == bytearray.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True bytearray(iterable_of_ints) -> bytearray 512",
+            "items str True True bytearray(iterable_of_ints) -> bytearray 512",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
-// without promoting bytearray instance `__doc__` attributes.
+// without adding writable instance dictionaries.
 #[test]
 fn cpython_list_instance_doc_attribute_subset() {
     assert_output(
@@ -26608,7 +26623,7 @@ print('mutated', items)"#,
 }
 
 // Mirrors CPython's public `tuple` instance `__doc__` type-attribute lookup
-// without promoting bytearray instance `__doc__` attributes.
+// without adding writable instance dictionaries.
 #[test]
 fn cpython_tuple_instance_doc_attribute_subset() {
     assert_output(
