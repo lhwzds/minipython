@@ -52979,6 +52979,81 @@ fn cpython_collections_abc_core_runtime_subset() {
     );
 }
 
+// Mirrors CPython's public collections.abc type hierarchy metadata through
+// __base__, __bases__, and __mro__, plus the collections classes that use
+// those ABCs as direct bases.
+#[test]
+fn cpython_collections_abc_type_hierarchy_metadata_subset() {
+    assert_output(
+        r#"import collections.abc as abc
+from collections import ChainMap, UserDict, UserList, UserString
+
+expected_abc = [
+    ('Hashable', 'object', ('object',), ('Hashable', 'object')),
+    ('Iterable', 'object', ('object',), ('Iterable', 'object')),
+    ('Iterator', 'Iterable', ('Iterable',), ('Iterator', 'Iterable', 'object')),
+    ('Generator', 'Iterator', ('Iterator',), ('Generator', 'Iterator', 'Iterable', 'object')),
+    ('Reversible', 'Iterable', ('Iterable',), ('Reversible', 'Iterable', 'object')),
+    ('Awaitable', 'object', ('object',), ('Awaitable', 'object')),
+    ('Coroutine', 'Awaitable', ('Awaitable',), ('Coroutine', 'Awaitable', 'object')),
+    ('AsyncIterable', 'object', ('object',), ('AsyncIterable', 'object')),
+    ('AsyncIterator', 'AsyncIterable', ('AsyncIterable',), ('AsyncIterator', 'AsyncIterable', 'object')),
+    ('AsyncGenerator', 'AsyncIterator', ('AsyncIterator',), ('AsyncGenerator', 'AsyncIterator', 'AsyncIterable', 'object')),
+    ('Sized', 'object', ('object',), ('Sized', 'object')),
+    ('Container', 'object', ('object',), ('Container', 'object')),
+    ('Callable', 'object', ('object',), ('Callable', 'object')),
+    ('Collection', 'Sized', ('Sized', 'Iterable', 'Container'), ('Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('Buffer', 'object', ('object',), ('Buffer', 'object')),
+    ('Sequence', 'Reversible', ('Reversible', 'Collection'), ('Sequence', 'Reversible', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('MutableSequence', 'Sequence', ('Sequence',), ('MutableSequence', 'Sequence', 'Reversible', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('ByteString', 'Sequence', ('Sequence',), ('ByteString', 'Sequence', 'Reversible', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('Mapping', 'Collection', ('Collection',), ('Mapping', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('MutableMapping', 'Mapping', ('Mapping',), ('MutableMapping', 'Mapping', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('MappingView', 'Sized', ('Sized',), ('MappingView', 'Sized', 'object')),
+    ('KeysView', 'MappingView', ('MappingView', 'Set'), ('KeysView', 'MappingView', 'Set', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('ItemsView', 'MappingView', ('MappingView', 'Set'), ('ItemsView', 'MappingView', 'Set', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('ValuesView', 'MappingView', ('MappingView', 'Collection'), ('ValuesView', 'MappingView', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('Set', 'Collection', ('Collection',), ('Set', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('MutableSet', 'Set', ('Set',), ('MutableSet', 'Set', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+]
+
+ok = True
+for name, base_name, bases_names, mro_names in expected_abc:
+    typ = getattr(abc, name)
+    actual = (
+        object.__getattribute__(typ, '__base__').__qualname__,
+        tuple(base.__qualname__ for base in object.__getattribute__(typ, '__bases__')),
+        tuple(cls.__qualname__ for cls in object.__getattribute__(typ, '__mro__')),
+    )
+    expected = (base_name, bases_names, mro_names)
+    if actual != expected:
+        print('abc-mismatch', name, actual)
+        ok = False
+print('abc-hierarchy-ok', ok)
+
+expected_collections = [
+    ('ChainMap', ChainMap, 'MutableMapping', ('MutableMapping',), ('ChainMap', 'MutableMapping', 'Mapping', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('UserDict', UserDict, 'MutableMapping', ('MutableMapping',), ('UserDict', 'MutableMapping', 'Mapping', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('UserList', UserList, 'MutableSequence', ('MutableSequence',), ('UserList', 'MutableSequence', 'Sequence', 'Reversible', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+    ('UserString', UserString, 'Sequence', ('Sequence',), ('UserString', 'Sequence', 'Reversible', 'Collection', 'Sized', 'Iterable', 'Container', 'object')),
+]
+
+ok = True
+for name, typ, base_name, bases_names, mro_names in expected_collections:
+    actual = (
+        object.__getattribute__(typ, '__base__').__qualname__,
+        tuple(base.__qualname__ for base in object.__getattribute__(typ, '__bases__')),
+        tuple(cls.__qualname__ for cls in object.__getattribute__(typ, '__mro__')),
+    )
+    expected = (base_name, bases_names, mro_names)
+    if actual != expected:
+        print('collections-mismatch', name, actual)
+        ok = False
+print('collections-hierarchy-ok', ok)"#,
+        &["abc-hierarchy-ok True", "collections-hierarchy-ok True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::
 // TestOneTrickPonyABCs::test_Collection. This ports the direct-subclass,
 // derived-subclass, missing-method, and None-blocking checks that sit around

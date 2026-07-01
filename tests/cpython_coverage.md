@@ -846,6 +846,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_order_preservation_diff_subset`,
   `cpython_collections_chainmap_union_operators_diff_subset`,
   `cpython_collections_abc_core_runtime_diff_subset`,
+  `cpython_collections_abc_type_hierarchy_metadata_diff_subset`,
   `cpython_collections_abc_iterable_iterator_diff_subset`,
   `cpython_collections_abc_iterable_sample_matrix_diff_subset`,
   `cpython_collections_abc_iterator_sample_matrix_diff_subset`,
@@ -4628,6 +4629,10 @@ without adding general custom encoder/decoder class support.
   classes, direct ABC subclassing, and CPython-style `None` blocking for
   special methods. Direct CPython diff evidence is in
   `cpython_collections_abc_core_runtime_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_type_hierarchy_metadata_diff_subset` and
+  `cpython_collections_abc_type_hierarchy_metadata_subset`, covering
+  collections.abc public type hierarchy metadata through `__base__`, `__bases__`, and `__mro__`, plus the ABC-backed MRO for `ChainMap`, `UserDict`, `UserList`, and `UserString`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_sequence_subset`, covering `Sequence` for supported
   built-in sequence registrations including `memoryview`, explicit Sequence

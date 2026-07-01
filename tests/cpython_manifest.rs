@@ -17988,6 +17988,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_order_preservation_subset",
             "cpython_collections_chainmap_union_operators_subset",
             "cpython_collections_abc_core_runtime_subset",
+            "cpython_collections_abc_type_hierarchy_metadata_subset",
             "cpython_collections_abc_iterable_iterator_subset",
             "cpython_collections_abc_iterable_sample_matrix_subset",
             "cpython_collections_abc_iterator_sample_matrix_subset",
@@ -18605,7 +18606,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "fn builtin_class_bases",
-        "\"Counter\" => vec![builtin_type_value(\"dict\")]",
+        "collections_type_direct_base_name(name)",
+        "\"Counter\" => Some(\"dict\")",
         "fn builtin_class_mro",
         "mro_for_bases",
     ] {
@@ -20158,7 +20160,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "fn builtin_class_bases",
-        "\"defaultdict\" => vec![builtin_type_value(\"dict\")]",
+        "collections_type_direct_base_name(name)",
+        "\"defaultdict\" => Some(\"dict\")",
         "fn builtin_class_mro",
         "mro_for_bases",
     ] {
@@ -21052,6 +21055,73 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_abc_core_runtime_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for collections.abc core runtime"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_type_hierarchy_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for collections.abc type hierarchy metadata"
+    );
+    let abc_hierarchy_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_abc_type_hierarchy_metadata_diff_subset",
+    );
+    let abc_hierarchy_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_abc_type_hierarchy_metadata_subset",
+    );
+    for required in [
+        "expected_abc",
+        "object.__getattribute__(typ, '__base__')",
+        "object.__getattribute__(typ, '__bases__')",
+        "object.__getattribute__(typ, '__mro__')",
+        "'Collection', 'Sized', ('Sized', 'Iterable', 'Container')",
+        "'Sequence', 'Reversible', ('Reversible', 'Collection')",
+        "'MutableMapping', 'Mapping', ('Mapping',)",
+        "'ChainMap', ChainMap, 'MutableMapping'",
+        "'UserList', UserList, 'MutableSequence'",
+        "collections-hierarchy-ok",
+    ] {
+        assert!(
+            abc_hierarchy_diff_body.contains(required)
+                && abc_hierarchy_subset_body.contains(required),
+            "collections.abc type hierarchy diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"abc-hierarchy-ok True\"",
+        "\"collections-hierarchy-ok True\"",
+    ] {
+        assert!(
+            abc_hierarchy_subset_body.contains(required),
+            "collections.abc type hierarchy subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn collections_abc_type_direct_base_names",
+        "\"Collection\" => Some(&[\"Sized\", \"Iterable\", \"Container\"])",
+        "\"Sequence\" => Some(&[\"Reversible\", \"Collection\"])",
+        "\"MutableMapping\" => Some(&[\"Mapping\"])",
+        "collections_abc_type_direct_base_names(name)",
+        "collections_abc_type_direct_base_names(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "collections.abc type hierarchy implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_abc_type_hierarchy_metadata_subset",
+            "cpython_collections_abc_type_hierarchy_metadata_diff_subset",
+            "collections.abc public type hierarchy metadata",
+            "`__base__`, `__bases__`, and `__mro__`",
+            "`ChainMap`, `UserDict`, `UserList`, and `UserString`",
+        ] {
+            assert!(
+                document.contains(required),
+                "collections.abc type hierarchy metadata docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_abc_iterable_iterator_diff_subset"),
@@ -27811,7 +27881,8 @@ fn ordered_dict_type_mro_metadata_has_focused_diff_evidence() {
     }
     for required in [
         "fn builtin_class_bases",
-        "\"OrderedDict\" => vec![builtin_type_value(\"dict\")]",
+        "collections_type_direct_base_name(name)",
+        "\"OrderedDict\" => Some(\"dict\")",
         "fn builtin_class_mro",
         "mro_for_bases",
     ] {

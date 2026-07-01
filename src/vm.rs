@@ -27072,7 +27072,11 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                self.reversed_value(receiver.clone())
+                let len = self.sequence_abc_len_i64(receiver.clone())?;
+                Ok(shared_iterator(Value::SequenceReverseIterator {
+                    object: Box::new(receiver.clone()),
+                    index: len - 1,
+                }))
             }
             "index" => {
                 let (receiver, value, start, stop) = sequence_abc_bind_index_args(args, keywords)?;
@@ -51392,12 +51396,15 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
     if let Some(bases) = builtin_exception_bases(name) {
         return bases.iter().map(|base| builtin_type_value(base)).collect();
     }
+    if let Some(base) = collections_type_direct_base_name(name) {
+        return vec![builtin_type_value(base)];
+    }
+    if let Some(bases) = collections_abc_type_direct_base_names(name) {
+        return bases.iter().map(|base| builtin_type_value(base)).collect();
+    }
     match name {
         "object" => Vec::new(),
         "bool" => vec![builtin_type_value("int")],
-        "Counter" => vec![builtin_type_value("dict")],
-        "defaultdict" => vec![builtin_type_value("dict")],
-        "OrderedDict" => vec![builtin_type_value("dict")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -59515,6 +59522,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )]))
         }
         Value::Builtin(function_name)
+            if name == "__base__"
+                && collections_abc_type_direct_base_names(&function_name).is_some() =>
+        {
+            let base = collections_abc_type_direct_base_names(&function_name)
+                .expect("guard checked collections.abc direct bases")[0];
+            Ok(Value::Builtin(base.to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__bases__"
+                && collections_abc_type_direct_base_names(&function_name).is_some() =>
+        {
+            Ok(tuple_value(
+                collections_abc_type_direct_base_names(&function_name)
+                    .expect("guard checked collections.abc direct bases")
+                    .iter()
+                    .map(|base| Value::Builtin((*base).to_string()))
+                    .collect(),
+            ))
+        }
+        Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
@@ -62497,6 +62524,30 @@ fn collections_type_direct_base_name(name: &str) -> Option<&'static str> {
     }
 }
 
+fn collections_abc_type_direct_base_names(name: &str) -> Option<&'static [&'static str]> {
+    match name {
+        "Hashable" | "Iterable" | "Awaitable" | "AsyncIterable" | "Sized" | "Container"
+        | "Callable" | "Buffer" => Some(&["object"]),
+        "Iterator" => Some(&["Iterable"]),
+        "Generator" => Some(&["Iterator"]),
+        "Reversible" => Some(&["Iterable"]),
+        "Coroutine" => Some(&["Awaitable"]),
+        "AsyncIterator" => Some(&["AsyncIterable"]),
+        "AsyncGenerator" => Some(&["AsyncIterator"]),
+        "Collection" => Some(&["Sized", "Iterable", "Container"]),
+        "Sequence" => Some(&["Reversible", "Collection"]),
+        "MutableSequence" | "ByteString" => Some(&["Sequence"]),
+        "Mapping" => Some(&["Collection"]),
+        "MutableMapping" => Some(&["Mapping"]),
+        "MappingView" => Some(&["Sized"]),
+        "KeysView" | "ItemsView" => Some(&["MappingView", "Set"]),
+        "ValuesView" => Some(&["MappingView", "Collection"]),
+        "Set" => Some(&["Collection"]),
+        "MutableSet" => Some(&["Set"]),
+        _ => None,
+    }
+}
+
 fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {
     mro_for_bases(bases).ok()?.into_iter().find_map(|base| {
         let Value::Builtin(type_name) = base else {
@@ -62523,6 +62574,29 @@ fn collections_abc_builtin_mixin_method(type_name: &str, name: &str) -> Option<&
         ("Generator", "__next__") => Some("Generator.__next__"),
         ("Generator", "throw") => Some("Generator.throw"),
         ("Generator", "close") => Some("Generator.close"),
+        ("Sequence", "__iter__" | "__contains__" | "__reversed__" | "index" | "count") => {
+            Some(match name {
+                "__iter__" => "Sequence.__iter__",
+                "__contains__" => "Sequence.__contains__",
+                "__reversed__" => "Sequence.__reversed__",
+                "index" => "Sequence.index",
+                "count" => "Sequence.count",
+                _ => unreachable!("match guard listed Sequence mixin names"),
+            })
+        }
+        (
+            "MutableSequence",
+            "append" | "clear" | "reverse" | "extend" | "pop" | "remove" | "__iadd__",
+        ) => Some(match name {
+            "append" => "MutableSequence.append",
+            "clear" => "MutableSequence.clear",
+            "reverse" => "MutableSequence.reverse",
+            "extend" => "MutableSequence.extend",
+            "pop" => "MutableSequence.pop",
+            "remove" => "MutableSequence.remove",
+            "__iadd__" => "MutableSequence.__iadd__",
+            _ => unreachable!("match guard listed MutableSequence mixin names"),
+        }),
         (
             "Set",
             "__le__" | "__lt__" | "__gt__" | "__ge__" | "__eq__" | "__ne__" | "__and__"
@@ -79974,6 +80048,9 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         return false;
     }
     if name == "Counter.__iter__" {
+        return false;
+    }
+    if name == "Sequence.__iter__" {
         return false;
     }
 
