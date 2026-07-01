@@ -37584,6 +37584,48 @@ print(type(json.loads) is type(json.dumps), json.loads.__class__ is json.dumps._
 }
 
 #[test]
+fn cpython_json_function_repr_str_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    rendered = repr(function)
+    print(name, rendered.startswith('<function ' + name + ' at 0x'), rendered.endswith('>'), str(function) == rendered)
+    print(name, '__repr__' in dir(function), '__str__' in dir(function), type(function.__repr__).__name__, type(function.__str__).__name__)
+    print(name, function.__repr__.__class__.__name__, function.__str__.__class__.__name__)
+    print(name, function.__repr__().startswith('<function ' + name + ' at 0x'), function.__repr__().endswith('>'), function.__str__() == function.__repr__())
+    for label, call in [
+        ('repr-extra', lambda function=function: function.__repr__(1)),
+        ('str-extra', lambda function=function: function.__str__(1)),
+        ('repr-keyword', lambda function=function: function.__repr__(x=1)),
+        ('str-keyword', lambda function=function: function.__str__(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error))"#,
+        &[
+            "loads True True True",
+            "loads True True method-wrapper method-wrapper",
+            "loads method-wrapper method-wrapper",
+            "loads True True True",
+            "loads repr-extra TypeError expected 0 arguments, got 1",
+            "loads str-extra TypeError expected 0 arguments, got 1",
+            "loads repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+            "loads str-keyword TypeError wrapper __str__() takes no keyword arguments",
+            "dumps True True True",
+            "dumps True True method-wrapper method-wrapper",
+            "dumps method-wrapper method-wrapper",
+            "dumps True True True",
+            "dumps repr-extra TypeError expected 0 arguments, got 1",
+            "dumps str-extra TypeError expected 0 arguments, got 1",
+            "dumps repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+            "dumps str-keyword TypeError wrapper __str__() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_subset() {
     assert_output(
         r#"import json
@@ -37803,7 +37845,7 @@ print('mini_probe_key' in json.loads.__kwdefaults__, 'other_probe_key' in json.d
 fn cpython_json_function_dir_metadata_subset() {
     assert_output(
         r#"import json
-supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']
+supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']
 for name in ['loads', 'dumps']:
     names = dir(getattr(json, name))
     visible = [attr for attr in supported if attr in names]
@@ -37811,10 +37853,10 @@ for name in ['loads', 'dumps']:
     print(name, names == sorted(names), len(names) == len(set(names)))
     print(name, '__base__' in names, '__bases__' in names)"#,
         &[
-            "loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']",
+            "loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
             "loads True True",
             "loads False False",
-            "dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__type_params__']",
+            "dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
             "dumps True True",
             "dumps False False",
         ],

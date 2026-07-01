@@ -1605,6 +1605,13 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
+            Value::Builtin(name) if json_builtin_function_repr(name).is_some() => {
+                write!(
+                    f,
+                    "{}",
+                    json_builtin_function_repr(name).expect("guard checked json function repr")
+                )
+            }
             Value::Builtin(name) => write!(f, "<builtin {name}>"),
             Value::None => write!(f, "None"),
             Value::NotImplemented => write!(f, "NotImplemented"),
@@ -1912,6 +1919,10 @@ fn json_builtin_bound_method_display_name(name: &str) -> Option<&'static str> {
     }
 }
 
+fn json_builtin_function_repr(name: &str) -> Option<String> {
+    json_builtin_bound_method_display_name(name).map(|name| format!("<function {name} at 0x0>"))
+}
+
 fn format_value_repr(value: &Value) -> String {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
@@ -2067,6 +2078,9 @@ fn format_value_repr(value: &Value) -> String {
             let method = super_wrapper_descriptor_method_name(name)
                 .expect("guard checked super wrapper descriptor name");
             format!("<slot wrapper '{method}' of 'super' objects>")
+        }
+        Value::Builtin(name) if json_builtin_function_repr(name).is_some() => {
+            json_builtin_function_repr(name).expect("guard checked json function repr")
         }
         Value::MemberDescriptor {
             name, owner_name, ..

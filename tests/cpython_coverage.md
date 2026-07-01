@@ -1048,6 +1048,7 @@ Recent runtime migration notes:
   `cpython_json_function_module_identity_metadata_diff_subset`,
   `cpython_json_function_name_qualname_identity_metadata_diff_subset`,
   `cpython_json_function_type_class_metadata_diff_subset`,
+  `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
@@ -1706,6 +1707,8 @@ Recent runtime migration notes:
   `cpython_json_function_name_qualname_identity_metadata_subset`,
   `cpython_json_function_type_class_metadata_diff_subset` /
   `cpython_json_function_type_class_metadata_subset`,
+  `cpython_json_function_repr_str_wrapper_metadata_diff_subset` /
+  `cpython_json_function_repr_str_wrapper_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
   `cpython_json_function_doc_identity_metadata_diff_subset` /
@@ -2393,6 +2396,13 @@ aligned with CPython's `function` type for `loads` / `dumps`, including
 `type()`, `__class__`, `repr(type(...))`, and shared loads/dumps function type
 identity, without changing ordinary builtins, adding function `__code__`, file
 APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_repr_str_wrapper_metadata_subset`, backed by
+`cpython_json_function_repr_str_wrapper_metadata_diff_subset`, keeps json public function repr / str wrapper metadata
+aligned with CPython for `loads` / `dumps`, including `repr()`, `str()`,
+`__repr__` / `__str__` wrapper visibility, `method-wrapper` type shape, and
+wrapper argument error text, without adding function `__code__`, file APIs,
+module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_type_params_metadata_subset`, backed by
 `cpython_json_function_type_params_metadata_diff_subset`, keeps json public function `__type_params__` metadata

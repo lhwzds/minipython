@@ -10004,6 +10004,11 @@ impl Vm {
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
+            Value::Builtin(name)
+                if name == "json.function.__repr__" || name == "json.function.__str__" =>
+            {
+                self.call_json_function_repr_str(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "method.__getattribute__" => {
                 self.call_method_getattribute(args, keywords)
             }
@@ -17461,6 +17466,32 @@ impl Vm {
         if !matches!(receiver, Value::BoundMethod { .. }) {
             return Err(
                 "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_json_function_repr_str(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
@@ -50174,6 +50205,8 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__module__",
         "__name__",
         "__qualname__",
+        "__repr__",
+        "__str__",
         "__type_params__",
     ]
     .into_iter()
@@ -60891,6 +60924,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(json_builtin_globals())
         }
+        Value::Builtin(function_name)
+            if matches!(name, "__repr__" | "__str__") && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("json.function.{name}"))),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name) if name == "__get__" && is_json_builtin(&function_name) => {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("json.function.__get__".to_string())),
@@ -62880,7 +62922,11 @@ fn is_descriptor_get_wrapper_name(name: &str) -> bool {
 fn is_method_wrapper_name(name: &str) -> bool {
     matches!(
         name,
-        "method.__repr__" | "method.__str__" | "method.__getattribute__"
+        "method.__repr__"
+            | "method.__str__"
+            | "method.__getattribute__"
+            | "json.function.__repr__"
+            | "json.function.__str__"
     )
 }
 
