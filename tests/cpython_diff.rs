@@ -1134,6 +1134,36 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_call_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __call__ wrapper subset",
+        name: "json-function-bound-method-call-wrapper",
+        source: r#"import json
+for name, receiver, owner, keyword_call in [
+    ('loads', '{"receiver": 1}', str, lambda caller: caller(s='{"b": 2}')),
+    ('dumps', {'receiver': 1}, dict, lambda caller: caller(obj={'b': 2})),
+]:
+    function = getattr(json, name)
+    bound = function.__get__(receiver, owner)
+    caller = bound.__call__
+    print(name, '__call__' in dir(bound), type(caller).__name__, caller.__class__.__name__)
+    print(name, caller())
+    print(name, caller.__self__ is bound, caller.__name__, caller.__qualname__, bool(caller.__doc__))
+    print(name, type(caller.__repr__).__name__, caller.__repr__().__class__.__name__, caller.__str__() == caller.__repr__())
+    for label, call in [
+        ('extra-pos', lambda caller=caller: caller('{"a": 1}')),
+        ('keyword-dup', lambda keyword_call=keyword_call: keyword_call(caller)),
+        ('repr-extra', lambda caller=caller: caller.__repr__(1)),
+        ('repr-keyword', lambda caller=caller: caller.__repr__(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __getattribute__ wrapper subset",

@@ -38065,6 +38065,52 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_call_wrapper_subset() {
+    assert_output(
+        r#"import json
+for name, receiver, owner, keyword_call in [
+    ('loads', '{"receiver": 1}', str, lambda caller: caller(s='{"b": 2}')),
+    ('dumps', {'receiver': 1}, dict, lambda caller: caller(obj={'b': 2})),
+]:
+    function = getattr(json, name)
+    bound = function.__get__(receiver, owner)
+    caller = bound.__call__
+    print(name, '__call__' in dir(bound), type(caller).__name__, caller.__class__.__name__)
+    print(name, caller())
+    print(name, caller.__self__ is bound, caller.__name__, caller.__qualname__, bool(caller.__doc__))
+    print(name, type(caller.__repr__).__name__, caller.__repr__().__class__.__name__, caller.__str__() == caller.__repr__())
+    for label, call in [
+        ('extra-pos', lambda caller=caller: caller('{"a": 1}')),
+        ('keyword-dup', lambda keyword_call=keyword_call: keyword_call(caller)),
+        ('repr-extra', lambda caller=caller: caller.__repr__(1)),
+        ('repr-keyword', lambda caller=caller: caller.__repr__(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True method-wrapper method-wrapper",
+            "loads {'receiver': 1}",
+            "loads True __call__ method.__call__ True",
+            "loads method-wrapper str True",
+            "loads extra-pos TypeError loads() takes 1 positional argument but 2 were given ('loads() takes 1 positional argument but 2 were given',)",
+            "loads keyword-dup TypeError loads() got multiple values for argument 's' (\"loads() got multiple values for argument 's'\",)",
+            "loads repr-extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "loads repr-keyword TypeError wrapper __repr__() takes no keyword arguments ('wrapper __repr__() takes no keyword arguments',)",
+            "dumps True method-wrapper method-wrapper",
+            "dumps {\"receiver\": 1}",
+            "dumps True __call__ method.__call__ True",
+            "dumps method-wrapper str True",
+            "dumps extra-pos TypeError dumps() takes 1 positional argument but 2 were given ('dumps() takes 1 positional argument but 2 were given',)",
+            "dumps keyword-dup TypeError dumps() got multiple values for argument 'obj' (\"dumps() got multiple values for argument 'obj'\",)",
+            "dumps repr-extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "dumps repr-keyword TypeError wrapper __repr__() takes no keyword arguments ('wrapper __repr__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_getattribute_wrapper_subset() {
     assert_output(
         r#"import json

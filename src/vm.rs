@@ -10001,6 +10001,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__get__" => {
                 self.call_method_get(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__call__" => {
+                self.call_method_call(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
@@ -17475,6 +17478,24 @@ impl Vm {
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_method_call(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
     }
 
     fn call_json_function_repr_str(
@@ -50106,6 +50127,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             [
                 "__doc__",
                 "__func__",
+                "__call__",
                 "__getattribute__",
                 "__name__",
                 "__repr__",
@@ -59421,7 +59443,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__func__" => Ok(*function),
             "__self__" => Ok(*receiver),
             "__call__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin("callable.__call__".to_string())),
+                function: Box::new(Value::Builtin(
+                    if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
+                        "method.__call__"
+                    } else {
+                        "callable.__call__"
+                    }
+                    .to_string(),
+                )),
                 receiver: Box::new(Value::BoundMethod {
                     function,
                     receiver,
@@ -61193,6 +61222,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__doc__" && function_name == "json.function.__call__" =>
         {
+            Ok(Value::String("Call self as a function.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__call__" =>
+        {
+            Ok(Value::String("method.__call__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__call__" => {
             Ok(Value::String("Call self as a function.".to_string()))
         }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
@@ -63009,6 +63046,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
         name,
         "method.__repr__"
             | "method.__str__"
+            | "method.__call__"
             | "method.__getattribute__"
             | "json.function.__call__"
             | "json.function.__repr__"
