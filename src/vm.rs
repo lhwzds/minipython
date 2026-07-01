@@ -61062,6 +61062,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
+        Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
@@ -61328,6 +61329,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
+        Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
@@ -61356,6 +61358,16 @@ fn int_attribute_assignment_error(name: &str) -> String {
     } else {
         format!(
             "AttributeError: 'int' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn bool_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "real" | "imag" | "numerator" | "denominator") {
+        format!("AttributeError: attribute '{name}' of 'int' objects is not writable")
+    } else {
+        format!(
+            "AttributeError: 'bool' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
 }

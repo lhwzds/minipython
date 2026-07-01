@@ -5065,6 +5065,31 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
 }
 
 #[test]
+fn cpython_bool_public_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bool.py public bool attributes inherited from int subset",
+        name: "bool-public-attributes",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [False, True]:
+    print('attrs', repr(value), value.real, value.imag, value.numerator, value.denominator, value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count())
+
+for label, x in [('false', False), ('true', True)]:
+    print('target', label)
+    for name in ['real', 'imag', 'numerator', 'denominator']:
+        show(label + '-set-' + name, lambda name=name, x=x: setattr(x, name, 99))
+        show(label + '-del-' + name, lambda name=name, x=x: delattr(x, name))
+    show(label + '-set-extra', lambda x=x: setattr(x, 'extra', 99))
+    show(label + '-del-extra', lambda x=x: delattr(x, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_math_sqrt_diff_subset() {
     // CPython oracle text: math.sqrt() takes exactly one argument (0 given);
     // math.sqrt() takes exactly one argument (2 given)

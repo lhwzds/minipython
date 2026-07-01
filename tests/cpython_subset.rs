@@ -4882,6 +4882,58 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
     );
 }
 
+// Adapted from CPython's public `bool` object attributes inherited from `int`.
+// MiniPython keeps them readonly and still does not expose a `bool` instance
+// `__dict__`.
+#[test]
+fn cpython_bool_public_attributes_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [False, True]:
+    print('attrs', repr(value), value.real, value.imag, value.numerator, value.denominator, value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count())
+
+for label, x in [('false', False), ('true', True)]:
+    print('target', label)
+    for name in ['real', 'imag', 'numerator', 'denominator']:
+        show(label + '-set-' + name, lambda name=name, x=x: setattr(x, name, 99))
+        show(label + '-del-' + name, lambda name=name, x=x: delattr(x, name))
+    show(label + '-set-extra', lambda x=x: setattr(x, 'extra', 99))
+    show(label + '-del-extra', lambda x=x: delattr(x, 'extra'))"#,
+        &[
+            "attrs False 0 0 0 1 0 (0, 1) 0 0",
+            "attrs True 1 0 1 1 1 (1, 1) 1 1",
+            "target false",
+            "false-set-real AttributeError attribute 'real' of 'int' objects is not writable",
+            "false-del-real AttributeError attribute 'real' of 'int' objects is not writable",
+            "false-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
+            "false-del-imag AttributeError attribute 'imag' of 'int' objects is not writable",
+            "false-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
+            "false-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
+            "false-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "false-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "false-set-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "false-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "target true",
+            "true-set-real AttributeError attribute 'real' of 'int' objects is not writable",
+            "true-del-real AttributeError attribute 'real' of 'int' objects is not writable",
+            "true-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
+            "true-del-imag AttributeError attribute 'imag' of 'int' objects is not writable",
+            "true-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
+            "true-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
+            "true-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "true-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "true-set-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "true-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython's shared `VALID_UNDERSCORE_LITERALS` table in
 // Lib/test/support/numbers.py. CPython checks that each literal evaluates the
 // same as the same spelling with underscores removed.

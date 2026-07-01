@@ -22885,6 +22885,76 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bool_public_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_bool_public_attributes_subset(",
+        "False",
+        "True",
+        "value.real, value.imag, value.numerator, value.denominator",
+        "value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count()",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+        "\"attrs False 0 0 0 1 0 (0, 1) 0 0\"",
+        "\"attrs True 1 0 1 1 1 (1, 1) 1 1\"",
+        "\"false-set-real AttributeError attribute 'real' of 'int' objects is not writable\"",
+        "\"false-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable\"",
+        "\"true-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable\"",
+        "\"true-del-extra AttributeError 'bool' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused bool public attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_bool_public_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_bool.py public bool attributes inherited from int subset",
+        "name: \"bool-public-attributes\"",
+        "False",
+        "True",
+        "value.real, value.imag, value.numerator, value.denominator",
+        "value.conjugate(), value.as_integer_ratio(), value.bit_length(), value.bit_count()",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused bool public attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Bool(_) => Err(bool_attribute_assignment_error(name))",
+        "fn bool_attribute_assignment_error(name: &str) -> String",
+        "matches!(name, \"real\" | \"imag\" | \"numerator\" | \"denominator\")",
+        "attribute '{name}' of 'int' objects is not writable",
+        "'bool' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bool public attributes implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_bool_public_attributes_subset")
+                && document.contains("cpython_bool_public_attributes_diff_subset")
+                && document.contains("bool inherits int public numeric attributes")
+                && document.contains("readonly public integer attributes")
+                && document.contains("without adding bool instance dictionaries"),
+            "focused bool public attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn float_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_float_public_attributes_subset(",

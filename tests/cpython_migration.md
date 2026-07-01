@@ -79,6 +79,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `int.numerator`, and `int.denominator` as readonly public integer attributes
   across zero, negative, and large integers, including CPython's readonly and
   no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
+- Added `cpython_bool_public_attributes_subset` and
+  `cpython_bool_public_attributes_diff_subset` for how bool inherits int public numeric attributes
+  and methods across `False` and `True`, including readonly
+  public integer attributes and CPython's bool-specific no-`__dict__`
+  assignment/deletion errors without adding bool instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
