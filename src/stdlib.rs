@@ -740,6 +740,7 @@ pub(crate) fn create_module(
         "functools" => Ok(module_value(
             "functools",
             vec![
+                ("__package__", Value::String(String::new())),
                 (
                     "WRAPPER_ASSIGNMENTS",
                     string_tuple_value(FUNCTOOLS_WRAPPER_ASSIGNMENTS),

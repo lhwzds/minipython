@@ -2562,8 +2562,10 @@ without adding general custom encoder/decoder class support.
 - The bundled `functools` module includes
   `cpython_functools_public_helpers_diff_subset` and
   `cpython_functools_public_helpers_subset`, covering direct CPython
-  output parity for representative public `reduce`, `partial`, `wraps`, and
-  `cmp_to_key` helper behavior plus basic TypeError classification.
+  output parity for functools module `__package__` metadata
+  (`functools.__package__` is `''`), representative public `reduce`,
+  `partial`, `wraps`, and `cmp_to_key` helper behavior plus basic TypeError
+  classification.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython

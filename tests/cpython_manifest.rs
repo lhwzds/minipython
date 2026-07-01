@@ -7615,6 +7615,53 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let public_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_public_helpers_diff_subset");
+    let public_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_public_helpers_subset");
+    for required in [
+        "functools.__package__",
+        "object.__getattribute__(functools, '__package__')",
+        "'__package__' in dir(functools)",
+        "functools.__dict__['__package__']",
+    ] {
+        assert!(
+            public_diff.contains(required) && public_subset.contains(required),
+            "functools public helper diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"functools ''\"", "\"True ''\""] {
+        assert!(
+            public_subset.contains(required),
+            "functools public helper subset output must pin `{required}`"
+        );
+    }
+    let functools_start = STDLIB_SOURCE
+        .find("\"functools\" => Ok(module_value(")
+        .expect("stdlib.rs must define the functools module");
+    let functools_end = functools_start
+        + STDLIB_SOURCE[functools_start..]
+            .find("\"itertools\" => Ok(module_value(")
+            .expect("functools module registry must precede itertools");
+    let functools_registry = &STDLIB_SOURCE[functools_start..functools_end];
+    assert!(
+        functools_registry.contains("(\"__package__\", Value::String(String::new()))"),
+        "functools stdlib module registry must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_functools_public_helpers_subset",
+            "cpython_functools_public_helpers_diff_subset",
+            "functools module `__package__` metadata",
+            "`functools.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "functools module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+
     assert!(
         LANGUAGE_TESTS.contains("functools_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains(

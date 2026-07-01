@@ -21436,6 +21436,9 @@ fn cpython_functools_public_helpers_diff_subset() {
         origin: "Lib/test/test_functools.py public helper subset",
         name: "functools-public-helpers",
         source: r#"import functools
+print(functools.__name__, repr(functools.__package__))
+print(repr(object.__getattribute__(functools, '__package__')))
+print('__package__' in dir(functools), repr(functools.__dict__['__package__']))
 print(functools.reduce(lambda a, b: a + b, [1, 2, 3]))
 print(functools.reduce(lambda a, b: a * b, [2, 3, 4], 1))
 pow2 = functools.partial(pow, 2)

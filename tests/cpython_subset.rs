@@ -48448,6 +48448,9 @@ fn cpython_functools_public_helpers_subset() {
     assert_output(
         concat!(
             "import functools\n",
+            "print(functools.__name__, repr(functools.__package__))\n",
+            "print(repr(object.__getattribute__(functools, '__package__')))\n",
+            "print('__package__' in dir(functools), repr(functools.__dict__['__package__']))\n",
             "print(functools.reduce(lambda a, b: a + b, [1, 2, 3]))\n",
             "print(functools.reduce(lambda a, b: a * b, [2, 3, 4], 1))\n",
             "pow2 = functools.partial(pow, 2)\n",
@@ -48474,6 +48477,9 @@ fn cpython_functools_public_helpers_subset() {
             "        print(error.__class__.__name__)"
         ),
         &[
+            "functools ''",
+            "''",
+            "True ''",
             "6",
             "24",
             "32 True (2,) {}",

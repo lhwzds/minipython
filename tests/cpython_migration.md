@@ -7506,6 +7506,12 @@ Completed in the pow builtin pass:
 - Added a minimal runtime `functools.partial` module surface and covered the
   CPython `partial(pow, ...)` keyword-binding shapes, including call-time
   keyword override behavior.
+- Extended `cpython_functools_public_helpers_subset` and
+  `cpython_functools_public_helpers_diff_subset` to pin functools module
+  `__package__` metadata (`functools.__package__` is `''`) alongside the
+  existing public `reduce`, `partial`, `wraps`, and `cmp_to_key` helper smoke
+  behavior. This documents functools module `__package__` metadata as part of
+  the sandbox public helper surface.
 - Extended `functools.partial` with public `func`, `args`, `keywords`, and
   `__dict__` attribute behavior and added `cpython_functools_partial_subset`,
   adapted from CPython `Lib/test/test_functools.py::TestPartial`. The migrated
