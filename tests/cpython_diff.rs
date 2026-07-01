@@ -990,6 +990,30 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_getattribute_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __getattribute__ wrapper subset",
+        name: "json-function-bound-method-getattribute-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    print(name, '__getattribute__' in dir(bound), type(bound.__getattribute__).__name__, bound.__getattribute__.__class__.__name__)
+    print(name, bound.__getattribute__('__self__'), bound.__getattribute__('__func__') is getattr(json, name))
+    print(name, bound.__getattribute__('__name__'), bound.__getattribute__('__repr__')().__class__.__name__)
+    for label, call in [
+        ('missing-name', lambda: bound.__getattribute__()),
+        ('extra-name', lambda: bound.__getattribute__('__self__', '__func__')),
+        ('keyword-name', lambda: bound.__getattribute__(name='__self__')),
+        ('bad-name', lambda: bound.__getattribute__(1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

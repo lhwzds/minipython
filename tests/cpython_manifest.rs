@@ -8727,6 +8727,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_get_missing_owner_error_subset",
             "cpython_json_function_bound_method_repr_subset",
             "cpython_json_function_bound_method_repr_str_wrapper_subset",
+            "cpython_json_function_bound_method_getattribute_wrapper_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8840,6 +8841,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_get_missing_owner_error_diff_subset",
         "cpython_json_function_bound_method_repr_diff_subset",
         "cpython_json_function_bound_method_repr_str_wrapper_diff_subset",
+        "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -9050,6 +9052,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_repr_str_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_repr_str_wrapper_subset",
+    );
+    let json_function_bound_method_getattribute_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
+    );
+    let json_function_bound_method_getattribute_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_getattribute_wrapper_subset",
     );
     for required in [
         "json.__package__",
@@ -9449,6 +9459,46 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method __repr__ / __str__ wrapper subset output must pin `{required}`"
         );
     }
+    for required in [
+        "'__getattribute__' in dir(bound)",
+        "type(bound.__getattribute__).__name__",
+        "bound.__getattribute__.__class__.__name__",
+        "bound.__getattribute__('__self__')",
+        "bound.__getattribute__('__func__') is getattr(json, name)",
+        "bound.__getattribute__('__name__')",
+        "bound.__getattribute__('__repr__')().__class__.__name__",
+        "('missing-name', lambda: bound.__getattribute__())",
+        "('extra-name', lambda: bound.__getattribute__('__self__', '__func__'))",
+        "('keyword-name', lambda: bound.__getattribute__(name='__self__'))",
+        "('bad-name', lambda: bound.__getattribute__(1))",
+    ] {
+        assert!(
+            json_function_bound_method_getattribute_wrapper_diff_body.contains(required)
+                && json_function_bound_method_getattribute_wrapper_subset_body.contains(required),
+            "json public function bound method __getattribute__ wrapper diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True method-wrapper method-wrapper\"",
+        "\"loads receiver True\"",
+        "\"loads loads str\"",
+        "\"loads missing-name TypeError expected 1 argument, got 0\"",
+        "\"loads extra-name TypeError expected 1 argument, got 2\"",
+        "\"loads keyword-name TypeError wrapper __getattribute__() takes no keyword arguments\"",
+        "\"loads bad-name TypeError attribute name must be string, not 'int'\"",
+        "\"dumps True method-wrapper method-wrapper\"",
+        "\"dumps receiver True\"",
+        "\"dumps dumps str\"",
+        "\"dumps missing-name TypeError expected 1 argument, got 0\"",
+        "\"dumps extra-name TypeError expected 1 argument, got 2\"",
+        "\"dumps keyword-name TypeError wrapper __getattribute__() takes no keyword arguments\"",
+        "\"dumps bad-name TypeError attribute name must be string, not 'int'\"",
+    ] {
+        assert!(
+            json_function_bound_method_getattribute_wrapper_subset_body.contains(required),
+            "json public function bound method __getattribute__ wrapper subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9542,13 +9592,21 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("fn call_method_repr_str(")
             && VM_SOURCE.contains("wrapper {method}() takes no keyword arguments")
             && VM_SOURCE.contains("TypeError: expected 0 arguments, got {}")
+            && VM_SOURCE.contains("name == \"method.__getattribute__\"")
+            && VM_SOURCE.contains("self.call_method_getattribute(args, keywords)")
+            && VM_SOURCE.contains("fn call_method_getattribute(")
+            && VM_SOURCE.contains("wrapper __getattribute__() takes no keyword arguments")
             && VM_SOURCE.contains("\"__repr__\"")
             && VM_SOURCE.contains("\"__str__\"")
+            && VM_SOURCE.contains("\"__getattribute__\"")
             && VM_SOURCE.contains("\"__repr__\" | \"__str__\" => Ok(Value::BoundMethod")
+            && VM_SOURCE.contains("\"__getattribute__\" => Ok(Value::BoundMethod")
             && VM_SOURCE.contains("Value::Builtin(format!(\"method.{name}\"))")
+            && VM_SOURCE.contains("Value::Builtin(\"method.__getattribute__\".to_string())")
             && VM_SOURCE.contains("fn is_method_wrapper_name(name: &str)")
-            && VM_SOURCE.contains("matches!(name, \"method.__repr__\" | \"method.__str__\")"),
-        "VM must expose CPython-compatible bound method __repr__ / __str__ method wrappers"
+            && VM_SOURCE
+                .contains("\"method.__repr__\" | \"method.__str__\" | \"method.__getattribute__\""),
+        "VM must expose CPython-compatible bound method __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
         VALUE_SOURCE.contains("fn json_builtin_bound_method_display_name(name: &str)")
@@ -9592,6 +9650,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_repr_diff_subset",
             "cpython_json_function_bound_method_repr_str_wrapper_subset",
             "cpython_json_function_bound_method_repr_str_wrapper_diff_subset",
+            "cpython_json_function_bound_method_getattribute_wrapper_subset",
+            "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9621,6 +9681,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__get__` missing-owner error",
             "json public function bound method `repr()`",
             "json public function bound method `__repr__`",
+            "json public function bound method `__getattribute__`",
         ] {
             assert!(
                 document.contains(required),

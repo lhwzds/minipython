@@ -10000,6 +10000,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "method.__getattribute__" => {
+                self.call_method_getattribute(args, keywords)
+            }
             Value::Builtin(name) if name == "descriptor.__get__" => {
                 self.call_method_get(args, keywords)
             }
@@ -17457,6 +17460,36 @@ impl Vm {
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_method_getattribute(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        load_attribute(receiver.clone(), &name)
     }
 
     fn call_json_function_get(
@@ -49979,9 +50012,16 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .map(str::to_string),
         ),
         Value::BoundMethod { .. } => names.extend(
-            ["__func__", "__name__", "__repr__", "__self__", "__str__"]
-                .into_iter()
-                .map(str::to_string),
+            [
+                "__func__",
+                "__getattribute__",
+                "__name__",
+                "__repr__",
+                "__self__",
+                "__str__",
+            ]
+            .into_iter()
+            .map(str::to_string),
         ),
         Value::Exception { attrs, .. } => {
             names.extend(
@@ -59311,6 +59351,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__getattribute__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("method.__getattribute__".to_string())),
+                receiver: Box::new(Value::BoundMethod {
+                    function,
+                    receiver,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__" => load_attribute(*function, "__module__"),
@@ -62729,7 +62778,10 @@ fn is_descriptor_get_wrapper_name(name: &str) -> bool {
 }
 
 fn is_method_wrapper_name(name: &str) -> bool {
-    matches!(name, "method.__repr__" | "method.__str__")
+    matches!(
+        name,
+        "method.__repr__" | "method.__str__" | "method.__getattribute__"
+    )
 }
 
 fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
