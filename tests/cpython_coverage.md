@@ -1048,6 +1048,7 @@ Recent runtime migration notes:
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
+  `cpython_json_function_builtins_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1665,6 +1666,8 @@ Recent runtime migration notes:
   `cpython_json_function_annotate_metadata_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset` /
   `cpython_json_function_closure_none_metadata_subset`,
+  `cpython_json_function_builtins_metadata_diff_subset` /
+  `cpython_json_function_builtins_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2305,6 +2308,13 @@ encoder/decoder classes.
 `json.dumps.__closure__` are `None`) aligned with CPython without adding
 function `__globals__`, function `__code__`, file APIs, module `__all__`, or
 encoder/decoder classes.
+
+`cpython_json_function_builtins_metadata_subset`, backed by
+`cpython_json_function_builtins_metadata_diff_subset`, keeps the supported json public function `__builtins__` metadata
+dict lookup surface (`json.loads.__builtins__` and
+`json.dumps.__builtins__` expose `len` / `print`) aligned with CPython without
+adding function `__globals__`, function `__code__`, file APIs, module `__all__`,
+or encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,

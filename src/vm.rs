@@ -60659,6 +60659,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::None)
         }
+        Value::Builtin(function_name)
+            if name == "__builtins__" && is_json_builtin(&function_name) =>
+        {
+            Ok(default_builtins_dict_value())
+        }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "io.BytesIO" => {
             Ok(Value::String(
                 "Buffered I/O implementation using an in-memory bytes buffer.".to_string(),

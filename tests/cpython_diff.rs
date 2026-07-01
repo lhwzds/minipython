@@ -760,6 +760,18 @@ print(json.loads.__closure__ is json.dumps.__closure__ is None)"#,
 }
 
 #[test]
+fn cpython_json_function_builtins_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __builtins__ metadata subset",
+        name: "json-function-builtins-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    builtins = getattr(json, name).__builtins__
+    print(name, type(builtins).__name__, builtins['len']([1, 2, 3]), 'print' in builtins)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",
