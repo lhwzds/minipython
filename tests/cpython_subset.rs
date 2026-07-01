@@ -29102,6 +29102,85 @@ print('plain', plain, type(plain).__name__)"#,
     );
 }
 
+#[test]
+fn cpython_set_new_direct_allocation_subset() {
+    assert_output_with_stack(
+        r#"class S(set):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, repr(value), type(value).__name__, isinstance(value, set), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: set.__new__()),
+    ('exact-empty', lambda: set.__new__(set)),
+    ('exact-extra', lambda: set.__new__(set, [1, 2], iterable=[3])),
+    ('sub-empty', lambda: set.__new__(S)),
+    ('bad-class', lambda: set.__new__(list)),
+    ('bad-user-class', lambda: set.__new__(C)),
+    ('int-arg', lambda: set.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(set, '__new__'), '__new__' in dir(set), '__new__' in dir(S))
+class WithNew(set):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        obj = set.__new__(cls)
+        obj.add('pre')
+        return obj
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', repr(empty), repr(filled), type(filled).__name__, isinstance(filled, set))
+class WithInit(set):
+    def __new__(cls):
+        obj = set.__new__(cls)
+        obj.add('pre')
+        return obj
+    def __init__(self):
+        print('custom-init', sorted(self))
+with_init = WithInit()
+print('with-init', repr(with_init))
+class Other(set):
+    pass
+class ReturnsOther(set):
+    def __new__(cls):
+        return set.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', repr(other), type(other).__name__)
+class ReturnsPlain(set):
+    def __new__(cls):
+        return set()
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', repr(plain), type(plain).__name__)"#,
+        &[
+            "missing TypeError set.__new__(): not enough arguments ('set.__new__(): not enough arguments',)",
+            "exact-empty set() set True 0",
+            "exact-extra set() set True 0",
+            "sub-empty S() S True 0",
+            "bad-class TypeError set.__new__(list): list is not a subtype of set ('set.__new__(list): list is not a subtype of set',)",
+            "bad-user-class TypeError set.__new__(C): C is not a subtype of set ('set.__new__(C): C is not a subtype of set',)",
+            "int-arg TypeError set.__new__(X): X is not a type object (int) ('set.__new__(X): X is not a type object (int)',)",
+            "visible True True True",
+            "new WithNew []",
+            "new WithNew [1, 2]",
+            "with-new WithNew() WithNew({1, 2}) WithNew True",
+            "custom-init ['pre']",
+            "with-init WithInit({'pre'})",
+            "other Other() Other",
+            "plain set() set",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

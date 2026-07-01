@@ -10233,7 +10233,7 @@ impl Vm {
                 call_dict_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("set.") => {
-                if !keywords.is_empty() {
+                if !keywords.is_empty() && name != "set.__new__" {
                     return Err(format!(
                         "TypeError: {}() takes no keyword arguments",
                         method_keyword_error_name(&name)
@@ -51272,6 +51272,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "SimpleNamespace" => &["__new__", "__replace__"],
         "set" => &[
+            "__new__",
             "add",
             "clear",
             "copy",
@@ -51291,6 +51292,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "update",
         ],
         "frozenset" => &[
+            "__new__",
             "copy",
             "difference",
             "intersection",
@@ -78425,8 +78427,8 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
             Ok(Value::None)
         }
         "set.__new__" => {
-            let Some((class, _values)) = args.split_first() else {
-                return Err("__new__() missing required argument 'type'".to_string());
+            let Some((class, _rest)) = args.split_first() else {
+                return Err("TypeError: set.__new__(): not enough arguments".to_string());
             };
             match class {
                 Value::Builtin(name) if name == "set" => vm.build_set(Vec::new()),
@@ -78446,8 +78448,15 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
                         storage,
                     ))
                 }
+                value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                    Err(format!(
+                        "TypeError: set.__new__({}): {} is not a subtype of set",
+                        class_display_name(value),
+                        class_display_name(value)
+                    ))
+                }
                 value => Err(format!(
-                    "TypeError: set.__new__() argument 1 must be a set subtype, not {}",
+                    "TypeError: set.__new__(X): X is not a type object ({})",
                     type_name(value)
                 )),
             }

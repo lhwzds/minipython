@@ -405,6 +405,101 @@ fn dict_subclass_new_storage_docs_cover_core_runtime() {
 }
 
 #[test]
+fn set_new_direct_allocation_docs_cover_core_runtime() {
+    let diff_name = "cpython_set_new_direct_allocation_diff_subset";
+    let subset_name = "cpython_set_new_direct_allocation_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "set __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "set __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class S(set):",
+        "set.__new__()",
+        "set.__new__(set)",
+        "set.__new__(set, [1, 2], iterable=[3])",
+        "set.__new__(S)",
+        "set.__new__(list)",
+        "set.__new__(C)",
+        "set.__new__(1)",
+        "hasattr(set, '__new__')",
+        "class WithNew(set):",
+        "obj = set.__new__(cls)",
+        "obj.add('pre')",
+        "filled = WithNew([1, 2])",
+        "class WithInit(set):",
+        "class ReturnsOther(set):",
+        "return set.__new__(Other)",
+        "class ReturnsPlain(set):",
+        "return set()",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "set __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"missing TypeError set.__new__(): not enough arguments",
+        "\"exact-empty set() set True 0\"",
+        "\"exact-extra set() set True 0\"",
+        "\"sub-empty S() S True 0\"",
+        "\"bad-class TypeError set.__new__(list): list is not a subtype of set",
+        "\"bad-user-class TypeError set.__new__(C): C is not a subtype of set",
+        "\"int-arg TypeError set.__new__(X): X is not a type object (int)",
+        "\"visible True True True\"",
+        "\"new WithNew []\"",
+        "\"new WithNew [1, 2]\"",
+        "\"with-new WithNew() WithNew({1, 2}) WithNew True\"",
+        "\"custom-init ['pre']\"",
+        "\"with-init WithInit({'pre'})\"",
+        "\"other Other() Other\"",
+        "\"plain set() set\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "set __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "\"set\" => &[",
+        "\"frozenset\" => &[",
+        "\"__new__\"",
+        "name != \"set.__new__\"",
+        "\"set.__new__\" => {",
+        "set.__new__(X): X is not a type object",
+        "set.__new__({}): {} is not a subtype of set",
+        "class_display_name(value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set __new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`set.__new__` direct allocation",
+            "set subtype error classification",
+            "set `__new__` dir visibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "set __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

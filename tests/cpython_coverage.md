@@ -51,6 +51,11 @@ Recent runtime migration notes:
   supported in-memory dict subtypes, non-type and non-subtype error classification,
   and `dict.__init__` storage update after matching `__new__`, without expanding
   into set constructor `__new__` parity or full mapping C-layout behavior.
+- `cpython_set_new_direct_allocation_subset`, backed by
+  `cpython_set_new_direct_allocation_diff_subset`, now pins `set.__new__` direct allocation,
+  ignored extra args/keywords, set subtype error classification, and set `__new__` dir visibility
+  without expanding into `frozenset.__new__` parity or full set
+  C-layout behavior.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

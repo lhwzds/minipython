@@ -16369,6 +16369,69 @@ print('plain', plain, type(plain).__name__)"#,
 }
 
 #[test]
+fn cpython_set_new_direct_allocation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py set __new__ direct allocation subset",
+        name: "set-new-direct-allocation",
+        source: r#"class S(set):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, repr(value), type(value).__name__, isinstance(value, set), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: set.__new__()),
+    ('exact-empty', lambda: set.__new__(set)),
+    ('exact-extra', lambda: set.__new__(set, [1, 2], iterable=[3])),
+    ('sub-empty', lambda: set.__new__(S)),
+    ('bad-class', lambda: set.__new__(list)),
+    ('bad-user-class', lambda: set.__new__(C)),
+    ('int-arg', lambda: set.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(set, '__new__'), '__new__' in dir(set), '__new__' in dir(S))
+class WithNew(set):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        obj = set.__new__(cls)
+        obj.add('pre')
+        return obj
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', repr(empty), repr(filled), type(filled).__name__, isinstance(filled, set))
+class WithInit(set):
+    def __new__(cls):
+        obj = set.__new__(cls)
+        obj.add('pre')
+        return obj
+    def __init__(self):
+        print('custom-init', sorted(self))
+with_init = WithInit()
+print('with-init', repr(with_init))
+class Other(set):
+    pass
+class ReturnsOther(set):
+    def __new__(cls):
+        return set.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', repr(other), type(other).__name__)
+class ReturnsPlain(set):
+    def __new__(cls):
+        return set()
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', repr(plain), type(plain).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",

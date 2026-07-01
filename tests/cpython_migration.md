@@ -63,6 +63,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   supported in-memory dict subtypes, non-type and non-subtype error classification,
   and `dict.__init__` storage update after matching `__new__`, without adding
   set constructor `__new__` parity or full mapping C-layout behavior.
+- Added `cpython_set_new_direct_allocation_subset` and
+  `cpython_set_new_direct_allocation_diff_subset` for `set.__new__` direct allocation,
+  ignored extra args/keywords, set subtype error classification, and set `__new__` dir visibility
+  without adding `frozenset.__new__` parity or full set C-layout
+  behavior.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
