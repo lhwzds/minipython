@@ -57931,6 +57931,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             _ => Err(missing_type_attribute_error("slice", name)),
         },
+        Value::Number(_) | Value::BigInt(_) if name == "__doc__" => Ok(Value::String(
+            builtins_module_type_doc("int")
+                .expect("int builtin type doc exists")
+                .to_string(),
+        )),
         receiver @ (Value::Bool(_) | Value::Number(_) | Value::BigInt(_)) => match name {
             "bit_length" | "bit_count" | "conjugate" | "as_integer_ratio" | "to_bytes"
             | "__format__" | "__hash__" | "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__"

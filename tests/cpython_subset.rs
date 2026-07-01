@@ -4897,6 +4897,22 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
     );
 }
 
+// Mirrors CPython's public `int` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_int_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('zero', 0), ('negative', -3), ('large', 2 ** 80)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == int.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "zero str True True int([x]) -> integer 604",
+            "negative str True True int([x]) -> integer 604",
+            "large str True True int([x]) -> integer 604",
+        ],
+    );
+}
+
 // Adapted from CPython's public `bool` object attributes inherited from `int`.
 // MiniPython keeps them readonly and still does not expose a `bool` instance
 // `__dict__`.

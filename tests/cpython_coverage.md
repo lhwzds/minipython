@@ -70,6 +70,10 @@ Recent runtime migration notes:
   across zero, negative, and large integers, CPython's read-only int method attributes
   such as `bit_length`, `conjugate`, and `as_integer_ratio`, plus readonly and
   no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
+- `cpython_int_instance_doc_attribute_subset`, backed by
+  `cpython_int_instance_doc_attribute_diff_subset`, now pins int instance `__doc__`
+  lookup for small, negative, and large integers, matching `int.__doc__` and
+  `dir(value)` without adding writable instance dictionaries.
 - `cpython_bool_public_attributes_subset`, backed by
   `cpython_bool_public_attributes_diff_subset`, now pins how bool inherits int public numeric attributes
   and methods across `False` and `True`, including
@@ -554,6 +558,7 @@ Recent runtime migration notes:
   `cpython_unicode_error_attributes_diff_subset`,
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
+  `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

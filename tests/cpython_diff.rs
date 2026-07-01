@@ -5066,6 +5066,17 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
 }
 
 #[test]
+fn cpython_int_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_long.py public int instance __doc__ attribute subset",
+        name: "int-instance-doc-attribute",
+        source: r#"for label, value in [('zero', 0), ('negative', -3), ('large', 2 ** 80)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == int.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_bool_public_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bool.py public bool attributes inherited from int subset",
