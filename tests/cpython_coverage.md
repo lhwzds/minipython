@@ -66,9 +66,10 @@ Recent runtime migration notes:
   scans.
 - `cpython_int_public_attributes_subset`, backed by
   `cpython_int_public_attributes_diff_subset`, now pins `int.real`,
-  `int.imag`, `int.numerator`, and `int.denominator` as readonly public integer
-  attributes across zero, negative, and large integers, plus CPython's readonly
-  and no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
+  `int.imag`, `int.numerator`, and `int.denominator` as readonly public integer attributes
+  across zero, negative, and large integers, CPython's read-only int method attributes
+  such as `bit_length`, `conjugate`, and `as_integer_ratio`, plus readonly and
+  no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
 - `cpython_bool_public_attributes_subset`, backed by
   `cpython_bool_public_attributes_diff_subset`, now pins how bool inherits int public numeric attributes
   and methods across `False` and `True`, including

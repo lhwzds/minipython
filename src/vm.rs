@@ -61398,11 +61398,20 @@ fn is_float_readonly_instance_attribute(name: &str) -> bool {
 fn int_attribute_assignment_error(name: &str) -> String {
     if matches!(name, "real" | "imag" | "numerator" | "denominator") {
         format!("AttributeError: attribute '{name}' of 'int' objects is not writable")
+    } else if is_int_readonly_instance_attribute(name) {
+        format!("AttributeError: 'int' object attribute '{name}' is read-only")
     } else {
         format!(
             "AttributeError: 'int' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn is_int_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("int")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn bool_attribute_assignment_error(name: &str) -> String {

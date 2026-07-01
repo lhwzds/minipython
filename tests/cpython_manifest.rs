@@ -23000,6 +23000,9 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
         "-7",
         "2 ** 70",
         "value.real, value.imag, value.numerator, value.denominator",
+        "'bit_length' in dir(x)",
+        "'conjugate' in dir(x)",
+        "'as_integer_ratio' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
@@ -23007,9 +23010,16 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
         "\"attrs 0 0 0 1 0\"",
         "\"attrs -7 0 -7 1 -7\"",
         "\"attrs 1180591620717411303424 0 1180591620717411303424 1 1180591620717411303424\"",
+        "\"visible True True True\"",
         "\"small-set-real AttributeError attribute 'real' of 'int' objects is not writable\"",
         "\"small-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable\"",
+        "\"small-set-bit_length AttributeError 'int' object attribute 'bit_length' is read-only\"",
+        "\"small-del-conjugate AttributeError 'int' object attribute 'conjugate' is read-only\"",
+        "\"small-set-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only\"",
         "\"large-set-numerator AttributeError attribute 'numerator' of 'int' objects is not writable\"",
+        "\"large-del-bit_length AttributeError 'int' object attribute 'bit_length' is read-only\"",
+        "\"large-set-conjugate AttributeError 'int' object attribute 'conjugate' is read-only\"",
+        "\"large-del-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only\"",
         "\"large-del-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
     ] {
         assert!(
@@ -23026,6 +23036,9 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
         "-7",
         "2 ** 70",
         "value.real, value.imag, value.numerator, value.denominator",
+        "'bit_length' in dir(x)",
+        "'conjugate' in dir(x)",
+        "'as_integer_ratio' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
@@ -23040,8 +23053,11 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name))",
         "fn int_attribute_assignment_error(name: &str) -> String",
+        "fn is_int_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"real\" | \"imag\" | \"numerator\" | \"denominator\")",
+        "builtin_type_dir_names(\"int\")",
         "attribute '{name}' of 'int' objects is not writable",
+        "'int' object attribute '{name}' is read-only",
         "'int' object has no attribute",
         "no __dict__ for setting new attributes",
     ] {
@@ -23057,6 +23073,7 @@ fn int_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_int_public_attributes_diff_subset")
                 && document.contains("int.real")
                 && document.contains("readonly public integer attributes")
+                && document.contains("read-only int method attributes")
                 && document.contains("without adding int instance dictionaries"),
             "focused int public attribute evidence must be documented in coverage and migration notes"
         );

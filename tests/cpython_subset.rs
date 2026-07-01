@@ -4847,7 +4847,8 @@ for value in [0, -7, 2 ** 70]:
 
 for label, x in [('small', 7), ('large', 2 ** 70)]:
     print('target', label)
-    for name in ['real', 'imag', 'numerator', 'denominator']:
+    print('visible', 'bit_length' in dir(x), 'conjugate' in dir(x), 'as_integer_ratio' in dir(x))
+    for name in ['real', 'imag', 'numerator', 'denominator', 'bit_length', 'conjugate', 'as_integer_ratio']:
         show(label + '-set-' + name, lambda name=name, x=x: setattr(x, name, 99))
         show(label + '-del-' + name, lambda name=name, x=x: delattr(x, name))
     show(label + '-set-extra', lambda x=x: setattr(x, 'extra', 99))
@@ -4857,6 +4858,7 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
             "attrs -7 0 -7 1 -7",
             "attrs 1180591620717411303424 0 1180591620717411303424 1 1180591620717411303424",
             "target small",
+            "visible True True True",
             "small-set-real AttributeError attribute 'real' of 'int' objects is not writable",
             "small-del-real AttributeError attribute 'real' of 'int' objects is not writable",
             "small-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
@@ -4865,9 +4867,16 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
             "small-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
             "small-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
             "small-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "small-set-bit_length AttributeError 'int' object attribute 'bit_length' is read-only",
+            "small-del-bit_length AttributeError 'int' object attribute 'bit_length' is read-only",
+            "small-set-conjugate AttributeError 'int' object attribute 'conjugate' is read-only",
+            "small-del-conjugate AttributeError 'int' object attribute 'conjugate' is read-only",
+            "small-set-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only",
+            "small-del-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only",
             "small-set-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "small-del-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "target large",
+            "visible True True True",
             "large-set-real AttributeError attribute 'real' of 'int' objects is not writable",
             "large-del-real AttributeError attribute 'real' of 'int' objects is not writable",
             "large-set-imag AttributeError attribute 'imag' of 'int' objects is not writable",
@@ -4876,6 +4885,12 @@ for label, x in [('small', 7), ('large', 2 ** 70)]:
             "large-del-numerator AttributeError attribute 'numerator' of 'int' objects is not writable",
             "large-set-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
             "large-del-denominator AttributeError attribute 'denominator' of 'int' objects is not writable",
+            "large-set-bit_length AttributeError 'int' object attribute 'bit_length' is read-only",
+            "large-del-bit_length AttributeError 'int' object attribute 'bit_length' is read-only",
+            "large-set-conjugate AttributeError 'int' object attribute 'conjugate' is read-only",
+            "large-del-conjugate AttributeError 'int' object attribute 'conjugate' is read-only",
+            "large-set-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only",
+            "large-del-as_integer_ratio AttributeError 'int' object attribute 'as_integer_ratio' is read-only",
             "large-set-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "large-del-extra AttributeError 'int' object has no attribute 'extra' and no __dict__ for setting new attributes",
         ],

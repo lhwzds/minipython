@@ -77,8 +77,9 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_int_public_attributes_subset` and
   `cpython_int_public_attributes_diff_subset` for `int.real`, `int.imag`,
   `int.numerator`, and `int.denominator` as readonly public integer attributes
-  across zero, negative, and large integers, including CPython's readonly and
-  no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
+  across zero, negative, and large integers, including CPython's read-only int method attributes
+  such as `bit_length`, `conjugate`, and `as_integer_ratio`, readonly
+  data-attribute errors, and no-`__dict__` assignment/deletion errors without adding int instance dictionaries.
 - Added `cpython_bool_public_attributes_subset` and
   `cpython_bool_public_attributes_diff_subset` for how bool inherits int public numeric attributes
   and methods across `False` and `True`, including readonly
