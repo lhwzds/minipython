@@ -58089,6 +58089,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ),
         },
         Value::List(items) => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("list")
+                    .expect("list builtin type doc exists")
+                    .to_string(),
+            )),
             "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
             | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
             | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__setitem__" => {

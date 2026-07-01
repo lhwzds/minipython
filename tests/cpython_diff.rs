@@ -11465,6 +11465,17 @@ print('mutated', b)"#,
 }
 
 #[test]
+fn cpython_list_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/list_tests.py public list instance __doc__ attribute subset",
+        name: "list-instance-doc-attribute",
+        source: r#"for label, value in [('empty', []), ('items', [1, 2])]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == list.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_list_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py public list instance attribute assignment errors subset",

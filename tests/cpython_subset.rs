@@ -26544,6 +26544,21 @@ print('mutated', b)"#,
     );
 }
 
+// Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
+// without promoting tuple, bytes, or bytearray instance `__doc__` attributes.
+#[test]
+fn cpython_list_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', []), ('items', [1, 2])]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == list.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True Built-in mutable sequence. 141",
+            "items str True True Built-in mutable sequence. 141",
+        ],
+    );
+}
+
 // Adapted from CPython's public `list` instance attribute assignment errors.
 // MiniPython keeps list contents mutable without adding a writable instance
 // `__dict__`.
