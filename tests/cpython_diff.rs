@@ -785,6 +785,20 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_globals_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __globals__ shared identity metadata subset",
+        name: "json-function-globals-identity-metadata",
+        source: r#"import json
+print(json.loads.__globals__ is json.dumps.__globals__)
+g = json.loads.__globals__
+print(g is json.loads.__globals__, g is json.dumps.__globals__)
+g['mini_probe_key'] = 42
+print(json.dumps.__globals__['mini_probe_key'])"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

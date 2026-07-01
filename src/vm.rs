@@ -105,6 +105,7 @@ thread_local! {
     static ITERABLE_COROUTINE_FUNCTIONS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
     static FUNCTION_CODE_IDENTITIES: RefCell<HashMap<usize, Rc<()>>> =
         RefCell::new(HashMap::new());
+    static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
@@ -61044,28 +61045,35 @@ fn json_builtin_kwdefaults(name: &str) -> Value {
 }
 
 fn json_builtin_globals() -> Value {
-    dict_value(vec![
-        (
-            Value::String("__name__".to_string()),
-            Value::String("json".to_string()),
-        ),
-        (
-            Value::String("__package__".to_string()),
-            Value::String("json".to_string()),
-        ),
-        (
-            Value::String("__builtins__".to_string()),
-            default_builtins_dict_value(),
-        ),
-        (
-            Value::String("loads".to_string()),
-            Value::Builtin("json.loads".to_string()),
-        ),
-        (
-            Value::String("dumps".to_string()),
-            Value::Builtin("json.dumps".to_string()),
-        ),
-    ])
+    JSON_BUILTIN_GLOBALS.with(|globals| {
+        let mut globals = globals.borrow_mut();
+        globals
+            .get_or_insert_with(|| {
+                dict_value(vec![
+                    (
+                        Value::String("__name__".to_string()),
+                        Value::String("json".to_string()),
+                    ),
+                    (
+                        Value::String("__package__".to_string()),
+                        Value::String("json".to_string()),
+                    ),
+                    (
+                        Value::String("__builtins__".to_string()),
+                        default_builtins_dict_value(),
+                    ),
+                    (
+                        Value::String("loads".to_string()),
+                        Value::Builtin("json.loads".to_string()),
+                    ),
+                    (
+                        Value::String("dumps".to_string()),
+                        Value::Builtin("json.dumps".to_string()),
+                    ),
+                ])
+            })
+            .clone()
+    })
 }
 
 fn functools_partial_doc() -> &'static str {

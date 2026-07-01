@@ -1050,6 +1050,7 @@ Recent runtime migration notes:
   `cpython_json_function_closure_none_metadata_diff_subset`,
   `cpython_json_function_builtins_metadata_diff_subset`,
   `cpython_json_function_globals_metadata_diff_subset`,
+  `cpython_json_function_globals_identity_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1671,6 +1672,8 @@ Recent runtime migration notes:
   `cpython_json_function_builtins_metadata_subset`,
   `cpython_json_function_globals_metadata_diff_subset` /
   `cpython_json_function_globals_metadata_subset`,
+  `cpython_json_function_globals_identity_metadata_diff_subset` /
+  `cpython_json_function_globals_identity_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2324,6 +2327,12 @@ or encoder/decoder classes.
 lookup surface (`json.loads.__globals__` and `json.dumps.__globals__` expose
 `__name__`, `__package__`, `loads`, `dumps`, and `__builtins__`) aligned with
 CPython without adding function `__code__`, full module globals, file APIs,
+module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_globals_identity_metadata_subset`, backed by
+`cpython_json_function_globals_identity_metadata_diff_subset`, keeps json public function `__globals__` shared identity
+and mutation visibility aligned with CPython for the supported globals dict
+surface without adding function `__code__`, full module globals, file APIs,
 module `__all__`, or encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
