@@ -1030,6 +1030,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_closure_none_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __closure__ metadata subset",
+        name: "json-function-bound-method-closure-none-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__closure__
+    print(name, type(value).__name__, value, value is function.__closure__)
+    print(name, bound.__getattribute__('__closure__') is function.__closure__, '__closure__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_defaults_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __defaults__ metadata subset",

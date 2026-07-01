@@ -37905,6 +37905,25 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_closure_none_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__closure__
+    print(name, type(value).__name__, value, value is function.__closure__)
+    print(name, bound.__getattribute__('__closure__') is function.__closure__, '__closure__' in dir(bound))"#,
+        &[
+            "loads NoneType None True",
+            "loads True False",
+            "dumps NoneType None True",
+            "dumps True False",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_defaults_metadata_subset() {
     assert_output(
         r#"import json

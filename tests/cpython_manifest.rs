@@ -9083,6 +9083,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_getattribute_missing_attr_subset",
     );
+    let json_function_bound_method_closure_none_metadata_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_closure_none_metadata_diff_subset",
+    );
+    let json_function_bound_method_closure_none_metadata_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_closure_none_metadata_subset",
+    );
     let json_function_bound_method_defaults_metadata_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_function_bound_method_defaults_metadata_diff_subset",
@@ -9595,6 +9603,29 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "value = bound.__closure__",
+        "value is function.__closure__",
+        "bound.__getattribute__('__closure__') is function.__closure__",
+        "'__closure__' in dir(bound)",
+    ] {
+        assert!(
+            json_function_bound_method_closure_none_metadata_diff_body.contains(required)
+                && json_function_bound_method_closure_none_metadata_subset_body.contains(required),
+            "json public function bound method __closure__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads NoneType None True\"",
+        "\"loads True False\"",
+        "\"dumps NoneType None True\"",
+        "\"dumps True False\"",
+    ] {
+        assert!(
+            json_function_bound_method_closure_none_metadata_subset_body.contains(required),
+            "json public function bound method __closure__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "bound.__defaults__",
         "bound.__defaults__ is function.__defaults__",
         "bound.__getattribute__('__defaults__') is function.__defaults__",
@@ -9859,6 +9890,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible bound method __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
+        VM_SOURCE.contains("\"__closure__\"")
+            && VM_SOURCE.contains(
+                "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
+            )
+            && VM_SOURCE.contains("load_attribute(*function, \"__closure__\")"),
+        "VM must delegate json public function bound method __closure__ metadata"
+    );
+    assert!(
         VM_SOURCE.contains("\"__defaults__\"")
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
@@ -9952,6 +9991,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
+            "cpython_json_function_bound_method_closure_none_metadata_subset",
+            "cpython_json_function_bound_method_closure_none_metadata_diff_subset",
             "cpython_json_function_bound_method_defaults_metadata_subset",
             "cpython_json_function_bound_method_defaults_metadata_diff_subset",
             "cpython_json_function_bound_method_kwdefaults_metadata_subset",
@@ -9995,6 +10036,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method `__repr__`",
             "json public function bound method `__getattribute__`",
             "json public function bound method `__getattribute__` missing-attribute",
+            "json public function bound method `__closure__` metadata",
             "json public function bound method `__defaults__` metadata",
             "json public function bound method `__kwdefaults__` metadata",
             "json public function bound method `__annotations__` metadata",
