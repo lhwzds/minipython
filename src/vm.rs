@@ -60586,6 +60586,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__kwdefaults__" && is_copy_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__module__"
                 && itertools_builtin_function_qualname(&function_name).is_some() =>
         {
