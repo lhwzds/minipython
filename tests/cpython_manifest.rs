@@ -22814,6 +22814,78 @@ fn number_int_constructor_error_messages_cover_runtime_subset() {
 }
 
 #[test]
+fn float_public_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_float_public_attributes_subset(",
+        "0.0",
+        "-0.0",
+        "3.5",
+        "float('inf')",
+        "value.real, value.imag",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+        "\"attrs 0.0 0.0 0.0\"",
+        "\"attrs -0.0 0.0 -0.0\"",
+        "\"attrs inf 0.0 inf\"",
+        "\"set-real AttributeError attribute 'real' of 'float' objects is not writable\"",
+        "\"del-imag AttributeError attribute 'imag' of 'float' objects is not writable\"",
+        "\"set-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused float public attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_float_public_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_float.py public float attributes subset",
+        "name: \"float-public-attributes\"",
+        "0.0",
+        "-0.0",
+        "3.5",
+        "float('inf')",
+        "value.real, value.imag",
+        "setattr(x, name, 99)",
+        "delattr(x, name)",
+        "setattr(x, 'extra', 99)",
+        "delattr(x, 'extra')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused float public attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Float(_) => Err(float_attribute_assignment_error(name))",
+        "fn float_attribute_assignment_error(name: &str) -> String",
+        "matches!(name, \"real\" | \"imag\")",
+        "attribute '{name}' of 'float' objects is not writable",
+        "'float' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "float public attributes implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_float_public_attributes_subset")
+                && document.contains("cpython_float_public_attributes_diff_subset")
+                && document.contains("float.real")
+                && document.contains("readonly public float attributes")
+                && document.contains("without adding float instance dictionaries"),
+            "focused float public attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "sys",

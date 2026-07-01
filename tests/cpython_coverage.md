@@ -79,6 +79,11 @@ Recent runtime migration notes:
   `complex.imag` as readonly public float attributes across zero, finite, and
   signed-component complex values, plus CPython's readonly and no-`__dict__`
   assignment/deletion errors without adding complex instance dictionaries.
+- `cpython_float_public_attributes_subset`, backed by
+  `cpython_float_public_attributes_diff_subset`, now pins `float.real` and
+  `float.imag` as readonly public float attributes across positive zero,
+  negative zero, finite, and infinite floats, plus CPython's readonly and
+  no-`__dict__` assignment/deletion errors without adding float instance dictionaries.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

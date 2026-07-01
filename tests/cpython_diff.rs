@@ -26794,6 +26794,30 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_float_public_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py public float attributes subset",
+        name: "float-public-attributes",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [0.0, -0.0, 3.5, float('inf')]:
+    print('attrs', value.real, value.imag, repr(value))
+
+x = 3.5
+for name in ['real', 'imag']:
+    show('set-' + name, lambda name=name: setattr(x, name, 99))
+    show('del-' + name, lambda name=name: delattr(x, name))
+show('set-extra', lambda: setattr(x, 'extra', 99))
+show('del-extra', lambda: delattr(x, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_grammar_match_stmt_diff_subset() {
     let probe = run_cpython("match 1:\n    case 1:\n        print('ok')")
         .expect("failed to probe CPython match statement support");

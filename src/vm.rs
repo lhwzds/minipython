@@ -61062,6 +61062,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
+        Value::Float(_) => Err(float_attribute_assignment_error(name)),
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
@@ -61326,6 +61327,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
+        Value::Float(_) => Err(float_attribute_assignment_error(name)),
         Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
@@ -61333,6 +61335,16 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
         )),
+    }
+}
+
+fn float_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "real" | "imag") {
+        format!("AttributeError: attribute '{name}' of 'float' objects is not writable")
+    } else {
+        format!(
+            "AttributeError: 'float' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
     }
 }
 

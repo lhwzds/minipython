@@ -5446,6 +5446,43 @@ except TypeError as error:
     );
 }
 
+// Adapted from CPython's public `float` object attributes. MiniPython exposes
+// `real` and `imag` as readonly data attributes without exposing an instance
+// `__dict__`.
+#[test]
+fn cpython_float_public_attributes_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [0.0, -0.0, 3.5, float('inf')]:
+    print('attrs', value.real, value.imag, repr(value))
+
+x = 3.5
+for name in ['real', 'imag']:
+    show('set-' + name, lambda name=name: setattr(x, name, 99))
+    show('del-' + name, lambda name=name: delattr(x, name))
+show('set-extra', lambda: setattr(x, 'extra', 99))
+show('del-extra', lambda: delattr(x, 'extra'))"#,
+        &[
+            "attrs 0.0 0.0 0.0",
+            "attrs -0.0 0.0 -0.0",
+            "attrs 3.5 0.0 3.5",
+            "attrs inf 0.0 inf",
+            "set-real AttributeError attribute 'real' of 'float' objects is not writable",
+            "del-real AttributeError attribute 'real' of 'float' objects is not writable",
+            "set-imag AttributeError attribute 'imag' of 'float' objects is not writable",
+            "del-imag AttributeError attribute 'imag' of 'float' objects is not writable",
+            "set-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_hash
 // and ::test_hash_nan. Exact identity-hash values are process-local, so this
 // pins the public equality relationships instead of numeric addresses.
