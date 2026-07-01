@@ -37626,6 +37626,48 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_getattribute_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    getter = function.__getattribute__
+    print(name, '__getattribute__' in dir(function), type(getter).__name__, getter.__class__.__name__)
+    print(name, getter('__name__'), getter('__qualname__'), getter('__module__'))
+    print(name, getter('__repr__') is function.__repr__, type(getter('__repr__')).__name__)
+    for label, call in [
+        ('missing-name', lambda getter=getter: getter()),
+        ('extra-name', lambda getter=getter: getter('__name__', '__module__')),
+        ('keyword-name', lambda getter=getter: getter(name='__name__')),
+        ('bad-name', lambda getter=getter: getter(1)),
+        ('missing-attr', lambda getter=getter: getter('__missing_probe__')),
+    ]:
+        try:
+            call()
+        except (TypeError, AttributeError) as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True method-wrapper method-wrapper",
+            "loads loads loads json",
+            "loads False method-wrapper",
+            "loads missing-name TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads extra-name TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads keyword-name TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
+            "loads bad-name TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "loads missing-attr AttributeError 'function' object has no attribute '__missing_probe__' (\"'function' object has no attribute '__missing_probe__'\",)",
+            "dumps True method-wrapper method-wrapper",
+            "dumps dumps dumps json",
+            "dumps False method-wrapper",
+            "dumps missing-name TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps extra-name TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps keyword-name TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
+            "dumps bad-name TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "dumps missing-attr AttributeError 'function' object has no attribute '__missing_probe__' (\"'function' object has no attribute '__missing_probe__'\",)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_subset() {
     assert_output(
         r#"import json
@@ -37845,7 +37887,7 @@ print('mini_probe_key' in json.loads.__kwdefaults__, 'other_probe_key' in json.d
 fn cpython_json_function_dir_metadata_subset() {
     assert_output(
         r#"import json
-supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']
+supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']
 for name in ['loads', 'dumps']:
     names = dir(getattr(json, name))
     visible = [attr for attr in supported if attr in names]
@@ -37853,10 +37895,10 @@ for name in ['loads', 'dumps']:
     print(name, names == sorted(names), len(names) == len(set(names)))
     print(name, '__base__' in names, '__bases__' in names)"#,
         &[
-            "loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
+            "loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
             "loads True True",
             "loads False False",
-            "dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
+            "dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']",
             "dumps True True",
             "dumps False False",
         ],

@@ -10009,6 +10009,9 @@ impl Vm {
             {
                 self.call_json_function_repr_str(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__getattribute__" => {
+                self.call_json_function_getattribute(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__getattribute__" => {
                 self.call_method_getattribute(args, keywords)
             }
@@ -17495,6 +17498,37 @@ impl Vm {
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_json_function_getattribute(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        load_attribute(receiver.clone(), &name)
+            .map_err(|error| json_function_getattribute_attribute_error(&name, error))
     }
 
     fn call_method_getattribute(
@@ -50200,6 +50234,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__dir__",
         "__doc__",
         "__globals__",
+        "__getattribute__",
         "__get__",
         "__kwdefaults__",
         "__module__",
@@ -60933,6 +60968,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
+        Value::Builtin(function_name)
+            if name == "__getattribute__" && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "json.function.__getattribute__".to_string(),
+                )),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name) if name == "__get__" && is_json_builtin(&function_name) => {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("json.function.__get__".to_string())),
@@ -62927,7 +62973,19 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__getattribute__"
             | "json.function.__repr__"
             | "json.function.__str__"
+            | "json.function.__getattribute__"
     )
+}
+
+fn json_function_getattribute_attribute_error(name: &str, error: String) -> String {
+    let direct_function_missing_attr_suffix = format!(" has no attribute '{name}'");
+    if error.starts_with("AttributeError: <function ")
+        && error.ends_with(&direct_function_missing_attr_suffix)
+    {
+        format!("AttributeError: 'function' object has no attribute '{name}'")
+    } else {
+        error
+    }
 }
 
 fn method_getattribute_attribute_error(name: &str, error: String) -> String {

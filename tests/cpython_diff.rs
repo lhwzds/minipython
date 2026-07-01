@@ -798,6 +798,32 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_getattribute_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __getattribute__ wrapper metadata subset",
+        name: "json-function-getattribute-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    getter = function.__getattribute__
+    print(name, '__getattribute__' in dir(function), type(getter).__name__, getter.__class__.__name__)
+    print(name, getter('__name__'), getter('__qualname__'), getter('__module__'))
+    print(name, getter('__repr__') is function.__repr__, type(getter('__repr__')).__name__)
+    for label, call in [
+        ('missing-name', lambda getter=getter: getter()),
+        ('extra-name', lambda getter=getter: getter('__name__', '__module__')),
+        ('keyword-name', lambda getter=getter: getter(name='__name__')),
+        ('bad-name', lambda getter=getter: getter(1)),
+        ('missing-attr', lambda getter=getter: getter('__missing_probe__')),
+    ]:
+        try:
+            call()
+        except (TypeError, AttributeError) as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",
@@ -988,7 +1014,7 @@ fn cpython_json_function_dir_metadata_diff_subset() {
         origin: "Lib/json public function dir() supported metadata subset",
         name: "json-function-dir-metadata",
         source: r#"import json
-supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']
+supported = ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']
 for name in ['loads', 'dumps']:
     names = dir(getattr(json, name))
     visible = [attr for attr in supported if attr in names]

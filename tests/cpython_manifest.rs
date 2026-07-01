@@ -8723,6 +8723,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
+            "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
@@ -8848,6 +8849,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_name_qualname_identity_metadata_diff_subset",
         "cpython_json_function_type_class_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
+        "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
@@ -8988,6 +8990,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_repr_str_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_repr_str_wrapper_metadata_subset",
+    );
+    let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
+    );
+    let json_function_getattribute_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_getattribute_wrapper_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9377,6 +9387,53 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "function.__getattribute__",
+        "'__getattribute__' in dir(function)",
+        "type(getter).__name__",
+        "getter.__class__.__name__",
+        "getter('__name__')",
+        "getter('__qualname__')",
+        "getter('__module__')",
+        "getter('__repr__') is function.__repr__",
+        "type(getter('__repr__')).__name__",
+        "('missing-name', lambda getter=getter: getter())",
+        "('extra-name', lambda getter=getter: getter('__name__', '__module__'))",
+        "('keyword-name', lambda getter=getter: getter(name='__name__'))",
+        "('bad-name', lambda getter=getter: getter(1))",
+        "('missing-attr', lambda getter=getter: getter('__missing_probe__'))",
+        "except (TypeError, AttributeError) as error",
+        "error.args",
+    ] {
+        assert!(
+            json_function_getattribute_wrapper_diff_body.contains(required)
+                && json_function_getattribute_wrapper_subset_body.contains(required),
+            "json public function __getattribute__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True method-wrapper method-wrapper\"",
+        "\"loads loads loads json\"",
+        "\"loads False method-wrapper\"",
+        "\"loads missing-name TypeError expected 1 argument, got 0",
+        "\"loads extra-name TypeError expected 1 argument, got 2",
+        "\"loads keyword-name TypeError wrapper __getattribute__() takes no keyword arguments",
+        "\"loads bad-name TypeError attribute name must be string, not 'int'",
+        "\"loads missing-attr AttributeError 'function' object has no attribute '__missing_probe__'",
+        "\"dumps True method-wrapper method-wrapper\"",
+        "\"dumps dumps dumps json\"",
+        "\"dumps False method-wrapper\"",
+        "\"dumps missing-name TypeError expected 1 argument, got 0",
+        "\"dumps extra-name TypeError expected 1 argument, got 2",
+        "\"dumps keyword-name TypeError wrapper __getattribute__() takes no keyword arguments",
+        "\"dumps bad-name TypeError attribute name must be string, not 'int'",
+        "\"dumps missing-attr AttributeError 'function' object has no attribute '__missing_probe__'",
+    ] {
+        assert!(
+            json_function_getattribute_wrapper_subset_body.contains(required),
+            "json public function __getattribute__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value.__type_params__",
         "json.loads.__type_params__",
         "json.dumps.__type_params__",
@@ -9626,6 +9683,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "supported = ['__annotate__'",
+        "'__getattribute__'",
         "'__repr__'",
         "'__str__'",
         "dir(getattr(json, name))",
@@ -9642,10 +9700,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
+        "\"loads True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
         "\"loads True True\"",
         "\"loads False False\"",
-        "\"dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
+        "\"dumps True ['__annotate__', '__annotations__', '__builtins__', '__closure__', '__defaults__', '__dict__', '__doc__', '__getattribute__', '__globals__', '__kwdefaults__', '__module__', '__name__', '__qualname__', '__repr__', '__str__', '__type_params__']\"",
         "\"dumps True True\"",
         "\"dumps False False\"",
     ] {
@@ -10231,6 +10289,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("names.extend(json_builtin_function_dir_names())")
             && VM_SOURCE.contains("fn json_builtin_function_dir_names() -> Vec<String>")
             && VM_SOURCE.contains("\"__get__\",")
+            && VM_SOURCE.contains("\"__getattribute__\",")
             && VM_SOURCE.contains("\"__repr__\",")
             && VM_SOURCE.contains("\"__str__\","),
         "VM must expose supported json function metadata names through dir()"
@@ -10253,6 +10312,19 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VALUE_SOURCE.contains("\"<function {name} at 0x0>\"")
             && VALUE_SOURCE.contains("json_builtin_function_repr(name).is_some()"),
         "VM must expose CPython-compatible json public function repr / str wrappers"
+    );
+    assert!(
+        VM_SOURCE.contains("fn call_json_function_getattribute(")
+            && VM_SOURCE.contains("name == \"json.function.__getattribute__\"")
+            && VM_SOURCE.contains("self.call_json_function_getattribute(args, keywords)")
+            && VM_SOURCE
+                .contains("name == \"__getattribute__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("\"json.function.__getattribute__\".to_string()")
+            && VM_SOURCE.contains("\"json.function.__getattribute__\"")
+            && VM_SOURCE.contains("fn json_function_getattribute_attribute_error(")
+            && VM_SOURCE.contains("AttributeError: 'function' object has no attribute '{name}'")
+            && VM_SOURCE.contains("descriptor method wrapper requires a function object"),
+        "VM must expose CPython-compatible json public function __getattribute__ wrapper"
     );
     assert!(
         VM_SOURCE.contains("name == \"__get__\" && is_json_builtin(&function_name)")
@@ -10401,6 +10473,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_type_class_metadata_diff_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
+            "cpython_json_function_getattribute_wrapper_metadata_subset",
+            "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
@@ -10467,6 +10541,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__name__` / `__qualname__` identity",
             "json public function type / `__class__` metadata",
             "json public function repr / str wrapper metadata",
+            "json public function `__getattribute__` wrapper metadata",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",
