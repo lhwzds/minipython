@@ -57515,6 +57515,23 @@ for label, value in [('empty', ChainMap()), ('single', ChainMap({'a': 1})), ('mu
     );
 }
 
+// Mirrors CPython's public `ChainMap` direct base metadata.
+#[test]
+fn cpython_collections_chainmap_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import ChainMap
+from collections.abc import MutableMapping
+base = object.__getattribute__(ChainMap, '__base__')
+bases = object.__getattribute__(ChainMap, '__bases__')
+print('base', base is MutableMapping, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True collections.abc MutableMapping",
+            "bases tuple 1 True collections.abc MutableMapping",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap constructor
 // keyword rejection.
 #[test]

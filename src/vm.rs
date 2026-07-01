@@ -62483,6 +62483,7 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
 
 fn collections_type_direct_base_name(name: &str) -> Option<&'static str> {
     match name {
+        "ChainMap" => Some("MutableMapping"),
         "UserDict" => Some("MutableMapping"),
         "UserList" => Some("MutableSequence"),
         _ => None,

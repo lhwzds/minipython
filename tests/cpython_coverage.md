@@ -301,6 +301,8 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ builtin type-object __module__ metadata
   behavior, object.__getattribute__ Counter type-object __module__ metadata
   behavior, object.__getattribute__ ChainMap type-object __module__ metadata
+  behavior, object.__getattribute__ ChainMap type-object __base__ metadata
+  behavior, object.__getattribute__ ChainMap type-object __bases__ metadata
   behavior, object.__getattribute__ UserDict type-object __module__ metadata
   behavior, object.__getattribute__ UserDict type-object __base__ metadata
   behavior, object.__getattribute__ UserDict type-object __bases__ metadata
@@ -775,6 +777,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_methods_diff_subset`,
   `cpython_collections_chainmap_instance_doc_attribute_diff_subset`,
+  `cpython_collections_chainmap_type_base_metadata_diff_subset`,
   `cpython_collections_chainmap_keyword_error_diff_subset`,
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
@@ -5133,6 +5136,11 @@ without adding general custom encoder/decoder class support.
   `ChainMap` instance `__doc__` lookup for empty, single-map, and multi-map
   ChainMaps, including `dir()` visibility, without promoting full writable
   instance dictionaries.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_type_base_metadata_diff_subset` and
+  `cpython_collections_chainmap_type_base_metadata_subset`, covering
+  `ChainMap` direct base metadata through `__base__` and `__bases__`, pinned to
+  `collections.abc.MutableMapping` without expanding full `__mro__` parity.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_keyword_error_subset`, backed by
   `cpython_collections_chainmap_keyword_error_diff_subset`, covering

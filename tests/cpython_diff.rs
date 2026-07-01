@@ -18362,6 +18362,20 @@ for label, value in [('empty', ChainMap()), ('single', ChainMap({'a': 1})), ('mu
 }
 
 #[test]
+fn cpython_collections_chainmap_type_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py ChainMap public direct base metadata subset",
+        name: "collections-chainmap-type-base-metadata",
+        source: r#"from collections import ChainMap
+from collections.abc import MutableMapping
+base = object.__getattribute__(ChainMap, '__base__')
+bases = object.__getattribute__(ChainMap, '__bases__')
+print('base', base is MutableMapping, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bases[0].__module__, bases[0].__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_keyword_error_diff_subset() {
     // CPython oracle text: ChainMap.__init__() got an unexpected keyword
     // argument '<name>'.
