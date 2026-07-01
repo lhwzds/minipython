@@ -10040,6 +10040,9 @@ impl Vm {
             Value::Builtin(name) if name == "json.function.__format__" => {
                 self.call_json_function_format(args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__hash__" => {
+                self.call_json_function_hash(args, keywords)
+            }
             Value::Builtin(name) if name == "json.function.__getattribute__" => {
                 self.call_json_function_getattribute(args, keywords)
             }
@@ -17720,6 +17723,34 @@ impl Vm {
 
         self.call_object_format(vec![receiver.clone(), format_spec.clone()])
             .map(Value::String)
+    }
+
+    fn call_json_function_hash(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __hash__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if is_json_builtin(function_name)) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
+
+        self.hash_key_value(receiver)
     }
 
     fn call_json_function_getattribute(
@@ -50475,6 +50506,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__globals__",
         "__getattribute__",
         "__get__",
+        "__hash__",
         "__kwdefaults__",
         "__module__",
         "__name__",
@@ -59721,6 +59753,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__" => load_attribute(*function, "__qualname__"),
+            "__module__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "json.function.__hash__") =>
+            {
+                Err("AttributeError: 'method-wrapper' object has no attribute '__module__'"
+                    .to_string())
+            }
             "__module__" => load_attribute(*function, "__module__"),
             "__doc__" => load_attribute(*function, "__doc__"),
             "__type_params__"
@@ -59790,6 +59828,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__hash__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "json.function.__hash__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -61292,6 +61335,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             })
         }
+        Value::Builtin(function_name) if name == "__hash__" && is_json_builtin(&function_name) => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("json.function.__hash__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
         Value::Builtin(function_name)
             if name == "__getattribute__" && is_json_builtin(&function_name) =>
         {
@@ -61509,6 +61559,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "json.function.__format__" =>
         {
             Ok(Value::String("($self, format_spec, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "json.function.__hash__" =>
+        {
+            Ok(Value::String("object.__hash__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__hash__" =>
+        {
+            Ok(Value::String("Return hash(self).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "json.function.__hash__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "method.__call__" =>
@@ -63430,6 +63495,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__ge__"
             | "method.__hash__"
             | "json.function.__call__"
+            | "json.function.__hash__"
             | "json.function.__repr__"
             | "json.function.__str__"
             | "json.function.__getattribute__"

@@ -879,6 +879,34 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_hash_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __hash__ wrapper metadata subset",
+        name: "json-function-hash-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__hash__
+    print(name, hash(function) == wrapper(), '__hash__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    value = wrapper()
+    print(name, type(value).__name__, isinstance(value, int), value == hash(function), wrapper() == wrapper())
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(name, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __getattribute__ wrapper metadata subset",

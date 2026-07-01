@@ -8727,6 +8727,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
+            "cpython_json_function_hash_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -8865,6 +8866,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
         "cpython_json_function_call_wrapper_metadata_diff_subset",
         "cpython_json_function_format_wrapper_metadata_diff_subset",
+        "cpython_json_function_hash_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -9046,6 +9048,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_format_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_format_wrapper_metadata_subset",
+    );
+    let json_function_hash_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_hash_wrapper_metadata_diff_subset",
+    );
+    let json_function_hash_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_hash_wrapper_metadata_subset",
     );
     let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9679,6 +9689,70 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __format__ wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "function.__hash__",
+        "hash(function) == wrapper()",
+        "'__hash__' in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is function",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "type(value).__name__",
+        "isinstance(value, int)",
+        "value == hash(function)",
+        "wrapper() == wrapper()",
+        "wrapper.__module__",
+        "except AttributeError as error",
+        "('extra', lambda wrapper=wrapper: wrapper(1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(x=1))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_hash_wrapper_diff_body.contains(required)
+                && json_function_hash_wrapper_subset_body.contains(required),
+            "json public function __hash__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True True method-wrapper method-wrapper\"",
+        "\"loads True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)\"",
+        "\"loads int True True True\"",
+        "\"loads module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"loads extra TypeError expected 0 arguments, got 1",
+        "\"loads keyword TypeError wrapper __hash__() takes no keyword arguments",
+        "\"dumps True True method-wrapper method-wrapper\"",
+        "\"dumps True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)\"",
+        "\"dumps int True True True\"",
+        "\"dumps module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"dumps extra TypeError expected 0 arguments, got 1",
+        "\"dumps keyword TypeError wrapper __hash__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_hash_wrapper_subset_body.contains(required),
+            "json public function __hash__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_hash(",
+        "json.function.__hash__",
+        "\"__hash__\" && is_json_builtin",
+        "wrapper __hash__() takes no keyword arguments",
+        "expected 0 arguments, got {}",
+        "self.hash_key_value(receiver)",
+        "object.__hash__",
+        "Return hash(self).",
+        "($self, /)",
+        "'method-wrapper' object has no attribute '__module__",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __hash__ wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11051,6 +11125,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"__get__\",")
             && VM_SOURCE.contains("\"__call__\",")
             && VM_SOURCE.contains("\"__getattribute__\",")
+            && VM_SOURCE.contains("\"__hash__\",")
             && VM_SOURCE.contains("\"__repr__\",")
             && VM_SOURCE.contains("\"__str__\","),
         "VM must expose supported json function metadata names through dir()"
@@ -11293,6 +11368,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_call_wrapper_metadata_diff_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_diff_subset",
+            "cpython_json_function_hash_wrapper_metadata_subset",
+            "cpython_json_function_hash_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",

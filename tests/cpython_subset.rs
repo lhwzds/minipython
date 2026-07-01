@@ -37743,6 +37743,46 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_hash_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__hash__
+    print(name, hash(function) == wrapper(), '__hash__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    value = wrapper()
+    print(name, type(value).__name__, isinstance(value, int), value == hash(function), wrapper() == wrapper())
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(name, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True True method-wrapper method-wrapper",
+            "loads True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)",
+            "loads int True True True",
+            "loads module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "loads extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "loads keyword TypeError wrapper __hash__() takes no keyword arguments ('wrapper __hash__() takes no keyword arguments',)",
+            "dumps True True method-wrapper method-wrapper",
+            "dumps True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)",
+            "dumps int True True True",
+            "dumps module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "dumps keyword TypeError wrapper __hash__() takes no keyword arguments ('wrapper __hash__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_subset() {
     assert_output(
         r#"import json
