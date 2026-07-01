@@ -24178,6 +24178,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
             "cpython_tuple_instance_doc_attribute_subset",
+            "cpython_bytes_instance_doc_attribute_subset",
             "cpython_descriptor_constructor_arity_errors_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
@@ -24251,6 +24252,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",
         "cpython_tuple_instance_doc_attribute_diff_subset",
+        "cpython_bytes_instance_doc_attribute_diff_subset",
         "cpython_descriptor_constructor_arity_errors_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
@@ -29782,7 +29784,7 @@ fn str_instance_doc_attribute_subset_has_focused_diff_evidence() {
         "doc.split('\\n')[0]",
         "\"empty str True True str(object='') -> str 404\"",
         "\"module str True True str(object='') -> str 404\"",
-        "without promoting other builtin instance `__doc__` attributes",
+        "without promoting bytearray instance `__doc__` attributes",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -29827,7 +29829,7 @@ fn str_instance_doc_attribute_subset_has_focused_diff_evidence() {
             document.contains("cpython_str_instance_doc_attribute_subset")
                 && document.contains("cpython_str_instance_doc_attribute_diff_subset")
                 && document.contains("str instance `__doc__`")
-                && document.contains("other builtin instance `__doc__` attributes"),
+                && document.contains("bytearray instance `__doc__` attributes"),
             "str instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
@@ -29894,6 +29896,68 @@ fn bytes_attribute_assignment_errors_subset_has_focused_diff_evidence() {
                 && document.contains("read-only bytes method attributes")
                 && document.contains("without adding bytes instance dictionaries"),
             "focused bytes attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn bytes_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_bytes_instance_doc_attribute_subset(",
+        "for label, value in [('empty', b''), ('items', b'spam')]",
+        "doc = value.__doc__",
+        "doc == bytes.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"empty str True True bytes(iterable_of_ints) -> bytes 458\"",
+        "\"items str True True bytes(iterable_of_ints) -> bytes 458\"",
+        "without promoting bytearray instance `__doc__` attributes",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytes instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_bytes_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_bytes.py public bytes instance __doc__ attribute subset",
+        "name: \"bytes-instance-doc-attribute\"",
+        "for label, value in [('empty', b''), ('items', b'spam')]",
+        "doc = value.__doc__",
+        "doc == bytes.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Bytes(_) if name == \"__doc__\"",
+        "builtin_type_doc(\"bytes\")",
+        "expect(\"bytes builtin type doc exists\")",
+        "Value::Bytes(value) => immutable_sequence_method(\"bytes\", Value::Bytes(value), name)",
+        "names.extend(builtin_type_dir_names(\"bytes\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytes instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_bytes_instance_doc_attribute_subset")
+                && document.contains("cpython_bytes_instance_doc_attribute_diff_subset")
+                && document.contains("bytes instance `__doc__`")
+                && document.contains("without promoting bytearray instance `__doc__` attributes"),
+            "bytes instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }
@@ -30046,7 +30110,7 @@ fn list_instance_doc_attribute_subset_has_focused_diff_evidence() {
         "doc.split('\\n')[0]",
         "\"empty str True True Built-in mutable sequence. 141\"",
         "\"items str True True Built-in mutable sequence. 141\"",
-        "without promoting bytes or bytearray instance `__doc__` attributes",
+        "without promoting bytearray instance `__doc__` attributes",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -30091,8 +30155,7 @@ fn list_instance_doc_attribute_subset_has_focused_diff_evidence() {
             document.contains("cpython_list_instance_doc_attribute_subset")
                 && document.contains("cpython_list_instance_doc_attribute_diff_subset")
                 && document.contains("list instance `__doc__`")
-                && document
-                    .contains("without promoting bytes or bytearray instance `__doc__` attributes"),
+                && document.contains("without promoting bytearray instance `__doc__` attributes"),
             "list instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
@@ -30109,7 +30172,7 @@ fn tuple_instance_doc_attribute_subset_has_focused_diff_evidence() {
         "doc.split('\\n')[0]",
         "\"empty str True True Built-in immutable sequence. 233\"",
         "\"items str True True Built-in immutable sequence. 233\"",
-        "without promoting bytes or bytearray instance `__doc__` attributes",
+        "without promoting bytearray instance `__doc__` attributes",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -30154,8 +30217,7 @@ fn tuple_instance_doc_attribute_subset_has_focused_diff_evidence() {
             document.contains("cpython_tuple_instance_doc_attribute_subset")
                 && document.contains("cpython_tuple_instance_doc_attribute_diff_subset")
                 && document.contains("tuple instance `__doc__`")
-                && document
-                    .contains("without promoting bytes or bytearray instance `__doc__` attributes"),
+                && document.contains("without promoting bytearray instance `__doc__` attributes"),
             "tuple instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }

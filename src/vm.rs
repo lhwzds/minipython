@@ -57994,6 +57994,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             immutable_sequence_method("str", Value::String(value), name)
         }
         Value::Bytes(_) if name == "maketrans" => Ok(Value::Builtin("bytes.maketrans".to_string())),
+        Value::Bytes(_) if name == "__doc__" => Ok(Value::String(
+            builtin_type_doc("bytes")
+                .expect("bytes builtin type doc exists")
+                .to_string(),
+        )),
         Value::Bytes(value) => immutable_sequence_method("bytes", Value::Bytes(value), name),
         Value::ByteArray(_) if name == "maketrans" => {
             Ok(Value::Builtin("bytearray.maketrans".to_string()))

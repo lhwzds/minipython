@@ -26467,7 +26467,7 @@ print('read', s.upper(), s.split('a'))"#,
 }
 
 // Mirrors CPython's public `str` instance `__doc__` type-attribute lookup
-// without promoting other builtin instance `__doc__` attributes.
+// without promoting bytearray instance `__doc__` attributes.
 #[test]
 fn cpython_str_instance_doc_attribute_subset() {
     assert_output(
@@ -26511,6 +26511,21 @@ print('read', b.hex(), b.split(b'a'))"#,
     );
 }
 
+// Mirrors CPython's public `bytes` instance `__doc__` type-attribute lookup
+// without promoting bytearray instance `__doc__` attributes.
+#[test]
+fn cpython_bytes_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', b''), ('items', b'spam')]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == bytes.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True bytes(iterable_of_ints) -> bytes 458",
+            "items str True True bytes(iterable_of_ints) -> bytes 458",
+        ],
+    );
+}
+
 // Adapted from CPython's public `bytearray` instance attribute assignment
 // errors. MiniPython keeps bytearray contents mutable without adding a writable
 // instance `__dict__`.
@@ -26545,7 +26560,7 @@ print('mutated', b)"#,
 }
 
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
-// without promoting bytes or bytearray instance `__doc__` attributes.
+// without promoting bytearray instance `__doc__` attributes.
 #[test]
 fn cpython_list_instance_doc_attribute_subset() {
     assert_output(
@@ -26593,7 +26608,7 @@ print('mutated', items)"#,
 }
 
 // Mirrors CPython's public `tuple` instance `__doc__` type-attribute lookup
-// without promoting bytes or bytearray instance `__doc__` attributes.
+// without promoting bytearray instance `__doc__` attributes.
 #[test]
 fn cpython_tuple_instance_doc_attribute_subset() {
     assert_output(

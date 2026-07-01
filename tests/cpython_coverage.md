@@ -83,7 +83,7 @@ Recent runtime migration notes:
 - `cpython_str_instance_doc_attribute_subset`, backed by
   `cpython_str_instance_doc_attribute_diff_subset`, now pins str instance `__doc__`
   lookup for ordinary strings and identity strings such as `super.__module__`, matching
-  `str.__doc__` and `dir(value)` without promoting other builtin instance `__doc__` attributes.
+  `str.__doc__` and `dir(value)` without promoting bytearray instance `__doc__` attributes.
 - `cpython_bytes_attribute_assignment_errors_subset`, backed by
   `cpython_bytes_attribute_assignment_errors_diff_subset`, now pins bytes attribute assignment errors
   for missing attributes and read-only bytes method attributes (`hex` /
@@ -99,11 +99,15 @@ Recent runtime migration notes:
 - `cpython_list_instance_doc_attribute_subset`, backed by
   `cpython_list_instance_doc_attribute_diff_subset`, now pins list instance `__doc__`
   lookup for empty and populated lists, matching `list.__doc__` and `dir(value)`
-  without promoting bytes or bytearray instance `__doc__` attributes.
+  without promoting bytearray instance `__doc__` attributes.
 - `cpython_tuple_instance_doc_attribute_subset`, backed by
   `cpython_tuple_instance_doc_attribute_diff_subset`, now pins tuple instance `__doc__`
   lookup for empty and populated tuples, matching `tuple.__doc__` and `dir(value)`
-  without promoting bytes or bytearray instance `__doc__` attributes.
+  without promoting bytearray instance `__doc__` attributes.
+- `cpython_bytes_instance_doc_attribute_subset`, backed by
+  `cpython_bytes_instance_doc_attribute_diff_subset`, now pins bytes instance `__doc__`
+  lookup for empty and populated bytes, matching `bytes.__doc__` and `dir(value)`
+  without promoting bytearray instance `__doc__` attributes.
 - `cpython_tuple_attribute_assignment_errors_subset`, backed by
   `cpython_tuple_attribute_assignment_errors_diff_subset`, now pins tuple attribute assignment errors
   for missing attributes and read-only tuple method attributes (`count` /
@@ -542,6 +546,7 @@ Recent runtime migration notes:
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,
   `cpython_tuple_instance_doc_attribute_diff_subset`,
+  `cpython_bytes_instance_doc_attribute_diff_subset`,
   `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
