@@ -42527,6 +42527,18 @@ fn cpython_vars_dir_builtin_subset() {
     );
 }
 
+// Pins CPython's public module metadata for the sandbox `builtins` module.
+#[test]
+fn cpython_builtins_module_package_metadata_subset() {
+    assert_output(
+        r#"import builtins
+print(builtins.__name__, repr(builtins.__package__))
+print(repr(object.__getattribute__(builtins, '__package__')))
+print('__package__' in dir(builtins), repr(builtins.__dict__['__package__']))"#,
+        &["builtins ''", "''", "True ''"],
+    );
+}
+
 // Adapted from CPython's builtin namespace behavior around `globals()` and
 // `locals()`. MiniPython covers module-level live mappings and a function-local
 // snapshot for the supported scope model.

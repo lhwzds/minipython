@@ -583,6 +583,7 @@ Recent runtime migration notes:
   `stdlib_create_module_registry_is_classified_by_scope` keep the runtime
   policy, registry classification, and documentation aligned.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
+  `cpython_builtins_module_package_metadata_diff_subset`,
   `cpython_globals_locals_builtin_diff_subset`,
   `cpython_vars_dir_builtin_diff_subset`,
   `cpython_eval_builtin_diff_subset`,
@@ -6345,6 +6346,10 @@ without adding general custom encoder/decoder class support.
   `cpython_weakref_ref_live_repr_subset`, covering public live `weakref.ref`
   `repr()` / `str()` shape for ordinary instances, class objects, functions,
   sets, and frozensets without asserting exact memory addresses.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_builtins_module_package_metadata_subset`, backed by
+  `cpython_builtins_module_package_metadata_diff_subset`, covering builtins module `__package__` metadata
+  (`builtins.__package__` is `''`).
 - `RUNTIME_BUILTINS` also includes
   `cpython_weakref_ref_dunder_methods_subset`, covering direct public access to
   live `weakref.ref` `__repr__`, `__str__`, `__hash__`, `__call__`, `__eq__`,

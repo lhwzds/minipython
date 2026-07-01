@@ -25832,6 +25832,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",
         &[
+            "cpython_builtins_module_package_metadata_subset",
             "cpython_eval_builtin_subset",
             "cpython_exec_builtin_subset",
             "cpython_exec_closure_subset",
@@ -25937,6 +25938,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "builtins")
         .expect("sandbox stdlib manifest must include builtins");
     for evidence in [
+        "cpython_builtins_module_package_metadata_diff_subset",
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_vars_dir_builtin_diff_subset",
         "cpython_eval_builtin_diff_subset",
@@ -26046,9 +26048,54 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'BaseException', 'Exception', 'TypeError'")
             && LANGUAGE_TESTS.contains("'open', 'input', 'help', 'license'")
             && LANGUAGE_TESTS.contains("print('__import__', hasattr(builtins, '__import__'))")
+            && LANGUAGE_TESTS.contains("print('__package__', hasattr(builtins, '__package__'))")
             && LANGUAGE_TESTS.contains("print(dir(builtins))"),
         "builtins sandbox export test must guard public builtins, exceptions, and host IO stop lines"
     );
+
+    let package_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_builtins_module_package_metadata_diff_subset",
+    );
+    let package_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_builtins_module_package_metadata_subset",
+    );
+    for required in [
+        "builtins.__package__",
+        "object.__getattribute__(builtins, '__package__')",
+        "'__package__' in dir(builtins)",
+        "builtins.__dict__['__package__']",
+    ] {
+        assert!(
+            package_diff.contains(required) && package_subset.contains(required),
+            "builtins module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"builtins ''\"", "\"True ''\""] {
+        assert!(
+            package_subset.contains(required),
+            "builtins module package metadata subset output must pin `{required}`"
+        );
+    }
+    assert!(
+        STDLIB_SOURCE.contains("entries.push((\"__package__\", Value::String(String::new())))")
+            || STDLIB_SOURCE.contains("vec![(\"__package__\", Value::String(String::new()))]"),
+        "builtins module builder must set CPython-compatible empty __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_builtins_module_package_metadata_subset",
+            "cpython_builtins_module_package_metadata_diff_subset",
+            "builtins module `__package__` metadata",
+            "`builtins.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "builtins module package metadata docs must contain `{required}`"
+            );
+        }
+    }
 
     for required in [
         "fn.__qualname__",

@@ -2954,10 +2954,13 @@ fn push_unique_union_arg(args: &mut Vec<Value>, value: Value) {
 }
 
 fn builtins_module() -> Value {
-    let entries = DEFAULT_BUILTIN_ENTRY_NAMES
-        .iter()
-        .map(|name| (*name, builtin_module_entry_value(name)))
-        .collect::<Vec<_>>();
+    let mut entries = vec![("__package__", Value::String(String::new()))];
+    entries.extend(
+        DEFAULT_BUILTIN_ENTRY_NAMES
+            .iter()
+            .map(|name| (*name, builtin_module_entry_value(name)))
+            .collect::<Vec<_>>(),
+    );
     module_value("builtins", entries)
 }
 

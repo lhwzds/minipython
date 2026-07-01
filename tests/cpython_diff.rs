@@ -11937,6 +11937,18 @@ print('str-sub', str(sub), f'{sub}', '%s' % sub, format(sub, '>6'))"#,
 }
 
 #[test]
+fn cpython_builtins_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py builtins module __package__ metadata subset",
+        name: "builtins-module-package-metadata",
+        source: r#"import builtins
+print(builtins.__name__, repr(builtins.__package__))
+print(repr(object.__getattribute__(builtins, '__package__')))
+print('__package__' in dir(builtins), repr(builtins.__dict__['__package__']))"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",
