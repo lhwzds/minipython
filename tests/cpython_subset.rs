@@ -57966,6 +57966,23 @@ for label, value in [('direct', UserDict.__doc__), ('object-getattribute', objec
     );
 }
 
+// Mirrors CPython's public `UserDict` direct base metadata.
+#[test]
+fn cpython_collections_userdict_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import UserDict
+from collections.abc import MutableMapping
+base = object.__getattribute__(UserDict, '__base__')
+bases = object.__getattribute__(UserDict, '__bases__')
+print('base', base is MutableMapping, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True collections.abc MutableMapping",
+            "bases tuple 1 True collections.abc MutableMapping",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

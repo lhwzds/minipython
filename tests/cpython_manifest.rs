@@ -17958,6 +17958,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userdict_instance_doc_attribute_subset",
             "cpython_collections_userdict_type_doc_attribute_subset",
+            "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
@@ -19192,6 +19193,69 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict type-object __doc__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_type_base_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict direct base metadata"
+    );
+    let userdict_type_base_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_type_base_metadata_diff_subset",
+    );
+    let userdict_type_base_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_type_base_metadata_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "from collections.abc import MutableMapping",
+        "object.__getattribute__(UserDict, '__base__')",
+        "object.__getattribute__(UserDict, '__bases__')",
+        "base is MutableMapping",
+        "bases[0] is MutableMapping",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            userdict_type_base_diff_body.contains(required)
+                && userdict_type_base_subset_body.contains(required),
+            "UserDict direct base metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True collections.abc MutableMapping\"",
+        "\"bases tuple 1 True collections.abc MutableMapping\"",
+    ] {
+        assert!(
+            userdict_type_base_subset_body.contains(required),
+            "UserDict direct base metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\" && collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"UserDict\" => Some(\"MutableMapping\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_type_base_metadata_subset",
+            "cpython_collections_userdict_type_base_metadata_diff_subset",
+            "`UserDict` direct base metadata",
+            "`MutableMapping`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict direct base metadata docs must contain `{required}`"
             );
         }
     }
@@ -25692,6 +25756,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ ChainMap type-object __module__ metadata")
                 && document
                     .contains("object.__getattribute__ UserDict type-object __module__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserDict type-object __base__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserDict type-object __bases__ metadata")
                 && document
                     .contains("object.__getattribute__ UserList type-object __module__ metadata")
                 && document

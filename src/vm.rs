@@ -59492,6 +59492,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__base__"
+                && collections_type_direct_base_name(&function_name).is_some() =>
+        {
+            Ok(Value::Builtin(
+                collections_type_direct_base_name(&function_name)
+                    .expect("guard checked collections direct base")
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__bases__"
+                && collections_type_direct_base_name(&function_name).is_some() =>
+        {
+            Ok(tuple_value(vec![Value::Builtin(
+                collections_type_direct_base_name(&function_name)
+                    .expect("guard checked collections direct base")
+                    .to_string(),
+            )]))
+        }
+        Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
@@ -62457,6 +62477,13 @@ fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
             | "Collection" | "Reversible",
             "__doc__" | "__text_signature__",
         ) => Some(Value::None),
+        _ => None,
+    }
+}
+
+fn collections_type_direct_base_name(name: &str) -> Option<&'static str> {
+    match name {
+        "UserDict" => Some("MutableMapping"),
         _ => None,
     }
 }

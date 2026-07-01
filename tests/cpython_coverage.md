@@ -302,6 +302,8 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ Counter type-object __module__ metadata
   behavior, object.__getattribute__ ChainMap type-object __module__ metadata
   behavior, object.__getattribute__ UserDict type-object __module__ metadata
+  behavior, object.__getattribute__ UserDict type-object __base__ metadata
+  behavior, object.__getattribute__ UserDict type-object __bases__ metadata
   behavior, object.__getattribute__ UserList type-object __module__ metadata
   behavior, object.__getattribute__ UserString type-object __module__ metadata
   behavior, object.__getattribute__ namedtuple builtin __module__ metadata
@@ -799,6 +801,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userdict_instance_doc_attribute_diff_subset`,
   `cpython_collections_userdict_type_doc_attribute_diff_subset`,
+  `cpython_collections_userdict_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userlist_mutating_eq_diff_subset`,
@@ -5076,6 +5079,11 @@ without adding general custom encoder/decoder class support.
   `UserDict` type-object `__doc__` as CPython's None-valued metadata for
   direct and `object.__getattribute__` lookup plus `dir(UserDict)` visibility,
   without expanding unrelated UserDict metadata.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_type_base_metadata_diff_subset` and
+  `cpython_collections_userdict_type_base_metadata_subset`, covering
+  `UserDict` direct base metadata through `__base__` and `__bases__`, pinned to
+  `collections.abc.MutableMapping` without expanding full `__mro__` parity.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

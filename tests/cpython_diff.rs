@@ -19601,6 +19601,20 @@ for label, value in [('direct', UserDict.__doc__), ('object-getattribute', objec
 }
 
 #[test]
+fn cpython_collections_userdict_type_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py UserDict public direct base metadata subset",
+        name: "collections-userdict-type-base-metadata",
+        source: r#"from collections import UserDict
+from collections.abc import MutableMapping
+base = object.__getattribute__(UserDict, '__base__')
+bases = object.__getattribute__(UserDict, '__bases__')
+print('base', base is MutableMapping, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bases[0].__module__, bases[0].__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
