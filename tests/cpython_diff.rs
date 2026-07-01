@@ -21101,6 +21101,21 @@ print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_copy_module_all_exports_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public __all__ exports subset",
+        name: "copy-module-all-exports",
+        source: r#"import copy
+print(copy.__all__)
+print(copy.__dict__['__all__'])
+print('__all__' in dir(copy), copy.__all__ == ['Error', 'copy', 'deepcopy', 'replace'])
+for name in copy.__all__:
+    value = getattr(copy, name)
+    print(name, callable(value), getattr(value, '__name__', None))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

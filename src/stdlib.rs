@@ -24,6 +24,7 @@ pub(crate) const FUNCTOOLS_WRAPPER_ASSIGNMENTS: &[&str] = &[
     "__type_params__",
 ];
 pub(crate) const FUNCTOOLS_WRAPPER_UPDATES: &[&str] = &["__dict__"];
+const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
     "BuiltinFunctionType",
@@ -2607,6 +2608,7 @@ fn copy_module_value() -> Value {
         "copy",
         vec![
             ("__package__", Value::String(String::new())),
+            ("__all__", string_list_value(COPY_ALL)),
             ("Error", error.clone()),
             ("error", error),
             ("dispatch_table", dict_value(Vec::new())),

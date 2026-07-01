@@ -22333,6 +22333,29 @@ print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_module_all_exports_subset() {
+    assert_output(
+        r#"import copy
+print(copy.__all__)
+print(copy.__dict__['__all__'])
+print('__all__' in dir(copy), copy.__all__ == ['Error', 'copy', 'deepcopy', 'replace'])
+for name in copy.__all__:
+    value = getattr(copy, name)
+    print(name, callable(value), getattr(value, '__name__', None))"#,
+        &[
+            "['Error', 'copy', 'deepcopy', 'replace']",
+            "['Error', 'copy', 'deepcopy', 'replace']",
+            "True True",
+            "Error True Error",
+            "copy True copy",
+            "deepcopy True deepcopy",
+            "replace True replace",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_public_subset() {
     assert_output(
         concat!(
