@@ -796,6 +796,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_string_escape_diff_subset`,
   `cpython_json_dumps_key_coercion_diff_subset`,
   `cpython_json_dumps_strenum_diff_subset`,
+  `cpython_json_dumps_strenum_member_type_error_diff_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset`,
   `cpython_json_dumps_counter_subclass_diff_subset`,
   `cpython_json_dumps_sequence_subclass_iter_diff_subset`,
@@ -1386,6 +1387,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_key_coercion_subset`,
   `cpython_json_dumps_strenum_diff_subset` /
   `cpython_json_dumps_strenum_subset`,
+  `cpython_json_dumps_strenum_member_type_error_diff_subset` /
+  `cpython_json_dumps_strenum_member_type_error_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset` /
   `cpython_json_dumps_ordered_dict_subset`,
   `cpython_json_dumps_counter_subclass_diff_subset` /
@@ -1600,6 +1603,14 @@ without expanding into arbitrary encoder or mapping-protocol support.
 class-statement string members. The slice covers aliases, value lookup,
 `name` / `value`, and `__members__`, without adding full `enum.Enum`,
 `auto()`, `Flag`, or `IntFlag`.
+
+`cpython_json_dumps_strenum_member_type_error_subset`, backed by
+`cpython_json_dumps_strenum_member_type_error_diff_subset`, keeps
+`enum.StrEnum` public member type errors for non-string public class-statement values,
+including CPython's `TypeError: <value> is not a string` text for int, bytes,
+bool, and `None` values; ordinary methods, staticmethods, classmethods, and
+properties are not treated as members, without adding tuple decoding,
+`_ignore_`, private-name, `auto()`, `Flag`, or `IntFlag` semantics.
 
 `cpython_json_dumps_ordered_dict_subset`, backed by
 `cpython_json_dumps_ordered_dict_diff_subset`, keeps `dumps()` treating the

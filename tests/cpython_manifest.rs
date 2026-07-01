@@ -8380,6 +8380,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_string_escape_subset",
             "cpython_json_dumps_key_coercion_subset",
             "cpython_json_dumps_strenum_subset",
+            "cpython_json_dumps_strenum_member_type_error_subset",
             "cpython_json_dumps_ordered_dict_subset",
             "cpython_json_dumps_counter_subclass_subset",
             "cpython_json_dumps_sequence_subclass_iter_subset",
@@ -8475,6 +8476,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_string_escape_diff_subset",
         "cpython_json_dumps_key_coercion_diff_subset",
         "cpython_json_dumps_strenum_diff_subset",
+        "cpython_json_dumps_strenum_member_type_error_diff_subset",
         "cpython_json_dumps_ordered_dict_diff_subset",
         "cpython_json_dumps_counter_subclass_diff_subset",
         "cpython_json_dumps_sequence_subclass_iter_diff_subset",
@@ -8914,6 +8916,88 @@ fn json_dumps_strenum_diff_covers_subset_surface() {
             assert!(
                 document.contains(required),
                 "json docs must describe StrEnum dumps boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_dumps_strenum_member_type_errors_cover_subset_surface() {
+    let diff_name = "cpython_json_dumps_strenum_member_type_error_diff_subset";
+    let subset_name = "cpython_json_dumps_strenum_member_type_error_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json StrEnum member type-error CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json StrEnum member type-error subset evidence must exist"
+    );
+
+    for required in [
+        "from enum import StrEnum",
+        "class Bad(StrEnum):",
+        "bad = 1",
+        "bad = b'x'",
+        "bad = True",
+        "bad = None",
+        "class Good(StrEnum):",
+        "def label(self):",
+        "@staticmethod",
+        "@classmethod",
+        "@property",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json StrEnum member type-error diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "int-member TypeError 1 is not a string",
+        "bytes-member TypeError b'x' is not a string",
+        "bool-member TypeError True is not a string",
+        "none-member TypeError None is not a string",
+        "methods x s Good p",
+        "<Good.ok: 'x'>",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json StrEnum member type-error subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "return Err(format!(\"TypeError: {} is not a string\", repr_value(&value)))",
+        "str_enum_nonmember_descriptor",
+        "Value::StaticMethod",
+        "Value::ClassMethod",
+        "Value::Property",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json StrEnum member type-error implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`enum.StrEnum` public member type errors",
+            "non-string public class-statement values",
+            "`TypeError: <value> is not a string`",
+            "ordinary methods, staticmethods, classmethods",
+            "properties are not treated as members",
+            "without adding tuple decoding",
+            "`_ignore_`, private-name, `auto()`, `Flag`, or `IntFlag` semantics",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe StrEnum member type-error boundary `{required}`"
             );
         }
     }

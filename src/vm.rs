@@ -52382,18 +52382,23 @@ fn install_str_enum_members(class_value: &Value) -> Result<(), String> {
         return Ok(());
     }
 
-    let candidates = scope_dict_entries(attrs)
-        .into_iter()
-        .filter_map(|(member_name, value)| {
-            let Some(member_name) = value_as_string(&member_name).map(str::to_string) else {
-                return None;
-            };
-            if !is_int_enum_member_name(&member_name) {
-                return None;
-            }
-            str_enum_candidate_storage(&value).map(|storage| (member_name, storage))
-        })
-        .collect::<Vec<_>>();
+    let mut candidates = Vec::new();
+    for (member_name, value) in scope_dict_entries(attrs) {
+        let Some(member_name) = value_as_string(&member_name).map(str::to_string) else {
+            continue;
+        };
+        if !is_int_enum_member_name(&member_name) {
+            continue;
+        }
+        if let Some(storage) = str_enum_candidate_storage(&value) {
+            candidates.push((member_name, storage));
+            continue;
+        }
+        if str_enum_nonmember_descriptor(&value) {
+            continue;
+        }
+        return Err(format!("TypeError: {} is not a string", repr_value(&value)));
+    }
 
     let mut canonical_members: Vec<(Value, Value)> = Vec::new();
     let mut member_entries = Vec::new();
@@ -52433,6 +52438,18 @@ fn str_enum_candidate_storage(value: &Value) -> Option<Value> {
         )),
         _ => None,
     }
+}
+
+fn str_enum_nonmember_descriptor(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::Function { .. }
+            | Value::TypesCoroutineFunction { .. }
+            | Value::StaticMethod { .. }
+            | Value::ClassMethod { .. }
+            | Value::Property { .. }
+            | Value::CachedProperty { .. }
+    )
 }
 
 fn str_enum_lookup_storage(value: &Value) -> Option<Value> {

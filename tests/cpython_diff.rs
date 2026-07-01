@@ -732,6 +732,45 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_json_dumps_strenum_member_type_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/enum public StrEnum member type error subset",
+        name: "json-dumps-strenum-member-type-error",
+        source: r#"from enum import StrEnum
+
+def show(label, source):
+    try:
+        ns = {}
+        exec(source, ns)
+        cls = ns['Bad']
+        print(label, 'OK', tuple((name, repr(value)) for name, value in cls.__members__.items()))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+
+show('int-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = 1")
+show('bytes-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = b'x'")
+show('bool-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = True")
+show('none-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = None")
+
+class Good(StrEnum):
+    ok = 'x'
+    def label(self):
+        return self.value
+    @staticmethod
+    def stat():
+        return 's'
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+    @property
+    def prop(self):
+        return 'p'
+
+print('methods', Good.ok.label(), Good.stat(), Good.cls_name(), Good.ok.prop, tuple((name, repr(value)) for name, value in Good.__members__.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_missing_keyerror_payload_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public dict missing-key KeyError args behavior",

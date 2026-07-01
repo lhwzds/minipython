@@ -36266,6 +36266,51 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_json_dumps_strenum_member_type_error_subset() {
+    assert_output_with_stack(
+        r#"from enum import StrEnum
+
+def show(label, source):
+    try:
+        ns = {}
+        exec(source, ns)
+        cls = ns['Bad']
+        print(label, 'OK', tuple((name, repr(value)) for name, value in cls.__members__.items()))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+
+show('int-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = 1")
+show('bytes-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = b'x'")
+show('bool-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = True")
+show('none-member', "from enum import StrEnum\nclass Bad(StrEnum):\n    bad = None")
+
+class Good(StrEnum):
+    ok = 'x'
+    def label(self):
+        return self.value
+    @staticmethod
+    def stat():
+        return 's'
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+    @property
+    def prop(self):
+        return 'p'
+
+print('methods', Good.ok.label(), Good.stat(), Good.cls_name(), Good.ok.prop, tuple((name, repr(value)) for name, value in Good.__members__.items()))"#,
+        &[
+            "int-member TypeError 1 is not a string",
+            "bytes-member TypeError b'x' is not a string",
+            "bool-member TypeError True is not a string",
+            "none-member TypeError None is not a string",
+            "methods x s Good p ((\'ok\', \"<Good.ok: 'x'>\"),)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_sequence_subclass_iter_subset() {
     assert_output(
         r#"import json
