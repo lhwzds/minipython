@@ -749,6 +749,7 @@ Recent runtime migration notes:
   `cpython_types_float_format_diff_subset`,
   `cpython_collections_counter_basics_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
+  `cpython_collections_counter_instance_doc_attribute_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_comparison_diff_subset`,
@@ -1315,6 +1316,12 @@ Recent runtime migration notes:
   positive/negative filtering, multiset arithmetic, and equality with matching
   counts, including direct `Counter.__pos__()` / `Counter.__neg__()` public
   dunder calls.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_instance_doc_attribute_diff_subset` and
+  `cpython_collections_counter_instance_doc_attribute_subset`, covering
+  `Counter` instance `__doc__` lookup for empty, iterable-backed, and
+  mapping-backed Counters, including `dir()` visibility, without promoting
+  full writable Counter instance dictionaries.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public

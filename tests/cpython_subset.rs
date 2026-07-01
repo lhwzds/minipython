@@ -58846,6 +58846,24 @@ fn cpython_collections_namedtuple_field_doc_subset() {
     );
 }
 
+// Mirrors CPython's public `Counter` instance `__doc__` type-attribute
+// lookup while leaving full writable Counter instance dictionaries outside
+// this slice.
+#[test]
+fn cpython_collections_counter_instance_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import Counter
+for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', Counter({'a': 2, 'b': 1}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == Counter.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559",
+            "text str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559",
+            "items str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
 // This first Counter slice covers the public mapping-style behavior and core
 // Counter helpers; arithmetic and multiset-specific methods remain separate.

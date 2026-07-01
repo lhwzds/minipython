@@ -49805,6 +49805,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
             names.extend(builtin_type_dir_names("mappingproxy"))
         }
+        Value::Counter { .. } => names.extend(builtin_type_dir_names("Counter")),
         Value::ChainMap { .. } => names.extend(builtin_type_dir_names("ChainMap")),
         Value::List(_) => names.extend(builtin_type_dir_names("list")),
         value if list_subclass_storage(value).is_some() => {
@@ -58337,6 +58338,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::Counter { entries } => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("Counter")
+                    .expect("Counter type doc is defined")
+                    .to_string(),
+            )),
             "__init__" | "clear" | "copy" | "elements" | "fromkeys" | "get" | "items" | "keys"
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
             | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
@@ -60944,6 +60950,50 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "Lookups search the underlying mappings successively until a key is found.\n",
             "In contrast, writes, updates, and deletions only operate on the first\n",
             "mapping.\n",
+            "\n"
+        )),
+        "Counter" => Some(concat!(
+            "Dict subclass for counting hashable items.  Sometimes called a bag\n",
+            "or multiset.  Elements are stored as dictionary keys and their counts\n",
+            "are stored as dictionary values.\n",
+            "\n",
+            ">>> c = Counter('abcdeabcdabcaba')  # count elements from a string\n",
+            "\n",
+            ">>> c.most_common(3)                # three most common elements\n",
+            "[('a', 5), ('b', 4), ('c', 3)]\n",
+            ">>> sorted(c)                       # list all unique elements\n",
+            "['a', 'b', 'c', 'd', 'e']\n",
+            ">>> ''.join(sorted(c.elements()))   # list elements with repetitions\n",
+            "'aaaaabbbbcccdde'\n",
+            ">>> sum(c.values())                 # total of all counts\n",
+            "15\n",
+            "\n",
+            ">>> c['a']                          # count of letter 'a'\n",
+            "5\n",
+            ">>> for elem in 'shazam':           # update counts from an iterable\n",
+            "...     c[elem] += 1                # by adding 1 to each element's count\n",
+            ">>> c['a']                          # now there are seven 'a'\n",
+            "7\n",
+            ">>> del c['b']                      # remove all 'b'\n",
+            ">>> c['b']                          # now there are zero 'b'\n",
+            "0\n",
+            "\n",
+            ">>> d = Counter('simsalabim')       # make another counter\n",
+            ">>> c.update(d)                     # add in the second counter\n",
+            ">>> c['a']                          # now there are nine 'a'\n",
+            "9\n",
+            "\n",
+            ">>> c.clear()                       # empty the counter\n",
+            ">>> c\n",
+            "Counter()\n",
+            "\n",
+            "Note:  If a count is set to zero or reduced to zero, it will remain\n",
+            "in the counter until the entry is deleted or the counter is cleared:\n",
+            "\n",
+            ">>> c = Counter('aaabbc')\n",
+            ">>> c['b'] -= 2                     # reduce the count of 'b' by two\n",
+            ">>> c.most_common()                 # 'b' is still in, but its count is zero\n",
+            "[('a', 3), ('c', 1), ('b', 0)]\n",
             "\n"
         )),
         "defaultdict" => Some(concat!(

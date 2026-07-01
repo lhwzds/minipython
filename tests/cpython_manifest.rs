@@ -17909,6 +17909,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
+            "cpython_collections_counter_instance_doc_attribute_subset",
             "cpython_collections_counter_conversions_subset",
             "cpython_collections_counter_init_update_subset",
             "cpython_collections_counter_comparison_subset",
@@ -18426,6 +18427,69 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
                 && counter_public_subset_body.contains(required),
             "Counter public diff and subset evidence must cover `{required}`"
         );
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_instance_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter instance __doc__ behavior"
+    );
+    let counter_instance_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_instance_doc_attribute_diff_subset",
+    );
+    let counter_instance_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_instance_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import Counter",
+        "for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', Counter({'a': 2, 'b': 1}))]",
+        "doc = value.__doc__",
+        "doc == Counter.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            counter_instance_doc_diff_body.contains(required)
+                && counter_instance_doc_subset_body.contains(required),
+            "Counter instance __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559\"",
+        "\"text str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559\"",
+        "\"items str True True Dict subclass for counting hashable items.  Sometimes called a bag 1559\"",
+    ] {
+        assert!(
+            counter_instance_doc_subset_body.contains(required),
+            "Counter instance __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::Counter { entries } => match name",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtin_type_doc(\"Counter\")",
+        "expect(\"Counter type doc is defined\")",
+        "Value::Counter { .. } => names.extend(builtin_type_dir_names(\"Counter\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "Counter instance __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_counter_instance_doc_attribute_subset",
+            "cpython_collections_counter_instance_doc_attribute_diff_subset",
+            "`Counter` instance `__doc__`",
+            "without promoting",
+            "full writable Counter instance dictionaries",
+        ] {
+            assert!(
+                document.contains(required),
+                "Counter instance __doc__ docs must contain `{required}`"
+            );
+        }
     }
     assert!(
         row.diff_evidence

@@ -17525,6 +17525,18 @@ print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"#,
 }
 
 #[test]
+fn cpython_collections_counter_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Counter public instance __doc__ attribute subset",
+        name: "collections-counter-instance-doc-attribute",
+        source: r#"from collections import Counter
+for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', Counter({'a': 2, 'b': 1}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == Counter.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_basics_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter basics subset",
