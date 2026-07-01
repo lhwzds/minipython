@@ -45,6 +45,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
   and `__init__` only when `__new__` returns a matching instance.
+- Added `cpython_tuple_subclass_new_storage_subset` and
+  `cpython_tuple_subclass_new_storage_diff_subset` for tuple subclass `__new__` storage,
+  `tuple.__new__` direct construction, non-matching return behavior, and
+  `__init__` only when `__new__` returns a matching tuple subclass, without
+  adding pickle helpers, tuple C-layout internals, or full immutable-sequence
+  method-table parity.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

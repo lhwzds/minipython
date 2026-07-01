@@ -33,6 +33,12 @@ Recent runtime migration notes:
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
   and `__init__` only when `__new__` returns a matching instance.
+- `cpython_tuple_subclass_new_storage_subset`, backed by
+  `cpython_tuple_subclass_new_storage_diff_subset`, now pins tuple subclass `__new__` storage,
+  `tuple.__new__` direct construction, non-matching `__new__`
+  return behavior, and `__init__` only when `__new__` returns a matching tuple subclass,
+  without expanding into pickle helpers, tuple C-layout internals, or
+  full immutable-sequence method-table parity.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

@@ -9439,6 +9439,7 @@ impl Vm {
 
                 self.call_list(args)
             }
+            Value::Builtin(name) if name == "tuple.__new__" => self.call_tuple_new(args, keywords),
             Value::Builtin(name) if name == "tuple" => {
                 if !keywords.is_empty() {
                     return Err(format!("TypeError: {name}() takes no keyword arguments"));
@@ -13242,6 +13243,33 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let has_own_new = attrs.borrow().contains_key("__new__");
+        if has_own_new {
+            let class = Value::Class {
+                name: name.clone(),
+                type_params: Vec::new(),
+                metaclass: None,
+                bases: bases.clone(),
+                attrs: attrs.clone(),
+            };
+            let instance =
+                self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), "__new__")?;
+            if !value_matches_class_value(&instance, &class) {
+                return Ok(instance);
+            }
+            if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+                let result = self.call_value_with_keywords(
+                    bind_method(init, instance.clone()),
+                    args,
+                    keywords,
+                )?;
+                if !matches!(result, Value::None) {
+                    return Err("__init__() should return None".to_string());
+                }
+            }
+            return Ok(instance);
+        }
+
         let storage = self.call_tuple(args.clone())?;
         let fields = new_scope();
         fields
@@ -23347,6 +23375,50 @@ impl Vm {
             values => Err(format!(
                 "tuple() expected at most 1 argument, got {}",
                 values.len()
+            )),
+        }
+    }
+
+    fn call_tuple_new(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: tuple() takes no keyword arguments".to_string());
+        }
+        let Some((class, rest)) = args.split_first() else {
+            return Err("TypeError: tuple.__new__(): not enough arguments".to_string());
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "TypeError: tuple expected at most 1 argument, got {}",
+                rest.len()
+            ));
+        }
+        let storage = self.call_tuple(rest.to_vec())?;
+        match class {
+            Value::Builtin(name) if name == "tuple" => Ok(storage),
+            Value::Class {
+                name, attrs, bases, ..
+            } if class_bases_include_builtin(bases, "tuple")
+                && class_bases_namedtuple_type(bases).is_none() =>
+            {
+                let fields = new_scope();
+                fields
+                    .borrow_mut()
+                    .insert(TUPLE_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+                Ok(Value::Instance {
+                    class_name: name.clone(),
+                    fields,
+                    class_attrs: attrs.clone(),
+                    class_bases: bases.clone(),
+                })
+            }
+            value => Err(format!(
+                "TypeError: tuple.__new__({}): {} is not a subtype of tuple",
+                class_display_name(value),
+                class_display_name(value)
             )),
         }
     }
@@ -51160,7 +51232,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "rotate",
         ],
-        "tuple" => &["count", "index"],
+        "tuple" => &["__new__", "count", "index"],
         "range" => &["count", "index", "start", "stop", "step"],
         "bytes" => &[
             "__bytes__",
@@ -60478,6 +60550,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "list" && is_builtin_list_type_method(name) =>
         {
             Ok(Value::Builtin(format!("list.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__new__" => {
+            Ok(Value::Builtin("tuple.__new__".to_string()))
         }
         Value::Builtin(function_name)
             if matches!(function_name.as_str(), "int" | "bool")

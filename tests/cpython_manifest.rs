@@ -106,6 +106,100 @@ fn user_class_new_staticmethod_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_subclass_new_storage_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_subclass_new_storage_diff_subset";
+    let subset_name = "cpython_tuple_subclass_new_storage_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple subclass __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple subclass __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "return tuple.__new__(cls, (1, 2))",
+        "def __init__(self):",
+        "class TArg(tuple):",
+        "return tuple.__new__(cls, value)",
+        "class ReturnsOther(tuple):",
+        "return tuple.__new__(Other, (9,))",
+        "class ReturnsPlain(tuple):",
+        "return (7, 8)",
+        "hasattr(tuple, '__new__')",
+        "tuple.__new__(tuple, [5, 6])",
+        "tuple.__new__(Direct, [7, 8])",
+        "tuple.__new__(list)",
+        "tuple.__new__(tuple, [], [])",
+        "tuple.__new__(tuple, iterable=[])",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple subclass __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"new T\"",
+        "\"init [1, 2]\"",
+        "\"T (1, 2) [1, 2] 2 T True\"",
+        "\"new-arg TArg [3, 4]\"",
+        "\"init-arg [3, 4] [3, 4]\"",
+        "\"TArg (3, 4) [3, 4] 2 TArg\"",
+        "\"other (9,) [9] Other\"",
+        "\"plain (7, 8) [7, 8] tuple\"",
+        "\"visible True True True\"",
+        "\"direct-exact (5, 6) tuple\"",
+        "\"direct-sub (7, 8) [7, 8] Direct\"",
+        "\"bad-class TypeError tuple.__new__(list): list is not a subtype of tuple",
+        "\"too-many TypeError tuple expected at most 1 argument, got 2",
+        "\"keyword TypeError tuple() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple subclass __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_tuple_new(",
+        "Value::Builtin(name) if name == \"tuple.__new__\"",
+        "function_name == \"tuple\" && name == \"__new__\"",
+        "\"tuple\" => &[\"__new__\", \"count\", \"index\"]",
+        "let has_own_new = attrs.borrow().contains_key(\"__new__\");",
+        "self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), \"__new__\")",
+        "value_matches_class_value(&instance, &class)",
+        "TUPLE_SUBCLASS_STORAGE_FIELD",
+        "tuple.__new__({}): {} is not a subtype of tuple",
+        "tuple expected at most 1 argument",
+        "tuple() takes no keyword arguments",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple subclass __new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple subclass `__new__` storage",
+            "`tuple.__new__` direct construction",
+            "`__init__` only when `__new__` returns a matching tuple subclass",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple subclass __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

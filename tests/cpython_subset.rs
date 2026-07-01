@@ -28866,6 +28866,75 @@ print(type(float_value).__name__, float_value, isinstance(float_value, float), f
     );
 }
 
+#[test]
+fn cpython_tuple_subclass_new_storage_subset() {
+    assert_output(
+        r#"class T(tuple):
+    def __new__(cls):
+        print('new', cls.__name__)
+        return tuple.__new__(cls, (1, 2))
+    def __init__(self):
+        print('init', list(self))
+t = T()
+print('T', t, list(t), len(t), type(t).__name__, isinstance(t, tuple))
+class TArg(tuple):
+    def __new__(cls, value):
+        print('new-arg', cls.__name__, list(value))
+        return tuple.__new__(cls, value)
+    def __init__(self, value):
+        print('init-arg', list(self), list(value))
+arg = TArg((3, 4))
+print('TArg', arg, list(arg), len(arg), type(arg).__name__)
+class Other(tuple):
+    pass
+class ReturnsOther(tuple):
+    def __new__(cls):
+        return tuple.__new__(Other, (9,))
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, list(other), type(other).__name__)
+class ReturnsPlain(tuple):
+    def __new__(cls):
+        return (7, 8)
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, list(plain), type(plain).__name__)
+class Direct(tuple):
+    pass
+print('visible', hasattr(tuple, '__new__'), '__new__' in dir(tuple), '__new__' in dir(Direct))
+print('direct-exact', tuple.__new__(tuple, [5, 6]), type(tuple.__new__(tuple, [5, 6])).__name__)
+direct = tuple.__new__(Direct, [7, 8])
+print('direct-sub', direct, list(direct), type(direct).__name__)
+for label, call in [
+    ('bad-class', lambda: tuple.__new__(list)),
+    ('too-many', lambda: tuple.__new__(tuple, [], [])),
+    ('keyword', lambda: tuple.__new__(tuple, iterable=[])),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "new T",
+            "init [1, 2]",
+            "T (1, 2) [1, 2] 2 T True",
+            "new-arg TArg [3, 4]",
+            "init-arg [3, 4] [3, 4]",
+            "TArg (3, 4) [3, 4] 2 TArg",
+            "other (9,) [9] Other",
+            "plain (7, 8) [7, 8] tuple",
+            "visible True True True",
+            "direct-exact (5, 6) tuple",
+            "direct-sub (7, 8) [7, 8] Direct",
+            "bad-class TypeError tuple.__new__(list): list is not a subtype of tuple ('tuple.__new__(list): list is not a subtype of tuple',)",
+            "too-many TypeError tuple expected at most 1 argument, got 2 ('tuple expected at most 1 argument, got 2',)",
+            "keyword TypeError tuple() takes no keyword arguments ('tuple() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

@@ -16183,6 +16183,61 @@ print(type(float_value).__name__, float_value, isinstance(float_value, float), f
 }
 
 #[test]
+fn cpython_tuple_subclass_new_storage_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py tuple subclass __new__ storage subset",
+        name: "tuple-subclass-new-storage",
+        source: r#"class T(tuple):
+    def __new__(cls):
+        print('new', cls.__name__)
+        return tuple.__new__(cls, (1, 2))
+    def __init__(self):
+        print('init', list(self))
+t = T()
+print('T', t, list(t), len(t), type(t).__name__, isinstance(t, tuple))
+class TArg(tuple):
+    def __new__(cls, value):
+        print('new-arg', cls.__name__, list(value))
+        return tuple.__new__(cls, value)
+    def __init__(self, value):
+        print('init-arg', list(self), list(value))
+arg = TArg((3, 4))
+print('TArg', arg, list(arg), len(arg), type(arg).__name__)
+class Other(tuple):
+    pass
+class ReturnsOther(tuple):
+    def __new__(cls):
+        return tuple.__new__(Other, (9,))
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', other, list(other), type(other).__name__)
+class ReturnsPlain(tuple):
+    def __new__(cls):
+        return (7, 8)
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', plain, list(plain), type(plain).__name__)
+class Direct(tuple):
+    pass
+print('visible', hasattr(tuple, '__new__'), '__new__' in dir(tuple), '__new__' in dir(Direct))
+print('direct-exact', tuple.__new__(tuple, [5, 6]), type(tuple.__new__(tuple, [5, 6])).__name__)
+direct = tuple.__new__(Direct, [7, 8])
+print('direct-sub', direct, list(direct), type(direct).__name__)
+for label, call in [
+    ('bad-class', lambda: tuple.__new__(list)),
+    ('too-many', lambda: tuple.__new__(tuple, [], [])),
+    ('keyword', lambda: tuple.__new__(tuple, iterable=[])),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",
