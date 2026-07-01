@@ -27715,6 +27715,35 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
     );
 }
 
+// Pins the MiniPython-supported `super` object public attributes that CPython
+// exposes through dir() without adding super instance dictionaries.
+#[test]
+fn cpython_super_object_dir_supported_attributes_subset() {
+    assert_output(
+        r#"class Base:
+    def method(self):
+        return 'base'
+class Child(Base):
+    def make(self):
+        return super()
+
+s = Child().make()
+supported = ['__thisclass__', '__self__', '__self_class__', '__get__']
+print('supported-visible', [name in dir(s) for name in supported])
+print('class-visible', '__class__' in dir(s))
+print('target-method-visible', 'method' in dir(s))
+print('extra-visible', 'extra' in dir(s))
+print('supported-order', [name for name in dir(s) if name in supported])"#,
+        &[
+            "supported-visible [True, True, True, True]",
+            "class-visible True",
+            "target-method-visible False",
+            "extra-visible False",
+            "supported-order ['__get__', '__self__', '__self_class__', '__thisclass__']",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
 // MiniPython checks the BaseException args/display/repr subset needed by
 // migrated exception behavior tests.

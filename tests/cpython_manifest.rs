@@ -24188,6 +24188,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_no_setter_deleter_error_subset",
             "cpython_property_doc_metadata_subset",
             "cpython_super_attribute_assignment_errors_subset",
+            "cpython_super_object_dir_supported_attributes_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_object_constructor_argument_error_subset",
@@ -24254,6 +24255,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_no_setter_deleter_error_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
         "cpython_super_attribute_assignment_errors_diff_subset",
+        "cpython_super_object_dir_supported_attributes_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_object_constructor_argument_error_diff_subset",
@@ -26139,6 +26141,71 @@ fn super_attribute_assignment_errors_subset_has_focused_diff_evidence() {
                 && document.contains("super object attribute assignment/deletion errors")
                 && document.contains("super instance dictionaries"),
             "super attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn super_object_dir_supported_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_super_object_dir_supported_attributes_subset(",
+        "class Child(Base):",
+        "return super()",
+        "supported = ['__thisclass__', '__self__', '__self_class__', '__get__']",
+        "print('supported-visible', [name in dir(s) for name in supported])",
+        "print('class-visible', '__class__' in dir(s))",
+        "print('target-method-visible', 'method' in dir(s))",
+        "print('extra-visible', 'extra' in dir(s))",
+        "\"supported-visible [True, True, True, True]\"",
+        "\"supported-order ['__get__', '__self__', '__self_class__', '__thisclass__']\"",
+        "without adding super instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super object dir subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_super_object_dir_supported_attributes_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_super.py public super object dir supported attributes",
+        "name: \"super-object-dir-supported-attributes\"",
+        "class Child(Base):",
+        "return super()",
+        "supported = ['__thisclass__', '__self__', '__self_class__', '__get__']",
+        "print('supported-visible', [name in dir(s) for name in supported])",
+        "print('class-visible', '__class__' in dir(s))",
+        "print('target-method-visible', 'method' in dir(s))",
+        "print('extra-visible', 'extra' in dir(s))",
+    ] {
+        assert!(
+            body.contains(required),
+            "super object dir CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Super { .. } => names.extend(super_object_dir_names())",
+        "fn super_object_dir_names() -> Vec<String>",
+        "\"__thisclass__\"",
+        "\"__self_class__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super object dir implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_super_object_dir_supported_attributes_subset")
+                && document.contains("cpython_super_object_dir_supported_attributes_diff_subset")
+                && document.contains("super object dir() supported attributes")
+                && document.contains("super instance dictionaries"),
+            "super object dir evidence must be documented in coverage and migration notes"
         );
     }
 }

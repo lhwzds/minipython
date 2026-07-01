@@ -140,6 +140,10 @@ Recent runtime migration notes:
   `cpython_super_attribute_assignment_errors_diff_subset`, now pins super object attribute assignment/deletion errors
   for readonly public data attributes (`__thisclass__`, `__self__`, and
   `__self_class__`) plus no-`__dict__` missing-attribute errors without adding super instance dictionaries.
+- `cpython_super_object_dir_supported_attributes_subset`, backed by
+  `cpython_super_object_dir_supported_attributes_diff_subset`, now pins super object dir() supported attributes
+  for `__thisclass__`, `__self__`, `__self_class__`, `__get__`, and
+  `__class__` without adding super instance dictionaries or target class methods to `dir(super_obj)`.
 - `cpython_complex_public_attributes_subset`, backed by
   `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and
@@ -518,6 +522,7 @@ Recent runtime migration notes:
   `cpython_property_no_setter_deleter_error_diff_subset`,
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_super_attribute_assignment_errors_diff_subset`,
+  `cpython_super_object_dir_supported_attributes_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_object_constructor_argument_error_diff_subset`,

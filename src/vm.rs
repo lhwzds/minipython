@@ -49796,6 +49796,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .into_iter()
                 .map(str::to_string),
         ),
+        Value::Super { .. } => names.extend(super_object_dir_names()),
         Value::Frame { .. } => names.extend(
             [
                 "__class__",
@@ -49940,6 +49941,19 @@ fn builtin_function_dir_names() -> Vec<String> {
         "__module__",
         "__name__",
         "__qualname__",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
+}
+
+fn super_object_dir_names() -> Vec<String> {
+    [
+        "__class__",
+        "__get__",
+        "__self__",
+        "__self_class__",
+        "__thisclass__",
     ]
     .into_iter()
     .map(str::to_string)

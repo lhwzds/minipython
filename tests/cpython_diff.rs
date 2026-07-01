@@ -11111,6 +11111,28 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
 }
 
 #[test]
+fn cpython_super_object_dir_supported_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_super.py public super object dir supported attributes",
+        name: "super-object-dir-supported-attributes",
+        source: r#"class Base:
+    def method(self):
+        return 'base'
+class Child(Base):
+    def make(self):
+        return super()
+
+s = Child().make()
+supported = ['__thisclass__', '__self__', '__self_class__', '__get__']
+print('supported-visible', [name in dir(s) for name in supported])
+print('class-visible', '__class__' in dir(s))
+print('target-method-visible', 'method' in dir(s))
+print('extra-visible', 'extra' in dir(s))
+print('supported-order', [name for name in dir(s) if name in supported])"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",
