@@ -1248,6 +1248,31 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_rich_compare_operator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method equality operator subset",
+        name: "json-function-bound-method-rich-compare-operator",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    receiver = []
+    bound = getattr(json, name).__get__(receiver, list)
+    same_receiver = getattr(json, name).__get__(receiver, list)
+    equal_other_receiver = getattr(json, name).__get__([], list)
+    different_receiver = getattr(json, name).__get__([1], list)
+    different_function = getattr(json, 'dumps' if name == 'loads' else 'loads').__get__(receiver, list)
+    for label, other in [
+        ('same-receiver', same_receiver),
+        ('equal-other-receiver', equal_other_receiver),
+        ('different-receiver', different_receiver),
+        ('different-function', different_function),
+        ('non-method', 1),
+    ]:
+        print(name, label, bound == other, bound != other)
+    print(name, bound == bound, bound != bound, same_receiver == bound, same_receiver != bound)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_format_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __format__ wrapper subset",

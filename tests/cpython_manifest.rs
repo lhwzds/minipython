@@ -8737,6 +8737,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_get_wrapper_subset",
             "cpython_json_function_bound_method_dir_wrapper_subset",
             "cpython_json_function_bound_method_rich_compare_wrapper_subset",
+            "cpython_json_function_bound_method_rich_compare_operator_subset",
             "cpython_json_function_bound_method_format_wrapper_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_wrapper_subset",
@@ -8870,6 +8871,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_get_wrapper_diff_subset",
         "cpython_json_function_bound_method_dir_wrapper_diff_subset",
         "cpython_json_function_bound_method_rich_compare_wrapper_diff_subset",
+        "cpython_json_function_bound_method_rich_compare_operator_diff_subset",
         "cpython_json_function_bound_method_format_wrapper_diff_subset",
         "cpython_json_function_bound_method_hash_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
@@ -9178,6 +9180,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_rich_compare_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_rich_compare_wrapper_subset",
+    );
+    let json_function_bound_method_rich_compare_operator_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_rich_compare_operator_diff_subset",
+    );
+    let json_function_bound_method_rich_compare_operator_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_rich_compare_operator_subset",
     );
     let json_function_bound_method_format_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10185,6 +10195,53 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "bound == other",
+        "bound != other",
+        "same_receiver",
+        "equal_other_receiver",
+        "different_receiver",
+        "different_function",
+        "('non-method', 1)",
+        "bound == bound",
+        "same_receiver == bound",
+    ] {
+        assert!(
+            json_function_bound_method_rich_compare_operator_diff_body.contains(required)
+                && json_function_bound_method_rich_compare_operator_subset_body.contains(required),
+            "json public function bound method equality operator diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads same-receiver True False\"",
+        "\"loads equal-other-receiver False True\"",
+        "\"loads different-receiver False True\"",
+        "\"loads different-function False True\"",
+        "\"loads non-method False True\"",
+        "\"loads True False True False\"",
+        "\"dumps same-receiver True False\"",
+        "\"dumps equal-other-receiver False True\"",
+        "\"dumps different-receiver False True\"",
+        "\"dumps different-function False True\"",
+        "\"dumps non-method False True\"",
+        "\"dumps True False True False\"",
+    ] {
+        assert!(
+            json_function_bound_method_rich_compare_operator_subset_body.contains(required),
+            "json public function bound method equality operator subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn bound_methods_directly_equal(left: &Value, right: &Value) -> Option<bool>",
+        "bound_methods_directly_equal(left, right)",
+        "is_identical(left_function, right_function)",
+        "is_identical(left_receiver, right_receiver)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function bound method equality operator implementation must contain `{required}`"
+        );
+    }
+    for required in [
         "'__format__' in dir(bound)",
         "type(wrapper).__name__",
         "wrapper.__class__.__name__",
@@ -11023,6 +11080,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_dir_wrapper_diff_subset",
             "cpython_json_function_bound_method_rich_compare_wrapper_subset",
             "cpython_json_function_bound_method_rich_compare_wrapper_diff_subset",
+            "cpython_json_function_bound_method_rich_compare_operator_subset",
+            "cpython_json_function_bound_method_rich_compare_operator_diff_subset",
             "cpython_json_function_bound_method_format_wrapper_subset",
             "cpython_json_function_bound_method_format_wrapper_diff_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",

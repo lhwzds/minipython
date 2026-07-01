@@ -31277,6 +31277,10 @@ impl Vm {
             return Ok(value);
         }
 
+        if let Some(value) = bound_methods_directly_equal(left, right) {
+            return Ok(value);
+        }
+
         if let Some(message) = bytes_comparison_warning_message(left, right) {
             self.emit_bytes_comparison_warning(message)?;
         }

@@ -38249,6 +38249,43 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_rich_compare_operator_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    receiver = []
+    bound = getattr(json, name).__get__(receiver, list)
+    same_receiver = getattr(json, name).__get__(receiver, list)
+    equal_other_receiver = getattr(json, name).__get__([], list)
+    different_receiver = getattr(json, name).__get__([1], list)
+    different_function = getattr(json, 'dumps' if name == 'loads' else 'loads').__get__(receiver, list)
+    for label, other in [
+        ('same-receiver', same_receiver),
+        ('equal-other-receiver', equal_other_receiver),
+        ('different-receiver', different_receiver),
+        ('different-function', different_function),
+        ('non-method', 1),
+    ]:
+        print(name, label, bound == other, bound != other)
+    print(name, bound == bound, bound != bound, same_receiver == bound, same_receiver != bound)"#,
+        &[
+            "loads same-receiver True False",
+            "loads equal-other-receiver False True",
+            "loads different-receiver False True",
+            "loads different-function False True",
+            "loads non-method False True",
+            "loads True False True False",
+            "dumps same-receiver True False",
+            "dumps equal-other-receiver False True",
+            "dumps different-receiver False True",
+            "dumps different-function False True",
+            "dumps non-method False True",
+            "dumps True False True False",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_format_wrapper_subset() {
     assert_output(
         r#"import json
