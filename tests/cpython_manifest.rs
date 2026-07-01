@@ -8734,6 +8734,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_annotations_metadata_subset",
             "cpython_json_function_bound_method_dict_metadata_subset",
             "cpython_json_function_bound_method_globals_metadata_subset",
+            "cpython_json_function_bound_method_builtins_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
             "cpython_json_loads_escape_and_duplicate_key_subset",
@@ -8854,6 +8855,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_annotations_metadata_diff_subset",
         "cpython_json_function_bound_method_dict_metadata_diff_subset",
         "cpython_json_function_bound_method_globals_metadata_diff_subset",
+        "cpython_json_function_bound_method_builtins_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -9120,6 +9122,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_globals_metadata_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_globals_metadata_subset",
+    );
+    let json_function_bound_method_builtins_metadata_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_builtins_metadata_diff_subset",
+    );
+    let json_function_bound_method_builtins_metadata_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_builtins_metadata_subset",
     );
     for required in [
         "json.__package__",
@@ -9708,6 +9718,31 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method __globals__ metadata subset output must pin `{required}`"
         );
     }
+    for required in [
+        "value = bound.__builtins__",
+        "value['len']([1, 2, 3])",
+        "'print' in value",
+        "value is function.__builtins__",
+        "bound.__getattribute__('__builtins__') is function.__builtins__",
+        "'__builtins__' in dir(bound)",
+    ] {
+        assert!(
+            json_function_bound_method_builtins_metadata_diff_body.contains(required)
+                && json_function_bound_method_builtins_metadata_subset_body.contains(required),
+            "json public function bound method __builtins__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads dict 3 True True\"",
+        "\"loads True False\"",
+        "\"dumps dict 3 True True\"",
+        "\"dumps True False\"",
+    ] {
+        assert!(
+            json_function_bound_method_builtins_metadata_subset_body.contains(required),
+            "json public function bound method __builtins__ metadata subset output must pin `{required}`"
+        );
+    }
     assert!(
         STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"json\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __package__ metadata"
@@ -9864,6 +9899,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must delegate json public function bound method __globals__ metadata"
     );
     assert!(
+        VM_SOURCE.contains("\"__builtins__\"")
+            && VM_SOURCE.contains(
+                "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
+            )
+            && VM_SOURCE.contains("load_attribute(*function, \"__builtins__\")"),
+        "VM must delegate json public function bound method __builtins__ metadata"
+    );
+    assert!(
         VALUE_SOURCE.contains("fn json_builtin_bound_method_display_name(name: &str)")
             && VALUE_SOURCE.contains("\"json.loads\" => Some(\"loads\")")
             && VALUE_SOURCE.contains("\"json.dumps\" => Some(\"dumps\")")
@@ -9919,6 +9962,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_dict_metadata_diff_subset",
             "cpython_json_function_bound_method_globals_metadata_subset",
             "cpython_json_function_bound_method_globals_metadata_diff_subset",
+            "cpython_json_function_bound_method_builtins_metadata_subset",
+            "cpython_json_function_bound_method_builtins_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
             "`json.loads.__module__`",
@@ -9955,6 +10000,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function bound method `__annotations__` metadata",
             "json public function bound method `__dict__` metadata",
             "json public function bound method `__globals__` metadata",
+            "json public function bound method `__builtins__` metadata",
         ] {
             assert!(
                 document.contains(required),

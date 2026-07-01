@@ -1104,6 +1104,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_builtins_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __builtins__ metadata subset",
+        name: "json-function-bound-method-builtins-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__builtins__
+    print(name, type(value).__name__, value['len']([1, 2, 3]), 'print' in value, value is function.__builtins__)
+    print(name, bound.__getattribute__('__builtins__') is function.__builtins__, '__builtins__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",
