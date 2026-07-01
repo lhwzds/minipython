@@ -21129,6 +21129,19 @@ print(copy.copy.__module__ == copy.deepcopy.__module__ == copy.replace.__module_
 }
 
 #[test]
+fn cpython_copy_function_qualname_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __qualname__ metadata subset",
+        name: "copy-function-qualname-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__qualname__, value.__qualname__ == name)
+print(copy.copy.__qualname__, copy.deepcopy.__qualname__, copy.replace.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

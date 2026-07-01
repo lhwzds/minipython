@@ -22374,6 +22374,24 @@ print(copy.copy.__module__ == copy.deepcopy.__module__ == copy.replace.__module_
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_qualname_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__qualname__, value.__qualname__ == name)
+print(copy.copy.__qualname__, copy.deepcopy.__qualname__, copy.replace.__qualname__)"#,
+        &[
+            "copy copy True",
+            "deepcopy deepcopy True",
+            "replace replace True",
+            "copy deepcopy replace",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_public_subset() {
     assert_output(
         concat!(

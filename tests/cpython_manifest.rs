@@ -22805,6 +22805,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_module_package_metadata_subset",
             "cpython_copy_module_all_exports_subset",
             "cpython_copy_function_module_metadata_subset",
+            "cpython_copy_function_qualname_metadata_subset",
             "cpython_copy_public_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_copy_replace_custom_hook_subset",
@@ -22824,6 +22825,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_module_package_metadata_diff_subset",
         "cpython_copy_module_all_exports_diff_subset",
         "cpython_copy_function_module_metadata_diff_subset",
+        "cpython_copy_function_qualname_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
         "cpython_collections_defaultdict_copy_module_diff_subset",
         "cpython_copy_replace_custom_hook_diff_subset",
@@ -22867,6 +22869,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     let function_module_subset = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_copy_function_module_metadata_subset",
+    );
+    let function_qualname_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_function_qualname_metadata_diff_subset",
+    );
+    let function_qualname_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_function_qualname_metadata_subset",
     );
     for required in [
         "copy.__package__",
@@ -22930,6 +22940,30 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "copy public function __module__ subset output must pin `{required}`"
         );
     }
+    for required in [
+        "value.__qualname__",
+        "copy.copy.__qualname__",
+        "copy.deepcopy.__qualname__",
+        "copy.replace.__qualname__",
+        "== name",
+    ] {
+        assert!(
+            function_qualname_diff.contains(required)
+                && function_qualname_subset.contains(required),
+            "copy public function __qualname__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"copy copy True\"",
+        "\"deepcopy deepcopy True\"",
+        "\"replace replace True\"",
+        "\"copy deepcopy replace\"",
+    ] {
+        assert!(
+            function_qualname_subset.contains(required),
+            "copy public function __qualname__ subset output must pin `{required}`"
+        );
+    }
     let copy_start = STDLIB_SOURCE
         .find("fn copy_module_value() -> Value")
         .expect("stdlib.rs must define copy_module_value");
@@ -22953,8 +22987,10 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE
                 .contains("matches!(name, \"copy.copy\" | \"copy.deepcopy\" | \"copy.replace\")")
             && VM_SOURCE.contains("name == \"__module__\" && is_copy_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(Value::String(\"copy\".to_string()))"),
-        "VM must expose CPython-compatible copy function __module__ metadata"
+            && VM_SOURCE.contains("name == \"__qualname__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(Value::String(\"copy\".to_string()))")
+            && VM_SOURCE.contains("Ok(Value::String(builtin_public_name(&function_name)))"),
+        "VM must expose CPython-compatible copy function __module__ and __qualname__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -22964,12 +23000,16 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_module_all_exports_diff_subset",
             "cpython_copy_function_module_metadata_subset",
             "cpython_copy_function_module_metadata_diff_subset",
+            "cpython_copy_function_qualname_metadata_subset",
+            "cpython_copy_function_qualname_metadata_diff_subset",
             "copy module `__package__` metadata",
             "`copy.__package__`",
             "copy module `__all__` exports",
             "`copy.__all__`",
             "copy public function `__module__` metadata",
             "`copy.copy.__module__`",
+            "copy public function `__qualname__` metadata",
+            "`copy.copy.__qualname__`",
         ] {
             assert!(
                 document.contains(required),
