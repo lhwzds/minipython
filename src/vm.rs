@@ -10043,9 +10043,7 @@ impl Vm {
             Value::Builtin(name) if name == "json.function.__hash__" => {
                 self.call_json_function_hash(args, keywords)
             }
-            Value::Builtin(name)
-                if name == "json.function.__eq__" || name == "json.function.__ne__" =>
-            {
+            Value::Builtin(name) if json_function_rich_compare_wrapper_name(&name) => {
                 self.call_json_function_rich_compare(&name, args, keywords)
             }
             Value::Builtin(name) if name == "json.function.__getattribute__" => {
@@ -17787,10 +17785,12 @@ impl Vm {
             ));
         };
 
-        if !is_identical(receiver, other) {
-            return Ok(Value::NotImplemented);
+        match method {
+            "__eq__" if is_identical(receiver, other) => Ok(Value::Bool(true)),
+            "__ne__" if is_identical(receiver, other) => Ok(Value::Bool(false)),
+            "__eq__" | "__ne__" => Ok(Value::NotImplemented),
+            _ => Ok(Value::NotImplemented),
         }
-        Ok(Value::Bool(method == "__eq__"))
     }
 
     fn call_json_function_getattribute(
@@ -50547,8 +50547,12 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__globals__",
         "__getattribute__",
         "__get__",
+        "__ge__",
+        "__gt__",
         "__hash__",
         "__kwdefaults__",
+        "__le__",
+        "__lt__",
         "__module__",
         "__name__",
         "__qualname__",
@@ -61390,7 +61394,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             })
         }
         Value::Builtin(function_name)
-            if matches!(name, "__eq__" | "__ne__") && is_json_builtin(&function_name) =>
+            if matches!(name, "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__")
+                && is_json_builtin(&function_name) =>
         {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("json.function.{name}"))),
@@ -61648,6 +61653,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__doc__" && function_name == "json.function.__ne__" =>
         {
             Ok(Value::String("Return self!=value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__lt__" =>
+        {
+            Ok(Value::String("Return self<value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__le__" =>
+        {
+            Ok(Value::String("Return self<=value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__gt__" =>
+        {
+            Ok(Value::String("Return self>value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__ge__" =>
+        {
+            Ok(Value::String("Return self>=value.".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && json_function_rich_compare_wrapper_name(&function_name) =>
@@ -63559,7 +63584,15 @@ fn method_rich_compare_wrapper_name(name: &str) -> bool {
 }
 
 fn json_function_rich_compare_wrapper_name(name: &str) -> bool {
-    matches!(name, "json.function.__eq__" | "json.function.__ne__")
+    matches!(
+        name,
+        "json.function.__eq__"
+            | "json.function.__ne__"
+            | "json.function.__lt__"
+            | "json.function.__le__"
+            | "json.function.__gt__"
+            | "json.function.__ge__"
+    )
 }
 
 fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
@@ -63584,6 +63617,10 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "json.function.__call__"
             | "json.function.__eq__"
             | "json.function.__ne__"
+            | "json.function.__lt__"
+            | "json.function.__le__"
+            | "json.function.__gt__"
+            | "json.function.__ge__"
             | "json.function.__hash__"
             | "json.function.__repr__"
             | "json.function.__str__"

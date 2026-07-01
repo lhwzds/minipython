@@ -1055,6 +1055,7 @@ Recent runtime migration notes:
   `cpython_json_function_format_wrapper_metadata_diff_subset`,
   `cpython_json_function_hash_wrapper_metadata_diff_subset`,
   `cpython_json_function_rich_compare_wrapper_metadata_diff_subset`,
+  `cpython_json_function_order_wrapper_metadata_diff_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_annotate_metadata_diff_subset`,
@@ -1736,6 +1737,8 @@ Recent runtime migration notes:
   `cpython_json_function_hash_wrapper_metadata_subset`,
   `cpython_json_function_rich_compare_wrapper_metadata_diff_subset` /
   `cpython_json_function_rich_compare_wrapper_metadata_subset`,
+  `cpython_json_function_order_wrapper_metadata_diff_subset` /
+  `cpython_json_function_order_wrapper_metadata_subset`,
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset` /
   `cpython_json_function_getattribute_wrapper_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
@@ -2464,7 +2467,7 @@ function `__format__` wrapper metadata aligned with CPython for `loads` /
 `__self__` / `__name__` / `__qualname__` / `__doc__` / `__module__` /
 `__text_signature__` metadata, empty-format rendering, non-empty-format
 `TypeError`, and arity / keyword error text, without adding function
-`__code__`, ordering wrappers, file APIs, module `__all__`, or encoder/decoder
+`__code__`, pickle helpers, file APIs, module `__all__`, or encoder/decoder
 classes.
 
 `cpython_json_function_hash_wrapper_metadata_subset`, backed by
@@ -2483,8 +2486,18 @@ public function `__eq__` / `__ne__` wrapper metadata aligned with CPython for
 `__self__` / `__name__` / `__qualname__` / `__doc__` / missing `__module__` /
 `__text_signature__` metadata, same-function bool results, different-function
 and non-function `NotImplemented` results, and arity / keyword error text,
-without adding function `__code__`, ordering wrappers, pickle helpers, file
-APIs, module `__all__`, or encoder/decoder classes.
+without adding function `__code__`, pickle helpers, file APIs, module
+`__all__`, or encoder/decoder classes.
+
+`cpython_json_function_order_wrapper_metadata_subset`, backed by
+`cpython_json_function_order_wrapper_metadata_diff_subset`, keeps json public
+function ordering wrapper metadata aligned with CPython for `loads` / `dumps`,
+covering `__lt__` / `__le__` / `__gt__` / `__ge__` `dir()` visibility,
+`method-wrapper` type shape, `__self__` / `__name__` / `__qualname__` /
+`__doc__` / missing `__module__` / `__text_signature__` metadata,
+`NotImplemented` results, and arity / keyword error text, without adding
+function `__code__`, pickle helpers, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_getattribute_wrapper_metadata_subset`, backed by
 `cpython_json_function_getattribute_wrapper_metadata_diff_subset`, keeps json public function `__getattribute__` wrapper metadata

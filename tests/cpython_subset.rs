@@ -37838,6 +37838,114 @@ for attr, function, same, different in pairs:
 }
 
 #[test]
+fn cpython_json_function_order_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    other_function = json.dumps if name == 'loads' else json.loads
+    for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
+        wrapper = getattr(function, attr)
+        print(name, attr, attr in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+        print(name, attr, wrapper.__self__ is function, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+        for label, other in [
+            ('self', function),
+            ('different-function', other_function),
+            ('non-function', 1),
+        ]:
+            value = wrapper(other)
+            print(name, attr, label, value is NotImplemented, value, type(value).__name__)
+        try:
+            wrapper.__module__
+        except AttributeError as error:
+            print(name, attr, 'module', type(error).__name__, str(error), error.args)
+        for label, call in [
+            ('missing', lambda wrapper=wrapper: wrapper()),
+            ('extra', lambda wrapper=wrapper, function=function: wrapper(function, 1)),
+            ('keyword', lambda wrapper=wrapper, function=function: wrapper(value=function)),
+        ]:
+            try:
+                call()
+            except TypeError as error:
+                print(name, attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads __lt__ True method-wrapper method-wrapper",
+            "loads __lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)",
+            "loads __lt__ self True NotImplemented NotImplementedType",
+            "loads __lt__ different-function True NotImplemented NotImplementedType",
+            "loads __lt__ non-function True NotImplemented NotImplementedType",
+            "loads __lt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "loads __lt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __lt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments ('wrapper __lt__() takes no keyword arguments',)",
+            "loads __le__ True method-wrapper method-wrapper",
+            "loads __le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)",
+            "loads __le__ self True NotImplemented NotImplementedType",
+            "loads __le__ different-function True NotImplemented NotImplementedType",
+            "loads __le__ non-function True NotImplemented NotImplementedType",
+            "loads __le__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "loads __le__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __le__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __le__ keyword TypeError wrapper __le__() takes no keyword arguments ('wrapper __le__() takes no keyword arguments',)",
+            "loads __gt__ True method-wrapper method-wrapper",
+            "loads __gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)",
+            "loads __gt__ self True NotImplemented NotImplementedType",
+            "loads __gt__ different-function True NotImplemented NotImplementedType",
+            "loads __gt__ non-function True NotImplemented NotImplementedType",
+            "loads __gt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "loads __gt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __gt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __gt__ keyword TypeError wrapper __gt__() takes no keyword arguments ('wrapper __gt__() takes no keyword arguments',)",
+            "loads __ge__ True method-wrapper method-wrapper",
+            "loads __ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)",
+            "loads __ge__ self True NotImplemented NotImplementedType",
+            "loads __ge__ different-function True NotImplemented NotImplementedType",
+            "loads __ge__ non-function True NotImplemented NotImplementedType",
+            "loads __ge__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "loads __ge__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __ge__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __ge__ keyword TypeError wrapper __ge__() takes no keyword arguments ('wrapper __ge__() takes no keyword arguments',)",
+            "dumps __lt__ True method-wrapper method-wrapper",
+            "dumps __lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)",
+            "dumps __lt__ self True NotImplemented NotImplementedType",
+            "dumps __lt__ different-function True NotImplemented NotImplementedType",
+            "dumps __lt__ non-function True NotImplemented NotImplementedType",
+            "dumps __lt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps __lt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __lt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments ('wrapper __lt__() takes no keyword arguments',)",
+            "dumps __le__ True method-wrapper method-wrapper",
+            "dumps __le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)",
+            "dumps __le__ self True NotImplemented NotImplementedType",
+            "dumps __le__ different-function True NotImplemented NotImplementedType",
+            "dumps __le__ non-function True NotImplemented NotImplementedType",
+            "dumps __le__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps __le__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __le__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __le__ keyword TypeError wrapper __le__() takes no keyword arguments ('wrapper __le__() takes no keyword arguments',)",
+            "dumps __gt__ True method-wrapper method-wrapper",
+            "dumps __gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)",
+            "dumps __gt__ self True NotImplemented NotImplementedType",
+            "dumps __gt__ different-function True NotImplemented NotImplementedType",
+            "dumps __gt__ non-function True NotImplemented NotImplementedType",
+            "dumps __gt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps __gt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __gt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __gt__ keyword TypeError wrapper __gt__() takes no keyword arguments ('wrapper __gt__() takes no keyword arguments',)",
+            "dumps __ge__ True method-wrapper method-wrapper",
+            "dumps __ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)",
+            "dumps __ge__ self True NotImplemented NotImplementedType",
+            "dumps __ge__ different-function True NotImplemented NotImplementedType",
+            "dumps __ge__ non-function True NotImplemented NotImplementedType",
+            "dumps __ge__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "dumps __ge__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __ge__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __ge__ keyword TypeError wrapper __ge__() takes no keyword arguments ('wrapper __ge__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_getattribute_wrapper_metadata_subset() {
     assert_output(
         r#"import json

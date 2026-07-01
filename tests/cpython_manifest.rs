@@ -8729,6 +8729,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
             "cpython_json_function_rich_compare_wrapper_metadata_subset",
+            "cpython_json_function_order_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -8869,6 +8870,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_format_wrapper_metadata_diff_subset",
         "cpython_json_function_hash_wrapper_metadata_diff_subset",
         "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
+        "cpython_json_function_order_wrapper_metadata_diff_subset",
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -9066,6 +9068,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_rich_compare_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_rich_compare_wrapper_metadata_subset",
+    );
+    let json_function_order_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_order_wrapper_metadata_diff_subset",
+    );
+    let json_function_order_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_order_wrapper_metadata_subset",
     );
     let json_function_getattribute_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9822,7 +9832,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "wrapper {method}() takes no keyword arguments",
         "expected 1 argument, got {}",
         "is_identical(receiver, other)",
-        "Ok(Value::Bool(method == \"__eq__\"))",
+        "\"__eq__\" if is_identical(receiver, other) => Ok(Value::Bool(true))",
+        "\"__ne__\" if is_identical(receiver, other) => Ok(Value::Bool(false))",
+        "\"__eq__\" | \"__ne__\" => Ok(Value::NotImplemented)",
         "json_function_rich_compare_wrapper_name",
         "json_function_method_wrapper_missing_module_name",
         "object.{}",
@@ -9833,6 +9845,72 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function rich-compare wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "for attr in ['__lt__', '__le__', '__gt__', '__ge__']",
+        "other_function = json.dumps if name == 'loads' else json.loads",
+        "attr in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is function",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "value is NotImplemented",
+        "type(value).__name__",
+        "wrapper.__module__",
+        "except AttributeError as error",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper, function=function: wrapper(function, 1))",
+        "('keyword', lambda wrapper=wrapper, function=function: wrapper(value=function))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_order_wrapper_diff_body.contains(required)
+                && json_function_order_wrapper_subset_body.contains(required),
+            "json public function ordering wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads __lt__ True method-wrapper method-wrapper\"",
+        "\"loads __lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)\"",
+        "\"loads __lt__ self True NotImplemented NotImplementedType\"",
+        "\"loads __lt__ keyword TypeError wrapper __lt__() takes no keyword arguments",
+        "\"loads __le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)\"",
+        "\"loads __gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)\"",
+        "\"loads __ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)\"",
+        "\"dumps __lt__ True method-wrapper method-wrapper\"",
+        "\"dumps __lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)\"",
+        "\"dumps __lt__ different-function True NotImplemented NotImplementedType\"",
+        "\"dumps __lt__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"dumps __le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)\"",
+        "\"dumps __gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)\"",
+        "\"dumps __ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)\"",
+        "\"dumps __ge__ extra TypeError expected 1 argument, got 2",
+    ] {
+        assert!(
+            json_function_order_wrapper_subset_body.contains(required),
+            "json public function ordering wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "json.function.__lt__",
+        "json.function.__le__",
+        "json.function.__gt__",
+        "json.function.__ge__",
+        "_ => Ok(Value::NotImplemented)",
+        "Return self<value.",
+        "Return self<=value.",
+        "Return self>value.",
+        "Return self>=value.",
+        "($self, value, /)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function ordering wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -11206,6 +11284,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"__call__\",")
             && VM_SOURCE.contains("\"__eq__\",")
             && VM_SOURCE.contains("\"__ne__\",")
+            && VM_SOURCE.contains("\"__lt__\",")
+            && VM_SOURCE.contains("\"__le__\",")
+            && VM_SOURCE.contains("\"__gt__\",")
+            && VM_SOURCE.contains("\"__ge__\",")
             && VM_SOURCE.contains("\"__getattribute__\",")
             && VM_SOURCE.contains("\"__hash__\",")
             && VM_SOURCE.contains("\"__repr__\",")
@@ -11454,6 +11536,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_hash_wrapper_metadata_diff_subset",
             "cpython_json_function_rich_compare_wrapper_metadata_subset",
             "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
+            "cpython_json_function_order_wrapper_metadata_subset",
+            "cpython_json_function_order_wrapper_metadata_diff_subset",
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
