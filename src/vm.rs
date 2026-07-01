@@ -10244,6 +10244,9 @@ impl Vm {
             }
             Value::Builtin(name) if name.starts_with("frozenset.") => {
                 if !keywords.is_empty() {
+                    if name == "frozenset.__new__" {
+                        return Err("TypeError: frozenset() takes no keyword arguments".to_string());
+                    }
                     return Err(format!(
                         "TypeError: {}() takes no keyword arguments",
                         method_keyword_error_name(&name)
@@ -78915,7 +78918,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
         }
         "frozenset.__new__" => {
             let Some((class, values)) = args.split_first() else {
-                return Err("__new__() missing required argument 'type'".to_string());
+                return Err("TypeError: frozenset.__new__(): not enough arguments".to_string());
             };
             if values.len() > 1 {
                 return Err(format!(
@@ -78946,8 +78949,15 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
                         storage,
                     ))
                 }
+                value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                    Err(format!(
+                        "TypeError: frozenset.__new__({}): {} is not a subtype of frozenset",
+                        class_display_name(value),
+                        class_display_name(value)
+                    ))
+                }
                 value => Err(format!(
-                    "TypeError: frozenset.__new__() argument 1 must be a frozenset subtype, not {}",
+                    "TypeError: frozenset.__new__(X): X is not a type object ({})",
                     type_name(value)
                 )),
             }

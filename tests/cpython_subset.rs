@@ -29181,6 +29181,91 @@ print('plain', repr(plain), type(plain).__name__)"#,
     );
 }
 
+#[test]
+fn cpython_frozenset_new_direct_allocation_subset() {
+    assert_output_with_stack(
+        r#"class F(frozenset):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, repr(value), type(value).__name__, isinstance(value, frozenset), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: frozenset.__new__()),
+    ('exact-empty', lambda: frozenset.__new__(frozenset)),
+    ('exact-value', lambda: frozenset.__new__(frozenset, [1, 2])),
+    ('exact-keyword', lambda: frozenset.__new__(frozenset, [1, 2], iterable=[3])),
+    ('exact-too-many', lambda: frozenset.__new__(frozenset, [1], [2])),
+    ('sub-empty', lambda: frozenset.__new__(F)),
+    ('sub-value', lambda: frozenset.__new__(F, [1, 2])),
+    ('sub-keyword', lambda: frozenset.__new__(F, [1, 2], iterable=[3])),
+    ('sub-too-many', lambda: frozenset.__new__(F, [1], [2])),
+    ('bad-class', lambda: frozenset.__new__(set)),
+    ('bad-user-class', lambda: frozenset.__new__(C)),
+    ('int-arg', lambda: frozenset.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(frozenset, '__new__'), '__new__' in dir(frozenset), '__new__' in dir(F))
+class WithNew(frozenset):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        return frozenset.__new__(cls, value)
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', repr(empty), repr(filled), type(filled).__name__, isinstance(filled, frozenset))
+class WithInit(frozenset):
+    def __new__(cls):
+        return frozenset.__new__(cls, ['pre'])
+    def __init__(self):
+        print('custom-init', sorted(self))
+with_init = WithInit()
+print('with-init', repr(with_init))
+class Other(frozenset):
+    pass
+class ReturnsOther(frozenset):
+    def __new__(cls):
+        return frozenset.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', repr(other), type(other).__name__)
+class ReturnsPlain(frozenset):
+    def __new__(cls):
+        return frozenset()
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', repr(plain), type(plain).__name__)"#,
+        &[
+            "missing TypeError frozenset.__new__(): not enough arguments ('frozenset.__new__(): not enough arguments',)",
+            "exact-empty frozenset() frozenset True 0",
+            "exact-value frozenset({1, 2}) frozenset True 2",
+            "exact-keyword TypeError frozenset() takes no keyword arguments ('frozenset() takes no keyword arguments',)",
+            "exact-too-many TypeError frozenset expected at most 1 argument, got 2 ('frozenset expected at most 1 argument, got 2',)",
+            "sub-empty F() F True 0",
+            "sub-value F({1, 2}) F True 2",
+            "sub-keyword TypeError frozenset() takes no keyword arguments ('frozenset() takes no keyword arguments',)",
+            "sub-too-many TypeError F expected at most 1 argument, got 2 ('F expected at most 1 argument, got 2',)",
+            "bad-class TypeError frozenset.__new__(set): set is not a subtype of frozenset ('frozenset.__new__(set): set is not a subtype of frozenset',)",
+            "bad-user-class TypeError frozenset.__new__(C): C is not a subtype of frozenset ('frozenset.__new__(C): C is not a subtype of frozenset',)",
+            "int-arg TypeError frozenset.__new__(X): X is not a type object (int) ('frozenset.__new__(X): X is not a type object (int)',)",
+            "visible True True True",
+            "new WithNew []",
+            "new WithNew [1, 2]",
+            "with-new WithNew() WithNew({1, 2}) WithNew True",
+            "custom-init ['pre']",
+            "with-init WithInit({'pre'})",
+            "other Other() Other",
+            "plain frozenset() frozenset",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

@@ -68,6 +68,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   ignored extra args/keywords, set subtype error classification, and set `__new__` dir visibility
   without adding `frozenset.__new__` parity or full set C-layout
   behavior.
+- Added `cpython_frozenset_new_direct_allocation_subset` and
+  `cpython_frozenset_new_direct_allocation_diff_subset` for `frozenset.__new__` direct allocation,
+  positional iterable construction, frozenset subtype error classification, and
+  frozenset `__new__` keyword handling without adding full immutable-set C-layout
+  behavior.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.

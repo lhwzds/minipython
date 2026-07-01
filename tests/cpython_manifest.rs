@@ -500,6 +500,111 @@ fn set_new_direct_allocation_docs_cover_core_runtime() {
 }
 
 #[test]
+fn frozenset_new_direct_allocation_docs_cover_core_runtime() {
+    let diff_name = "cpython_frozenset_new_direct_allocation_diff_subset";
+    let subset_name = "cpython_frozenset_new_direct_allocation_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "frozenset __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "frozenset __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class F(frozenset):",
+        "frozenset.__new__()",
+        "frozenset.__new__(frozenset)",
+        "frozenset.__new__(frozenset, [1, 2])",
+        "frozenset.__new__(frozenset, [1, 2], iterable=[3])",
+        "frozenset.__new__(frozenset, [1], [2])",
+        "frozenset.__new__(F)",
+        "frozenset.__new__(F, [1, 2])",
+        "frozenset.__new__(F, [1, 2], iterable=[3])",
+        "frozenset.__new__(F, [1], [2])",
+        "frozenset.__new__(set)",
+        "frozenset.__new__(C)",
+        "frozenset.__new__(1)",
+        "hasattr(frozenset, '__new__')",
+        "class WithNew(frozenset):",
+        "return frozenset.__new__(cls, value)",
+        "class WithInit(frozenset):",
+        "return frozenset.__new__(cls, ['pre'])",
+        "class ReturnsOther(frozenset):",
+        "return frozenset.__new__(Other)",
+        "class ReturnsPlain(frozenset):",
+        "return frozenset()",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "frozenset __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"missing TypeError frozenset.__new__(): not enough arguments",
+        "\"exact-empty frozenset() frozenset True 0\"",
+        "\"exact-value frozenset({1, 2}) frozenset True 2\"",
+        "\"exact-keyword TypeError frozenset() takes no keyword arguments",
+        "\"exact-too-many TypeError frozenset expected at most 1 argument, got 2",
+        "\"sub-empty F() F True 0\"",
+        "\"sub-value F({1, 2}) F True 2\"",
+        "\"sub-keyword TypeError frozenset() takes no keyword arguments",
+        "\"sub-too-many TypeError F expected at most 1 argument, got 2",
+        "\"bad-class TypeError frozenset.__new__(set): set is not a subtype of frozenset",
+        "\"bad-user-class TypeError frozenset.__new__(C): C is not a subtype of frozenset",
+        "\"int-arg TypeError frozenset.__new__(X): X is not a type object (int)",
+        "\"visible True True True\"",
+        "\"new WithNew []\"",
+        "\"new WithNew [1, 2]\"",
+        "\"with-new WithNew() WithNew({1, 2}) WithNew True\"",
+        "\"custom-init ['pre']\"",
+        "\"with-init WithInit({'pre'})\"",
+        "\"other Other() Other\"",
+        "\"plain frozenset() frozenset\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "frozenset __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"frozenset.__new__\"",
+        "TypeError: frozenset() takes no keyword arguments",
+        "\"frozenset.__new__\" => {",
+        "TypeError: frozenset.__new__(): not enough arguments",
+        "frozenset.__new__(X): X is not a type object",
+        "frozenset.__new__({}): {} is not a subtype of frozenset",
+        "class_display_name(value)",
+        "\"frozenset\" => &[",
+        "\"__new__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "frozenset __new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`frozenset.__new__` direct allocation",
+            "frozenset subtype error classification",
+            "frozenset `__new__` keyword handling",
+        ] {
+            assert!(
+                document.contains(required),
+                "frozenset __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

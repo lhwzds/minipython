@@ -16432,6 +16432,70 @@ print('plain', repr(plain), type(plain).__name__)"#,
 }
 
 #[test]
+fn cpython_frozenset_new_direct_allocation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py frozenset __new__ direct allocation subset",
+        name: "frozenset-new-direct-allocation",
+        source: r#"class F(frozenset):
+    pass
+class C:
+    pass
+def show(label, call):
+    try:
+        value = call()
+        print(label, repr(value), type(value).__name__, isinstance(value, frozenset), len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing', lambda: frozenset.__new__()),
+    ('exact-empty', lambda: frozenset.__new__(frozenset)),
+    ('exact-value', lambda: frozenset.__new__(frozenset, [1, 2])),
+    ('exact-keyword', lambda: frozenset.__new__(frozenset, [1, 2], iterable=[3])),
+    ('exact-too-many', lambda: frozenset.__new__(frozenset, [1], [2])),
+    ('sub-empty', lambda: frozenset.__new__(F)),
+    ('sub-value', lambda: frozenset.__new__(F, [1, 2])),
+    ('sub-keyword', lambda: frozenset.__new__(F, [1, 2], iterable=[3])),
+    ('sub-too-many', lambda: frozenset.__new__(F, [1], [2])),
+    ('bad-class', lambda: frozenset.__new__(set)),
+    ('bad-user-class', lambda: frozenset.__new__(C)),
+    ('int-arg', lambda: frozenset.__new__(1)),
+]:
+    show(label, call)
+print('visible', hasattr(frozenset, '__new__'), '__new__' in dir(frozenset), '__new__' in dir(F))
+class WithNew(frozenset):
+    def __new__(cls, value=()):
+        print('new', cls.__name__, list(value))
+        return frozenset.__new__(cls, value)
+empty = WithNew()
+filled = WithNew([1, 2])
+print('with-new', repr(empty), repr(filled), type(filled).__name__, isinstance(filled, frozenset))
+class WithInit(frozenset):
+    def __new__(cls):
+        return frozenset.__new__(cls, ['pre'])
+    def __init__(self):
+        print('custom-init', sorted(self))
+with_init = WithInit()
+print('with-init', repr(with_init))
+class Other(frozenset):
+    pass
+class ReturnsOther(frozenset):
+    def __new__(cls):
+        return frozenset.__new__(Other)
+    def __init__(self):
+        print('bad-init-other')
+other = ReturnsOther()
+print('other', repr(other), type(other).__name__)
+class ReturnsPlain(frozenset):
+    def __new__(cls):
+        return frozenset()
+    def __init__(self):
+        print('bad-init-plain')
+plain = ReturnsPlain()
+print('plain', repr(plain), type(plain).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",
