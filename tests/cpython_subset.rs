@@ -22356,6 +22356,24 @@ for name in copy.__all__:
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_module_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__module__, value.__module__ == 'copy')
+print(copy.copy.__module__ == copy.deepcopy.__module__ == copy.replace.__module__ == 'copy')"#,
+        &[
+            "copy copy True",
+            "deepcopy copy True",
+            "replace copy True",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_public_subset() {
     assert_output(
         concat!(

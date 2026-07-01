@@ -21116,6 +21116,19 @@ for name in copy.__all__:
 }
 
 #[test]
+fn cpython_copy_function_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public function __module__ metadata subset",
+        name: "copy-function-module-metadata",
+        source: r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    print(name, value.__module__, value.__module__ == 'copy')
+print(copy.copy.__module__ == copy.deepcopy.__module__ == copy.replace.__module__ == 'copy')"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

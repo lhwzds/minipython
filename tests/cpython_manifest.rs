@@ -22804,6 +22804,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_copy_module_package_metadata_subset",
             "cpython_copy_module_all_exports_subset",
+            "cpython_copy_function_module_metadata_subset",
             "cpython_copy_public_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_copy_replace_custom_hook_subset",
@@ -22822,6 +22823,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_copy_module_package_metadata_diff_subset",
         "cpython_copy_module_all_exports_diff_subset",
+        "cpython_copy_function_module_metadata_diff_subset",
         "cpython_copy_public_diff_subset",
         "cpython_collections_defaultdict_copy_module_diff_subset",
         "cpython_copy_replace_custom_hook_diff_subset",
@@ -22858,6 +22860,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_module_all_exports_diff_subset");
     let all_subset =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_copy_module_all_exports_subset");
+    let function_module_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_function_module_metadata_diff_subset",
+    );
+    let function_module_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_function_module_metadata_subset",
+    );
     for required in [
         "copy.__package__",
         "object.__getattribute__(copy, '__package__')",
@@ -22898,6 +22908,28 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "copy module __all__ subset output must pin `{required}`"
         );
     }
+    for required in [
+        "value.__module__",
+        "copy.copy.__module__",
+        "copy.deepcopy.__module__",
+        "copy.replace.__module__",
+        "== 'copy'",
+    ] {
+        assert!(
+            function_module_diff.contains(required) && function_module_subset.contains(required),
+            "copy public function __module__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"copy copy True\"",
+        "\"deepcopy copy True\"",
+        "\"replace copy True\"",
+    ] {
+        assert!(
+            function_module_subset.contains(required),
+            "copy public function __module__ subset output must pin `{required}`"
+        );
+    }
     let copy_start = STDLIB_SOURCE
         .find("fn copy_module_value() -> Value")
         .expect("stdlib.rs must define copy_module_value");
@@ -22916,16 +22948,28 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         ) && copy_registry.contains("(\"__all__\", string_list_value(COPY_ALL))"),
         "copy stdlib module registry must expose CPython-compatible public __all__ exports"
     );
+    assert!(
+        VM_SOURCE.contains("fn is_copy_builtin(name: &str) -> bool")
+            && VM_SOURCE
+                .contains("matches!(name, \"copy.copy\" | \"copy.deepcopy\" | \"copy.replace\")")
+            && VM_SOURCE.contains("name == \"__module__\" && is_copy_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(Value::String(\"copy\".to_string()))"),
+        "VM must expose CPython-compatible copy function __module__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_copy_module_package_metadata_subset",
             "cpython_copy_module_package_metadata_diff_subset",
             "cpython_copy_module_all_exports_subset",
             "cpython_copy_module_all_exports_diff_subset",
+            "cpython_copy_function_module_metadata_subset",
+            "cpython_copy_function_module_metadata_diff_subset",
             "copy module `__package__` metadata",
             "`copy.__package__`",
             "copy module `__all__` exports",
             "`copy.__all__`",
+            "copy public function `__module__` metadata",
+            "`copy.copy.__module__`",
         ] {
             assert!(
                 document.contains(required),

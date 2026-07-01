@@ -944,6 +944,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_file_methods_diff_subset`,
   `cpython_copy_module_package_metadata_diff_subset`,
   `cpython_copy_module_all_exports_diff_subset`,
+  `cpython_copy_function_module_metadata_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
@@ -3094,6 +3095,7 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_copy_module_package_metadata_subset`,
   `cpython_copy_module_all_exports_subset`,
+  `cpython_copy_function_module_metadata_subset`,
   `cpython_copy_public_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
   `cpython_copy_replace_custom_hook_subset`,
@@ -3103,6 +3105,8 @@ without adding general custom encoder/decoder class support.
   covering copy module `__package__` metadata (`copy.__package__` is `''`),
   copy module `__all__` exports (`copy.__all__` is
   `['Error', 'copy', 'deepcopy', 'replace']`),
+  copy public function `__module__` metadata (`copy.copy.__module__`,
+  `copy.deepcopy.__module__`, and `copy.replace.__module__` are `copy`),
   CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality

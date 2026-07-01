@@ -60576,6 +60576,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("json".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_copy_builtin(&function_name) =>
+        {
+            Ok(Value::String("copy".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__"
                 && itertools_builtin_function_qualname(&function_name).is_some() =>
         {
@@ -60905,6 +60910,10 @@ fn is_weakref_builtin_type_name(name: &str) -> bool {
 
 fn is_json_builtin(name: &str) -> bool {
     matches!(name, "json.loads" | "json.dumps")
+}
+
+fn is_copy_builtin(name: &str) -> bool {
+    matches!(name, "copy.copy" | "copy.deepcopy" | "copy.replace")
 }
 
 fn json_builtin_doc(name: &str) -> &'static str {
