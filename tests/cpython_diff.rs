@@ -1030,6 +1030,20 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_defaults_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __defaults__ metadata subset",
+        name: "json-function-bound-method-defaults-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    print(name, type(bound.__defaults__).__name__, bound.__defaults__, bound.__defaults__ is function.__defaults__)
+    print(name, bound.__getattribute__('__defaults__') is function.__defaults__, '__defaults__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

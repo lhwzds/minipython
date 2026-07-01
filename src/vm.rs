@@ -59365,6 +59365,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__" => load_attribute(*function, "__module__"),
             "__doc__" => load_attribute(*function, "__doc__"),
+            "__defaults__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__defaults__")
+            }
             _ if matches!(function.as_ref(), Value::LruCacheWrapper { .. }) => {
                 load_attribute(*function, name)
             }

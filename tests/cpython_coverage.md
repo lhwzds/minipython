@@ -1062,6 +1062,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_repr_str_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset`,
+  `cpython_json_function_bound_method_defaults_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
@@ -1707,6 +1708,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_getattribute_wrapper_subset`,
   `cpython_json_function_bound_method_getattribute_missing_attr_diff_subset` /
   `cpython_json_function_bound_method_getattribute_missing_attr_subset`,
+  `cpython_json_function_bound_method_defaults_metadata_diff_subset` /
+  `cpython_json_function_bound_method_defaults_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
@@ -2445,6 +2448,14 @@ arity / keyword / name-type `TypeError` text, without adding `__reduce__`,
 `AttributeError` text and `args` aligned with CPython for
 `loads.__get__(...)` and `dumps.__get__(...)`, without adding `__reduce__`,
 `__reduce_ex__`, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_bound_method_defaults_metadata_subset`, backed by
+`cpython_json_function_bound_method_defaults_metadata_diff_subset`, keeps json public function bound method `__defaults__` metadata
+and `__getattribute__('__defaults__')` lookup aligned with CPython for
+`loads.__get__(...)` and `dumps.__get__(...)`, including the fact that
+`__defaults__` stays out of `dir(bound)`, without adding bound method
+`__kwdefaults__`, `__dict__`, `__globals__`, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
