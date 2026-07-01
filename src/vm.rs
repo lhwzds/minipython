@@ -61071,6 +61071,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
         Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
+        Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61347,6 +61348,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Tuple(_) => Err(tuple_attribute_assignment_error(name)),
         Value::Dict(_) => Err(dict_attribute_assignment_error(name)),
         Value::Set(_) => Err(set_attribute_assignment_error(name)),
+        Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61505,6 +61507,23 @@ fn set_attribute_assignment_error(name: &str) -> String {
 fn is_set_readonly_instance_attribute(name: &str) -> bool {
     !name.starts_with("__")
         && builtin_type_dir_names("set")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
+}
+
+fn frozenset_attribute_assignment_error(name: &str) -> String {
+    if is_frozenset_readonly_instance_attribute(name) {
+        format!("AttributeError: 'frozenset' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'frozenset' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_frozenset_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("frozenset")
             .iter()
             .any(|candidate| candidate.as_str() == name)
 }

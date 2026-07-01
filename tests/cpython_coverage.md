@@ -102,6 +102,10 @@ Recent runtime migration notes:
   `cpython_set_attribute_assignment_errors_diff_subset`, now pins set attribute assignment errors
   for missing attributes and read-only set method attributes (`add` /
   `update`) while preserving set mutation without adding set instance dictionaries.
+- `cpython_frozenset_attribute_assignment_errors_subset`, backed by
+  `cpython_frozenset_attribute_assignment_errors_diff_subset`, now pins frozenset attribute assignment errors
+  for missing attributes and read-only frozenset method attributes (`union` /
+  `copy`) without adding frozenset instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

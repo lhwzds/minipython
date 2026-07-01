@@ -29429,6 +29429,73 @@ fn set_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn frozenset_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_frozenset_attribute_assignment_errors_subset(",
+        "s = frozenset([1, 2])",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'union', 'copy']",
+        "\"set-extra AttributeError 'frozenset' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'frozenset' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-union AttributeError 'frozenset' object attribute 'union' is read-only\"",
+        "\"del-copy AttributeError 'frozenset' object attribute 'copy' is read-only\"",
+        "\"read [1, 2] frozenset({1, 2, 3}) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused frozenset attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_frozenset_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_set.py public frozenset instance attribute assignment errors subset",
+        "name: \"frozenset-attribute-assignment-errors\"",
+        "s = frozenset([1, 2])",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'union', 'copy']",
+        "s.union({3})",
+        "s.copy() is s",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused frozenset attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::FrozenSet(_) => Err(frozenset_attribute_assignment_error(name))",
+        "fn frozenset_attribute_assignment_error(name: &str) -> String",
+        "fn is_frozenset_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"frozenset\")",
+        "'frozenset' object attribute '{name}' is read-only",
+        "'frozenset' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "frozenset attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_frozenset_attribute_assignment_errors_subset")
+                && document.contains("cpython_frozenset_attribute_assignment_errors_diff_subset")
+                && document.contains("frozenset attribute assignment errors")
+                && document.contains("read-only frozenset method attributes")
+                && document.contains("without adding frozenset instance dictionaries"),
+            "focused frozenset attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

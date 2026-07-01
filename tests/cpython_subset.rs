@@ -26620,6 +26620,36 @@ print('mutated', sorted(s))"#,
     );
 }
 
+// Adapted from CPython's public `frozenset` instance attribute assignment
+// errors. MiniPython keeps frozenset immutable without adding a writable
+// instance `__dict__`.
+#[test]
+fn cpython_frozenset_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+s = frozenset([1, 2])
+for name in ['extra', 'union', 'copy']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+print('read', sorted(s), s.union({3}), s.copy() is s)"#,
+        &[
+            "set-extra AttributeError 'frozenset' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'frozenset' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-union AttributeError 'frozenset' object attribute 'union' is read-only",
+            "del-union AttributeError 'frozenset' object attribute 'union' is read-only",
+            "set-copy AttributeError 'frozenset' object attribute 'copy' is read-only",
+            "del-copy AttributeError 'frozenset' object attribute 'copy' is read-only",
+            "read [1, 2] frozenset({1, 2, 3}) True",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.
