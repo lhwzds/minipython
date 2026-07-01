@@ -8724,6 +8724,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_name_qualname_identity_metadata_subset",
             "cpython_json_function_name_assignment_metadata_subset",
+            "cpython_json_function_qualname_assignment_metadata_subset",
             "cpython_json_function_bound_method_name_dir_visibility_subset",
             "cpython_json_function_bound_method_class_dir_visibility_subset",
             "cpython_json_function_type_class_metadata_subset",
@@ -8872,6 +8873,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_module_identity_metadata_diff_subset",
         "cpython_json_function_name_qualname_identity_metadata_diff_subset",
         "cpython_json_function_name_assignment_metadata_diff_subset",
+        "cpython_json_function_qualname_assignment_metadata_diff_subset",
         "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
         "cpython_json_function_bound_method_class_dir_visibility_diff_subset",
         "cpython_json_function_type_class_metadata_diff_subset",
@@ -9026,6 +9028,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_name_assignment_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_name_assignment_metadata_subset",
+    );
+    let json_function_qualname_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_qualname_assignment_metadata_diff_subset",
+    );
+    let json_function_qualname_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_qualname_assignment_metadata_subset",
     );
     let json_function_bound_method_name_dir_visibility_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9589,6 +9599,66 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __name__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "class S(str):",
+        "original_qualname = function.__qualname__",
+        "function.__name__ is function.__qualname__",
+        "function.__qualname__ = name + '_qualified'",
+        "subclass = S(name + '_qual_sub')",
+        "function.__qualname__ = subclass",
+        "function.__qualname__ is subclass",
+        "function.__qualname__ = ''",
+        "function.__qualname__ = value",
+        "del function.__qualname__",
+        "function.__qualname__ = original_qualname",
+        "json.loads.__qualname__",
+        "json.dumps.__qualname__",
+    ] {
+        assert!(
+            json_function_qualname_assignment_diff_body.contains(required)
+                && json_function_qualname_assignment_subset_body.contains(required),
+            "json public function __qualname__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial loads loads True\"",
+        "\"loads set-str str loads loads_qualified\"",
+        "\"loads set-subclass True S loads loads_qual_sub\"",
+        "\"loads set-empty True loads\"",
+        "\"loads set-none TypeError __qualname__ must be set to a string object",
+        "\"loads set-bytes TypeError __qualname__ must be set to a string object",
+        "\"loads del-error TypeError __qualname__ must be set to a string object",
+        "\"loads after-errors str loads \"",
+        "\"dumps initial dumps dumps True\"",
+        "\"dumps set-str str dumps dumps_qualified\"",
+        "\"dumps set-subclass True S dumps dumps_qual_sub\"",
+        "\"dumps set-empty True dumps\"",
+        "\"dumps set-none TypeError __qualname__ must be set to a string object",
+        "\"dumps set-bytes TypeError __qualname__ must be set to a string object",
+        "\"dumps del-error TypeError __qualname__ must be set to a string object",
+        "\"dumps after-errors str dumps \"",
+        "\"loads loads True\"",
+        "\"dumps dumps True\"",
+    ] {
+        assert!(
+            json_function_qualname_assignment_subset_body.contains(required),
+            "json public function __qualname__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_QUALNAMES: RefCell<HashMap<String, Value>>",
+        "fn json_builtin_qualname_value(name: &str) -> Value",
+        "fn set_json_builtin_qualname(",
+        "Ok(json_builtin_qualname_value(&function_name))",
+        "str_subclass_string(&value).is_none()",
+        "__qualname__ must be set to a string object",
+        "\"__qualname__\" => return set_json_builtin_qualname(function_name, value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __qualname__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12068,6 +12138,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_name_qualname_identity_metadata_diff_subset",
             "cpython_json_function_name_assignment_metadata_subset",
             "cpython_json_function_name_assignment_metadata_diff_subset",
+            "cpython_json_function_qualname_assignment_metadata_subset",
+            "cpython_json_function_qualname_assignment_metadata_diff_subset",
             "cpython_json_function_bound_method_name_dir_visibility_subset",
             "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
             "cpython_json_function_bound_method_class_dir_visibility_subset",
@@ -12181,6 +12253,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__module__` identity",
             "json public function `__name__` / `__qualname__` identity",
             "json public function `__name__` assignment",
+            "json public function `__qualname__` assignment",
             "json public function type / `__class__` metadata",
             "json public function repr / str wrapper metadata",
             "json public function `__call__` wrapper metadata",

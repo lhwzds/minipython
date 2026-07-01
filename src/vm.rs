@@ -62146,6 +62146,18 @@ fn set_json_builtin_name(name: &str, value: Value) -> Result<(), String> {
     Ok(())
 }
 
+fn set_json_builtin_qualname(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::String(_) | Value::IdentityString { .. })
+        && str_subclass_string(&value).is_none()
+    {
+        return Err("TypeError: __qualname__ must be set to a string object".to_string());
+    }
+    JSON_BUILTIN_QUALNAMES.with(|qualnames| {
+        qualnames.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
+}
+
 fn set_json_builtin_doc(name: &str, value: Value) {
     JSON_BUILTIN_DOCS.with(|docs| {
         docs.borrow_mut().insert(name.to_string(), value);
@@ -62388,6 +62400,7 @@ fn store_json_builtin_attribute(
 ) -> Result<(), String> {
     match name {
         "__name__" => return set_json_builtin_name(function_name, value),
+        "__qualname__" => return set_json_builtin_qualname(function_name, value),
         "__doc__" => {
             set_json_builtin_doc(function_name, value);
             return Ok(());
@@ -62414,6 +62427,9 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
     match name {
         "__name__" => {
             return Err("TypeError: __name__ must be set to a string object".to_string());
+        }
+        "__qualname__" => {
+            return Err("TypeError: __qualname__ must be set to a string object".to_string());
         }
         "__doc__" => {
             delete_json_builtin_doc(function_name);

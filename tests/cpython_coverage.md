@@ -1048,6 +1048,7 @@ Recent runtime migration notes:
   `cpython_json_function_module_identity_metadata_diff_subset`,
   `cpython_json_function_name_qualname_identity_metadata_diff_subset`,
   `cpython_json_function_name_assignment_metadata_diff_subset`,
+  `cpython_json_function_qualname_assignment_metadata_diff_subset`,
   `cpython_json_function_bound_method_name_dir_visibility_diff_subset`,
   `cpython_json_function_bound_method_class_dir_visibility_diff_subset`,
   `cpython_json_function_type_class_metadata_diff_subset`,
@@ -1734,6 +1735,8 @@ Recent runtime migration notes:
   `cpython_json_function_name_qualname_identity_metadata_subset`,
   `cpython_json_function_name_assignment_metadata_diff_subset` /
   `cpython_json_function_name_assignment_metadata_subset`,
+  `cpython_json_function_qualname_assignment_metadata_diff_subset` /
+  `cpython_json_function_qualname_assignment_metadata_subset`,
   `cpython_json_function_bound_method_name_dir_visibility_diff_subset` /
   `cpython_json_function_bound_method_name_dir_visibility_subset`,
   `cpython_json_function_bound_method_class_dir_visibility_diff_subset` /
@@ -2466,6 +2469,14 @@ string and str-subclass replacements, empty-string assignment, non-string
 assignment `TypeError`, deletion `TypeError`, and unchanged `__qualname__`,
 without adding `__qualname__` assignment, function `__code__`, file APIs,
 module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_qualname_assignment_metadata_subset`, backed by
+`cpython_json_function_qualname_assignment_metadata_diff_subset`, keeps json public function `__qualname__` assignment
+and deletion errors aligned with CPython for `loads` / `dumps`, including
+string and str-subclass replacements, empty-string assignment, non-string
+assignment `TypeError`, deletion `TypeError`, and unchanged `__name__`,
+without adding function `__code__`, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_type_class_metadata_subset`, backed by
 `cpython_json_function_type_class_metadata_diff_subset`, keeps json public function type / `__class__` metadata

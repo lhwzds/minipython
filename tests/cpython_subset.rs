@@ -37613,6 +37613,59 @@ print(json.loads.__name__, json.dumps.__name__, json.loads.__name__ is json.load
 }
 
 #[test]
+fn cpython_json_function_qualname_assignment_metadata_subset() {
+    assert_output(
+        r#"import json
+class S(str):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original_qualname = function.__qualname__
+    print(name, 'initial', function.__name__, function.__qualname__, function.__name__ is function.__qualname__)
+    function.__qualname__ = name + '_qualified'
+    print(name, 'set-str', type(function.__qualname__).__name__, function.__name__, function.__qualname__)
+    subclass = S(name + '_qual_sub')
+    function.__qualname__ = subclass
+    print(name, 'set-subclass', function.__qualname__ is subclass, type(function.__qualname__).__name__, function.__name__, function.__qualname__)
+    function.__qualname__ = ''
+    print(name, 'set-empty', function.__qualname__ == '', function.__name__)
+    for label, value in [('none', None), ('bytes', b'x')]:
+        try:
+            function.__qualname__ = value
+        except TypeError as error:
+            print(name, 'set-' + label, type(error).__name__, str(error), error.args)
+    try:
+        del function.__qualname__
+    except TypeError as error:
+        print(name, 'del-error', type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', type(function.__qualname__).__name__, function.__name__, function.__qualname__)
+    function.__qualname__ = original_qualname
+print(json.loads.__name__, json.loads.__qualname__, json.loads.__name__ is json.loads.__qualname__)
+print(json.dumps.__name__, json.dumps.__qualname__, json.dumps.__name__ is json.dumps.__qualname__)"#,
+        &[
+            "loads initial loads loads True",
+            "loads set-str str loads loads_qualified",
+            "loads set-subclass True S loads loads_qual_sub",
+            "loads set-empty True loads",
+            "loads set-none TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "loads set-bytes TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "loads del-error TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "loads after-errors str loads ",
+            "dumps initial dumps dumps True",
+            "dumps set-str str dumps dumps_qualified",
+            "dumps set-subclass True S dumps dumps_qual_sub",
+            "dumps set-empty True dumps",
+            "dumps set-none TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "dumps set-bytes TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "dumps del-error TypeError __qualname__ must be set to a string object ('__qualname__ must be set to a string object',)",
+            "dumps after-errors str dumps ",
+            "loads loads True",
+            "dumps dumps True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_name_dir_visibility_subset() {
     assert_output(
         r#"import json
