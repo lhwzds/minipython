@@ -26398,6 +26398,36 @@ fn cpython_builtin_breakpoint_passthru_error_subset() {
     );
 }
 
+// Adapted from CPython's public `str` instance attribute assignment errors.
+// MiniPython exposes string methods without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_str_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+s = 'spam'
+for name in ['extra', 'upper', 'split']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+print('read', s.upper(), s.split('a'))"#,
+        &[
+            "set-extra AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-upper AttributeError 'str' object attribute 'upper' is read-only",
+            "del-upper AttributeError 'str' object attribute 'upper' is read-only",
+            "set-split AttributeError 'str' object attribute 'split' is read-only",
+            "del-split AttributeError 'str' object attribute 'split' is read-only",
+            "read SPAM ['sp', 'm']",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

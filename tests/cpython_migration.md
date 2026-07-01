@@ -84,6 +84,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   and methods across `False` and `True`, including readonly
   public integer attributes and CPython's bool-specific no-`__dict__`
   assignment/deletion errors without adding bool instance dictionaries.
+- Added `cpython_str_attribute_assignment_errors_subset` and
+  `cpython_str_attribute_assignment_errors_diff_subset` for string attribute assignment errors
+  on missing attributes and read-only string method attributes (`upper` /
+  `split`) without adding str instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

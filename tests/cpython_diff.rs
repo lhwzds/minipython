@@ -11169,6 +11169,26 @@ for expr in [lambda: None.__ne__(), lambda: None.__ne__(0, 1), lambda: object.__
 }
 
 #[test]
+fn cpython_str_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_unicode.py public str instance attribute assignment errors subset",
+        name: "str-attribute-assignment-errors",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+s = 'spam'
+for name in ['extra', 'upper', 'split']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+print('read', s.upper(), s.split('a'))"#,
+    });
+}
+
+#[test]
 fn cpython_object_repr_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public object descriptor subset",

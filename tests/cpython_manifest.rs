@@ -28958,6 +28958,72 @@ fn str_builtin_custom_dunder_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn str_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_str_attribute_assignment_errors_subset(",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'upper', 'split']",
+        "\"set-extra AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-upper AttributeError 'str' object attribute 'upper' is read-only\"",
+        "\"del-split AttributeError 'str' object attribute 'split' is read-only\"",
+        "\"read SPAM ['sp', 'm']\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused str attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_str_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_unicode.py public str instance attribute assignment errors subset",
+        "name: \"str-attribute-assignment-errors\"",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'upper', 'split']",
+        "s.upper()",
+        "s.split('a')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused str attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::String(_) | Value::IdentityString { .. } =>",
+        "Err(str_attribute_assignment_error(name))",
+        "fn str_attribute_assignment_error(name: &str) -> String",
+        "fn is_str_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"str\")",
+        "'str' object attribute '{name}' is read-only",
+        "'str' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_str_attribute_assignment_errors_subset")
+                && document.contains("cpython_str_attribute_assignment_errors_diff_subset")
+                && document.contains("string attribute assignment errors")
+                && document.contains("read-only string method attributes")
+                && document.contains("without adding str instance dictionaries"),
+            "focused str attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

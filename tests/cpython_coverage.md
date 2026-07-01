@@ -74,6 +74,10 @@ Recent runtime migration notes:
   and methods across `False` and `True`, including
   readonly public integer attributes and CPython's bool-specific no-`__dict__`
   assignment/deletion errors without adding bool instance dictionaries.
+- `cpython_str_attribute_assignment_errors_subset`, backed by
+  `cpython_str_attribute_assignment_errors_diff_subset`, now pins string attribute assignment errors
+  for missing attributes and read-only string method attributes (`upper` /
+  `split`) without adding str instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
