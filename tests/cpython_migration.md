@@ -108,6 +108,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_dict_attribute_assignment_errors_diff_subset` for dict attribute assignment errors
   on missing attributes and read-only dict method attributes (`keys` /
   `update`) while preserving dict mutation without adding dict instance dictionaries.
+- Added `cpython_set_attribute_assignment_errors_subset` and
+  `cpython_set_attribute_assignment_errors_diff_subset` for set attribute assignment errors
+  on missing attributes and read-only set method attributes (`add` /
+  `update`) while preserving set mutation without adding set instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

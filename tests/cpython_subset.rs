@@ -26587,6 +26587,39 @@ print('mutated', d)"#,
     );
 }
 
+// Adapted from CPython's public `set` instance attribute assignment errors.
+// MiniPython keeps set entries mutable without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_set_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+s = {1, 2}
+for name in ['extra', 'add', 'update']:
+    show('set-' + name, lambda name=name: setattr(s, name, 99))
+    show('del-' + name, lambda name=name: delattr(s, name))
+print('read', sorted(s), s.add.__self__ is s)
+s.add(3)
+print('mutated', sorted(s))"#,
+        &[
+            "set-extra AttributeError 'set' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'set' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-add AttributeError 'set' object attribute 'add' is read-only",
+            "del-add AttributeError 'set' object attribute 'add' is read-only",
+            "set-update AttributeError 'set' object attribute 'update' is read-only",
+            "del-update AttributeError 'set' object attribute 'update' is read-only",
+            "read [1, 2] True",
+            "mutated [1, 2, 3]",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

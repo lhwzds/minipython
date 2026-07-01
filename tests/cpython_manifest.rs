@@ -29361,6 +29361,74 @@ fn dict_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_attribute_assignment_errors_subset(",
+        "s = {1, 2}",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'add', 'update']",
+        "\"set-extra AttributeError 'set' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'set' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-add AttributeError 'set' object attribute 'add' is read-only\"",
+        "\"del-update AttributeError 'set' object attribute 'update' is read-only\"",
+        "\"read [1, 2] True\"",
+        "\"mutated [1, 2, 3]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_set_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_set.py public set instance attribute assignment errors subset",
+        "name: \"set-attribute-assignment-errors\"",
+        "s = {1, 2}",
+        "setattr(s, name, 99)",
+        "delattr(s, name)",
+        "['extra', 'add', 'update']",
+        "s.add.__self__ is s",
+        "s.add(3)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused set attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Set(_) => Err(set_attribute_assignment_error(name))",
+        "fn set_attribute_assignment_error(name: &str) -> String",
+        "fn is_set_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"set\")",
+        "'set' object attribute '{name}' is read-only",
+        "'set' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_set_attribute_assignment_errors_subset")
+                && document.contains("cpython_set_attribute_assignment_errors_diff_subset")
+                && document.contains("set attribute assignment errors")
+                && document.contains("read-only set method attributes")
+                && document.contains("without adding set instance dictionaries"),
+            "focused set attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",
