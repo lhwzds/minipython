@@ -17550,6 +17550,20 @@ print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__mo
 }
 
 #[test]
+fn cpython_collections_counter_type_mro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Counter public MRO metadata subset",
+        name: "collections-counter-type-mro-metadata",
+        source: r#"from collections import Counter
+mro = object.__getattribute__(Counter, '__mro__')
+print('mro-len', type(mro).__name__, len(mro))
+for cls in mro:
+    print('mro-item', cls is Counter, cls is dict, cls is object, cls.__module__, cls.__qualname__)
+print('mro-shape', mro[0] is Counter, mro[1] is dict, mro[2] is object)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_basics_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter basics subset",

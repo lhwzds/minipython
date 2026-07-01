@@ -18564,6 +18564,72 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_counter_type_mro_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter MRO metadata"
+    );
+    let counter_type_mro_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_type_mro_metadata_diff_subset",
+    );
+    let counter_type_mro_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_type_mro_metadata_subset",
+    );
+    for required in [
+        "from collections import Counter",
+        "object.__getattribute__(Counter, '__mro__')",
+        "mro[0] is Counter",
+        "mro[1] is dict",
+        "mro[2] is object",
+        "cls.__module__",
+        "cls.__qualname__",
+    ] {
+        assert!(
+            counter_type_mro_diff_body.contains(required)
+                && counter_type_mro_subset_body.contains(required),
+            "Counter MRO metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"mro-len tuple 3\"",
+        "\"mro-item True False False collections Counter\"",
+        "\"mro-item False True False builtins dict\"",
+        "\"mro-item False False True builtins object\"",
+        "\"mro-shape True True True\"",
+    ] {
+        assert!(
+            counter_type_mro_subset_body.contains(required),
+            "Counter MRO metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn builtin_class_bases",
+        "\"Counter\" => vec![builtin_type_value(\"dict\")]",
+        "fn builtin_class_mro",
+        "mro_for_bases",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "Counter MRO metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_counter_type_mro_metadata_subset",
+            "cpython_collections_counter_type_mro_metadata_diff_subset",
+            "`Counter` type-object MRO metadata",
+            "`Counter`, `dict`, `object`",
+            "`__mro__`",
+            "without promoting broader collections type MRO parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "Counter MRO metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
     );

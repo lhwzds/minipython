@@ -59014,6 +59014,26 @@ print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__mo
     );
 }
 
+// Mirrors CPython's public `Counter` MRO metadata.
+#[test]
+fn cpython_collections_counter_type_mro_metadata_subset() {
+    assert_output(
+        r#"from collections import Counter
+mro = object.__getattribute__(Counter, '__mro__')
+print('mro-len', type(mro).__name__, len(mro))
+for cls in mro:
+    print('mro-item', cls is Counter, cls is dict, cls is object, cls.__module__, cls.__qualname__)
+print('mro-shape', mro[0] is Counter, mro[1] is dict, mro[2] is object)"#,
+        &[
+            "mro-len tuple 3",
+            "mro-item True False False collections Counter",
+            "mro-item False True False builtins dict",
+            "mro-item False False True builtins object",
+            "mro-shape True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
 // This first Counter slice covers the public mapping-style behavior and core
 // Counter helpers; arithmetic and multiset-specific methods remain separate.
