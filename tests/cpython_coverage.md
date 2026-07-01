@@ -406,6 +406,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ OrderedDict type-object __text_signature__ metadata
   behavior, object.__getattribute__ OrderedDict type-object __base__ metadata
   behavior, object.__getattribute__ OrderedDict type-object __bases__ metadata
+  behavior, object.__getattribute__ OrderedDict type-object __mro__ metadata
   behavior, object.__getattribute__ object type-object __doc__ metadata
   behavior, object.__getattribute__ list type-object __doc__ metadata
   behavior, object.__getattribute__ memoryview type-object __doc__ metadata
@@ -5361,6 +5362,11 @@ without adding general custom encoder/decoder class support.
   `cpython_ordered_dict_type_base_metadata_subset`, covering
   `OrderedDict` direct base metadata through `__base__` and `__bases__`,
   pinned to `builtins.dict` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_ordered_dict_type_mro_metadata_diff_subset` and
+  `cpython_ordered_dict_type_mro_metadata_subset`, covering
+  `OrderedDict` type-object MRO metadata through `__mro__`, pinned to the
+  public `OrderedDict`, `dict`, `object` chain without promoting broader collections type MRO parity.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_constructor_update_subset` and
   `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in

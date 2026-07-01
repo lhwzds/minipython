@@ -440,6 +440,7 @@ Completed in the builtin method TypeError capture pass:
   object.__getattribute__ OrderedDict type-object __text_signature__ metadata,
   object.__getattribute__ OrderedDict type-object __base__ metadata,
   object.__getattribute__ OrderedDict type-object __bases__ metadata,
+  object.__getattribute__ OrderedDict type-object __mro__ metadata,
   object.__getattribute__ object type-object __doc__ metadata,
   object.__getattribute__ list type-object __doc__ metadata,
   object.__getattribute__ memoryview type-object __doc__ metadata,
@@ -11620,8 +11621,11 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_ordered_dict_type_base_metadata_subset`, backed by
   `cpython_ordered_dict_type_base_metadata_diff_subset`, covers
   `OrderedDict` direct base metadata through `__base__` and `__bases__`,
-  pinned to `builtins.dict` without expanding full `__mro__` parity. Direct
-  `__reversed__()` returns reverse key iteration for the supported storage.
+  pinned to `builtins.dict`. `cpython_ordered_dict_type_mro_metadata_subset`,
+  backed by `cpython_ordered_dict_type_mro_metadata_diff_subset`, covers
+  `OrderedDict` type-object MRO metadata through `__mro__`, pinned to the
+  public `OrderedDict`, `dict`, `object` chain without promoting broader collections type MRO parity. Direct `__reversed__()` returns reverse key
+  iteration for the supported storage.
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by the
   `ordered-dict-move-pop-keyword-subset` diff case, separately covers
   `move_to_end()` / `popitem()` `last=` keyword binding, type-level method

@@ -23690,6 +23690,20 @@ print('bases', type(bases).__name__, len(bases), bases[0] is dict, bases[0].__mo
 }
 
 #[test]
+fn cpython_ordered_dict_type_mro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ordered_dict.py OrderedDict public MRO metadata subset",
+        name: "ordered-dict-type-mro-metadata",
+        source: r#"from collections import OrderedDict
+mro = object.__getattribute__(OrderedDict, '__mro__')
+print('mro-len', type(mro).__name__, len(mro))
+for cls in mro:
+    print('mro-item', cls is OrderedDict, cls is dict, cls is object, cls.__module__, cls.__qualname__)
+print('mro-shape', mro[0] is OrderedDict, mro[1] is dict, mro[2] is object)"#,
+    });
+}
+
+#[test]
 fn cpython_program_output_parity_smoke_diff_subset() {
     for case in [
         DiffCase {

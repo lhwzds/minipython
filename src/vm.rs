@@ -51395,6 +51395,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
     match name {
         "object" => Vec::new(),
         "bool" => vec![builtin_type_value("int")],
+        "OrderedDict" => vec![builtin_type_value("dict")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
