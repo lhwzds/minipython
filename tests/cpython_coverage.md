@@ -206,6 +206,10 @@ Recent runtime migration notes:
   negative zero, finite, and infinite floats, CPython's read-only float method attributes
   such as `conjugate`, `is_integer`, and `hex`, plus readonly and
   no-`__dict__` assignment/deletion errors without adding float instance dictionaries.
+- `cpython_float_instance_doc_attribute_subset`, backed by
+  `cpython_float_instance_doc_attribute_diff_subset`, now pins float instance `__doc__`
+  lookup for positive zero, negative zero, finite, and infinite floats, matching
+  `float.__doc__` and `dir(value)` without adding writable instance dictionaries.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use
@@ -559,6 +563,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_int_instance_doc_attribute_diff_subset`,
+  `cpython_float_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

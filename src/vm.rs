@@ -57949,6 +57949,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "imag" => Ok(Value::Number(0)),
             _ => Err(missing_object_attribute_error(&receiver, name)),
         },
+        Value::Float(_) if name == "__doc__" => Ok(Value::String(
+            builtins_module_type_doc("float")
+                .expect("float builtin type doc exists")
+                .to_string(),
+        )),
         Value::Float(value) => match name {
             "conjugate" | "hex" | "is_integer" | "as_integer_ratio" | "__ceil__" | "__floor__"
             | "__format__" | "__round__" => Ok(Value::BoundMethod {

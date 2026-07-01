@@ -5642,6 +5642,23 @@ show('del-extra', lambda: delattr(x, 'extra'))"#,
     );
 }
 
+// Mirrors CPython's public `float` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_float_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('zero', 0.0), ('negative-zero', -0.0), ('finite', 3.5), ('infinity', float('inf'))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == float.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "zero str True True Convert a string or number to a floating-point number, if possible. 67",
+            "negative-zero str True True Convert a string or number to a floating-point number, if possible. 67",
+            "finite str True True Convert a string or number to a floating-point number, if possible. 67",
+            "infinity str True True Convert a string or number to a floating-point number, if possible. 67",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_hash
 // and ::test_hash_nan. Exact identity-hash values are process-local, so this
 // pins the public equality relationships instead of numeric addresses.

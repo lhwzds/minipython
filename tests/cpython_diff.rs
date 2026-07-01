@@ -27440,6 +27440,17 @@ show('del-extra', lambda: delattr(x, 'extra'))"#,
 }
 
 #[test]
+fn cpython_float_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py public float instance __doc__ attribute subset",
+        name: "float-instance-doc-attribute",
+        source: r#"for label, value in [('zero', 0.0), ('negative-zero', -0.0), ('finite', 3.5), ('infinity', float('inf'))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == float.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_grammar_match_stmt_diff_subset() {
     let probe = run_cpython("match 1:\n    case 1:\n        print('ok')")
         .expect("failed to probe CPython match statement support");
