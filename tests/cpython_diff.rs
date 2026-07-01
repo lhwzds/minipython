@@ -18868,6 +18868,35 @@ for label, thunk in [
 }
 
 #[test]
+fn cpython_collections_defaultdict_attribute_assignment_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict attribute assignment errors subset",
+        name: "collections-defaultdict-attribute-assignment-errors",
+        source: r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': 1})
+print('visible', 'copy' in dir(d), 'update' in dir(d), 'get' in dir(d), 'fromkeys' in dir(d), 'default_factory' in dir(d))
+for name in ['copy', 'update', 'get', 'fromkeys']:
+    show('set-' + name, lambda name=name: setattr(d, name, int))
+    show('del-' + name, lambda name=name: delattr(d, name))
+show('set-extra', lambda: setattr(d, 'extra', int))
+show('del-extra', lambda: delattr(d, 'extra'))
+show('set-default-factory', lambda: setattr(d, 'default_factory', int))
+show('read-default-factory', lambda: d.default_factory)
+show('del-default-factory', lambda: delattr(d, 'default_factory'))
+show('read-default-factory-after-del', lambda: d.default_factory)
+print('final', type(d.copy()).__name__, d.default_factory, sorted(d.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_copy_module_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict copy.copy public behavior subset",

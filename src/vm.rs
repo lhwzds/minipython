@@ -61668,9 +61668,21 @@ fn is_deque_readonly_instance_attribute(name: &str) -> bool {
 }
 
 fn default_dict_attribute_assignment_error(name: &str) -> String {
-    format!(
-        "AttributeError: 'collections.defaultdict' object has no attribute '{name}' and no __dict__ for setting new attributes"
-    )
+    if is_default_dict_readonly_instance_attribute(name) {
+        format!("AttributeError: 'collections.defaultdict' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'collections.defaultdict' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_default_dict_readonly_instance_attribute(name: &str) -> bool {
+    !matches!(name, "default_factory")
+        && !name.starts_with("__")
+        && builtin_type_dir_names("defaultdict")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn deque_type_attribute_assignment_error(name: &str) -> String {

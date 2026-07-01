@@ -682,6 +682,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset`,
+  `cpython_collections_defaultdict_attribute_assignment_errors_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
   `cpython_collections_defaultdict_dunder_copy_diff_subset`,
   `cpython_collections_defaultdict_copy_descriptor_errors_diff_subset`,
@@ -1307,6 +1308,14 @@ Recent runtime migration notes:
   mappingproxy with descriptor identity preserved. It keeps descriptor arity
   text without promoting full `defaultdict.__dict__` method-table parity,
   pickle, merge operators, or subclass compatibility.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_attribute_assignment_errors_diff_subset` and
+  `cpython_collections_defaultdict_attribute_assignment_errors_subset`,
+  covering CPython public `defaultdict` instance attribute assignment and
+  deletion errors for existing read-only method attributes such as `copy`,
+  `update`, `get`, and `fromkeys`, ordinary missing-attribute writes, and the
+  supported writable/deletable `default_factory` member without promoting full
+  method-table, pickle, merge-operator, or subclass compatibility.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and
   `cpython_collections_defaultdict_copy_module_subset`, covering CPython public
@@ -5081,6 +5090,15 @@ without adding general custom encoder/decoder class support.
   through the type mappingproxy with descriptor identity preserved. Descriptor
   arity text is covered while full `defaultdict.__dict__` method-table parity,
   pickle, merge operators, and subclass compatibility stay outside the
+  supported surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_defaultdict_attribute_assignment_errors_diff_subset` and
+  `cpython_collections_defaultdict_attribute_assignment_errors_subset`,
+  covering `defaultdict` instance attribute assignment/deletion errors for
+  supported pure-memory method attributes (`copy`, `update`, `get`, and
+  `fromkeys`) as read-only attributes, ordinary missing-attribute writes, and
+  writable/deletable `default_factory` behavior while leaving full method-table
+  parity, pickle, merge operators, and subclass compatibility outside the
   supported surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_defaultdict_copy_module_diff_subset` and

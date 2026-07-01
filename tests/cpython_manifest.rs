@@ -17860,6 +17860,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_default_factory_descriptor_subset",
+            "cpython_collections_defaultdict_attribute_assignment_errors_subset",
             "cpython_collections_defaultdict_copy_module_subset",
             "cpython_collections_defaultdict_dunder_copy_subset",
             "cpython_collections_defaultdict_copy_descriptor_errors_subset",
@@ -19307,6 +19308,98 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict default_factory descriptor docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_attribute_assignment_errors_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict attribute assignment errors"
+    );
+    let defaultdict_attr_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_attribute_assignment_errors_diff_subset",
+    );
+    let defaultdict_attr_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_attribute_assignment_errors_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "'copy' in dir(d)",
+        "'update' in dir(d)",
+        "'get' in dir(d)",
+        "'fromkeys' in dir(d)",
+        "'default_factory' in dir(d)",
+        "setattr(d, name, int)",
+        "delattr(d, name)",
+        "setattr(d, 'extra', int)",
+        "delattr(d, 'extra')",
+        "setattr(d, 'default_factory', int)",
+        "d.default_factory",
+        "delattr(d, 'default_factory')",
+        "type(d.copy()).__name__",
+    ] {
+        assert!(
+            defaultdict_attr_assignment_diff_body.contains(required)
+                && defaultdict_attr_assignment_subset_body.contains(required),
+            "defaultdict attribute assignment diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True\"",
+        "\"set-copy AttributeError 'collections.defaultdict' object attribute 'copy' is read-only (\\\"'collections.defaultdict' object attribute 'copy' is read-only\\\",)\"",
+        "\"del-copy AttributeError 'collections.defaultdict' object attribute 'copy' is read-only (\\\"'collections.defaultdict' object attribute 'copy' is read-only\\\",)\"",
+        "\"set-update AttributeError 'collections.defaultdict' object attribute 'update' is read-only (\\\"'collections.defaultdict' object attribute 'update' is read-only\\\",)\"",
+        "\"del-update AttributeError 'collections.defaultdict' object attribute 'update' is read-only (\\\"'collections.defaultdict' object attribute 'update' is read-only\\\",)\"",
+        "\"set-get AttributeError 'collections.defaultdict' object attribute 'get' is read-only (\\\"'collections.defaultdict' object attribute 'get' is read-only\\\",)\"",
+        "\"del-get AttributeError 'collections.defaultdict' object attribute 'get' is read-only (\\\"'collections.defaultdict' object attribute 'get' is read-only\\\",)\"",
+        "\"set-fromkeys AttributeError 'collections.defaultdict' object attribute 'fromkeys' is read-only (\\\"'collections.defaultdict' object attribute 'fromkeys' is read-only\\\",)\"",
+        "\"del-fromkeys AttributeError 'collections.defaultdict' object attribute 'fromkeys' is read-only (\\\"'collections.defaultdict' object attribute 'fromkeys' is read-only\\\",)\"",
+        "\"set-extra AttributeError 'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes (\\\"'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes\\\",)\"",
+        "\"del-extra AttributeError 'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes (\\\"'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes\\\",)\"",
+        "\"set-default-factory NoneType None\"",
+        "\"read-default-factory type <class 'int'>\"",
+        "\"del-default-factory NoneType None\"",
+        "\"read-default-factory-after-del NoneType None\"",
+        "\"final defaultdict None [('a', 1)]\"",
+    ] {
+        assert!(
+            defaultdict_attr_assignment_subset_body.contains(required),
+            "defaultdict attribute assignment subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn default_dict_attribute_assignment_error(",
+        "fn is_default_dict_readonly_instance_attribute(",
+        "'collections.defaultdict' object attribute '{name}' is read-only",
+        "builtin_type_dir_names(\"defaultdict\")",
+        "!matches!(name, \"default_factory\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict attribute assignment implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_attribute_assignment_errors_subset",
+            "cpython_collections_defaultdict_attribute_assignment_errors_diff_subset",
+            "`defaultdict` instance attribute assignment",
+            "read-only method attributes",
+            "`copy`",
+            "`update`",
+            "`get`",
+            "`fromkeys`",
+            "`default_factory`",
+            "method-table",
+            "pickle",
+            "merge",
+            "subclass compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict attribute assignment docs must contain `{required}`"
             );
         }
     }

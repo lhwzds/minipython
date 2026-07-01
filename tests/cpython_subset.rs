@@ -59520,6 +59520,55 @@ for label, thunk in [
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py defaultdict attribute
+// behavior. This pins instance attribute assignment/deletion error text for
+// existing methods while keeping default_factory writable.
+#[test]
+fn cpython_collections_defaultdict_attribute_assignment_errors_subset() {
+    assert_output_with_stack(
+        r#"from collections import defaultdict
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
+
+d = defaultdict(list, {'a': 1})
+print('visible', 'copy' in dir(d), 'update' in dir(d), 'get' in dir(d), 'fromkeys' in dir(d), 'default_factory' in dir(d))
+for name in ['copy', 'update', 'get', 'fromkeys']:
+    show('set-' + name, lambda name=name: setattr(d, name, int))
+    show('del-' + name, lambda name=name: delattr(d, name))
+show('set-extra', lambda: setattr(d, 'extra', int))
+show('del-extra', lambda: delattr(d, 'extra'))
+show('set-default-factory', lambda: setattr(d, 'default_factory', int))
+show('read-default-factory', lambda: d.default_factory)
+show('del-default-factory', lambda: delattr(d, 'default_factory'))
+show('read-default-factory-after-del', lambda: d.default_factory)
+print('final', type(d.copy()).__name__, d.default_factory, sorted(d.items()))"#,
+        &[
+            "visible True True True True True",
+            "set-copy AttributeError 'collections.defaultdict' object attribute 'copy' is read-only (\"'collections.defaultdict' object attribute 'copy' is read-only\",)",
+            "del-copy AttributeError 'collections.defaultdict' object attribute 'copy' is read-only (\"'collections.defaultdict' object attribute 'copy' is read-only\",)",
+            "set-update AttributeError 'collections.defaultdict' object attribute 'update' is read-only (\"'collections.defaultdict' object attribute 'update' is read-only\",)",
+            "del-update AttributeError 'collections.defaultdict' object attribute 'update' is read-only (\"'collections.defaultdict' object attribute 'update' is read-only\",)",
+            "set-get AttributeError 'collections.defaultdict' object attribute 'get' is read-only (\"'collections.defaultdict' object attribute 'get' is read-only\",)",
+            "del-get AttributeError 'collections.defaultdict' object attribute 'get' is read-only (\"'collections.defaultdict' object attribute 'get' is read-only\",)",
+            "set-fromkeys AttributeError 'collections.defaultdict' object attribute 'fromkeys' is read-only (\"'collections.defaultdict' object attribute 'fromkeys' is read-only\",)",
+            "del-fromkeys AttributeError 'collections.defaultdict' object attribute 'fromkeys' is read-only (\"'collections.defaultdict' object attribute 'fromkeys' is read-only\",)",
+            "set-extra AttributeError 'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes (\"'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes\",)",
+            "del-extra AttributeError 'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes (\"'collections.defaultdict' object has no attribute 'extra' and no __dict__ for setting new attributes\",)",
+            "set-default-factory NoneType None",
+            "read-default-factory type <class 'int'>",
+            "del-default-factory NoneType None",
+            "read-default-factory-after-del NoneType None",
+            "final defaultdict None [('a', 1)]",
+        ],
+        8 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict copying
 // behavior. This keeps the slice to copy.copy() shallow-copy semantics, not
 // deepcopy, pickle, merge operators, or defaultdict subclassing.
