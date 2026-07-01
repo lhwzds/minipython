@@ -105,6 +105,7 @@ thread_local! {
     static ITERABLE_COROUTINE_FUNCTIONS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
     static FUNCTION_CODE_IDENTITIES: RefCell<HashMap<usize, Rc<()>>> =
         RefCell::new(HashMap::new());
+    static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -60692,7 +60693,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__builtins__" && is_json_builtin(&function_name) =>
         {
-            Ok(default_builtins_dict_value())
+            Ok(json_builtin_builtins())
         }
         Value::Builtin(function_name)
             if name == "__globals__" && is_json_builtin(&function_name) =>
@@ -61099,7 +61100,7 @@ fn json_builtin_globals() -> Value {
                     ),
                     (
                         Value::String("__builtins__".to_string()),
-                        default_builtins_dict_value(),
+                        json_builtin_builtins(),
                     ),
                     (
                         Value::String("loads".to_string()),
@@ -61111,6 +61112,15 @@ fn json_builtin_globals() -> Value {
                     ),
                 ])
             })
+            .clone()
+    })
+}
+
+fn json_builtin_builtins() -> Value {
+    JSON_BUILTIN_BUILTINS.with(|builtins| {
+        let mut builtins = builtins.borrow_mut();
+        builtins
+            .get_or_insert_with(default_builtins_dict_value)
             .clone()
     })
 }

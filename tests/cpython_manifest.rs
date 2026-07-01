@@ -8716,6 +8716,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_builtins_metadata_subset",
+            "cpython_json_function_builtins_identity_metadata_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
@@ -8824,6 +8825,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_annotate_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
         "cpython_json_function_builtins_metadata_diff_subset",
+        "cpython_json_function_builtins_identity_metadata_diff_subset",
         "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_function_globals_identity_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
@@ -8954,6 +8956,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_builtins_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_builtins_metadata_subset",
+    );
+    let json_function_builtins_identity_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_builtins_identity_metadata_diff_subset",
+    );
+    let json_function_builtins_identity_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_builtins_identity_metadata_subset",
     );
     let json_function_globals_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9091,6 +9101,28 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_builtins_subset_body.contains(required),
             "json public function __builtins__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "json.loads.__builtins__ is json.loads.__builtins__",
+        "json.loads.__builtins__ is json.dumps.__builtins__",
+        "json.loads.__builtins__ is json.loads.__globals__['__builtins__']",
+        "json.dumps.__builtins__ is json.dumps.__globals__['__builtins__']",
+        "json.loads.__builtins__['mini_probe_key'] = 42",
+        "json.loads.__globals__['__builtins__']['mini_probe_key']",
+        "json.loads.__globals__['__builtins__'] = replacement",
+        "json.loads.__builtins__ is replacement",
+    ] {
+        assert!(
+            json_function_builtins_identity_diff_body.contains(required)
+                && json_function_builtins_identity_subset_body.contains(required),
+            "json public function __builtins__ identity diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"True\"", "\"42\"", "\"False\"", "\"False 2\""] {
+        assert!(
+            json_function_builtins_identity_subset_body.contains(required),
+            "json public function __builtins__ identity subset output must pin `{required}`"
         );
     }
     for required in [
@@ -9273,8 +9305,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains("name == \"__builtins__\" && is_json_builtin(&function_name)")
-            && VM_SOURCE.contains("Ok(default_builtins_dict_value())"),
-        "VM must expose CPython-compatible json function __builtins__ metadata"
+            && VM_SOURCE.contains("Ok(json_builtin_builtins())")
+            && VM_SOURCE.contains("static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>>")
+            && VM_SOURCE.contains("fn json_builtin_builtins() -> Value")
+            && VM_SOURCE.contains(".get_or_insert_with(default_builtins_dict_value)")
+            && VM_SOURCE.contains("json_builtin_builtins(),"),
+        "VM must expose persistent CPython-compatible json function __builtins__ metadata"
     );
     assert!(
         VM_SOURCE.contains("name == \"__globals__\" && is_json_builtin(&function_name)")
@@ -9334,6 +9370,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_closure_none_metadata_diff_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_metadata_diff_subset",
+            "cpython_json_function_builtins_identity_metadata_subset",
+            "cpython_json_function_builtins_identity_metadata_diff_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_metadata_diff_subset",
             "cpython_json_function_globals_identity_metadata_subset",
@@ -9362,6 +9400,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__builtins__` metadata",
             "`json.loads.__builtins__`",
             "`json.dumps.__builtins__`",
+            "json public function `__builtins__` identity",
             "json public function `__globals__` metadata",
             "`json.loads.__globals__`",
             "`json.dumps.__globals__`",

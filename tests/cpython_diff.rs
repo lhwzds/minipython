@@ -772,6 +772,30 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_builtins_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __builtins__ identity metadata subset",
+        name: "json-function-builtins-identity-metadata",
+        source: r#"import json
+print(json.loads.__builtins__ is json.loads.__builtins__)
+print(json.loads.__builtins__ is json.dumps.__builtins__)
+print(json.loads.__builtins__ is json.loads.__globals__['__builtins__'])
+print(json.dumps.__builtins__ is json.dumps.__globals__['__builtins__'])
+json.loads.__builtins__['mini_probe_key'] = 42
+print(json.dumps.__builtins__['mini_probe_key'])
+print(json.loads.__globals__['__builtins__']['mini_probe_key'])
+del json.loads.__builtins__['mini_probe_key']
+print('mini_probe_key' in json.dumps.__builtins__)
+original = json.loads.__globals__['__builtins__']
+replacement = {'len': lambda value: 'custom'}
+json.loads.__globals__['__builtins__'] = replacement
+print(json.loads.__builtins__ is replacement, json.loads.__builtins__['len']([1, 2]))
+json.loads.__globals__['__builtins__'] = original
+print(json.loads.__builtins__ is original)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_globals_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __globals__ metadata subset",
