@@ -1314,6 +1314,32 @@ print(json.loads.__builtins__ is original)"#,
 }
 
 #[test]
+fn cpython_json_function_builtins_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __builtins__ assignment metadata subset",
+        name: "json-function-builtins-assignment-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__builtins__
+    print(name, 'initial', type(original).__name__, original is function.__builtins__, original is function.__globals__['__builtins__'], original['len']([1, 2]))
+    for label, action in [
+        ('set-dict', lambda function=function: setattr(function, '__builtins__', {'x': 1})),
+        ('set-none', lambda function=function: setattr(function, '__builtins__', None)),
+        ('del-direct', lambda function=function: delattr(function, '__builtins__')),
+        ('set-wrapper', lambda function=function: function.__setattr__('__builtins__', {'x': 1})),
+        ('del-wrapper', lambda function=function: function.__delattr__('__builtins__')),
+    ]:
+        try:
+            action()
+        except Exception as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', function.__builtins__ is original, function.__builtins__ is function.__globals__['__builtins__'])
+print(json.loads.__builtins__ is json.dumps.__builtins__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_globals_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __globals__ metadata subset",

@@ -8719,6 +8719,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_builtins_metadata_subset",
             "cpython_json_function_builtins_identity_metadata_subset",
+            "cpython_json_function_builtins_assignment_metadata_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_identity_metadata_subset",
             "cpython_json_function_globals_assignment_metadata_subset",
@@ -8871,6 +8872,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_closure_none_metadata_diff_subset",
         "cpython_json_function_builtins_metadata_diff_subset",
         "cpython_json_function_builtins_identity_metadata_diff_subset",
+        "cpython_json_function_builtins_assignment_metadata_diff_subset",
         "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_function_globals_identity_metadata_diff_subset",
         "cpython_json_function_globals_assignment_metadata_diff_subset",
@@ -9226,6 +9228,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_builtins_identity_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_builtins_identity_metadata_subset",
+    );
+    let json_function_builtins_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_builtins_assignment_metadata_diff_subset",
+    );
+    let json_function_builtins_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_builtins_assignment_metadata_subset",
     );
     let json_function_globals_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10825,6 +10835,55 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "original = function.__builtins__",
+        "original is function.__builtins__",
+        "original is function.__globals__['__builtins__']",
+        "original['len']([1, 2])",
+        "setattr(function, '__builtins__', {'x': 1})",
+        "setattr(function, '__builtins__', None)",
+        "delattr(function, '__builtins__')",
+        "function.__setattr__('__builtins__', {'x': 1})",
+        "function.__delattr__('__builtins__')",
+        "function.__builtins__ is original",
+        "json.loads.__builtins__ is json.dumps.__builtins__",
+    ] {
+        assert!(
+            json_function_builtins_assignment_diff_body.contains(required)
+                && json_function_builtins_assignment_subset_body.contains(required),
+            "json public function __builtins__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial dict True True 2\"",
+        "\"loads set-dict AttributeError readonly attribute",
+        "\"loads set-none AttributeError readonly attribute",
+        "\"loads del-direct AttributeError readonly attribute",
+        "\"loads set-wrapper AttributeError readonly attribute",
+        "\"loads del-wrapper AttributeError readonly attribute",
+        "\"loads after-errors True True\"",
+        "\"dumps initial dict True True 2\"",
+        "\"dumps set-dict AttributeError readonly attribute",
+        "\"dumps set-none AttributeError readonly attribute",
+        "\"dumps del-direct AttributeError readonly attribute",
+        "\"dumps set-wrapper AttributeError readonly attribute",
+        "\"dumps del-wrapper AttributeError readonly attribute",
+        "\"dumps after-errors True True\"",
+    ] {
+        assert!(
+            json_function_builtins_assignment_subset_body.contains(required),
+            "json public function __builtins__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "Ok(json_builtin_builtins())",
+        "\"__builtins__\" => return Err(\"AttributeError: readonly attribute\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __builtins__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
         ".__globals__",
         "g['__name__']",
         "g['__package__']",
@@ -12395,6 +12454,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_builtins_metadata_diff_subset",
             "cpython_json_function_builtins_identity_metadata_subset",
             "cpython_json_function_builtins_identity_metadata_diff_subset",
+            "cpython_json_function_builtins_assignment_metadata_subset",
+            "cpython_json_function_builtins_assignment_metadata_diff_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_metadata_diff_subset",
             "cpython_json_function_globals_identity_metadata_subset",
@@ -12495,6 +12556,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "`json.loads.__builtins__`",
             "`json.dumps.__builtins__`",
             "json public function `__builtins__` identity",
+            "json public function `__builtins__` assignment",
             "json public function `__globals__` metadata",
             "`json.loads.__globals__`",
             "`json.dumps.__globals__`",

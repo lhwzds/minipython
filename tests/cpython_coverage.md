@@ -1069,6 +1069,7 @@ Recent runtime migration notes:
   `cpython_json_function_closure_none_metadata_diff_subset`,
   `cpython_json_function_builtins_metadata_diff_subset`,
   `cpython_json_function_builtins_identity_metadata_diff_subset`,
+  `cpython_json_function_builtins_assignment_metadata_diff_subset`,
   `cpython_json_function_globals_metadata_diff_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset`,
   `cpython_json_function_globals_assignment_metadata_diff_subset`,
@@ -1766,6 +1767,8 @@ Recent runtime migration notes:
   `cpython_json_function_doc_module_assignment_metadata_subset`,
   `cpython_json_function_dict_assignment_metadata_diff_subset` /
   `cpython_json_function_dict_assignment_metadata_subset`,
+  `cpython_json_function_builtins_assignment_metadata_diff_subset` /
+  `cpython_json_function_builtins_assignment_metadata_subset`,
   `cpython_json_function_globals_identity_metadata_diff_subset` /
   `cpython_json_function_globals_identity_metadata_subset`,
   `cpython_json_function_globals_assignment_metadata_diff_subset` /
@@ -2632,6 +2635,13 @@ and mutation visibility aligned with CPython for the supported builtins dict
 surface, including the initial `__globals__['__builtins__']` link, without
 adding function `__code__`, full module globals, file APIs, module `__all__`,
 or encoder/decoder classes.
+
+`cpython_json_function_builtins_assignment_metadata_subset`, backed by
+`cpython_json_function_builtins_assignment_metadata_diff_subset`, keeps json public function `__builtins__` assignment
+and deletion errors aligned with CPython for `loads` / `dumps`, including
+direct assignment, direct deletion, and `__setattr__` / `__delattr__` wrapper
+entry points, without adding writable function builtins, function `__code__`,
+full module globals, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_globals_metadata_subset`, backed by
 `cpython_json_function_globals_metadata_diff_subset`, keeps the supported json public function `__globals__` metadata
