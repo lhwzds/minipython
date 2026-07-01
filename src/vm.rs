@@ -10007,6 +10007,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__eq__" || name == "method.__ne__" => {
+                self.call_method_rich_compare(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "method.__format__" => {
                 self.call_method_format(args, keywords)
             }
@@ -17563,6 +17566,41 @@ impl Vm {
         }
 
         self.hash_key_value(receiver)
+    }
+
+    fn call_method_rich_compare(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::BoundMethod { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        let [other] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+
+        let Some(equal) = bound_methods_directly_equal(receiver, other) else {
+            return Ok(Value::NotImplemented);
+        };
+        Ok(Value::Bool(if method == "__ne__" { !equal } else { equal }))
     }
 
     fn call_method_format(
@@ -50225,11 +50263,13 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__func__",
                 "__call__",
                 "__dir__",
+                "__eq__",
                 "__format__",
                 "__get__",
                 "__getattribute__",
                 "__hash__",
                 "__name__",
+                "__ne__",
                 "__repr__",
                 "__self__",
                 "__str__",
@@ -59579,6 +59619,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__eq__" | "__ne__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("method.{name}"))),
+                receiver: Box::new(Value::BoundMethod {
+                    function,
+                    receiver,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             "__format__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("method.__format__".to_string())),
                 receiver: Box::new(Value::BoundMethod {
@@ -59666,6 +59715,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__eq__" || name == "method.__ne__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -61390,6 +61444,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "method.__dir__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__"
+                && (function_name == "method.__eq__" || function_name == "method.__ne__") =>
+        {
+            Ok(Value::String(function_name.to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__eq__" => {
+            Ok(Value::String("Return self==value.".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__ne__" => {
+            Ok(Value::String("Return self!=value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && (function_name == "method.__eq__" || function_name == "method.__ne__") =>
+        {
+            Ok(Value::String("($self, value, /)".to_string()))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__format__" => {
             Ok(Value::String("method.__format__".to_string()))
@@ -63239,6 +63311,8 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"
+            | "method.__eq__"
+            | "method.__ne__"
             | "method.__hash__"
             | "json.function.__call__"
             | "json.function.__repr__"
@@ -89438,6 +89512,26 @@ fn dict_view_item_matches(needle: &Value, key: &Value, value: &Value) -> bool {
     dict_view_item_pair(needle).is_some_and(|(needle_key, needle_value)| {
         dict_keys_equal(key, needle_key) && sequence_items_match(value, needle_value)
     })
+}
+
+fn bound_methods_directly_equal(left: &Value, right: &Value) -> Option<bool> {
+    let (
+        Value::BoundMethod {
+            function: left_function,
+            receiver: left_receiver,
+            ..
+        },
+        Value::BoundMethod {
+            function: right_function,
+            receiver: right_receiver,
+            ..
+        },
+    ) = (left, right)
+    else {
+        return None;
+    };
+
+    Some(is_identical(left_function, right_function) && is_identical(left_receiver, right_receiver))
 }
 
 fn is_identical(left: &Value, right: &Value) -> bool {

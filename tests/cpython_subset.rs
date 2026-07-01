@@ -38195,6 +38195,60 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_rich_compare_wrapper_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    receiver = []
+    bound = getattr(json, name).__get__(receiver, list)
+    same_receiver = getattr(json, name).__get__(receiver, list)
+    equal_other_receiver = getattr(json, name).__get__([], list)
+    different_receiver = getattr(json, name).__get__([1], list)
+    different_function = getattr(json, 'dumps' if name == 'loads' else 'loads').__get__(receiver, list)
+    for attr in ['__eq__', '__ne__']:
+        wrapper = getattr(bound, attr)
+        print(name, attr, attr in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+        print(name, attr, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+        print(name, attr, wrapper(same_receiver), wrapper(equal_other_receiver), wrapper(different_receiver), wrapper(different_function), wrapper(1))
+        for label, call in [
+            ('missing', lambda wrapper=wrapper: wrapper()),
+            ('extra', lambda wrapper=wrapper, same_receiver=same_receiver: wrapper(same_receiver, 1)),
+            ('keyword', lambda wrapper=wrapper, same_receiver=same_receiver: wrapper(value=same_receiver)),
+        ]:
+            try:
+                call()
+            except TypeError as error:
+                print(name, attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads __eq__ True method-wrapper method-wrapper",
+            "loads __eq__ True __eq__ method.__eq__ Return self==value. MISSING ($self, value, /)",
+            "loads __eq__ True False False False NotImplemented",
+            "loads __eq__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __eq__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __eq__ keyword TypeError wrapper __eq__() takes no keyword arguments ('wrapper __eq__() takes no keyword arguments',)",
+            "loads __ne__ True method-wrapper method-wrapper",
+            "loads __ne__ True __ne__ method.__ne__ Return self!=value. MISSING ($self, value, /)",
+            "loads __ne__ False True True True NotImplemented",
+            "loads __ne__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "loads __ne__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "loads __ne__ keyword TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "dumps __eq__ True method-wrapper method-wrapper",
+            "dumps __eq__ True __eq__ method.__eq__ Return self==value. MISSING ($self, value, /)",
+            "dumps __eq__ True False False False NotImplemented",
+            "dumps __eq__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __eq__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __eq__ keyword TypeError wrapper __eq__() takes no keyword arguments ('wrapper __eq__() takes no keyword arguments',)",
+            "dumps __ne__ True method-wrapper method-wrapper",
+            "dumps __ne__ True __ne__ method.__ne__ Return self!=value. MISSING ($self, value, /)",
+            "dumps __ne__ False True True True NotImplemented",
+            "dumps __ne__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "dumps __ne__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "dumps __ne__ keyword TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_bound_method_format_wrapper_subset() {
     assert_output(
         r#"import json

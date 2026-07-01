@@ -1218,6 +1218,36 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_rich_compare_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __eq__ and __ne__ wrapper subset",
+        name: "json-function-bound-method-rich-compare-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    receiver = []
+    bound = getattr(json, name).__get__(receiver, list)
+    same_receiver = getattr(json, name).__get__(receiver, list)
+    equal_other_receiver = getattr(json, name).__get__([], list)
+    different_receiver = getattr(json, name).__get__([1], list)
+    different_function = getattr(json, 'dumps' if name == 'loads' else 'loads').__get__(receiver, list)
+    for attr in ['__eq__', '__ne__']:
+        wrapper = getattr(bound, attr)
+        print(name, attr, attr in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+        print(name, attr, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+        print(name, attr, wrapper(same_receiver), wrapper(equal_other_receiver), wrapper(different_receiver), wrapper(different_function), wrapper(1))
+        for label, call in [
+            ('missing', lambda wrapper=wrapper: wrapper()),
+            ('extra', lambda wrapper=wrapper, same_receiver=same_receiver: wrapper(same_receiver, 1)),
+            ('keyword', lambda wrapper=wrapper, same_receiver=same_receiver: wrapper(value=same_receiver)),
+        ]:
+            try:
+                call()
+            except TypeError as error:
+                print(name, attr, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_format_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __format__ wrapper subset",
