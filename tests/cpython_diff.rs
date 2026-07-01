@@ -16390,6 +16390,18 @@ print(type({1: 2}.keys().mapping) is cls)"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests public mappingproxy instance __doc__ attribute subset",
+        name: "types-mappingproxy-instance-doc-attribute",
+        source: r#"from types import MappingProxyType
+for label, value in [('exact', MappingProxyType({'a': 1})), ('class-dict', int.__dict__), ('view-mapping', {1: 2}.keys().mapping)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == type(value).__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_type_hierarchy_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::MappingProxyTests type hierarchy subset",

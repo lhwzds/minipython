@@ -172,6 +172,10 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_attribute_assignment_errors_diff_subset`, now pins mappingproxy attribute assignment errors
   for missing attributes and read-only mappingproxy method attributes (`keys`)
   without adding mappingproxy instance dictionaries.
+- `cpython_types_mappingproxy_instance_doc_attribute_subset`, backed by
+  `cpython_types_mappingproxy_instance_doc_attribute_diff_subset`, now pins mappingproxy instance `__doc__`
+  lookup for exact proxies, builtin type dictionaries, and dict-view `.mapping`,
+  matching `type(value).__doc__` and `dir(value)` without adding writable instance dictionaries.
 - `cpython_collections_deque_attribute_assignment_errors_subset`, backed by
   `cpython_collections_deque_attribute_assignment_errors_diff_subset`, now pins deque attribute assignment errors
   for missing attributes, read-only deque data attributes (`maxlen`), and
@@ -712,6 +716,7 @@ Recent runtime migration notes:
   `cpython_types_format_spec_errors_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
   `cpython_types_mappingproxy_type_metadata_diff_subset`,
+  `cpython_types_mappingproxy_instance_doc_attribute_diff_subset`,
   `cpython_types_mappingproxy_type_hierarchy_diff_subset`,
   `cpython_types_mappingproxy_type_subclasses_diff_subset`,
   `cpython_types_mappingproxy_type_dict_diff_subset`,
@@ -4965,6 +4970,11 @@ without adding general custom encoder/decoder class support.
   `cpython_types_mappingproxy_type_metadata_diff_subset`, covering mappingproxy type metadata
   for `__qualname__`, `__module__`, `__doc__`, and `__text_signature__`
   without adding CPython layout fields or broader type hierarchy metadata.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_mappingproxy_instance_doc_attribute_subset`, backed by
+  `cpython_types_mappingproxy_instance_doc_attribute_diff_subset`, covering
+  mappingproxy instance `__doc__` lookup for exact proxies, builtin type
+  dictionaries, and dict-view `.mapping` without adding writable instance dictionaries.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_type_hierarchy_subset`, backed by
   `cpython_types_mappingproxy_type_hierarchy_diff_subset`, covering mappingproxy type hierarchy

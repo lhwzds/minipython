@@ -32171,6 +32171,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_union_newtype_subset",
             "cpython_types_mappingproxy_exact_dict_subset",
             "cpython_types_mappingproxy_type_metadata_subset",
+            "cpython_types_mappingproxy_instance_doc_attribute_subset",
             "cpython_types_mappingproxy_type_hierarchy_subset",
             "cpython_types_mappingproxy_type_subclasses_subset",
             "cpython_types_mappingproxy_type_dict_subset",
@@ -32294,6 +32295,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_format_spec_errors_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_type_metadata_diff_subset",
+        "cpython_types_mappingproxy_instance_doc_attribute_diff_subset",
         "cpython_types_mappingproxy_type_hierarchy_diff_subset",
         "cpython_types_mappingproxy_type_subclasses_diff_subset",
         "cpython_types_mappingproxy_type_dict_diff_subset",
@@ -32589,6 +32591,77 @@ fn types_mappingproxy_type_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_mappingproxy_type_metadata_diff_subset")
                 && document.contains("mappingproxy type metadata"),
             "types mappingproxy type metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_instance_doc_attribute_subset",
+    );
+    for required in [
+        "for label, value in [('exact', MappingProxyType({'a': 1})), ('class-dict', int.__dict__), ('view-mapping', {1: 2}.keys().mapping)]",
+        "doc = value.__doc__",
+        "doc == type(value).__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"exact str True True Read-only proxy of a mapping. 29\"",
+        "\"class-dict str True True Read-only proxy of a mapping. 29\"",
+        "\"view-mapping str True True Read-only proxy of a mapping. 29\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types mappingproxy instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        CPYTHON_SUBSET.contains("without adding writable instance dictionaries"),
+        "types mappingproxy instance __doc__ subset comment must document the no-instance-dict boundary"
+    );
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests public mappingproxy instance __doc__ attribute subset",
+        "name: \"types-mappingproxy-instance-doc-attribute\"",
+        "for label, value in [('exact', MappingProxyType({'a': 1})), ('class-dict', int.__dict__), ('view-mapping', {1: 2}.keys().mapping)]",
+        "doc = value.__doc__",
+        "doc == type(value).__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types mappingproxy instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::MappingProxy { entries, identity } => match name",
+        "Value::MappingProxyObject { mapping, identity } => match name",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtin_type_doc(\"mappingproxy\")",
+        "expect(\"mappingproxy builtin type doc exists\")",
+        "names.extend(builtin_type_dir_names(\"mappingproxy\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types mappingproxy instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_instance_doc_attribute_subset")
+                && document
+                    .contains("cpython_types_mappingproxy_instance_doc_attribute_diff_subset")
+                && document.contains("mappingproxy instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "types mappingproxy instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -58632,6 +58632,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::MappingProxy { entries, identity } => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("mappingproxy")
+                    .expect("mappingproxy builtin type doc exists")
+                    .to_string(),
+            )),
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
             | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
             | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {
@@ -58644,6 +58649,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::MappingProxyObject { mapping, identity } => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("mappingproxy")
+                    .expect("mappingproxy builtin type doc exists")
+                    .to_string(),
+            )),
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
             | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
             | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {

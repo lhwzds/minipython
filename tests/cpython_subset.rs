@@ -55655,6 +55655,23 @@ print(type({1: 2}.keys().mapping) is cls)"#,
     );
 }
 
+// Mirrors CPython's public `mappingproxy` instance `__doc__` type-attribute
+// lookup without adding writable instance dictionaries.
+#[test]
+fn cpython_types_mappingproxy_instance_doc_attribute_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+for label, value in [('exact', MappingProxyType({'a': 1})), ('class-dict', int.__dict__), ('view-mapping', {1: 2}.keys().mapping)]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == type(value).__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "exact str True True Read-only proxy of a mapping. 29",
+            "class-dict str True True Read-only proxy of a mapping. 29",
+            "view-mapping str True True Read-only proxy of a mapping. 29",
+        ],
+    );
+}
+
 // Adapted from CPython public mappingproxy type hierarchy metadata. This keeps
 // the public class relationships aligned without exposing implementation
 // layout internals.
