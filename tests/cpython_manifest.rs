@@ -17960,6 +17960,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_type_doc_attribute_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
+            "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
@@ -19235,7 +19236,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "name == \"__base__\" && collections_type_direct_base_name",
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
         "name == \"__bases__\"",
         "\"UserDict\" => Some(\"MutableMapping\")",
     ] {
@@ -19256,6 +19258,70 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_type_base_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList direct base metadata"
+    );
+    let userlist_type_base_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_type_base_metadata_diff_subset",
+    );
+    let userlist_type_base_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_type_base_metadata_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "from collections.abc import MutableSequence",
+        "object.__getattribute__(UserList, '__base__')",
+        "object.__getattribute__(UserList, '__bases__')",
+        "base is MutableSequence",
+        "bases[0] is MutableSequence",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            userlist_type_base_diff_body.contains(required)
+                && userlist_type_base_subset_body.contains(required),
+            "UserList direct base metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True collections.abc MutableSequence\"",
+        "\"bases tuple 1 True collections.abc MutableSequence\"",
+    ] {
+        assert!(
+            userlist_type_base_subset_body.contains(required),
+            "UserList direct base metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"UserList\" => Some(\"MutableSequence\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_type_base_metadata_subset",
+            "cpython_collections_userlist_type_base_metadata_diff_subset",
+            "`UserList` direct base metadata",
+            "`MutableSequence`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList direct base metadata docs must contain `{required}`"
             );
         }
     }
@@ -25762,6 +25828,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                     .contains("object.__getattribute__ UserDict type-object __bases__ metadata")
                 && document
                     .contains("object.__getattribute__ UserList type-object __module__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserList type-object __base__ metadata")
+                && document
+                    .contains("object.__getattribute__ UserList type-object __bases__ metadata")
                 && document
                     .contains("object.__getattribute__ UserString type-object __module__ metadata")
                 && document.contains(

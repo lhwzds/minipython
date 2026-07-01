@@ -57983,6 +57983,23 @@ print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bas
     );
 }
 
+// Mirrors CPython's public `UserList` direct base metadata.
+#[test]
+fn cpython_collections_userlist_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import UserList
+from collections.abc import MutableSequence
+base = object.__getattribute__(UserList, '__base__')
+bases = object.__getattribute__(UserList, '__bases__')
+print('base', base is MutableSequence, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is MutableSequence, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True collections.abc MutableSequence",
+            "bases tuple 1 True collections.abc MutableSequence",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]
