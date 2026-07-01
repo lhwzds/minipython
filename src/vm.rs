@@ -58089,6 +58089,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             step,
             identity,
         } => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("range")
+                    .expect("range builtin type doc exists")
+                    .to_string(),
+            )),
             "start" => Ok(normalize_big_int(start)),
             "stop" => Ok(normalize_big_int(stop)),
             "step" => Ok(normalize_big_int(step)),

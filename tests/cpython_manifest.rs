@@ -24180,6 +24180,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_tuple_instance_doc_attribute_subset",
             "cpython_bytes_instance_doc_attribute_subset",
             "cpython_bytearray_instance_doc_attribute_subset",
+            "cpython_range_instance_doc_attribute_subset",
             "cpython_descriptor_constructor_arity_errors_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
@@ -24255,6 +24256,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_tuple_instance_doc_attribute_diff_subset",
         "cpython_bytes_instance_doc_attribute_diff_subset",
         "cpython_bytearray_instance_doc_attribute_diff_subset",
+        "cpython_range_instance_doc_attribute_diff_subset",
         "cpython_descriptor_constructor_arity_errors_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
@@ -30091,6 +30093,68 @@ fn bytearray_instance_doc_attribute_subset_has_focused_diff_evidence() {
                 && document.contains("bytearray instance `__doc__`")
                 && document.contains("without adding writable instance dictionaries"),
             "bytearray instance __doc__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn range_instance_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_range_instance_doc_attribute_subset(",
+        "for label, value in [('empty', range(0)), ('items', range(1, 8, 2))]",
+        "doc = value.__doc__",
+        "doc == range.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+        "\"empty str True True range(stop) -> range object 420\"",
+        "\"items str True True range(stop) -> range object 420\"",
+        "without adding writable instance dictionaries",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "range instance __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_range_instance_doc_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_range.py public range instance __doc__ attribute subset",
+        "name: \"range-instance-doc-attribute\"",
+        "for label, value in [('empty', range(0)), ('items', range(1, 8, 2))]",
+        "doc = value.__doc__",
+        "doc == range.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            body.contains(required),
+            "range instance __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__doc__\" => Ok(Value::String(",
+        "builtins_module_type_doc(\"range\")",
+        "expect(\"range builtin type doc exists\")",
+        "immutable_sequence_method(",
+        "names.extend(builtin_type_dir_names(\"range\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "range instance __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_range_instance_doc_attribute_subset")
+                && document.contains("cpython_range_instance_doc_attribute_diff_subset")
+                && document.contains("range instance `__doc__`")
+                && document.contains("without adding writable instance dictionaries"),
+            "range instance __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }

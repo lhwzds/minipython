@@ -11487,6 +11487,17 @@ fn cpython_bytearray_instance_doc_attribute_diff_subset() {
 }
 
 #[test]
+fn cpython_range_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_range.py public range instance __doc__ attribute subset",
+        name: "range-instance-doc-attribute",
+        source: r#"for label, value in [('empty', range(0)), ('items', range(1, 8, 2))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == range.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_list_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py public list instance __doc__ attribute subset",

@@ -26574,6 +26574,21 @@ fn cpython_bytearray_instance_doc_attribute_subset() {
     );
 }
 
+// Mirrors CPython's public `range` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_range_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', range(0)), ('items', range(1, 8, 2))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == range.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True range(stop) -> range object 420",
+            "items str True True range(stop) -> range object 420",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]
