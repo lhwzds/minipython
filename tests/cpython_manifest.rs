@@ -8713,6 +8713,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_json_module_package_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
+            "cpython_json_function_annotate_metadata_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_loads_dumps_basic_subset",
             "cpython_json_keyword_argument_binding_subset",
@@ -8813,6 +8814,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
+        "cpython_json_function_annotate_metadata_diff_subset",
         "cpython_json_function_closure_none_metadata_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
@@ -8915,6 +8917,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_function_type_params_metadata_subset",
     );
+    let json_function_annotate_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_annotate_metadata_diff_subset",
+    );
+    let json_function_annotate_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_annotate_metadata_subset",
+    );
     let json_function_closure_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_function_closure_none_metadata_diff_subset",
@@ -8962,6 +8972,24 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "value.__annotate__",
+        "json.loads.__annotate__",
+        "json.dumps.__annotate__",
+        "is None",
+    ] {
+        assert!(
+            json_function_annotate_diff_body.contains(required)
+                && json_function_annotate_subset_body.contains(required),
+            "json public function __annotate__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"loads None True\"", "\"dumps None True\""] {
+        assert!(
+            json_function_annotate_subset_body.contains(required),
+            "json public function __annotate__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
         "value.__closure__",
         "json.loads.__closure__",
         "json.dumps.__closure__",
@@ -8989,6 +9017,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible json function __type_params__ metadata"
     );
     assert!(
+        VM_SOURCE.contains("name == \"__annotate__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(Value::None)"),
+        "VM must expose CPython-compatible json function __annotate__ metadata"
+    );
+    assert!(
         VM_SOURCE.contains("name == \"__closure__\" && is_json_builtin(&function_name)")
             && VM_SOURCE.contains("Ok(Value::None)"),
         "VM must expose CPython-compatible json function __closure__ metadata"
@@ -8999,6 +9032,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_module_package_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
+            "cpython_json_function_annotate_metadata_subset",
+            "cpython_json_function_annotate_metadata_diff_subset",
             "cpython_json_function_closure_none_metadata_subset",
             "cpython_json_function_closure_none_metadata_diff_subset",
             "json module `__package__` metadata",
@@ -9008,6 +9043,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",
+            "json public function `__annotate__` metadata",
+            "`json.loads.__annotate__`",
+            "`json.dumps.__annotate__`",
             "json public function `__closure__` metadata",
             "`json.loads.__closure__`",
             "`json.dumps.__closure__`",

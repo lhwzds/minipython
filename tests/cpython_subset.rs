@@ -37521,6 +37521,18 @@ print(json.loads.__type_params__ == json.dumps.__type_params__ == ())"#,
 }
 
 #[test]
+fn cpython_json_function_annotate_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    value = getattr(json, name)
+    print(name, value.__annotate__, value.__annotate__ is None)
+print(json.loads.__annotate__ is json.dumps.__annotate__ is None)"#,
+        &["loads None True", "dumps None True", "True"],
+    );
+}
+
+#[test]
 fn cpython_json_function_closure_none_metadata_subset() {
     assert_output(
         r#"import json

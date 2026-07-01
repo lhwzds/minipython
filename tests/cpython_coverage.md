@@ -1046,6 +1046,7 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_basic_diff_subset`,
   `cpython_json_module_package_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
+  `cpython_json_function_annotate_metadata_diff_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
@@ -1660,6 +1661,8 @@ Recent runtime migration notes:
   `cpython_json_module_package_metadata_subset`,
   `cpython_json_function_type_params_metadata_diff_subset` /
   `cpython_json_function_type_params_metadata_subset`,
+  `cpython_json_function_annotate_metadata_diff_subset` /
+  `cpython_json_function_annotate_metadata_subset`,
   `cpython_json_function_closure_none_metadata_diff_subset` /
   `cpython_json_function_closure_none_metadata_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
@@ -2288,6 +2291,13 @@ APIs, module `__all__`, or encoder/decoder classes.
 (`json.loads.__type_params__` and
 `json.dumps.__type_params__` are `()`) aligned with CPython without adding
 file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_annotate_metadata_subset`, backed by
+`cpython_json_function_annotate_metadata_diff_subset`, keeps json public function `__annotate__` metadata
+(`json.loads.__annotate__` and
+`json.dumps.__annotate__` are `None`) aligned with CPython without adding
+function `__globals__`, function `__code__`, file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_function_closure_none_metadata_subset`, backed by
 `cpython_json_function_closure_none_metadata_diff_subset`, keeps json public function `__closure__` metadata

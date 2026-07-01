@@ -734,6 +734,19 @@ print(json.loads.__type_params__ == json.dumps.__type_params__ == ())"#,
 }
 
 #[test]
+fn cpython_json_function_annotate_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __annotate__ metadata subset",
+        name: "json-function-annotate-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    value = getattr(json, name)
+    print(name, value.__annotate__, value.__annotate__ is None)
+print(json.loads.__annotate__ is json.dumps.__annotate__ is None)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_closure_none_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __closure__ None metadata subset",
