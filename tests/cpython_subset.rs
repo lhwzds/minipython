@@ -22446,6 +22446,25 @@ print(copy.copy.__annotate__ is copy.deepcopy.__annotate__ is copy.replace.__ann
 
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
+fn cpython_copy_function_annotations_empty_metadata_subset() {
+    assert_output(
+        r#"import copy
+for name in ['copy', 'deepcopy', 'replace']:
+    value = getattr(copy, name)
+    annotations = value.__annotations__
+    print(name, type(annotations).__name__, annotations == {}, len(annotations))
+print(copy.copy.__annotations__ == copy.deepcopy.__annotations__ == copy.replace.__annotations__ == {})"#,
+        &[
+            "copy dict True 0",
+            "deepcopy dict True 0",
+            "replace dict True 0",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
 fn cpython_copy_function_defaults_none_metadata_subset() {
     assert_output(
         r#"import copy
