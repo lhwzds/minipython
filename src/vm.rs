@@ -10058,6 +10058,9 @@ impl Vm {
             Value::Builtin(name) if name == "json.function.__init_subclass__" => {
                 self.call_json_function_init_subclass(args, keywords)
             }
+            Value::Builtin(name) if name == "json.function.__subclasshook__" => {
+                self.call_json_function_subclasshook(args, keywords)
+            }
             Value::Builtin(name) if json_function_rich_compare_wrapper_name(&name) => {
                 self.call_json_function_rich_compare(&name, args, keywords)
             }
@@ -17814,6 +17817,31 @@ impl Vm {
             ));
         }
         Ok(Value::None)
+    }
+
+    fn call_json_function_subclasshook(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: function.__subclasshook__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if function_name == "function") {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        }
+        let [_object] = rest else {
+            return Err(format!(
+                "TypeError: function.__subclasshook__() takes exactly one argument ({} given)",
+                rest.len()
+            ));
+        };
+        Ok(Value::NotImplemented)
     }
 
     fn call_json_function_rich_compare(
@@ -50692,6 +50720,7 @@ fn json_builtin_function_dir_names() -> Vec<String> {
         "__repr__",
         "__setattr__",
         "__str__",
+        "__subclasshook__",
         "__type_params__",
     ]
     .into_iter()
@@ -60034,6 +60063,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "json.function.__subclasshook__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if json_function_rich_compare_wrapper_name(name)) =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -61568,6 +61602,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             })
         }
         Value::Builtin(function_name)
+            if name == "__subclasshook__" && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "json.function.__subclasshook__".to_string(),
+                )),
+                receiver: Box::new(Value::Builtin("function".to_string())),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
             if matches!(name, "__setattr__" | "__delattr__")
                 && is_json_builtin(&function_name) =>
         {
@@ -61857,6 +61902,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 && function_name == "json.function.__init_subclass__" =>
         {
             Ok(Value::String("($type, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "json.function.__subclasshook__" =>
+        {
+            Ok(Value::String("function.__subclasshook__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "json.function.__subclasshook__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "json.function.__subclasshook__" =>
+        {
+            Ok(Value::String("Abstract classes can override this to customize issubclass().\n\nThis is invoked early on by abc.ABCMeta.__subclasscheck__().\nIt should return True, False or NotImplemented.  If it returns\nNotImplemented, the normal algorithm is used.  Otherwise, it\noverrides the normal algorithm (and the outcome is cached).\n".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "json.function.__subclasshook__" =>
+        {
+            Ok(Value::String("($type, object, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && json_function_set_delattr_wrapper_name(&function_name) =>

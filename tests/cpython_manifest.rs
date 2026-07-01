@@ -8736,6 +8736,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_init_wrapper_metadata_subset",
             "cpython_json_function_init_subclass_wrapper_metadata_subset",
+            "cpython_json_function_subclasshook_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
             "cpython_json_function_rich_compare_wrapper_metadata_subset",
@@ -8893,6 +8894,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_call_wrapper_metadata_diff_subset",
         "cpython_json_function_init_wrapper_metadata_diff_subset",
         "cpython_json_function_init_subclass_wrapper_metadata_diff_subset",
+        "cpython_json_function_subclasshook_wrapper_metadata_diff_subset",
         "cpython_json_function_format_wrapper_metadata_diff_subset",
         "cpython_json_function_hash_wrapper_metadata_diff_subset",
         "cpython_json_function_rich_compare_wrapper_metadata_diff_subset",
@@ -9116,6 +9118,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_init_subclass_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_init_subclass_wrapper_metadata_subset",
+    );
+    let json_function_subclasshook_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_subclasshook_wrapper_metadata_diff_subset",
+    );
+    let json_function_subclasshook_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_subclasshook_wrapper_metadata_subset",
     );
     let json_function_format_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10107,6 +10117,67 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __init_subclass__ wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "function.__subclasshook__",
+        "'__subclasshook__' in dir(function)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is type(function)",
+        "wrapper.__self__.__name__",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "doc.startswith('Abstract classes can override')",
+        "'This is invoked early' in doc",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('arg', lambda wrapper=wrapper: wrapper(1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(x=1))",
+        "value is NotImplemented",
+        "type(value).__name__",
+        "error.args",
+    ] {
+        assert!(
+            json_function_subclasshook_wrapper_diff_body.contains(required)
+                && json_function_subclasshook_wrapper_subset_body.contains(required),
+            "json public function __subclasshook__ wrapper metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True builtin_function_or_method builtin_function_or_method\"",
+        "\"loads True function __subclasshook__ function.__subclasshook__ True True None ($type, object, /)\"",
+        "\"loads missing TypeError function.__subclasshook__() takes exactly one argument (0 given)",
+        "\"loads arg True NotImplemented NotImplementedType\"",
+        "\"loads keyword TypeError function.__subclasshook__() takes no keyword arguments",
+        "\"dumps True builtin_function_or_method builtin_function_or_method\"",
+        "\"dumps True function __subclasshook__ function.__subclasshook__ True True None ($type, object, /)\"",
+        "\"dumps missing TypeError function.__subclasshook__() takes exactly one argument (0 given)",
+        "\"dumps arg True NotImplemented NotImplementedType\"",
+        "\"dumps keyword TypeError function.__subclasshook__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_subclasshook_wrapper_subset_body.contains(required),
+            "json public function __subclasshook__ wrapper metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_json_function_subclasshook(",
+        "json.function.__subclasshook__",
+        "\"__subclasshook__\" && is_json_builtin",
+        "function.__subclasshook__",
+        "Abstract classes can override this to customize issubclass().",
+        "($type, object, /)",
+        "function.__subclasshook__() takes no keyword arguments",
+        "function.__subclasshook__() takes exactly one argument",
+        "Ok(Value::NotImplemented)",
+        "Value::Builtin(\"function\".to_string())",
+        "\"__subclasshook__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __subclasshook__ wrapper implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12699,6 +12770,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_init_wrapper_metadata_diff_subset",
             "cpython_json_function_init_subclass_wrapper_metadata_subset",
             "cpython_json_function_init_subclass_wrapper_metadata_diff_subset",
+            "cpython_json_function_subclasshook_wrapper_metadata_subset",
+            "cpython_json_function_subclasshook_wrapper_metadata_diff_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_diff_subset",
             "cpython_json_function_hash_wrapper_metadata_subset",
@@ -12819,6 +12892,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__call__` wrapper metadata",
             "json public function `__init__` wrapper metadata",
             "json public function `__init_subclass__` wrapper metadata",
+            "json public function `__subclasshook__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",
             "json public function `__doc__` / `__module__` assignment",
             "json public function `__dict__` assignment",

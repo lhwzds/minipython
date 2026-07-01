@@ -1003,6 +1003,31 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_subclasshook_wrapper_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __subclasshook__ wrapper metadata subset",
+        name: "json-function-subclasshook-wrapper-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__subclasshook__
+    doc = wrapper.__doc__
+    print(name, '__subclasshook__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is type(function), wrapper.__self__.__name__, wrapper.__name__, wrapper.__qualname__, doc.startswith('Abstract classes can override'), 'This is invoked early' in doc, wrapper.__module__, wrapper.__text_signature__)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('arg', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            value = call()
+            print(name, label, value is NotImplemented, value, type(value).__name__)
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_format_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __format__ wrapper metadata subset",
