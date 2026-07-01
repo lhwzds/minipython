@@ -58204,6 +58204,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Dict(entries) => match name {
+            "__doc__" => Ok(Value::String(
+                builtins_module_type_doc("dict")
+                    .expect("dict builtin type doc exists")
+                    .to_string(),
+            )),
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
             "__format__" => Ok(Value::BoundMethod {

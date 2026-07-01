@@ -132,6 +132,10 @@ Recent runtime migration notes:
   `cpython_tuple_attribute_assignment_errors_diff_subset`, now pins tuple attribute assignment errors
   for missing attributes and read-only tuple method attributes (`count` /
   `index`) without adding tuple instance dictionaries.
+- `cpython_dict_instance_doc_attribute_subset`, backed by
+  `cpython_dict_instance_doc_attribute_diff_subset`, now pins dict instance `__doc__`
+  lookup for empty and populated dicts, matching `dict.__doc__` and `dir(value)`
+  without adding writable instance dictionaries.
 - `cpython_dict_attribute_assignment_errors_subset`, backed by
   `cpython_dict_attribute_assignment_errors_diff_subset`, now pins dict attribute assignment errors
   for missing attributes and read-only dict method attributes (`keys` /
@@ -575,6 +579,7 @@ Recent runtime migration notes:
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,
   `cpython_complex_instance_doc_attribute_diff_subset`,
+  `cpython_dict_instance_doc_attribute_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,

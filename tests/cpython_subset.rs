@@ -26730,6 +26730,21 @@ print('read', len(items), items.count(1), items.index(2))"#,
     );
 }
 
+// Mirrors CPython's public `dict` instance `__doc__` type-attribute lookup
+// without adding writable instance dictionaries.
+#[test]
+fn cpython_dict_instance_doc_attribute_subset() {
+    assert_output(
+        r#"for label, value in [('empty', {}), ('populated', {'a': 1, 'b': 2})]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == dict.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True dict() -> new empty dictionary 370",
+            "populated str True True dict() -> new empty dictionary 370",
+        ],
+    );
+}
+
 // Adapted from CPython's public `dict` instance attribute assignment errors.
 // MiniPython keeps dict entries mutable without adding a writable instance
 // `__dict__`.
