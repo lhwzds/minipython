@@ -60031,6 +60031,23 @@ except Exception as error:
     );
 }
 
+// Mirrors CPython's public `defaultdict` instance `__doc__` type-attribute
+// lookup without adding writable instance dictionaries.
+#[test]
+fn cpython_collections_defaultdict_instance_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import defaultdict
+for label, value in [('empty', defaultdict()), ('factory', defaultdict(int)), ('items', defaultdict(None, {'a': 1}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == defaultdict.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+        &[
+            "empty str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376",
+            "factory str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376",
+            "items str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py defaultdict default_factory
 // behavior. This pins the public type-level member_descriptor for
 // default_factory without promoting pickle, merge operators, or subclassing.

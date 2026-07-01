@@ -17959,6 +17959,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
+            "cpython_collections_defaultdict_instance_doc_attribute_subset",
             "cpython_collections_defaultdict_default_factory_descriptor_subset",
             "cpython_collections_defaultdict_attribute_assignment_errors_subset",
             "cpython_collections_defaultdict_copy_module_subset",
@@ -19284,6 +19285,68 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "defaultdict docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_defaultdict_instance_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for defaultdict instance __doc__ behavior"
+    );
+    let defaultdict_instance_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_defaultdict_instance_doc_attribute_diff_subset",
+    );
+    let defaultdict_instance_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_defaultdict_instance_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import defaultdict",
+        "for label, value in [('empty', defaultdict()), ('factory', defaultdict(int)), ('items', defaultdict(None, {'a': 1}))]",
+        "doc = value.__doc__",
+        "doc == defaultdict.__doc__",
+        "'__doc__' in dir(value)",
+        "doc.split('\\n')[0]",
+    ] {
+        assert!(
+            defaultdict_instance_doc_diff_body.contains(required)
+                && defaultdict_instance_doc_subset_body.contains(required),
+            "defaultdict instance __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376\"",
+        "\"factory str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376\"",
+        "\"items str True True defaultdict(default_factory=None, /, [...]) --> dict with default factory 376\"",
+    ] {
+        assert!(
+            defaultdict_instance_doc_subset_body.contains(required),
+            "defaultdict instance __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::DefaultDict {",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtin_type_doc(\"defaultdict\")",
+        "expect(\"defaultdict type doc is defined\")",
+        "names.extend(builtin_type_dir_names(\"defaultdict\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "defaultdict instance __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_defaultdict_instance_doc_attribute_subset",
+            "cpython_collections_defaultdict_instance_doc_attribute_diff_subset",
+            "`defaultdict` instance `__doc__`",
+            "without adding writable instance dictionaries",
+        ] {
+            assert!(
+                document.contains(required),
+                "defaultdict instance __doc__ docs must contain `{required}`"
             );
         }
     }

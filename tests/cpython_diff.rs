@@ -19166,6 +19166,18 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_collections_defaultdict_instance_doc_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py defaultdict public instance __doc__ attribute subset",
+        name: "collections-defaultdict-instance-doc-attribute",
+        source: r#"from collections import defaultdict
+for label, value in [('empty', defaultdict()), ('factory', defaultdict(int)), ('items', defaultdict(None, {'a': 1}))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == defaultdict.__doc__, '__doc__' in dir(value), doc.split('\n')[0], len(doc))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_defaultdict_default_factory_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py defaultdict default_factory member descriptor subset",

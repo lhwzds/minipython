@@ -800,6 +800,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
+  `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset`,
   `cpython_collections_defaultdict_attribute_assignment_errors_diff_subset`,
   `cpython_collections_defaultdict_copy_module_diff_subset`,
@@ -1415,6 +1416,11 @@ Recent runtime migration notes:
   missing-key factory insertion, `get()` not invoking missing behavior,
   `copy()`, constructor error boundaries, factory exception propagation, and
   `json.dumps()` treating the supported container as a dict-like mapping.
+- The bundled `collections` module also includes
+  `cpython_collections_defaultdict_instance_doc_attribute_diff_subset` and
+  `cpython_collections_defaultdict_instance_doc_attribute_subset`, covering
+  `defaultdict` instance `__doc__` lookup for empty, factory-backed, and
+  populated mappings without adding writable instance dictionaries.
 - The bundled `collections` module also includes
   `cpython_collections_defaultdict_default_factory_descriptor_diff_subset` and
   `cpython_collections_defaultdict_default_factory_descriptor_subset`,

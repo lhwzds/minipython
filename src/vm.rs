@@ -58282,6 +58282,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             entries,
             default_factory,
         } => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("defaultdict")
+                    .expect("defaultdict type doc is defined")
+                    .to_string(),
+            )),
             "default_factory" => Ok(default_factory.borrow().clone()),
             "fromkeys" => Ok(Value::Builtin("defaultdict.fromkeys".to_string())),
             "__format__" => Ok(Value::BoundMethod {
