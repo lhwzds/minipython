@@ -67560,6 +67560,17 @@ print('__package__' in dir(types), repr(types.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_types_accelerator_module_package_metadata_subset() {
+    assert_output(
+        r#"import _types
+print(_types.__name__, repr(_types.__package__))
+print(repr(object.__getattribute__(_types, '__package__')))
+print('__package__' in dir(_types), repr(_types.__dict__['__package__']))"#,
+        &["_types ''", "''", "True ''"],
+    );
+}
+
+#[test]
 fn cpython_types_module_type_subset() {
     assert_output(
         concat!(

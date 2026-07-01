@@ -2658,7 +2658,9 @@ fn types_module() -> Value {
 }
 
 fn types_accelerator_module() -> Value {
-    module_value("_types", types_accelerator_attrs())
+    let mut attrs = vec![("__package__", Value::String(String::new()))];
+    attrs.extend(types_accelerator_attrs());
+    module_value("_types", attrs)
 }
 
 fn types_accelerator_attrs() -> Vec<(&'static str, Value)> {
