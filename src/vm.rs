@@ -61065,6 +61065,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::String(_) | Value::IdentityString { .. } => {
             Err(str_attribute_assignment_error(name))
         }
+        Value::Bytes(_) => Err(bytes_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61335,6 +61336,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::String(_) | Value::IdentityString { .. } => {
             Err(str_attribute_assignment_error(name))
         }
+        Value::Bytes(_) => Err(bytes_attribute_assignment_error(name)),
         Value::Bool(_) => Err(bool_attribute_assignment_error(name)),
         Value::Number(_) | Value::BigInt(_) => Err(int_attribute_assignment_error(name)),
         Value::Float(_) => Err(float_attribute_assignment_error(name)),
@@ -61391,6 +61393,23 @@ fn str_attribute_assignment_error(name: &str) -> String {
 fn is_str_readonly_instance_attribute(name: &str) -> bool {
     !name.starts_with("__")
         && builtin_type_dir_names("str")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
+}
+
+fn bytes_attribute_assignment_error(name: &str) -> String {
+    if is_bytes_readonly_instance_attribute(name) {
+        format!("AttributeError: 'bytes' object attribute '{name}' is read-only")
+    } else {
+        format!(
+            "AttributeError: 'bytes' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
+    }
+}
+
+fn is_bytes_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("bytes")
             .iter()
             .any(|candidate| candidate.as_str() == name)
 }

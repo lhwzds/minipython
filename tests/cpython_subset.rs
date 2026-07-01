@@ -26428,6 +26428,36 @@ print('read', s.upper(), s.split('a'))"#,
     );
 }
 
+// Adapted from CPython's public `bytes` instance attribute assignment errors.
+// MiniPython exposes bytes methods without adding a writable instance
+// `__dict__`.
+#[test]
+fn cpython_bytes_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+b = b'spam'
+for name in ['extra', 'hex', 'split']:
+    show('set-' + name, lambda name=name: setattr(b, name, 99))
+    show('del-' + name, lambda name=name: delattr(b, name))
+print('read', b.hex(), b.split(b'a'))"#,
+        &[
+            "set-extra AttributeError 'bytes' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'bytes' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-hex AttributeError 'bytes' object attribute 'hex' is read-only",
+            "del-hex AttributeError 'bytes' object attribute 'hex' is read-only",
+            "set-split AttributeError 'bytes' object attribute 'split' is read-only",
+            "del-split AttributeError 'bytes' object attribute 'split' is read-only",
+            "read 7370616d [b'sp', b'm']",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

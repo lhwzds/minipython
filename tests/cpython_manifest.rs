@@ -29024,6 +29024,71 @@ fn str_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bytes_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_bytes_attribute_assignment_errors_subset(",
+        "setattr(b, name, 99)",
+        "delattr(b, name)",
+        "['extra', 'hex', 'split']",
+        "\"set-extra AttributeError 'bytes' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'bytes' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-hex AttributeError 'bytes' object attribute 'hex' is read-only\"",
+        "\"del-split AttributeError 'bytes' object attribute 'split' is read-only\"",
+        "\"read 7370616d [b'sp', b'm']\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused bytes attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_bytes_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_bytes.py public bytes instance attribute assignment errors subset",
+        "name: \"bytes-attribute-assignment-errors\"",
+        "setattr(b, name, 99)",
+        "delattr(b, name)",
+        "['extra', 'hex', 'split']",
+        "b.hex()",
+        "b.split(b'a')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused bytes attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Bytes(_) => Err(bytes_attribute_assignment_error(name))",
+        "fn bytes_attribute_assignment_error(name: &str) -> String",
+        "fn is_bytes_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"bytes\")",
+        "'bytes' object attribute '{name}' is read-only",
+        "'bytes' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytes attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_bytes_attribute_assignment_errors_subset")
+                && document.contains("cpython_bytes_attribute_assignment_errors_diff_subset")
+                && document.contains("bytes attribute assignment errors")
+                && document.contains("read-only bytes method attributes")
+                && document.contains("without adding bytes instance dictionaries"),
+            "focused bytes attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",

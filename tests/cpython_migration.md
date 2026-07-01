@@ -88,6 +88,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_str_attribute_assignment_errors_diff_subset` for string attribute assignment errors
   on missing attributes and read-only string method attributes (`upper` /
   `split`) without adding str instance dictionaries.
+- Added `cpython_bytes_attribute_assignment_errors_subset` and
+  `cpython_bytes_attribute_assignment_errors_diff_subset` for bytes attribute assignment errors
+  on missing attributes and read-only bytes method attributes (`hex` /
+  `split`) without adding bytes instance dictionaries.
 - Added `cpython_range_public_attributes_subset` and
   `cpython_range_public_attributes_diff_subset` for `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across

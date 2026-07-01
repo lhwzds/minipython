@@ -78,6 +78,10 @@ Recent runtime migration notes:
   `cpython_str_attribute_assignment_errors_diff_subset`, now pins string attribute assignment errors
   for missing attributes and read-only string method attributes (`upper` /
   `split`) without adding str instance dictionaries.
+- `cpython_bytes_attribute_assignment_errors_subset`, backed by
+  `cpython_bytes_attribute_assignment_errors_diff_subset`, now pins bytes attribute assignment errors
+  for missing attributes and read-only bytes method attributes (`hex` /
+  `split`) without adding bytes instance dictionaries.
 - `cpython_range_public_attributes_subset`, backed by
   `cpython_range_public_attributes_diff_subset`, now pins `range.start`,
   `range.stop`, and `range.step` as readonly public integer attributes across
