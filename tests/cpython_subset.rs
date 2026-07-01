@@ -58053,6 +58053,23 @@ print('bases', type(bases).__name__, len(bases), bases[0] is MutableSequence, ba
     );
 }
 
+// Mirrors CPython's public `UserString` direct base metadata.
+#[test]
+fn cpython_collections_userstring_type_base_metadata_subset() {
+    assert_output(
+        r#"from collections import UserString
+from collections.abc import Sequence
+base = object.__getattribute__(UserString, '__base__')
+bases = object.__getattribute__(UserString, '__bases__')
+print('base', base is Sequence, base.__module__, base.__qualname__)
+print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].__module__, bases[0].__qualname__)"#,
+        &[
+            "base True collections.abc Sequence",
+            "bases tuple 1 True collections.abc Sequence",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

@@ -823,6 +823,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
+  `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -5128,6 +5129,11 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userlist_type_base_metadata_subset`, covering
   `UserList` direct base metadata through `__base__` and `__bases__`, pinned to
   `collections.abc.MutableSequence` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_type_base_metadata_diff_subset` and
+  `cpython_collections_userstring_type_base_metadata_subset`, covering
+  `UserString` direct base metadata through `__base__` and `__bases__`, pinned
+  to `collections.abc.Sequence` without expanding full `__mro__` parity.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

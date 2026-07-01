@@ -62492,6 +62492,7 @@ fn collections_type_direct_base_name(name: &str) -> Option<&'static str> {
         "ChainMap" => Some("MutableMapping"),
         "UserDict" => Some("MutableMapping"),
         "UserList" => Some("MutableSequence"),
+        "UserString" => Some("Sequence"),
         _ => None,
     }
 }

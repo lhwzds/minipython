@@ -17966,6 +17966,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
+            "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -19518,6 +19519,70 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_type_base_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString direct base metadata"
+    );
+    let userstring_type_base_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_type_base_metadata_diff_subset",
+    );
+    let userstring_type_base_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_type_base_metadata_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "from collections.abc import Sequence",
+        "object.__getattribute__(UserString, '__base__')",
+        "object.__getattribute__(UserString, '__bases__')",
+        "base is Sequence",
+        "bases[0] is Sequence",
+        "base.__module__",
+        "bases[0].__qualname__",
+    ] {
+        assert!(
+            userstring_type_base_diff_body.contains(required)
+                && userstring_type_base_subset_body.contains(required),
+            "UserString direct base metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"base True collections.abc Sequence\"",
+        "\"bases tuple 1 True collections.abc Sequence\"",
+    ] {
+        assert!(
+            userstring_type_base_subset_body.contains(required),
+            "UserString direct base metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__base__\"",
+        "collections_type_direct_base_name",
+        "name == \"__bases__\"",
+        "\"UserString\" => Some(\"Sequence\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString direct base metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_type_base_metadata_subset",
+            "cpython_collections_userstring_type_base_metadata_diff_subset",
+            "`UserString` direct base metadata",
+            "`Sequence`",
+            "`__base__` and `__bases__`",
+            "without expanding full `__mro__` parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString direct base metadata docs must contain `{required}`"
             );
         }
     }
