@@ -8731,6 +8731,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_name_dir_visibility_subset",
             "cpython_json_function_bound_method_class_dir_visibility_subset",
             "cpython_json_function_type_class_metadata_subset",
+            "cpython_json_function_class_assignment_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
             "cpython_json_function_format_wrapper_metadata_subset",
@@ -8885,6 +8886,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_name_dir_visibility_diff_subset",
         "cpython_json_function_bound_method_class_dir_visibility_diff_subset",
         "cpython_json_function_type_class_metadata_diff_subset",
+        "cpython_json_function_class_assignment_metadata_diff_subset",
         "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
         "cpython_json_function_call_wrapper_metadata_diff_subset",
         "cpython_json_function_format_wrapper_metadata_diff_subset",
@@ -9070,6 +9072,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_type_class_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_type_class_metadata_subset",
+    );
+    let json_function_class_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_class_assignment_metadata_diff_subset",
+    );
+    let json_function_class_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_class_assignment_metadata_subset",
     );
     let json_function_repr_str_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9808,6 +9818,61 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_type_class_subset_body.contains(required),
             "json public function type / __class__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "original = function.__class__",
+        "original is type(function)",
+        "function.__class__ is original",
+        "setattr(function, '__class__', original)",
+        "setattr(function, '__class__', object)",
+        "setattr(function, '__class__', None)",
+        "delattr(function, '__class__')",
+        "function.__setattr__('__class__', original)",
+        "function.__delattr__('__class__')",
+        "function.__class__.__name__",
+        "json.loads.__class__ is json.dumps.__class__",
+    ] {
+        assert!(
+            json_function_class_assignment_diff_body.contains(required)
+                && json_function_class_assignment_subset_body.contains(required),
+            "json public function __class__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial True function True\"",
+        "\"loads set-same TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"loads set-type TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"loads set-none TypeError __class__ must be set to a class, not 'NoneType' object",
+        "\"loads del-direct TypeError can't delete __class__ attribute",
+        "\"loads set-wrapper TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"loads del-wrapper TypeError can't delete __class__ attribute",
+        "\"loads after-errors True function\"",
+        "\"dumps initial True function True\"",
+        "\"dumps set-same TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"dumps set-type TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"dumps set-none TypeError __class__ must be set to a class, not 'NoneType' object",
+        "\"dumps del-direct TypeError can't delete __class__ attribute",
+        "\"dumps set-wrapper TypeError __class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"dumps del-wrapper TypeError can't delete __class__ attribute",
+        "\"dumps after-errors True function\"",
+        "\"True\"",
+    ] {
+        assert!(
+            json_function_class_assignment_subset_body.contains(required),
+            "json public function __class__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "\"__class__\" => return set_json_builtin_class(value)",
+        "fn set_json_builtin_class(",
+        "__class__ must be set to a class, not '{}' object",
+        "__class__ assignment only supported for mutable types or ModuleType subclasses",
+        "\"__class__\" => return Err(\"TypeError: can't delete __class__ attribute\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __class__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12479,6 +12544,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_class_dir_visibility_diff_subset",
             "cpython_json_function_type_class_metadata_subset",
             "cpython_json_function_type_class_metadata_diff_subset",
+            "cpython_json_function_class_assignment_metadata_subset",
+            "cpython_json_function_class_assignment_metadata_diff_subset",
             "cpython_json_function_repr_str_wrapper_metadata_subset",
             "cpython_json_function_repr_str_wrapper_metadata_diff_subset",
             "cpython_json_function_call_wrapper_metadata_subset",
@@ -12598,6 +12665,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__name__` assignment",
             "json public function `__qualname__` assignment",
             "json public function type / `__class__` metadata",
+            "json public function `__class__` assignment",
             "json public function repr / str wrapper metadata",
             "json public function `__call__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",

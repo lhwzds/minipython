@@ -869,6 +869,33 @@ print(type(json.loads) is type(json.dumps), json.loads.__class__ is json.dumps._
 }
 
 #[test]
+fn cpython_json_function_class_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __class__ assignment metadata subset",
+        name: "json-function-class-assignment-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__class__
+    print(name, 'initial', original is type(function), original.__name__, function.__class__ is original)
+    for label, action in [
+        ('set-same', lambda function=function, original=original: setattr(function, '__class__', original)),
+        ('set-type', lambda function=function: setattr(function, '__class__', object)),
+        ('set-none', lambda function=function: setattr(function, '__class__', None)),
+        ('del-direct', lambda function=function: delattr(function, '__class__')),
+        ('set-wrapper', lambda function=function, original=original: function.__setattr__('__class__', original)),
+        ('del-wrapper', lambda function=function: function.__delattr__('__class__')),
+    ]:
+        try:
+            action()
+        except Exception as error:
+            print(name, label, type(error).__name__, str(error), error.args)
+    print(name, 'after-errors', function.__class__ is original, function.__class__.__name__)
+print(json.loads.__class__ is json.dumps.__class__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_repr_str_wrapper_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function repr / str wrapper metadata subset",

@@ -1052,6 +1052,7 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_name_dir_visibility_diff_subset`,
   `cpython_json_function_bound_method_class_dir_visibility_diff_subset`,
   `cpython_json_function_type_class_metadata_diff_subset`,
+  `cpython_json_function_class_assignment_metadata_diff_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset`,
   `cpython_json_function_format_wrapper_metadata_diff_subset`,
@@ -1750,6 +1751,8 @@ Recent runtime migration notes:
   `cpython_json_function_bound_method_class_dir_visibility_subset`,
   `cpython_json_function_type_class_metadata_diff_subset` /
   `cpython_json_function_type_class_metadata_subset`,
+  `cpython_json_function_class_assignment_metadata_diff_subset` /
+  `cpython_json_function_class_assignment_metadata_subset`,
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset` /
   `cpython_json_function_repr_str_wrapper_metadata_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset` /
@@ -2499,6 +2502,14 @@ aligned with CPython's `function` type for `loads` / `dumps`, including
 `type()`, `__class__`, `repr(type(...))`, and shared loads/dumps function type
 identity, without changing ordinary builtins, adding function `__code__`, file
 APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_class_assignment_metadata_subset`, backed by
+`cpython_json_function_class_assignment_metadata_diff_subset`, keeps json public function `__class__` assignment
+and deletion errors aligned with CPython for `loads` / `dumps`, including
+same-class assignment, object-class assignment, non-class assignment, direct
+deletion, and `__setattr__` / `__delattr__` wrapper entry points, without
+adding mutable `__class__` reassignment, function `__code__`, file APIs, module
+`__all__`, or encoder/decoder classes.
 
 `cpython_json_function_repr_str_wrapper_metadata_subset`, backed by
 `cpython_json_function_repr_str_wrapper_metadata_diff_subset`, keeps json public function repr / str wrapper metadata

@@ -62305,6 +62305,19 @@ fn delete_json_builtin_kwdefaults(name: &str) {
     });
 }
 
+fn set_json_builtin_class(value: Value) -> Result<(), String> {
+    if !is_classinfo_type(&value) {
+        return Err(format!(
+            "TypeError: __class__ must be set to a class, not '{}' object",
+            type_name(&value)
+        ));
+    }
+    Err(
+        "TypeError: __class__ assignment only supported for mutable types or ModuleType subclasses"
+            .to_string(),
+    )
+}
+
 fn json_builtin_kwdefaults_initial(name: &str) -> Value {
     let entries = match name {
         "json.loads" => vec![
@@ -62463,6 +62476,7 @@ fn store_json_builtin_attribute(
         "__defaults__" => return set_json_builtin_defaults(function_name, value),
         "__globals__" => return Err("AttributeError: readonly attribute".to_string()),
         "__kwdefaults__" => return set_json_builtin_kwdefaults(function_name, value),
+        "__class__" => return set_json_builtin_class(value),
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);
@@ -62509,6 +62523,7 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
             delete_json_builtin_kwdefaults(function_name);
             return Ok(());
         }
+        "__class__" => return Err("TypeError: can't delete __class__ attribute".to_string()),
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);
