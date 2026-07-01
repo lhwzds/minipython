@@ -23142,6 +23142,9 @@ fn float_public_attributes_subset_has_focused_diff_evidence() {
         "3.5",
         "float('inf')",
         "value.real, value.imag",
+        "'conjugate' in dir(x)",
+        "'is_integer' in dir(x)",
+        "'hex' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
@@ -23149,8 +23152,15 @@ fn float_public_attributes_subset_has_focused_diff_evidence() {
         "\"attrs 0.0 0.0 0.0\"",
         "\"attrs -0.0 0.0 -0.0\"",
         "\"attrs inf 0.0 inf\"",
+        "\"visible True True True\"",
         "\"set-real AttributeError attribute 'real' of 'float' objects is not writable\"",
         "\"del-imag AttributeError attribute 'imag' of 'float' objects is not writable\"",
+        "\"set-conjugate AttributeError 'float' object attribute 'conjugate' is read-only\"",
+        "\"del-conjugate AttributeError 'float' object attribute 'conjugate' is read-only\"",
+        "\"set-is_integer AttributeError 'float' object attribute 'is_integer' is read-only\"",
+        "\"del-is_integer AttributeError 'float' object attribute 'is_integer' is read-only\"",
+        "\"set-hex AttributeError 'float' object attribute 'hex' is read-only\"",
+        "\"del-hex AttributeError 'float' object attribute 'hex' is read-only\"",
         "\"set-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
     ] {
         assert!(
@@ -23168,6 +23178,9 @@ fn float_public_attributes_subset_has_focused_diff_evidence() {
         "3.5",
         "float('inf')",
         "value.real, value.imag",
+        "'conjugate' in dir(x)",
+        "'is_integer' in dir(x)",
+        "'hex' in dir(x)",
         "setattr(x, name, 99)",
         "delattr(x, name)",
         "setattr(x, 'extra', 99)",
@@ -23182,8 +23195,11 @@ fn float_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "Value::Float(_) => Err(float_attribute_assignment_error(name))",
         "fn float_attribute_assignment_error(name: &str) -> String",
+        "fn is_float_readonly_instance_attribute(name: &str) -> bool",
         "matches!(name, \"real\" | \"imag\")",
+        "builtin_type_dir_names(\"float\")",
         "attribute '{name}' of 'float' objects is not writable",
+        "'float' object attribute '{name}' is read-only",
         "'float' object has no attribute",
         "no __dict__ for setting new attributes",
     ] {
@@ -23199,6 +23215,7 @@ fn float_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_float_public_attributes_diff_subset")
                 && document.contains("float.real")
                 && document.contains("readonly public float attributes")
+                && document.contains("read-only float method attributes")
                 && document.contains("without adding float instance dictionaries"),
             "focused float public attribute evidence must be documented in coverage and migration notes"
         );

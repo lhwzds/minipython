@@ -141,7 +141,8 @@ Recent runtime migration notes:
 - `cpython_float_public_attributes_subset`, backed by
   `cpython_float_public_attributes_diff_subset`, now pins `float.real` and
   `float.imag` as readonly public float attributes across positive zero,
-  negative zero, finite, and infinite floats, plus CPython's readonly and
+  negative zero, finite, and infinite floats, CPython's read-only float method attributes
+  such as `conjugate`, `is_integer`, and `hex`, plus readonly and
   no-`__dict__` assignment/deletion errors without adding float instance dictionaries.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:

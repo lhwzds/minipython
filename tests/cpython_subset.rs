@@ -5568,7 +5568,8 @@ for value in [0.0, -0.0, 3.5, float('inf')]:
     print('attrs', value.real, value.imag, repr(value))
 
 x = 3.5
-for name in ['real', 'imag']:
+print('visible', 'conjugate' in dir(x), 'is_integer' in dir(x), 'hex' in dir(x))
+for name in ['real', 'imag', 'conjugate', 'is_integer', 'hex']:
     show('set-' + name, lambda name=name: setattr(x, name, 99))
     show('del-' + name, lambda name=name: delattr(x, name))
 show('set-extra', lambda: setattr(x, 'extra', 99))
@@ -5578,10 +5579,17 @@ show('del-extra', lambda: delattr(x, 'extra'))"#,
             "attrs -0.0 0.0 -0.0",
             "attrs 3.5 0.0 3.5",
             "attrs inf 0.0 inf",
+            "visible True True True",
             "set-real AttributeError attribute 'real' of 'float' objects is not writable",
             "del-real AttributeError attribute 'real' of 'float' objects is not writable",
             "set-imag AttributeError attribute 'imag' of 'float' objects is not writable",
             "del-imag AttributeError attribute 'imag' of 'float' objects is not writable",
+            "set-conjugate AttributeError 'float' object attribute 'conjugate' is read-only",
+            "del-conjugate AttributeError 'float' object attribute 'conjugate' is read-only",
+            "set-is_integer AttributeError 'float' object attribute 'is_integer' is read-only",
+            "del-is_integer AttributeError 'float' object attribute 'is_integer' is read-only",
+            "set-hex AttributeError 'float' object attribute 'hex' is read-only",
+            "del-hex AttributeError 'float' object attribute 'hex' is read-only",
             "set-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes",
             "del-extra AttributeError 'float' object has no attribute 'extra' and no __dict__ for setting new attributes",
         ],

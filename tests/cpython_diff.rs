@@ -27140,7 +27140,8 @@ for value in [0.0, -0.0, 3.5, float('inf')]:
     print('attrs', value.real, value.imag, repr(value))
 
 x = 3.5
-for name in ['real', 'imag']:
+print('visible', 'conjugate' in dir(x), 'is_integer' in dir(x), 'hex' in dir(x))
+for name in ['real', 'imag', 'conjugate', 'is_integer', 'hex']:
     show('set-' + name, lambda name=name: setattr(x, name, 99))
     show('del-' + name, lambda name=name: delattr(x, name))
 show('set-extra', lambda: setattr(x, 'extra', 99))

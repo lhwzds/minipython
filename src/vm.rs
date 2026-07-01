@@ -61379,11 +61379,20 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
 fn float_attribute_assignment_error(name: &str) -> String {
     if matches!(name, "real" | "imag") {
         format!("AttributeError: attribute '{name}' of 'float' objects is not writable")
+    } else if is_float_readonly_instance_attribute(name) {
+        format!("AttributeError: 'float' object attribute '{name}' is read-only")
     } else {
         format!(
             "AttributeError: 'float' object has no attribute '{name}' and no __dict__ for setting new attributes"
         )
     }
+}
+
+fn is_float_readonly_instance_attribute(name: &str) -> bool {
+    !name.starts_with("__")
+        && builtin_type_dir_names("float")
+            .iter()
+            .any(|candidate| candidate.as_str() == name)
 }
 
 fn int_attribute_assignment_error(name: &str) -> String {

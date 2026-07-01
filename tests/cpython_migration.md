@@ -151,7 +151,8 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_float_public_attributes_subset` and
   `cpython_float_public_attributes_diff_subset` for `float.real` and
   `float.imag` as readonly public float attributes across positive zero,
-  negative zero, finite, and infinite floats, including CPython's readonly and
+  negative zero, finite, and infinite floats, including CPython's read-only float method attributes
+  such as `conjugate`, `is_integer`, and `hex`, readonly data-attribute errors, and
   no-`__dict__` assignment/deletion errors without adding float instance dictionaries.
 - Added `cpython_list_search_mutating_eq_subset` and
   `cpython_list_search_mutating_eq_diff_subset` for list mutation during comparison
