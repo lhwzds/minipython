@@ -26458,6 +26458,39 @@ print('read', b.hex(), b.split(b'a'))"#,
     );
 }
 
+// Adapted from CPython's public `bytearray` instance attribute assignment
+// errors. MiniPython keeps bytearray contents mutable without adding a writable
+// instance `__dict__`.
+#[test]
+fn cpython_bytearray_attribute_assignment_errors_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+b = bytearray(b'spam')
+for name in ['extra', 'hex', 'append']:
+    show('set-' + name, lambda name=name: setattr(b, name, 99))
+    show('del-' + name, lambda name=name: delattr(b, name))
+print('read', b.hex(), b.append.__self__ is b)
+b.append(33)
+print('mutated', b)"#,
+        &[
+            "set-extra AttributeError 'bytearray' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'bytearray' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "set-hex AttributeError 'bytearray' object attribute 'hex' is read-only",
+            "del-hex AttributeError 'bytearray' object attribute 'hex' is read-only",
+            "set-append AttributeError 'bytearray' object attribute 'append' is read-only",
+            "del-append AttributeError 'bytearray' object attribute 'append' is read-only",
+            "read 7370616d True",
+            "mutated bytearray(b'spam!')",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` object representation
 // behavior. MiniPython keeps this focused on direct inherited `object`
 // descriptor calls rather than CPython's address-bearing repr payload.

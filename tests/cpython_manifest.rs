@@ -29089,6 +29089,75 @@ fn bytes_attribute_assignment_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bytearray_attribute_assignment_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_bytearray_attribute_assignment_errors_subset(",
+        "bytearray(b'spam')",
+        "setattr(b, name, 99)",
+        "delattr(b, name)",
+        "['extra', 'hex', 'append']",
+        "\"set-extra AttributeError 'bytearray' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del-extra AttributeError 'bytearray' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"set-hex AttributeError 'bytearray' object attribute 'hex' is read-only\"",
+        "\"del-append AttributeError 'bytearray' object attribute 'append' is read-only\"",
+        "\"read 7370616d True\"",
+        "\"mutated bytearray(b'spam!')\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused bytearray attribute assignment subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_bytearray_attribute_assignment_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_bytes.py public bytearray instance attribute assignment errors subset",
+        "name: \"bytearray-attribute-assignment-errors\"",
+        "bytearray(b'spam')",
+        "setattr(b, name, 99)",
+        "delattr(b, name)",
+        "['extra', 'hex', 'append']",
+        "b.hex()",
+        "b.append.__self__ is b",
+        "b.append(33)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused bytearray attribute assignment CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::ByteArray(_) => Err(bytearray_attribute_assignment_error(name))",
+        "fn bytearray_attribute_assignment_error(name: &str) -> String",
+        "fn is_bytearray_readonly_instance_attribute(name: &str) -> bool",
+        "builtin_type_dir_names(\"bytearray\")",
+        "'bytearray' object attribute '{name}' is read-only",
+        "'bytearray' object has no attribute",
+        "no __dict__ for setting new attributes",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytearray attribute assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_bytearray_attribute_assignment_errors_subset")
+                && document.contains("cpython_bytearray_attribute_assignment_errors_diff_subset")
+                && document.contains("bytearray attribute assignment errors")
+                && document.contains("read-only bytearray method attributes")
+                && document.contains("without adding bytearray instance dictionaries"),
+            "focused bytearray attribute assignment evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_setattr_delattr_public_subset(",
