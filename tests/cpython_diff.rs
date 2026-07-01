@@ -1014,6 +1014,22 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_getattribute_missing_attr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __getattribute__ missing attr subset",
+        name: "json-function-bound-method-getattribute-missing-attr",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    for missing in ['missing', '__missing__']:
+        try:
+            bound.__getattribute__(missing)
+        except AttributeError as error:
+            print(name, missing, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

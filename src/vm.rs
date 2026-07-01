@@ -17490,6 +17490,7 @@ impl Vm {
         };
         let name = attribute_name_arg(name)?;
         load_attribute(receiver.clone(), &name)
+            .map_err(|error| method_getattribute_attribute_error(&name, error))
     }
 
     fn call_json_function_get(
@@ -62782,6 +62783,15 @@ fn is_method_wrapper_name(name: &str) -> bool {
         name,
         "method.__repr__" | "method.__str__" | "method.__getattribute__"
     )
+}
+
+fn method_getattribute_attribute_error(name: &str, error: String) -> String {
+    let method_missing_attr = format!("AttributeError: method has no attribute '{name}'");
+    if error == method_missing_attr {
+        format!("AttributeError: 'function' object has no attribute '{name}'")
+    } else {
+        error
+    }
 }
 
 fn collections_abc_type_metadata(type_name: &str, name: &str) -> Option<Value> {
