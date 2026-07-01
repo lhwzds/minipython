@@ -74,6 +74,11 @@ Recent runtime migration notes:
   `slice.stop`, and `slice.step` as readonly public data attributes across
   omitted, explicit, stepped, and negative-step slices, plus CPython's readonly
   and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
+- `cpython_complex_public_attributes_subset`, backed by
+  `cpython_complex_public_attributes_diff_subset`, now pins `complex.real` and
+  `complex.imag` as readonly public float attributes across zero, finite, and
+  signed-component complex values, plus CPython's readonly and no-`__dict__`
+  assignment/deletion errors without adding complex instance dictionaries.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

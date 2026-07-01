@@ -50609,6 +50609,42 @@ fn cpython_complex_method_subset() {
     );
 }
 
+// Adapted from CPython's public `complex` object attributes. MiniPython exposes
+// `real` and `imag` as readonly data attributes without exposing an instance
+// `__dict__`.
+#[test]
+fn cpython_complex_public_attributes_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [0j, 3 + 4j, complex(-1.5, 2.25)]:
+    print('attrs', value.real, value.imag, repr(value))
+
+z = 3 + 4j
+for name in ['real', 'imag']:
+    show('set-' + name, lambda name=name: setattr(z, name, 99))
+    show('del-' + name, lambda name=name: delattr(z, name))
+show('set-extra', lambda: setattr(z, 'extra', 99))
+show('del-extra', lambda: delattr(z, 'extra'))"#,
+        &[
+            "attrs 0.0 0.0 0j",
+            "attrs 3.0 4.0 (3+4j)",
+            "attrs -1.5 2.25 (-1.5+2.25j)",
+            "set-real AttributeError readonly attribute",
+            "del-real AttributeError readonly attribute",
+            "set-imag AttributeError readonly attribute",
+            "del-imag AttributeError readonly attribute",
+            "set-extra AttributeError 'complex' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'complex' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_getnewargs.
 #[test]
 fn cpython_complex_getnewargs_subset() {

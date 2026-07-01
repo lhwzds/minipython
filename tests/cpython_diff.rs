@@ -32729,6 +32729,30 @@ print('instance-from', type(z.from_number(5)) is ComplexSubclass, z.from_number(
 }
 
 #[test]
+fn cpython_complex_public_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py public complex attributes subset",
+        name: "complex-public-attributes",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+for value in [0j, 3 + 4j, complex(-1.5, 2.25)]:
+    print('attrs', value.real, value.imag, repr(value))
+
+z = 3 + 4j
+for name in ['real', 'imag']:
+    show('set-' + name, lambda name=name: setattr(z, name, 99))
+    show('del-' + name, lambda name=name: delattr(z, name))
+show('set-extra', lambda: setattr(z, 'extra', 99))
+show('del-extra', lambda: delattr(z, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_complex_two_arg_protocol_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_complex.py::ComplexTest::test_constructor two-argument complex protocol rows",

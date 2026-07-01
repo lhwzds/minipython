@@ -61062,6 +61062,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
+        Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
@@ -61325,12 +61326,23 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
+        Value::Complex { .. } => Err(complex_attribute_assignment_error(name)),
         Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Slice { .. } => Err(slice_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
         )),
+    }
+}
+
+fn complex_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "real" | "imag") {
+        "AttributeError: readonly attribute".to_string()
+    } else {
+        format!(
+            "AttributeError: 'complex' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
     }
 }
 
