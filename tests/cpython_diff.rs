@@ -17610,6 +17610,19 @@ for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', C
 }
 
 #[test]
+fn cpython_collections_module_package_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py collections module __package__ metadata subset",
+        name: "collections-module-package-metadata",
+        source: r#"import collections
+print(collections.__name__, collections.__package__)
+print(object.__getattribute__(collections, '__package__'))
+print('__package__' in dir(collections), collections.__dict__['__package__'])
+print(repr(collections.abc.__package__))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Counter public direct base metadata subset",

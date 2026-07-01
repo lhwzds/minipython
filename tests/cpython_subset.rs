@@ -59090,6 +59090,25 @@ for label, value in [('empty', Counter()), ('text', Counter('aba')), ('items', C
     );
 }
 
+// Mirrors CPython's public `collections` module `__package__` metadata while
+// preserving the existing `collections.abc` package metadata.
+#[test]
+fn cpython_collections_module_package_metadata_subset() {
+    assert_output(
+        r#"import collections
+print(collections.__name__, collections.__package__)
+print(object.__getattribute__(collections, '__package__'))
+print('__package__' in dir(collections), collections.__dict__['__package__'])
+print(repr(collections.abc.__package__))"#,
+        &[
+            "collections collections",
+            "collections",
+            "True collections",
+            "''",
+        ],
+    );
+}
+
 // Mirrors CPython's public `Counter` direct base metadata.
 #[test]
 fn cpython_collections_counter_type_base_metadata_subset() {

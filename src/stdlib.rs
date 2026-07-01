@@ -951,6 +951,7 @@ pub(crate) fn create_module(
         "collections" => Ok(module_value(
             "collections",
             vec![
+                ("__package__", Value::String("collections".to_string())),
                 ("ChainMap", Value::Builtin("ChainMap".to_string())),
                 ("Counter", Value::Builtin("Counter".to_string())),
                 (

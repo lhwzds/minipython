@@ -845,6 +845,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_new_child_custom_mapping_diff_subset`,
   `cpython_collections_chainmap_order_preservation_diff_subset`,
   `cpython_collections_chainmap_union_operators_diff_subset`,
+  `cpython_collections_module_package_metadata_diff_subset`,
   `cpython_collections_abc_core_runtime_diff_subset`,
   `cpython_collections_abc_type_hierarchy_metadata_diff_subset`,
   `cpython_collections_abc_iterable_iterator_diff_subset`,
@@ -5104,6 +5105,12 @@ without adding general custom encoder/decoder class support.
   `MappingProxyTests` behavior for dict subclasses with `__missing__` and
   `collections.ChainMap` mapping sources. Direct ChainMap output parity is
   guarded by `cpython_types_mappingproxy_chainmap_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_module_package_metadata_subset`, backed by
+  `cpython_collections_module_package_metadata_diff_subset`, covering
+  collections module `__package__` metadata through `collections.__package__`,
+  `object.__getattribute__`, `dir()`, and `__dict__` while preserving
+  `collections.abc.__package__` as CPython's empty string.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_public_methods_diff_subset` and
   `cpython_collections_userdict_public_methods_subset`, covering CPython

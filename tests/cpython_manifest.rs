@@ -17907,6 +17907,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "collections / collections.abc",
         &[
+            "cpython_collections_module_package_metadata_subset",
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
             "cpython_collections_counter_instance_doc_attribute_subset",
@@ -18053,6 +18054,60 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(excluded),
                 "collections docs must keep excluded surface `{excluded}` documented"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_module_package_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for collections module package metadata"
+    );
+    let collections_package_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_module_package_metadata_diff_subset",
+    );
+    let collections_package_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_module_package_metadata_subset",
+    );
+    for required in [
+        "collections.__package__",
+        "object.__getattribute__(collections, '__package__')",
+        "'__package__' in dir(collections)",
+        "collections.__dict__['__package__']",
+        "collections.abc.__package__",
+    ] {
+        assert!(
+            collections_package_diff_body.contains(required)
+                && collections_package_subset_body.contains(required),
+            "collections module package metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"collections collections\"",
+        "\"True collections\"",
+        "\"''\"",
+    ] {
+        assert!(
+            collections_package_subset_body.contains(required),
+            "collections module package metadata subset output must pin `{required}`"
+        );
+    }
+    assert!(
+        STDLIB_SOURCE.contains("(\"__package__\", Value::String(\"collections\".to_string()))"),
+        "collections stdlib module registry must set CPython-compatible __package__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_module_package_metadata_subset",
+            "cpython_collections_module_package_metadata_diff_subset",
+            "collections module `__package__` metadata",
+            "`collections.__package__`",
+            "`collections.abc.__package__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "collections module package metadata docs must contain `{required}`"
             );
         }
     }
