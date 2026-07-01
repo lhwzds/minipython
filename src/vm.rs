@@ -60649,6 +60649,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(tuple_value(Vec::new()))
         }
+        Value::Builtin(function_name)
+            if name == "__closure__" && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "io.BytesIO" => {
             Ok(Value::String(
                 "Buffered I/O implementation using an in-memory bytes buffer.".to_string(),
