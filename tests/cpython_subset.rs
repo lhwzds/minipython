@@ -38577,6 +38577,58 @@ print(json.loads.__annotations__, json.dumps.__annotations__)"#,
 }
 
 #[test]
+fn cpython_json_function_defaults_assignment_metadata_subset() {
+    assert_output(
+        r#"import json
+class T(tuple):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__defaults__
+    print(name, 'initial', function.__defaults__, function.__defaults__ is None, type(function.__defaults__).__name__)
+    replacement = ('D',)
+    function.__defaults__ = replacement
+    print(name, 'set-tuple', function.__defaults__ is replacement, type(function.__defaults__).__name__, function.__defaults__)
+    subclass = T(('S',))
+    function.__defaults__ = subclass
+    print(name, 'set-subclass', function.__defaults__ is subclass, type(function.__defaults__).__name__, function.__defaults__)
+    function.__defaults__ = ()
+    print(name, 'set-empty', function.__defaults__ == (), function.__defaults__ is None, type(function.__defaults__).__name__)
+    function.__defaults__ = None
+    print(name, 'set-none', function.__defaults__, function.__defaults__ is None)
+    for label, value in [('list', []), ('str', 'x')]:
+        try:
+            function.__defaults__ = value
+        except TypeError as error:
+            print(name, 'set-' + label, type(error).__name__, str(error), error.args)
+    function.__defaults__ = subclass
+    del function.__defaults__
+    print(name, 'after-del', function.__defaults__, function.__defaults__ is None)
+    function.__defaults__ = original
+print(json.loads.__defaults__, json.dumps.__defaults__, json.loads.__defaults__ is json.dumps.__defaults__)"#,
+        &[
+            "loads initial None True NoneType",
+            "loads set-tuple True tuple ('D',)",
+            "loads set-subclass True T ('S',)",
+            "loads set-empty True False tuple",
+            "loads set-none None True",
+            "loads set-list TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "loads set-str TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "loads after-del None True",
+            "dumps initial None True NoneType",
+            "dumps set-tuple True tuple ('D',)",
+            "dumps set-subclass True T ('S',)",
+            "dumps set-empty True False tuple",
+            "dumps set-none None True",
+            "dumps set-list TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "dumps set-str TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "dumps after-del None True",
+            "None None True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_kwdefaults_identity_metadata_subset() {
     assert_output(
         r#"import json

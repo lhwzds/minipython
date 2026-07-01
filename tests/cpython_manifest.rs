@@ -8741,6 +8741,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_annotations_assignment_metadata_subset",
+            "cpython_json_function_defaults_assignment_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
@@ -8890,6 +8891,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_annotations_assignment_metadata_diff_subset",
+        "cpython_json_function_defaults_assignment_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_function_get_descriptor_metadata_diff_subset",
@@ -9148,6 +9150,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_annotations_assignment_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_annotations_assignment_metadata_subset",
+    );
+    let json_function_defaults_assignment_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_defaults_assignment_metadata_diff_subset",
+    );
+    let json_function_defaults_assignment_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_defaults_assignment_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10446,6 +10456,71 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json public function __annotations__ assignment implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "class T(tuple):",
+        "original = function.__defaults__",
+        "function.__defaults__ is None",
+        "replacement = ('D',)",
+        "function.__defaults__ = replacement",
+        "function.__defaults__ is replacement",
+        "subclass = T(('S',))",
+        "function.__defaults__ = subclass",
+        "function.__defaults__ is subclass",
+        "function.__defaults__ = ()",
+        "function.__defaults__ = None",
+        "function.__defaults__ = value",
+        "del function.__defaults__",
+        "function.__defaults__ = original",
+        "json.loads.__defaults__",
+        "json.dumps.__defaults__",
+    ] {
+        assert!(
+            json_function_defaults_assignment_diff_body.contains(required)
+                && json_function_defaults_assignment_subset_body.contains(required),
+            "json public function __defaults__ assignment metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads initial None True NoneType\"",
+        "\"loads set-tuple True tuple ('D',)\"",
+        "\"loads set-subclass True T ('S',)\"",
+        "\"loads set-empty True False tuple\"",
+        "\"loads set-none None True\"",
+        "\"loads set-list TypeError __defaults__ must be set to a tuple object",
+        "\"loads set-str TypeError __defaults__ must be set to a tuple object",
+        "\"loads after-del None True\"",
+        "\"dumps initial None True NoneType\"",
+        "\"dumps set-tuple True tuple ('D',)\"",
+        "\"dumps set-subclass True T ('S',)\"",
+        "\"dumps set-empty True False tuple\"",
+        "\"dumps set-none None True\"",
+        "\"dumps set-list TypeError __defaults__ must be set to a tuple object",
+        "\"dumps set-str TypeError __defaults__ must be set to a tuple object",
+        "\"dumps after-del None True\"",
+        "\"None None True\"",
+    ] {
+        assert!(
+            json_function_defaults_assignment_subset_body.contains(required),
+            "json public function __defaults__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "static JSON_BUILTIN_DEFAULTS: RefCell<HashMap<String, Value>>",
+        "fn json_builtin_defaults(name: &str) -> Value",
+        "fn set_json_builtin_defaults(",
+        "fn delete_json_builtin_defaults(",
+        "Ok(json_builtin_defaults(&function_name))",
+        "tuple_subclass_items(&value).is_none()",
+        "namedtuple_subclass_storage(&value).is_none()",
+        "__defaults__ must be set to a tuple object",
+        "\"__defaults__\" => return set_json_builtin_defaults(function_name, value)",
+        "delete_json_builtin_defaults(function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __defaults__ assignment implementation must contain `{required}`"
         );
     }
     for required in [
@@ -12192,6 +12267,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_annotations_identity_metadata_diff_subset",
             "cpython_json_function_annotations_assignment_metadata_subset",
             "cpython_json_function_annotations_assignment_metadata_diff_subset",
+            "cpython_json_function_defaults_assignment_metadata_subset",
+            "cpython_json_function_defaults_assignment_metadata_diff_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
             "cpython_json_function_dir_metadata_subset",
@@ -12283,6 +12360,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__annotate__` assignment",
             "json public function `__annotations__` identity",
             "json public function `__annotations__` assignment",
+            "json public function `__defaults__` assignment",
             "json public function `__kwdefaults__` identity",
             "json public function `dir()` supported metadata",
             "json public function `__get__` descriptor",

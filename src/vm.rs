@@ -117,6 +117,7 @@ thread_local! {
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATE: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static JSON_BUILTIN_DEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
@@ -61554,7 +61555,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__defaults__" && is_json_builtin(&function_name) =>
         {
-            Ok(Value::None)
+            Ok(json_builtin_defaults(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__kwdefaults__" && is_json_builtin(&function_name) =>
@@ -62219,6 +62220,30 @@ fn delete_json_builtin_annotations(name: &str) {
     });
 }
 
+fn json_builtin_defaults(name: &str) -> Value {
+    JSON_BUILTIN_DEFAULTS
+        .with(|defaults| defaults.borrow().get(name).cloned().unwrap_or(Value::None))
+}
+
+fn set_json_builtin_defaults(name: &str, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::None | Value::Tuple(_))
+        && tuple_subclass_items(&value).is_none()
+        && namedtuple_subclass_storage(&value).is_none()
+    {
+        return Err("TypeError: __defaults__ must be set to a tuple object".to_string());
+    }
+    JSON_BUILTIN_DEFAULTS.with(|defaults| {
+        defaults.borrow_mut().insert(name.to_string(), value);
+    });
+    Ok(())
+}
+
+fn delete_json_builtin_defaults(name: &str) {
+    JSON_BUILTIN_DEFAULTS.with(|defaults| {
+        defaults.borrow_mut().insert(name.to_string(), Value::None);
+    });
+}
+
 fn json_builtin_type_params(name: &str) -> Value {
     if let Some(value) =
         JSON_BUILTIN_TYPE_PARAM_OVERRIDES.with(|overrides| overrides.borrow().get(name).cloned())
@@ -62413,6 +62438,7 @@ fn store_json_builtin_attribute(
         "__type_params__" => return set_json_builtin_type_params(function_name, value),
         "__annotate__" => return set_json_builtin_annotate(function_name, value),
         "__annotations__" => return set_json_builtin_annotations(function_name, value),
+        "__defaults__" => return set_json_builtin_defaults(function_name, value),
         _ => {}
     }
     let attrs = json_builtin_dict_entries(function_name);
@@ -62446,6 +62472,10 @@ fn delete_json_builtin_attribute(function_name: &str, name: &str) -> Result<(), 
         "__annotate__" => return Err("TypeError: __annotate__ cannot be deleted".to_string()),
         "__annotations__" => {
             delete_json_builtin_annotations(function_name);
+            return Ok(());
+        }
+        "__defaults__" => {
+            delete_json_builtin_defaults(function_name);
             return Ok(());
         }
         _ => {}

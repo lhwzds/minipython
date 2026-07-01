@@ -1075,6 +1075,7 @@ Recent runtime migration notes:
   `cpython_json_function_dict_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_identity_metadata_diff_subset`,
   `cpython_json_function_annotations_assignment_metadata_diff_subset`,
+  `cpython_json_function_defaults_assignment_metadata_diff_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset`,
   `cpython_json_function_dir_metadata_diff_subset`,
   `cpython_json_function_get_descriptor_metadata_diff_subset`,
@@ -1773,6 +1774,8 @@ Recent runtime migration notes:
   `cpython_json_function_annotations_identity_metadata_subset`,
   `cpython_json_function_annotations_assignment_metadata_diff_subset` /
   `cpython_json_function_annotations_assignment_metadata_subset`,
+  `cpython_json_function_defaults_assignment_metadata_diff_subset` /
+  `cpython_json_function_defaults_assignment_metadata_subset`,
   `cpython_json_function_kwdefaults_identity_metadata_diff_subset` /
   `cpython_json_function_kwdefaults_identity_metadata_subset`,
   `cpython_json_function_dir_metadata_diff_subset` /
@@ -2665,6 +2668,14 @@ dict-subclass, and OrderedDict replacement identity, `None` / deletion reset
 to a fresh empty dict, and non-dict assignment `TypeError`, without adding
 function `__defaults__` / `__kwdefaults__` call-binding mutation semantics,
 pickle helpers, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_defaults_assignment_metadata_subset`, backed by
+`cpython_json_function_defaults_assignment_metadata_diff_subset`, keeps json public function `__defaults__` assignment
+and deletion aligned with CPython for `loads` / `dumps`, including tuple and
+tuple-subclass replacement identity, empty tuple assignment, `None` reset,
+deletion reset to `None`, and non-tuple assignment `TypeError`, without adding
+`__defaults__` call-binding mutation semantics, function `__code__`, pickle
+helpers, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_kwdefaults_identity_metadata_subset`, backed by
 `cpython_json_function_kwdefaults_identity_metadata_diff_subset`, keeps json public function `__kwdefaults__` identity

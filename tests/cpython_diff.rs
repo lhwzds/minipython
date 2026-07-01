@@ -1438,6 +1438,41 @@ print(json.loads.__annotations__, json.dumps.__annotations__)"#,
 }
 
 #[test]
+fn cpython_json_function_defaults_assignment_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __defaults__ assignment metadata subset",
+        name: "json-function-defaults-assignment-metadata",
+        source: r#"import json
+class T(tuple):
+    pass
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    original = function.__defaults__
+    print(name, 'initial', function.__defaults__, function.__defaults__ is None, type(function.__defaults__).__name__)
+    replacement = ('D',)
+    function.__defaults__ = replacement
+    print(name, 'set-tuple', function.__defaults__ is replacement, type(function.__defaults__).__name__, function.__defaults__)
+    subclass = T(('S',))
+    function.__defaults__ = subclass
+    print(name, 'set-subclass', function.__defaults__ is subclass, type(function.__defaults__).__name__, function.__defaults__)
+    function.__defaults__ = ()
+    print(name, 'set-empty', function.__defaults__ == (), function.__defaults__ is None, type(function.__defaults__).__name__)
+    function.__defaults__ = None
+    print(name, 'set-none', function.__defaults__, function.__defaults__ is None)
+    for label, value in [('list', []), ('str', 'x')]:
+        try:
+            function.__defaults__ = value
+        except TypeError as error:
+            print(name, 'set-' + label, type(error).__name__, str(error), error.args)
+    function.__defaults__ = subclass
+    del function.__defaults__
+    print(name, 'after-del', function.__defaults__, function.__defaults__ is None)
+    function.__defaults__ = original
+print(json.loads.__defaults__, json.dumps.__defaults__, json.loads.__defaults__ is json.dumps.__defaults__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_kwdefaults_identity_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __kwdefaults__ identity metadata subset",
