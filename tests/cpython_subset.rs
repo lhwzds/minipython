@@ -37899,6 +37899,40 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_init_subclass_wrapper_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    wrapper = function.__init_subclass__
+    doc = wrapper.__doc__
+    print(name, '__init_subclass__' in dir(function), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(name, wrapper.__self__ is type(function), wrapper.__self__.__name__, wrapper.__name__, wrapper.__qualname__, doc.startswith('This method is called'), 'default implementation does nothing' in doc, wrapper.__module__, wrapper.__text_signature__)
+    for label, call in [
+        ('call', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(x=1)),
+    ]:
+        try:
+            print(name, label, call())
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "loads True builtin_function_or_method builtin_function_or_method",
+            "loads True function __init_subclass__ function.__init_subclass__ True True None ($type, /)",
+            "loads call None",
+            "loads extra TypeError function.__init_subclass__() takes no arguments (1 given) ('function.__init_subclass__() takes no arguments (1 given)',)",
+            "loads keyword TypeError function.__init_subclass__() takes no keyword arguments ('function.__init_subclass__() takes no keyword arguments',)",
+            "dumps True builtin_function_or_method builtin_function_or_method",
+            "dumps True function __init_subclass__ function.__init_subclass__ True True None ($type, /)",
+            "dumps call None",
+            "dumps extra TypeError function.__init_subclass__() takes no arguments (1 given) ('function.__init_subclass__() takes no arguments (1 given)',)",
+            "dumps keyword TypeError function.__init_subclass__() takes no keyword arguments ('function.__init_subclass__() takes no keyword arguments',)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_format_wrapper_metadata_subset() {
     assert_output(
         r#"import json

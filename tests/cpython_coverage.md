@@ -1056,6 +1056,7 @@ Recent runtime migration notes:
   `cpython_json_function_repr_str_wrapper_metadata_diff_subset`,
   `cpython_json_function_call_wrapper_metadata_diff_subset`,
   `cpython_json_function_init_wrapper_metadata_diff_subset`,
+  `cpython_json_function_init_subclass_wrapper_metadata_diff_subset`,
   `cpython_json_function_format_wrapper_metadata_diff_subset`,
   `cpython_json_function_hash_wrapper_metadata_diff_subset`,
   `cpython_json_function_rich_compare_wrapper_metadata_diff_subset`,
@@ -1760,6 +1761,8 @@ Recent runtime migration notes:
   `cpython_json_function_call_wrapper_metadata_subset`,
   `cpython_json_function_init_wrapper_metadata_diff_subset` /
   `cpython_json_function_init_wrapper_metadata_subset`,
+  `cpython_json_function_init_subclass_wrapper_metadata_diff_subset` /
+  `cpython_json_function_init_subclass_wrapper_metadata_subset`,
   `cpython_json_function_format_wrapper_metadata_diff_subset` /
   `cpython_json_function_format_wrapper_metadata_subset`,
   `cpython_json_function_hash_wrapper_metadata_diff_subset` /
@@ -2537,6 +2540,15 @@ aligned with CPython for `loads` / `dumps`, including `dir()` visibility,
 direct `object.__init__(function, ...)` calls, and CPython's permissive
 extra-argument / keyword behavior for function objects, without adding function
 `__code__`, `__sizeof__`, pickle helpers, file APIs, module `__all__`, or
+encoder/decoder classes.
+
+`cpython_json_function_init_subclass_wrapper_metadata_subset`, backed by
+`cpython_json_function_init_subclass_wrapper_metadata_diff_subset`, keeps json public function `__init_subclass__` wrapper metadata aligned with CPython for `loads` / `dumps`, including `dir()`
+visibility, `builtin_function_or_method` type shape, binding to the shared
+`function` type, `__name__` / `__qualname__` / `__doc__` / `__module__` /
+`__text_signature__` metadata, zero-argument success, and arity / keyword
+`TypeError` text, without adding function `__new__`, function `__code__`,
+`__sizeof__`, `__getstate__`, pickle helpers, file APIs, module `__all__`, or
 encoder/decoder classes.
 
 `cpython_json_function_format_wrapper_metadata_subset`, backed by
