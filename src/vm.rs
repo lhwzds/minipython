@@ -108,6 +108,7 @@ thread_local! {
     static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_BUILTINS: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_GLOBALS: RefCell<Option<Value>> = RefCell::new(None);
+    static JSON_BUILTIN_MODULE: RefCell<Option<Value>> = RefCell::new(None);
     static JSON_BUILTIN_DOCS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DICTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
@@ -60791,7 +60792,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__module__" && is_json_builtin(&function_name) =>
         {
-            Ok(Value::String("json".to_string()))
+            Ok(json_builtin_module())
         }
         Value::Builtin(function_name)
             if name == "__module__" && is_copy_builtin(&function_name) =>
@@ -61238,6 +61239,15 @@ fn json_builtin_doc_value(name: &str) -> Value {
         let mut docs = docs.borrow_mut();
         docs.entry(name.to_string())
             .or_insert_with(|| identity_string_value(json_builtin_doc(name).to_string()))
+            .clone()
+    })
+}
+
+fn json_builtin_module() -> Value {
+    JSON_BUILTIN_MODULE.with(|module| {
+        let mut module = module.borrow_mut();
+        module
+            .get_or_insert_with(|| identity_string_value("json".to_string()))
             .clone()
     })
 }

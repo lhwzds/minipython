@@ -37509,6 +37509,26 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_function_module_identity_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    print(name, type(function.__module__).__name__, function.__module__, function.__module__ is function.__module__)
+    print(name, bound.__module__ is function.__module__, bound.__getattribute__('__module__') is function.__module__)
+print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__ == json.dumps.__module__)"#,
+        &[
+            "loads str json True",
+            "loads True True",
+            "dumps str json True",
+            "dumps True True",
+            "True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_subset() {
     assert_output(
         r#"import json

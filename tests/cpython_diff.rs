@@ -721,6 +721,21 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_function_module_identity_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __module__ identity metadata subset",
+        name: "json-function-module-identity-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    print(name, type(function.__module__).__name__, function.__module__, function.__module__ is function.__module__)
+    print(name, bound.__module__ is function.__module__, bound.__getattribute__('__module__') is function.__module__)
+print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__ == json.dumps.__module__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_type_params_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __type_params__ metadata subset",

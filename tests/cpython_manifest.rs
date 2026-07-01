@@ -8719,6 +8719,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_builtins_identity_metadata_subset",
             "cpython_json_function_globals_metadata_subset",
             "cpython_json_function_globals_identity_metadata_subset",
+            "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
             "cpython_json_function_kwdefaults_identity_metadata_subset",
@@ -8840,6 +8841,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_builtins_identity_metadata_diff_subset",
         "cpython_json_function_globals_metadata_diff_subset",
         "cpython_json_function_globals_identity_metadata_diff_subset",
+        "cpython_json_function_module_identity_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
@@ -8948,6 +8950,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_package_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_module_package_metadata_subset",
+    );
+    let json_function_module_identity_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_module_identity_metadata_diff_subset",
+    );
+    let json_function_module_identity_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_module_identity_metadata_subset",
     );
     let json_function_type_params_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -9197,6 +9207,31 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_package_subset_body.contains(required),
             "json module package metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function.__module__ is function.__module__",
+        "bound.__module__ is function.__module__",
+        "bound.__getattribute__('__module__') is function.__module__",
+        "json.loads.__module__ is json.dumps.__module__",
+        "json.loads.__module__ == json.dumps.__module__",
+    ] {
+        assert!(
+            json_function_module_identity_diff_body.contains(required)
+                && json_function_module_identity_subset_body.contains(required),
+            "json public function __module__ identity diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads str json True\"",
+        "\"loads True True\"",
+        "\"dumps str json True\"",
+        "\"dumps True True\"",
+        "\"True True\"",
+    ] {
+        assert!(
+            json_function_module_identity_subset_body.contains(required),
+            "json public function __module__ identity subset output must pin `{required}`"
         );
     }
     for required in [
@@ -9943,6 +9978,15 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json stdlib module registry must set CPython-compatible __package__ metadata"
     );
     assert!(
+        VM_SOURCE.contains("static JSON_BUILTIN_MODULE: RefCell<Option<Value>>")
+            && VM_SOURCE.contains("name == \"__module__\" && is_json_builtin(&function_name)")
+            && VM_SOURCE.contains("Ok(json_builtin_module())")
+            && VM_SOURCE.contains("fn json_builtin_module() -> Value")
+            && VM_SOURCE.contains("JSON_BUILTIN_MODULE.with")
+            && VM_SOURCE.contains("identity_string_value(\"json\".to_string())"),
+        "VM must keep shared persistent json function __module__ identity metadata"
+    );
+    assert!(
         VM_SOURCE.contains("name == \"__type_params__\" && is_json_builtin(&function_name)")
             && VM_SOURCE.contains("Ok(json_builtin_type_params())")
             && VM_SOURCE.contains("static JSON_BUILTIN_TYPE_PARAMS: RefCell<Option<Value>>")
@@ -10163,6 +10207,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         for required in [
             "cpython_json_module_package_metadata_subset",
             "cpython_json_module_package_metadata_diff_subset",
+            "cpython_json_function_module_identity_metadata_subset",
+            "cpython_json_function_module_identity_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_metadata_diff_subset",
             "cpython_json_function_annotate_metadata_subset",
@@ -10225,6 +10271,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "`json.__package__`",
             "`json.loads.__module__`",
             "`json.dumps.__module__`",
+            "json public function `__module__` identity",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",
             "`json.dumps.__type_params__`",
