@@ -62939,6 +62939,53 @@ fn cpython_builtin_range_for_iteration_subset() {
     assert_output("for x in range(3, 0, -1):\n    print(x)", &["3", "2", "1"]);
 }
 
+// Adapted from CPython's public `range` object attributes. MiniPython keeps
+// `start`, `stop`, and `step` as readonly data attributes without exposing an
+// instance `__dict__`.
+#[test]
+fn cpython_range_public_attributes_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+cases = [
+    range(5),
+    range(1, 6),
+    range(1, 10, 2),
+    range(10, 1, -3),
+    range(2 ** 65, 2 ** 65 + 3),
+]
+for item in cases:
+    print('attrs', item.start, item.stop, item.step, len(item), repr(item))
+
+r = range(1, 5, 2)
+for name in ['start', 'stop', 'step']:
+    show('set-' + name, lambda name=name: setattr(r, name, 99))
+    show('del-' + name, lambda name=name: delattr(r, name))
+show('set-extra', lambda: setattr(r, 'extra', 99))
+show('del-extra', lambda: delattr(r, 'extra'))"#,
+        &[
+            "attrs 0 5 1 5 range(0, 5)",
+            "attrs 1 6 1 5 range(1, 6)",
+            "attrs 1 10 2 5 range(1, 10, 2)",
+            "attrs 10 1 -3 3 range(10, 1, -3)",
+            "attrs 36893488147419103232 36893488147419103235 1 3 range(36893488147419103232, 36893488147419103235)",
+            "set-start AttributeError readonly attribute",
+            "del-start AttributeError readonly attribute",
+            "set-stop AttributeError readonly attribute",
+            "del-stop AttributeError readonly attribute",
+            "set-step AttributeError readonly attribute",
+            "del-step AttributeError readonly attribute",
+            "set-extra AttributeError 'range' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del-extra AttributeError 'range' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+}
+
 // Adapted from CPython grammar `break_stmt` and `continue_stmt` coverage in
 // Lib/test/test_grammar.py. These cases make jump behavior observable through
 // output instead of checking CPython's internal AST/compiler objects.

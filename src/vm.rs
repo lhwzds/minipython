@@ -57861,16 +57861,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             stop,
             step,
             identity,
-        } => immutable_sequence_method(
-            "range",
-            Value::Range {
-                start,
-                stop,
-                step,
-                identity,
-            },
-            name,
-        ),
+        } => match name {
+            "start" => Ok(normalize_big_int(start)),
+            "stop" => Ok(normalize_big_int(stop)),
+            "step" => Ok(normalize_big_int(step)),
+            _ => immutable_sequence_method(
+                "range",
+                Value::Range {
+                    start,
+                    stop,
+                    step,
+                    identity,
+                },
+                name,
+            ),
+        },
         Value::List(items) => match name {
             "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
             | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
@@ -61057,6 +61062,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
+        Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot set attribute '{name}' on {value}"
@@ -61318,10 +61324,21 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
+        Value::Range { .. } => Err(range_attribute_assignment_error(name)),
         Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
         )),
+    }
+}
+
+fn range_attribute_assignment_error(name: &str) -> String {
+    if matches!(name, "start" | "stop" | "step") {
+        "AttributeError: readonly attribute".to_string()
+    } else {
+        format!(
+            "AttributeError: 'range' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
     }
 }
 

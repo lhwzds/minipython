@@ -8590,6 +8590,37 @@ for expr in [lambda: setattr(), lambda: setattr(1, 'x'), lambda: setattr(1, 2, 3
 }
 
 #[test]
+fn cpython_range_public_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_range.py public range attributes subset",
+        name: "range-public-attributes",
+        source: r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+cases = [
+    range(5),
+    range(1, 6),
+    range(1, 10, 2),
+    range(10, 1, -3),
+    range(2 ** 65, 2 ** 65 + 3),
+]
+for item in cases:
+    print('attrs', item.start, item.stop, item.step, len(item), repr(item))
+
+r = range(1, 5, 2)
+for name in ['start', 'stop', 'step']:
+    show('set-' + name, lambda name=name: setattr(r, name, 99))
+    show('del-' + name, lambda name=name: delattr(r, name))
+show('set-extra', lambda: setattr(r, 'extra', 99))
+show('del-extra', lambda: delattr(r, 'extra'))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_hasattr_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hasattr public supported subset",
