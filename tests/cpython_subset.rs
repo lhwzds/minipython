@@ -55951,6 +55951,23 @@ fn cpython_collections_userdict_public_methods_subset() {
     );
 }
 
+// Mirrors CPython's public `UserList` instance `__doc__` type-attribute
+// lookup while leaving full writable UserList instance dictionaries outside
+// this slice.
+#[test]
+fn cpython_collections_userlist_instance_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import UserList
+for label, value in [('empty', UserList()), ('items', UserList([1, 2]))]:
+    doc = value.__doc__
+    print(label, type(doc).__name__, doc == UserList.__doc__, '__doc__' in dir(value), doc, len(doc))"#,
+        &[
+            "empty str True True A more or less complete user-defined wrapper around list objects. 65",
+            "items str True True A more or less complete user-defined wrapper around list objects. 65",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestUserObjects
 // test_list_protocol and test_list_copy. UserString and UserDict subclass
 // __missing__ behavior are covered by adjacent collections slices.

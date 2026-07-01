@@ -58166,6 +58166,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
+                "__doc__" => Ok(Value::String(
+                    builtin_type_doc("UserList")
+                        .expect("UserList type doc is defined")
+                        .to_string(),
+                )),
                 "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
                 | "index" | "insert" | "remove" | "__add__" | "__contains__" | "__delitem__"
                 | "__eq__" | "__format__" | "__getitem__" | "__iadd__" | "__imul__"
@@ -61006,6 +61011,7 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
             "passed to the dict constructor, including keyword arguments.\n"
         )),
         "OrderedDict" => Some("Dictionary that remembers insertion order"),
+        "UserList" => Some("A more or less complete user-defined wrapper around list objects."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         "mappingproxy" => Some("Read-only proxy of a mapping."),
         _ => None,

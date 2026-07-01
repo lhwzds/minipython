@@ -17956,6 +17956,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_new_builtins_globals_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
+            "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
@@ -19073,6 +19074,68 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("fn raise_key_error_empty("),
         "UserDict empty popitem must be backed by a no-arg KeyError helper"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_instance_doc_attribute_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList instance __doc__ behavior"
+    );
+    let userlist_instance_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_instance_doc_attribute_diff_subset",
+    );
+    let userlist_instance_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_instance_doc_attribute_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "for label, value in [('empty', UserList()), ('items', UserList([1, 2]))]",
+        "doc = value.__doc__",
+        "doc == UserList.__doc__",
+        "'__doc__' in dir(value)",
+        "len(doc)",
+    ] {
+        assert!(
+            userlist_instance_doc_diff_body.contains(required)
+                && userlist_instance_doc_subset_body.contains(required),
+            "UserList instance __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty str True True A more or less complete user-defined wrapper around list objects. 65\"",
+        "\"items str True True A more or less complete user-defined wrapper around list objects. 65\"",
+    ] {
+        assert!(
+            userlist_instance_doc_subset_body.contains(required),
+            "UserList instance __doc__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserList { data, attrs } => {",
+        "\"__doc__\" => Ok(Value::String(",
+        "builtin_type_doc(\"UserList\")",
+        "expect(\"UserList type doc is defined\")",
+        "names.extend(builtin_type_dir_names(\"UserList\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList instance __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_instance_doc_attribute_subset",
+            "cpython_collections_userlist_instance_doc_attribute_diff_subset",
+            "`UserList` instance `__doc__`",
+            "without promoting full writable UserList",
+            "instance dictionaries",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList instance __doc__ docs must contain `{required}`"
+            );
+        }
+    }
     let userlist_public_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_collections_userlist_public_methods_diff_subset",

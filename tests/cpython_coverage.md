@@ -797,6 +797,7 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
+  `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
@@ -5061,6 +5062,12 @@ without adding general custom encoder/decoder class support.
   containment, `get()`, `.data`, direct display/empty-format methods, recursive
   display, class-level direct public method calls, `.copy()`, and `copy.copy()`
   with shallow instance-attribute copying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
+  `cpython_collections_userlist_instance_doc_attribute_subset`, covering
+  `UserList` instance `__doc__` lookup for empty and populated UserLists,
+  including `dir()` visibility, without promoting full writable UserList
+  instance dictionaries.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_public_methods_diff_subset` and
   `cpython_collections_userlist_public_methods_subset`, covering CPython
