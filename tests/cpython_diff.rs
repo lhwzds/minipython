@@ -1218,6 +1218,33 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_format_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __format__ wrapper subset",
+        name: "json-function-bound-method-format-wrapper",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    bound = getattr(json, name).__get__('receiver', str)
+    wrapper = bound.__format__
+    print(name, '__format__' in dir(bound), type(wrapper).__name__, wrapper.__class__.__name__)
+    doc = wrapper.__doc__
+    print(name, wrapper.__self__ is bound, wrapper.__name__, wrapper.__qualname__, doc.startswith('Default object formatter.'), 'Return str(self)' in doc, wrapper.__module__, wrapper.__text_signature__)
+    rendered = wrapper('')
+    print(name, type(rendered).__name__, rendered == format(bound, ''), rendered == str(bound), rendered.startswith('<bound method '))
+    for label, call in [
+        ('non-empty', lambda wrapper=wrapper: wrapper('x')),
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper('', 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(format_spec='')),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(name, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_bound_method_hash_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function bound method __hash__ wrapper subset",

@@ -8736,6 +8736,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_call_wrapper_subset",
             "cpython_json_function_bound_method_get_wrapper_subset",
             "cpython_json_function_bound_method_dir_wrapper_subset",
+            "cpython_json_function_bound_method_format_wrapper_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
@@ -8867,6 +8868,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_call_wrapper_diff_subset",
         "cpython_json_function_bound_method_get_wrapper_diff_subset",
         "cpython_json_function_bound_method_dir_wrapper_diff_subset",
+        "cpython_json_function_bound_method_format_wrapper_diff_subset",
         "cpython_json_function_bound_method_hash_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
@@ -9166,6 +9168,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_dir_wrapper_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_dir_wrapper_subset",
+    );
+    let json_function_bound_method_format_wrapper_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_format_wrapper_diff_subset",
+    );
+    let json_function_bound_method_format_wrapper_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_format_wrapper_subset",
     );
     let json_function_bound_method_hash_wrapper_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10091,6 +10101,69 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "'__format__' in dir(bound)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is bound",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "doc.startswith('Default object formatter.')",
+        "'Return str(self)' in doc",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "rendered = wrapper('')",
+        "rendered == format(bound, '')",
+        "rendered == str(bound)",
+        "rendered.startswith('<bound method ')",
+        "('non-empty', lambda wrapper=wrapper: wrapper('x'))",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper: wrapper('', 1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(format_spec=''))",
+        "error.args",
+    ] {
+        assert!(
+            json_function_bound_method_format_wrapper_diff_body.contains(required)
+                && json_function_bound_method_format_wrapper_subset_body.contains(required),
+            "json public function bound method __format__ wrapper diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads True builtin_function_or_method builtin_function_or_method\"",
+        "\"loads True __format__ method.__format__ True True None ($self, format_spec, /)\"",
+        "\"loads str True True True\"",
+        "\"loads non-empty TypeError unsupported format string passed to method.__format__",
+        "\"loads missing TypeError method.__format__() takes exactly one argument (0 given)",
+        "\"loads extra TypeError method.__format__() takes exactly one argument (2 given)",
+        "\"loads keyword TypeError method.__format__() takes no keyword arguments",
+        "\"dumps True builtin_function_or_method builtin_function_or_method\"",
+        "\"dumps True __format__ method.__format__ True True None ($self, format_spec, /)\"",
+        "\"dumps str True True True\"",
+        "\"dumps non-empty TypeError unsupported format string passed to method.__format__",
+        "\"dumps missing TypeError method.__format__() takes exactly one argument (0 given)",
+        "\"dumps extra TypeError method.__format__() takes exactly one argument (2 given)",
+        "\"dumps keyword TypeError method.__format__() takes no keyword arguments",
+    ] {
+        assert!(
+            json_function_bound_method_format_wrapper_subset_body.contains(required),
+            "json public function bound method __format__ wrapper subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_method_format(",
+        "method.__format__() takes exactly one argument",
+        "method.__format__() takes no keyword arguments",
+        "Value::Builtin(\"method.__format__\".to_string())",
+        "method.__format__",
+        "Default object formatter.",
+        "($self, format_spec, /)",
+        "self.call_object_format(vec![receiver.clone(), format_spec.clone()])",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function bound method __format__ wrapper implementation must contain `{required}`"
+        );
+    }
+    for required in [
         "'__hash__' in dir(bound)",
         "type(wrapper).__name__",
         "wrapper.__class__.__name__",
@@ -10711,9 +10784,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         VM_SOURCE.contains(
-            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__get__\",\n                \"__getattribute__\","
+            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__format__\",\n                \"__get__\",\n                \"__getattribute__\","
         ),
-        "VM bound method dir() names must include CPython-visible __call__, __dir__, __get__, and __doc__ metadata"
+        "VM bound method dir() names must include CPython-visible __call__, __dir__, __format__, __get__, and __doc__ metadata"
     );
     assert!(
         VM_SOURCE.contains("\"__type_params__\"")
@@ -10857,6 +10930,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_get_wrapper_diff_subset",
             "cpython_json_function_bound_method_dir_wrapper_subset",
             "cpython_json_function_bound_method_dir_wrapper_diff_subset",
+            "cpython_json_function_bound_method_format_wrapper_subset",
+            "cpython_json_function_bound_method_format_wrapper_diff_subset",
             "cpython_json_function_bound_method_hash_wrapper_subset",
             "cpython_json_function_bound_method_hash_wrapper_diff_subset",
             "cpython_json_function_bound_method_getattribute_wrapper_subset",
