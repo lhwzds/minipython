@@ -1059,6 +1059,21 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_bound_method_annotations_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function bound method __annotations__ metadata subset",
+        name: "json-function-bound-method-annotations-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    bound = function.__get__('receiver', str)
+    value = bound.__annotations__
+    print(name, type(value).__name__, len(value), value == {}, value is function.__annotations__)
+    print(name, bound.__getattribute__('__annotations__') is function.__annotations__, '__annotations__' in dir(bound))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_strenum_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/enum and Lib/json public StrEnum dumps subset",

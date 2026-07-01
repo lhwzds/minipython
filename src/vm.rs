@@ -59375,6 +59375,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 load_attribute(*function, "__kwdefaults__")
             }
+            "__annotations__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__annotations__")
+            }
             _ if matches!(function.as_ref(), Value::LruCacheWrapper { .. }) => {
                 load_attribute(*function, name)
             }
