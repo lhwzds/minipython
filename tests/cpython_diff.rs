@@ -19396,6 +19396,30 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_types_celltype_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public cell object dir surface subset",
+        name: "types-celltype-dir-surface",
+        source: r#"import types
+
+expected = [
+    '__class__', '__delattr__', '__dir__', '__doc__', '__eq__',
+    '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__',
+    '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__',
+    '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__',
+    '__setattr__', '__sizeof__', '__str__', '__subclasshook__',
+    'cell_contents',
+]
+for label, cell in [('full', types.CellType(1)), ('empty', types.CellType())]:
+    names = dir(cell)
+    object_names = sorted(object.__dir__(cell))
+    print(label, names == expected, object_names == expected, len(names), names[0], names[-1])
+    print(label, 'visible', 'cell_contents' in names, '__class__' in names, '__dict__' in names, 'missing' in names)
+    print(label, 'object-dunders', all(name in names for name in ['__getstate__', '__reduce__', '__reduce_ex__', '__setattr__', '__delattr__', '__sizeof__']))"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

@@ -808,6 +808,7 @@ Recent runtime migration notes:
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_constructor_behavior_diff_subset`,
   `cpython_types_celltype_attribute_errors_diff_subset`,
+  `cpython_types_celltype_dir_surface_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4039,6 +4040,15 @@ without adding general custom encoder/decoder class support.
   `no __dict__ for setting new attributes`. The slice preserves
   `cell_contents` deletion behavior while keeping a writable instance dictionary
   and CPython object-layout internals outside the sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_dir_surface_subset`, backed by
+  `cpython_types_celltype_dir_surface_diff_subset`, covering CPython's public
+  `dir(cell)` and `object.__dir__(cell)` name surface for closure cells,
+  including `cell_contents` and inherited object names such as `__getstate__`,
+  `__reduce__`, `__reduce_ex__`, `__setattr__`, `__delattr__`, and
+  `__sizeof__`. This slice pins name visibility only; pickle behavior,
+  `__sizeof__` object-layout values, and other CPython object-layout internals
+  remain outside this sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's

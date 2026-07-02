@@ -39311,6 +39311,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_constructor_behavior_subset",
             "cpython_types_celltype_attribute_errors_subset",
+            "cpython_types_celltype_dir_surface_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_display_metadata_subset",
@@ -39413,6 +39414,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_constructor_behavior_diff_subset",
         "cpython_types_celltype_attribute_errors_diff_subset",
+        "cpython_types_celltype_dir_surface_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_display_metadata_diff_subset",
@@ -39809,6 +39811,91 @@ fn types_celltype_attribute_errors_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType attribute-error docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_dir_surface_diff_subset";
+    let subset_name = "cpython_types_celltype_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType dir CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType dir runtime subset evidence must exist"
+    );
+
+    for required in [
+        "dir(cell)",
+        "object.__dir__(cell)",
+        "'cell_contents'",
+        "'__getstate__'",
+        "'__reduce__'",
+        "'__reduce_ex__'",
+        "'__setattr__'",
+        "'__delattr__'",
+        "'__sizeof__'",
+        "'__dict__' in names",
+        "'missing' in names",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType dir diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"full True True 25 __class__ cell_contents\"",
+        "\"full visible True True False False\"",
+        "\"full object-dunders True\"",
+        "\"empty True True 25 __class__ cell_contents\"",
+        "\"empty visible True True False False\"",
+        "\"empty object-dunders True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType dir subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Cell { .. } => names.extend(cell_dir_names())",
+        "fn cell_dir_names() -> Vec<String>",
+        "\"cell_contents\"",
+        "\"__getstate__\"",
+        "\"__reduce__\"",
+        "\"__reduce_ex__\"",
+        "\"__setattr__\"",
+        "\"__delattr__\"",
+        "\"__sizeof__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType dir implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(cell)`",
+            "`object.__dir__(cell)`",
+            "`cell_contents`",
+            "`__getstate__`",
+            "`__reduce__`",
+            "`__sizeof__`",
+            "pickle behavior",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType dir docs must contain `{required}`"
             );
         }
     }

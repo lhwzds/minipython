@@ -72806,6 +72806,38 @@ for label, callback in [
     );
 }
 
+// Adapted from CPython public cell object `dir()` behavior. This pins the
+// stable public name surface without promoting object-layout or pickle behavior.
+#[test]
+fn cpython_types_celltype_dir_surface_subset() {
+    assert_output(
+        r#"import types
+
+expected = [
+    '__class__', '__delattr__', '__dir__', '__doc__', '__eq__',
+    '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__',
+    '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__',
+    '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__',
+    '__setattr__', '__sizeof__', '__str__', '__subclasshook__',
+    'cell_contents',
+]
+for label, cell in [('full', types.CellType(1)), ('empty', types.CellType())]:
+    names = dir(cell)
+    object_names = sorted(object.__dir__(cell))
+    print(label, names == expected, object_names == expected, len(names), names[0], names[-1])
+    print(label, 'visible', 'cell_contents' in names, '__class__' in names, '__dict__' in names, 'missing' in names)
+    print(label, 'object-dunders', all(name in names for name in ['__getstate__', '__reduce__', '__reduce_ex__', '__setattr__', '__delattr__', '__sizeof__']))"#,
+        &[
+            "full True True 25 __class__ cell_contents",
+            "full visible True True False False",
+            "full object-dunders True",
+            "empty True True 25 __class__ cell_contents",
+            "empty visible True True False False",
+            "empty object-dunders True",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` module metadata. This covers the
 // alias metadata only; broader CellType type-object metadata remains separate.
 #[test]
