@@ -48997,6 +48997,54 @@ fn cpython_unary_operator_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_list_dict_display_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list/dict display parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function list/dict display parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda list/dict display parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f([x]):\\n    pass",
+        "def f({}):\\n    pass",
+        "def f(*[x]):\\n    pass",
+        "def f(**{}):\\n    pass",
+        "lambda [x]: None",
+        "lambda {}: None",
+        "lambda *[x]: None",
+        "lambda **{}: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "list/dict display parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "list/dict display parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("list/dict display parameter name forms")
+                && document.contains("invalid syntax"),
+            "list/dict display parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
