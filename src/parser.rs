@@ -993,6 +993,24 @@ impl Parser<'_> {
             return Ok(first);
         }
 
+        if matches!(self.peek(), Some(Token::Identifier(name)) if name == "_")
+            && matches!(
+                self.peek_next(),
+                Some(
+                    Token::Plus
+                        | Token::Minus
+                        | Token::Star
+                        | Token::Slash
+                        | Token::DoubleSlash
+                        | Token::Percent
+                        | Token::At
+                        | Token::DoubleStar
+                )
+            )
+        {
+            return Err("invalid syntax".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Identifier(name)) if name == "_") {
             self.advance();
             return Ok(Pattern::Wildcard);

@@ -4806,6 +4806,18 @@ pass:
 - Kept this as parser-message parity only; valid capture patterns and
   OR-pattern diagnostics such as `case x | y` remain unchanged.
 
+Completed in the invalid wildcard arithmetic match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard arithmetic match patterns
+  such as `case _ + y`, `case (_ + y)`, `case [_ + y]`, `case {1: _ + y}`,
+  `case _ - y`, `case _ * y`, `case _ / y`, `case _ // y`, `case _ % y`,
+  `case _ @ y`, and `case _ ** y` now use CPython's public `invalid syntax`
+  message.
+- Kept this as parser-message parity only; valid wildcard patterns such as
+  `case _` and `case _ as x` remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 
