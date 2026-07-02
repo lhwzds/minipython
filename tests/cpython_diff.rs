@@ -41667,6 +41667,12 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "expected ':'",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-non-case-block-message",
+            source: "match 1:\n    pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_invalid_line_continuation_error_position",
             name: "syntax-invalid-line-continuation-basic-message",
             source: r#"a = 3 \ 4"#,

@@ -33233,7 +33233,7 @@ fn cpython_invalid_match_pattern_subset() {
     assert_error("match 1:\n    case 1", "parse error: expected ':'");
     assert_parse_error("match 1:\n    case 1:\n    pass");
     assert_parse_error("match 1:\n    case 1 if True:\n    pass");
-    assert_parse_error("match 1:\n    pass");
+    assert_error("match 1:\n    pass", "parse error: invalid syntax");
     assert_error(
         "match 1:\n    case if True:\n        pass",
         "parse error: invalid syntax",

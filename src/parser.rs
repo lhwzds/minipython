@@ -752,7 +752,7 @@ impl Parser<'_> {
         }
 
         if cases.is_empty() {
-            return Err("expected at least one case block".to_string());
+            return Err("invalid syntax".to_string());
         }
         if cases
             .iter()

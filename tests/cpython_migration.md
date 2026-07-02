@@ -5209,6 +5209,15 @@ Completed in the match-subject semicolon SyntaxError message pass:
 - Kept ordinary `match` identifier arithmetic/call/subscript expressions and
   valid semicolon-separated inline match suites on their existing paths.
 
+Completed in the non-case match-suite SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so indented non-case match suites such
+  as `match 1:\n    pass` now use CPython's public `invalid syntax` message.
+- Kept empty match-suite indentation diagnostics and valid `case` blocks on
+  their existing parser paths; this does not add match execution forms or
+  sandbox-visible runtime capabilities.
+
 Completed in the missing case-block colon SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
