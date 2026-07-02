@@ -807,6 +807,7 @@ Recent runtime migration notes:
   `cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
+  `cpython_types_celltype_name_metadata_diff_subset`,
   `cpython_types_celltype_qualname_metadata_diff_subset`,
   `cpython_types_celltype_text_signature_metadata_diff_subset`,
   `cpython_types_celltype_doc_metadata_diff_subset`,
@@ -4026,22 +4027,30 @@ without adding general custom encoder/decoder class support.
   broader `CellType` type-object metadata and a writable type dictionary remain
   outside the sandbox contract.
 - The bundled `types` module also includes
+  `cpython_types_celltype_name_metadata_subset`, backed by
+  `cpython_types_celltype_name_metadata_diff_subset`, covering CPython's public
+  `types.CellType.__name__` metadata returning `cell` through direct lookup and
+  `object.__getattribute__`. The slice also keeps `__name__` absent from
+  `dir(types.CellType)` and the fallback `__dict__` probe while leaving broader
+  CellType constructor behavior, CPython implementation fields such as
+  `__basicsize__`, and a writable type dictionary outside this sandbox contract
+  slice.
+- The bundled `types` module also includes
   `cpython_types_celltype_qualname_metadata_subset`, backed by
   `cpython_types_celltype_qualname_metadata_diff_subset`, covering CPython's
   public `types.CellType.__qualname__` metadata returning `cell` through direct
   lookup and `object.__getattribute__`. The slice keeps `__qualname__` absent
-  from `dir(types.CellType)` and the fallback `__dict__` probe, so `__name__`,
-  `__doc__`, `__text_signature__`, broader `CellType` type-object metadata, and
-  a writable type dictionary remain outside this sandbox contract slice.
+  from `dir(types.CellType)` and the fallback `__dict__` probe, so broader
+  `CellType` type-object metadata and a writable type dictionary remain outside
+  this sandbox contract slice.
 - The bundled `types` module also includes
   `cpython_types_celltype_text_signature_metadata_subset`, backed by
   `cpython_types_celltype_text_signature_metadata_diff_subset`, covering
   CPython's public `types.CellType.__text_signature__` metadata returning
   `([contents])` through direct lookup and `object.__getattribute__`. The slice
   keeps `__text_signature__` absent from `dir(types.CellType)` and the fallback
-  `__dict__` probe, so `__name__`, `__doc__`, broader CellType constructor
-  behavior, and a writable type dictionary remain outside this sandbox contract
-  slice.
+  `__dict__` probe, so broader CellType constructor behavior and a writable
+  type dictionary remain outside this sandbox contract slice.
 - The bundled `types` module also includes
   `cpython_types_celltype_doc_metadata_subset`, backed by
   `cpython_types_celltype_doc_metadata_diff_subset`, covering CPython's public

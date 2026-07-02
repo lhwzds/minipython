@@ -39310,6 +39310,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_module_metadata_subset",
+            "cpython_types_celltype_name_metadata_subset",
             "cpython_types_celltype_qualname_metadata_subset",
             "cpython_types_celltype_text_signature_metadata_subset",
             "cpython_types_celltype_doc_metadata_subset",
@@ -39407,6 +39408,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
+        "cpython_types_celltype_name_metadata_diff_subset",
         "cpython_types_celltype_qualname_metadata_diff_subset",
         "cpython_types_celltype_text_signature_metadata_diff_subset",
         "cpython_types_celltype_doc_metadata_diff_subset",
@@ -39705,6 +39707,97 @@ fn types_celltype_module_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType __module__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_name_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_name_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_name_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType __name__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType __name__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.__name__",
+        "object.__getattribute__(types.CellType, '__name__')",
+        "'__name__' in getattr(types.CellType, '__dict__', {})",
+        "'__name__' in dir(types.CellType)",
+        "types.CellType.__module__",
+        "types.CellType.__qualname__",
+        "types.CellType.__text_signature__",
+        "types.CellType.__doc__[:24]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType __name__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"name cell\"",
+        "\"object-getattribute cell\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-name False\"",
+        "\"alias builtins cell ([contents])\"",
+        "\"doc-prefix Create a new cell object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType __name__ subset output must pin `{required}`"
+        );
+    }
+
+    let celltype_name_start = VM_SOURCE
+        .find("name == \"__name__\" && function_name == \"CellType\"")
+        .expect("CellType __name__ implementation must be present");
+    let celltype_name_end = (celltype_name_start + 170).min(VM_SOURCE.len());
+    let celltype_name_body = &VM_SOURCE[celltype_name_start..celltype_name_end];
+    for required in [
+        "name == \"__name__\"",
+        "function_name == \"CellType\"",
+        "Value::String(\"cell\".to_string())",
+    ] {
+        assert!(
+            celltype_name_body.contains(required),
+            "types CellType __name__ implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "if class_name != \"CellType\"",
+        "if name == \"CellType\"",
+        "names.retain(|attr| attr != \"__name__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType __name__ visibility implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType.__name__",
+            "`object.__getattribute__`",
+            "`dir(types.CellType)`",
+            "`__dict__`",
+            "`cell`",
+            "writable type dictionary",
+            "constructor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType __name__ docs must contain `{required}`"
             );
         }
     }

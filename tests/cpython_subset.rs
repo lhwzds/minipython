@@ -72753,6 +72753,31 @@ print('all', 'CellType' in types.__all__)"#,
     );
 }
 
+// Adapted from CPython public `types.CellType` name metadata. This covers the
+// public cell type name and keeps the synthetic alias name out of type
+// dictionary and dir visibility.
+#[test]
+fn cpython_types_celltype_name_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('name', types.CellType.__name__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__name__'))
+print('getattr-default-dict', '__name__' in getattr(types.CellType, '__dict__', {}))
+print('dir-name', '__name__' in dir(types.CellType))
+print('alias', types.CellType.__module__, types.CellType.__qualname__, types.CellType.__text_signature__)
+print('doc-prefix', types.CellType.__doc__[:24])"#,
+        &[
+            "name cell",
+            "object-getattribute cell",
+            "getattr-default-dict False",
+            "dir-name False",
+            "alias builtins cell ([contents])",
+            "doc-prefix Create a new cell object",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` qualname metadata. This covers
 // the alias metadata only; broader CellType type-object metadata remains
 // separate.

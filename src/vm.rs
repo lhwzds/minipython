@@ -51117,6 +51117,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     .into_iter()
     .map(str::to_string)
     .collect::<Vec<_>>();
+    if name == "CellType" {
+        names.retain(|attr| attr != "__name__");
+    }
 
     let methods: &[&str] = match name {
         "str" | "UserString" => &[
@@ -61342,6 +61345,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "CellType" => {
             Ok(Value::String("builtins".to_string()))
         }
+        Value::Builtin(function_name) if name == "__name__" && function_name == "CellType" => {
+            Ok(Value::String("cell".to_string()))
+        }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "CellType" => {
             Ok(Value::String("cell".to_string()))
         }
@@ -61645,10 +61651,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 ]));
             }
             let class_name = &function_name;
-            let mut entries = vec![(
-                Value::String("__name__".to_string()),
-                Value::String(class_name.to_string()),
-            )];
+            let mut entries = Vec::new();
+            if class_name != "CellType" {
+                entries.push((
+                    Value::String("__name__".to_string()),
+                    Value::String(class_name.to_string()),
+                ));
+            }
             if class_name == "int" {
                 entries.push((
                     Value::String("from_bytes".to_string()),
