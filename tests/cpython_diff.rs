@@ -300,6 +300,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use ellipsis as pattern target"
         | "cannot use f-string expression as pattern target"
         | "cannot use t-string expression as pattern target"
+        | "cannot use list comprehension as pattern target"
         | "cannot use expression as pattern target"
         | "cannot use conditional expression as pattern target"
         | "cannot use yield expression as pattern target"
@@ -41858,6 +41859,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-list-target-message",
             source: "match 1:\n    case 1 as [x]:\n        pass\n",
             expected_message: "cannot use list as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-list-comprehension-target-message",
+            source: "match 1:\n    case 1 as [x for x in xs]:\n        pass\n",
+            expected_message: "cannot use list comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-list-comprehension-target-message",
+            source: "match 1:\n    case 1 as ([x for x in xs]):\n        pass\n",
+            expected_message: "cannot use list comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-list-comprehension-expression-target-message",
+            source: "match 1:\n    case 1 as [x + 1 for x in xs]:\n        pass\n",
+            expected_message: "cannot use list comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-list-comprehension-filter-target-message",
+            source: "match 1:\n    case 1 as ([x for x in xs if x]):\n        pass\n",
+            expected_message: "cannot use list comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-list-comprehension-tuple-target-message",
+            source: "match 1:\n    case 1 as ([x for x in xs], value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",

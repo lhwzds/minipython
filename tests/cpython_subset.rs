@@ -33161,6 +33161,26 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use list as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as [x for x in xs]:\n        pass",
+        "parse error: cannot use list comprehension as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ([x for x in xs]):\n        pass",
+        "parse error: cannot use list comprehension as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as [x + 1 for x in xs]:\n        pass",
+        "parse error: cannot use list comprehension as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ([x for x in xs if x]):\n        pass",
+        "parse error: cannot use list comprehension as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ([x for x in xs], value):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as {x: y}:\n        pass",
         "parse error: cannot use dict literal as pattern target",
     );

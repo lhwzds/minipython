@@ -48611,6 +48611,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use ellipsis as pattern target",
         "cannot use f-string expression as pattern target",
         "cannot use t-string expression as pattern target",
+        "cannot use list comprehension as pattern target",
         "cannot use expression as pattern target",
         "cannot use conditional expression as pattern target",
         "cannot use yield expression as pattern target",
@@ -48723,6 +48724,22 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             CPYTHON_SUBSET.contains(required_source),
             "invalid list as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
+        "case 1 as [x for x in xs]",
+        "case 1 as ([x for x in xs])",
+        "case 1 as [x + 1 for x in xs]",
+        "case 1 as ([x for x in xs if x])",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid list-comprehension as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid list-comprehension as-pattern target subset must cover `{required_source}`"
         );
     }
 
@@ -48877,6 +48894,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as ((lambda: 1), value)",
         "case 1 as (await value, other)",
         "case 1 as ((yield value), other)",
+        "case 1 as ([x for x in xs], value)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48960,6 +48978,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid list as-pattern targets")
                 && document.contains("cannot use list as pattern target"),
             "invalid list as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid list-comprehension as-pattern targets")
+                && document.contains("cannot use list comprehension as pattern target"),
+            "invalid list-comprehension as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
