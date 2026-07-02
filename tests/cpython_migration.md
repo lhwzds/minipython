@@ -5013,15 +5013,17 @@ Completed in the invalid as-pattern unary-expression-target SyntaxError message 
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
   `cpython_invalid_match_pattern_subset` so expression targets such as
-  `case 1 as -1`, `case 1 as +x`, `case 1 as ((-1))`,
-  `case 1 as ((+x))`, `case 1 as ((x + y))`, `case 1 as not x`,
-  `case 1 as (not x)`, and `case 1 as ((not x))` now use CPython's public
+  `case 1 as -1`, `case 1 as +x`, `case 1 as ~x`, `case 1 as (~x)`,
+  `case 1 as ((-1))`, `case 1 as ((+x))`, `case 1 as ((~x))`,
+  `case 1 as ((x + y))`, `case 1 as not x`, `case 1 as (not x)`, and
+  `case 1 as ((not x))` now use CPython's public
   `cannot use expression as pattern target` message.
 - Kept this as parser-message parity only; tuple-shaped forms such as
-  `case 1 as (-1, value)` and `case 1 as (x + y, z)` still use tuple-target
-  diagnostics, comparison forms such as `case 1 as (x not in y)` still use
-  comparison-target diagnostics, and this does not add new as-pattern execution
-  forms or expand sandbox-visible runtime capabilities.
+  `case 1 as (-1, value)`, `case 1 as (~x, value)`, and
+  `case 1 as (x + y, z)` still use tuple-target diagnostics, comparison forms
+  such as `case 1 as (x not in y)` still use comparison-target diagnostics,
+  and this does not add new as-pattern execution forms or expand
+  sandbox-visible runtime capabilities.
 
 Completed in the invalid star as-pattern targets SyntaxError message pass:
 

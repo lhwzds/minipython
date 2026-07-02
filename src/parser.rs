@@ -1169,6 +1169,11 @@ impl Parser<'_> {
             return Err("cannot use expression as pattern target".to_string());
         }
 
+        if matches!(self.peek(), Some(Token::Tilde)) {
+            self.advance();
+            return Err("cannot use expression as pattern target".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Star)) {
             self.advance();
             return Err("invalid syntax".to_string());
@@ -2436,7 +2441,7 @@ impl Parser<'_> {
                 ) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
                     has_top_level_expression_operator = true
                 }
-                Some(Token::Not)
+                Some(Token::Not) | Some(Token::Tilde)
                     if index == start
                         && paren_depth == 0
                         && bracket_depth == 0
