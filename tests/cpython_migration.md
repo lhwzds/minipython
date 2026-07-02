@@ -5465,6 +5465,17 @@ Completed in the invalid operator-start match-pattern SyntaxError message pass:
 - Kept this as parser-message parity only; valid negative literal, sequence
   star, and mapping rest patterns remain unchanged.
 
+Completed in the invalid reserved-keyword-start match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so reserved-keyword-start match patterns
+  such as `case and x`, `case as x`, `case await x`, `case lambda: x`,
+  `case return x`, `case from x`, and `case pass` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; singleton literal patterns such as
+  `case None`, `case True`, and `case False` remain valid.
+
 Completed in the invalid sequence-star capture target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset`,

@@ -8297,7 +8297,9 @@ Invalid match-pattern SyntaxError message parity is covered by
 `mapping pattern checks duplicate key (0j)`.
 punctuation-start as-pattern targets, equal-start match patterns,
 comparison-start match patterns, and operator-start match patterns are rejected
-with CPython-style `invalid syntax`.
+with CPython-style `invalid syntax`; reserved-keyword-start match patterns are
+rejected the same way while `None`, `True`, and `False` remain valid literal
+patterns.
 
 ## Expressions
 

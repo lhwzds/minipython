@@ -48848,6 +48848,46 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case and x",
+        "case or x",
+        "case as x",
+        "case async x",
+        "case await x",
+        "case lambda: x",
+        "case for x",
+        "case while x",
+        "case elif x",
+        "case else x",
+        "case def x",
+        "case class x",
+        "case return x",
+        "case yield x",
+        "case raise x",
+        "case del x",
+        "case global x",
+        "case nonlocal x",
+        "case assert x",
+        "case try x",
+        "case except x",
+        "case with x",
+        "case finally x",
+        "case from x",
+        "case import x",
+        "case break",
+        "case continue",
+        "case pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid reserved-keyword-start match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid reserved-keyword-start match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case [*+x]",
         "case [*rest.attr]",
         "case [*target()]",
@@ -49405,6 +49445,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("operator-start match patterns")
                 && document.contains("invalid syntax"),
             "invalid operator-start match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("reserved-keyword-start match patterns")
+                && document.contains("invalid syntax"),
+            "invalid reserved-keyword-start match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
