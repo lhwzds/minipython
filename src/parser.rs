@@ -7619,6 +7619,9 @@ fn is_invalid_parameter_name_token(token: &Token) -> bool {
             | Token::False
             | Token::None
             | Token::Ellipsis
+            | Token::Plus
+            | Token::Minus
+            | Token::Tilde
             | Token::Number(_)
             | Token::BigInt(_)
             | Token::Float(_)
