@@ -71840,6 +71840,66 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.MethodType`. MiniPython recognizes the public method type object as a
+// class-base candidate only so the final-base validator can reject it with
+// CPython's public TypeError.
+#[test]
+fn cpython_types_methodtype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'method' is not an acceptable base type"
+
+class C:
+    def method(self):
+        return 1
+
+bound = C().method
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.MethodType
+try:
+    class MethodClass(base):
+        pass
+except Exception as error:
+    print_error('class-methodtype', error)
+else:
+    print('class-methodtype ok')
+
+for label, call in [
+    ('type-methodtype', lambda: type('MethodTypeClass', (types.MethodType,), {})),
+    ('type-new-methodtype', lambda: type.__new__(type, 'MethodTypeNew', (types.MethodType,), {})),
+    ('new-class-methodtype', lambda: types.new_class('MethodTypeNewClass', (types.MethodType,), {})),
+    ('class-method-runtime', lambda: type('RuntimeMethodClass', (bound.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-methodtype TypeError type 'method' is not an acceptable base type (\"type 'method' is not an acceptable base type\",) True",
+            "type-methodtype TypeError type 'method' is not an acceptable base type (\"type 'method' is not an acceptable base type\",) True",
+            "type-new-methodtype TypeError type 'method' is not an acceptable base type (\"type 'method' is not an acceptable base type\",) True",
+            "new-class-methodtype TypeError type 'method' is not an acceptable base type (\"type 'method' is not an acceptable base type\",) True",
+            "class-method-runtime TypeError type 'method' is not an acceptable base type (\"type 'method' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]

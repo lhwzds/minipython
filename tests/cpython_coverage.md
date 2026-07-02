@@ -791,6 +791,7 @@ Recent runtime migration notes:
   `cpython_types_coroutinetype_unacceptable_base_type_diff_subset`,
   `cpython_types_asyncgeneratortype_unacceptable_base_type_diff_subset`,
   `cpython_types_builtinfunctiontype_unacceptable_base_type_diff_subset`,
+  `cpython_types_methodtype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -3887,6 +3888,13 @@ without adding general custom encoder/decoder class support.
   rejection for `types.BuiltinFunctionType` class statements, `type(...)`,
   `type.__new__(...)`, `types.new_class(...)`, and runtime builtin function
   `__class__` bases while preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_methodtype_unacceptable_base_type_subset`, backed by
+  `cpython_types_methodtype_unacceptable_base_type_diff_subset`, covering
+  CPython's `type 'method' is not an acceptable base type` rejection for
+  `types.MethodType` class statements, `type(...)`, `type.__new__(...)`,
+  `types.new_class(...)`, and runtime method `__class__` bases while preserving
+  supported `ModuleType` subclass creation.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by
   `cpython_types_celltype_keyword_error_diff_subset`, covering
