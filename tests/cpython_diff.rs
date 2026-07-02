@@ -42225,6 +42225,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply function parameter rejection",
+            name: "def-matrix-multiply-parameter-name-message",
+            source: "def f(a @ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply function parameter rejection",
+            name: "def-matrix-multiply-vararg-parameter-name-message",
+            source: "def f(*a @ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply function parameter rejection",
+            name: "def-matrix-multiply-kwarg-parameter-name-message",
+            source: "def f(**a @ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply lambda parameter rejection",
+            name: "lambda-matrix-multiply-parameter-name-message",
+            source: "lambda a @ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply lambda parameter rejection",
+            name: "lambda-matrix-multiply-vararg-parameter-name-message",
+            source: "lambda *a @ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram matrix multiply lambda parameter rejection",
+            name: "lambda-matrix-multiply-kwarg-parameter-name-message",
+            source: "lambda **a @ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
