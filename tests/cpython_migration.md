@@ -5476,6 +5476,15 @@ message pass:
 - Kept this as parser-message parity only; singleton literal patterns such as
   `case None`, `case True`, and `case False` remain valid.
 
+Completed in the invalid ellipsis-start match-pattern SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so ellipsis-start match patterns such
+  as `case ...`, `case (...)`, `case [...]`, and `case {1: ...}` now use
+  CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; expression ellipsis and ellipsis
+  as-pattern target diagnostics remain unchanged.
+
 Completed in the invalid sequence-star capture target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset`,

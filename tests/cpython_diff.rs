@@ -43000,6 +43000,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-top-level-ellipsis-pattern-message",
+            source: "match 1:\n    case ...:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-grouped-ellipsis-pattern-message",
+            source: "match 1:\n    case (...):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-sequence-ellipsis-pattern-message",
+            source: "match [1]:\n    case [...]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-mapping-value-ellipsis-pattern-message",
+            source: "match {1: 2}:\n    case {1: ...}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
             name: "syntax-match-top-level-equal-pattern-message",
             source: "match 1:\n    case =:\n        pass\n",
             expected_message: "invalid syntax",

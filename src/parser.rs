@@ -906,6 +906,7 @@ impl Parser<'_> {
                     | Token::Is
                     | Token::Not
                     | Token::Dot
+                    | Token::Ellipsis
                     | Token::Pipe
                     | Token::DoubleStar
                     | Token::Colon
