@@ -70955,6 +70955,29 @@ print('alias', types.CapsuleType.__name__, 'CapsuleType' in types.__all__)"#,
     );
 }
 
+// Adapted from CPython public `types.CapsuleType` qualname metadata. This pins
+// only the public type-name lookup and keeps the capsule C API and writable
+// type dictionary surface outside the sandbox contract.
+#[test]
+fn cpython_types_capsuletype_qualname_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('qualname', types.CapsuleType.__qualname__)
+print('object-getattribute', object.__getattribute__(types.CapsuleType, '__qualname__'))
+print('getattr-default-dict', '__qualname__' in getattr(types.CapsuleType, '__dict__', {}))
+print('dir-qualname', '__qualname__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__)"#,
+        &[
+            "qualname PyCapsule",
+            "object-getattribute PyCapsule",
+            "getattr-default-dict False",
+            "dir-qualname False",
+            "alias PyCapsule builtins",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

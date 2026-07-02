@@ -39230,6 +39230,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_ellipsistype_unacceptable_base_type_subset",
             "cpython_types_capsuletype_unacceptable_base_type_subset",
             "cpython_types_capsuletype_module_metadata_subset",
+            "cpython_types_capsuletype_qualname_metadata_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
             "cpython_types_generic_alias_union_type_subset",
@@ -39331,6 +39332,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_ellipsistype_unacceptable_base_type_diff_subset",
         "cpython_types_capsuletype_unacceptable_base_type_diff_subset",
         "cpython_types_capsuletype_module_metadata_diff_subset",
+        "cpython_types_capsuletype_qualname_metadata_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
@@ -42481,6 +42483,82 @@ fn types_capsuletype_module_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CapsuleType __module__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_capsuletype_qualname_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_capsuletype_qualname_metadata_diff_subset";
+    let subset_name = "cpython_types_capsuletype_qualname_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CapsuleType __qualname__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CapsuleType __qualname__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CapsuleType.__qualname__",
+        "object.__getattribute__(types.CapsuleType, '__qualname__')",
+        "getattr(types.CapsuleType, '__dict__', {})",
+        "'__qualname__' in dir(types.CapsuleType)",
+        "types.CapsuleType.__name__",
+        "types.CapsuleType.__module__",
+        "PyCapsule",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __qualname__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"qualname PyCapsule\"",
+        "\"object-getattribute PyCapsule\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-qualname False\"",
+        "\"alias PyCapsule builtins\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __qualname__ subset output must pin `{required}`"
+        );
+    }
+
+    let pycapsule_qualname_start = VM_SOURCE
+        .find("name == \"__qualname__\" && function_name == \"PyCapsule\"")
+        .expect("PyCapsule __qualname__ implementation must be present");
+    let pycapsule_qualname_end = (pycapsule_qualname_start + 180).min(VM_SOURCE.len());
+    let pycapsule_qualname_body = &VM_SOURCE[pycapsule_qualname_start..pycapsule_qualname_end];
+    for required in [
+        "name == \"__qualname__\"",
+        "function_name == \"PyCapsule\"",
+        "Value::String(\"PyCapsule\".to_string())",
+    ] {
+        assert!(
+            pycapsule_qualname_body.contains(required),
+            "types CapsuleType __qualname__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CapsuleType.__qualname__",
+            "`object.__getattribute__`",
+            "`PyCapsule`",
+            "capsule C API",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CapsuleType __qualname__ docs must contain `{required}`"
             );
         }
     }
