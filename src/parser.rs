@@ -1179,6 +1179,24 @@ impl Parser<'_> {
             return Err("cannot use dict literal as pattern target".to_string());
         }
 
+        if matches!(
+            (
+                self.peek(),
+                self.peek_next(),
+                self.tokens.get(self.current + 2),
+                self.tokens.get(self.current + 3),
+            ),
+            (
+                Some(Token::LeftParen),
+                Some(Token::Identifier(_)),
+                Some(Token::RightParen),
+                Some(Token::Colon | Token::If),
+            )
+        ) {
+            self.current += 3;
+            return Err("cannot use name as pattern target".to_string());
+        }
+
         self.parse_pattern_capture_target()
     }
 

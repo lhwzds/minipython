@@ -48732,6 +48732,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case 1 as (x)"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized-name as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized-name as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("standalone star patterns") && document.contains("invalid syntax"),
@@ -48768,6 +48779,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid dict as-pattern targets")
                 && document.contains("cannot use dict literal as pattern target"),
             "invalid dict as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized-name as-pattern targets")
+                && document.contains("cannot use name as pattern target"),
+            "invalid parenthesized-name as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
