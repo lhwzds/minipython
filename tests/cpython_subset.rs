@@ -33204,7 +33204,11 @@ fn cpython_invalid_match_pattern_subset() {
         "match 1:\n",
         "parse error: expected an indented block after 'match' statement",
     );
-    assert_parse_error("case 1:\n    pass");
+    assert_error("case 1:\n    pass", "parse error: invalid syntax");
+    assert_error("case x:\n    pass", "parse error: invalid syntax");
+    assert_error("case _:\n    pass", "parse error: invalid syntax");
+    assert_error("case None:\n    pass", "parse error: invalid syntax");
+    assert_error("case {1}:\n    pass", "parse error: invalid syntax");
     assert_error(
         "match 1:\n    case 1\n        pass",
         "parse error: expected ':'",

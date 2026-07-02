@@ -48862,6 +48862,31 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case 1:", "case x:", "case None:", "case {1}:"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "top-level case-block CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "top-level case-block subset must cover `{required_source}`"
+        );
+    }
+
+    for required in ["case = 2", "case: int", "case + 1", "case.attr", "case[0]"] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "top-level case-block migration notes must preserve legal soft-keyword use `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("top-level case blocks") && document.contains("invalid syntax"),
+            "top-level case-block docs must describe the CPython message"
+        );
+    }
+
     for required_source in [
         "case 1:\\npass",
         "case 1:\\n\",",

@@ -5246,6 +5246,15 @@ Completed in the case-block semicolon SyntaxError message pass:
 - Kept valid inline case suites such as `case 1: print(1)` and missing
   case-block colons on their existing parser paths.
 
+Completed in the top-level case-block SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so top-level case blocks such as
+  `case 1:`, `case x:`, `case None:`, and `case {1}:` now use CPython's
+  public `invalid syntax` message.
+- Kept legal soft-keyword uses such as `case = 2`, `case: int`, `case + 1`,
+  `case.attr`, and `case[0]` on their existing expression/assignment paths.
+
 Completed in the missing case-indentation SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

@@ -6627,6 +6627,9 @@ impl Parser<'_> {
         let Stmt::Expr(Expr::Name(name)) = stmt else {
             return None;
         };
+        if name == "case" && top_level_case_pattern_starts(self.peek()) {
+            return Some("invalid syntax".to_string());
+        }
         if !matches!(name.as_str(), "print" | "exec") {
             return None;
         }
@@ -7363,6 +7366,28 @@ fn former_statement_argument_starts(token: Option<&Token>) -> bool {
                 | Token::Tilde
                 | Token::Not
                 | Token::Star
+        )
+    )
+}
+
+fn top_level_case_pattern_starts(token: Option<&Token>) -> bool {
+    matches!(
+        token,
+        Some(
+            Token::Identifier(_)
+                | Token::Number(_)
+                | Token::BigInt(_)
+                | Token::Float(_)
+                | Token::Imaginary(_)
+                | Token::String(_)
+                | Token::Bytes(_)
+                | Token::FString(_)
+                | Token::TString(_)
+                | Token::True
+                | Token::False
+                | Token::None
+                | Token::Ellipsis
+                | Token::LeftBrace
         )
     )
 }
