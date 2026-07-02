@@ -41691,6 +41691,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "expected an indented block after 'match' statement",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-missing-indent-unindented-statement-message",
+            source: "match 1:\n    case 1:\npass\n",
+            expected_message: "expected an indented block after 'case' statement",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-missing-indent-eof-message",
+            source: "match 1:\n    case 1:\n",
+            expected_message: "expected an indented block after 'case' statement",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-missing-indent-next-case-message",
+            source: "match 1:\n    case 1:\n    case 2:\n        pass\n",
+            expected_message: "expected an indented block after 'case' statement",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-guard-missing-indent-message",
+            source: "match 1:\n    case 1 if True:\npass\n",
+            expected_message: "expected an indented block after 'case' statement",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_invalid_line_continuation_error_position",
             name: "syntax-invalid-line-continuation-basic-message",
             source: r#"a = 3 \ 4"#,

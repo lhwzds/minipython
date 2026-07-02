@@ -799,12 +799,22 @@ impl Parser<'_> {
             None
         };
         self.expect_match_case_colon()?;
-        let body = self.parse_block_after_colon()?;
+        let body = self.parse_match_case_block_after_colon()?;
 
         Ok(MatchCase {
             pattern,
             guard,
             body,
+        })
+    }
+
+    fn parse_match_case_block_after_colon(&mut self) -> Result<Vec<Stmt>, String> {
+        self.parse_block_after_colon().map_err(|error| {
+            if error == "expected an indented block" {
+                "expected an indented block after 'case' statement".to_string()
+            } else {
+                error
+            }
         })
     }
 

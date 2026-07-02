@@ -5237,6 +5237,16 @@ Completed in the missing case-block colon SyntaxError message pass:
 - Kept this as parser-message parity only; valid case blocks and missing
   `match` subject colons remain separate parser paths.
 
+Completed in the missing case-indentation SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so missing case indentation forms such
+  as `case 1:\npass`, `case 1:\n    case 2:`, EOF after `case 1:`, and
+  guarded cases now use CPython's public
+  `expected an indented block after 'case' statement` message.
+- Kept this to the case-body parser path; generic compound statements and
+  `match` statement indentation keep their existing diagnostics.
+
 Completed in the invalid match-pattern SyntaxError message parity pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
