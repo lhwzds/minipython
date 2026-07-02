@@ -48981,6 +48981,9 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as (target == other)",
         "case 1 as (target is not other)",
         "case 1 as (target not in other)",
+        "case 1 as ((target < other))",
+        "case 1 as ((target is not other))",
+        "case 1 as ((target not in other))",
         "case 1 as (target() < other)",
     ] {
         assert!(

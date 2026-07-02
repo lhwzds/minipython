@@ -2329,12 +2329,21 @@ impl Parser<'_> {
             return false;
         }
 
-        let mut paren_depth = 1usize;
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        let mut paren_depth = 0usize;
         let mut bracket_depth = 0usize;
         let mut brace_depth = 0usize;
         let mut has_top_level_comparison = false;
 
-        for index in (self.current + 1)..outer_end {
+        for index in start..end {
             match self.tokens.get(index) {
                 Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 0 => {
                     paren_depth += 1
@@ -2349,7 +2358,7 @@ impl Parser<'_> {
                 Some(Token::LeftBrace) => brace_depth += 1,
                 Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
                 Some(Token::Comma)
-                    if paren_depth == 1 && bracket_depth == 0 && brace_depth == 0 =>
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
                 {
                     return false;
                 }
@@ -2362,11 +2371,11 @@ impl Parser<'_> {
                     | Token::GreaterEqual
                     | Token::Is
                     | Token::In,
-                ) if paren_depth == 1 && bracket_depth == 0 && brace_depth == 0 => {
+                ) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
                     has_top_level_comparison = true
                 }
                 Some(Token::Not)
-                    if paren_depth == 1
+                    if paren_depth == 0
                         && bracket_depth == 0
                         && brace_depth == 0
                         && matches!(self.tokens.get(index + 1), Some(Token::In)) =>

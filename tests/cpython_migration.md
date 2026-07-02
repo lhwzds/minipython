@@ -5154,11 +5154,15 @@ SyntaxError message pass:
   `cpython_invalid_match_pattern_subset` so comparison-shaped targets such as
   `case 1 as (target < other)`, `case 1 as (target == other)`,
   `case 1 as (target is not other)`, `case 1 as (target not in other)`, and
-  `case 1 as (target() < other)` now use CPython's public
+  nested forms such as `case 1 as ((target < other))`,
+  `case 1 as ((target is not other))`, and
+  `case 1 as ((target not in other))`, plus `case 1 as (target() < other)`,
+  now use CPython's public
   `cannot use comparison as pattern target` message.
 - Kept this as parser-message parity only; tuple-shaped forms such as
-  `case 1 as (target < other, value)` still use tuple-target diagnostics, and
-  this does not add new comparison-pattern execution forms or expand
+  `case 1 as (target < other, value)` and
+  `case 1 as ((target < other), value)` still use tuple-target diagnostics,
+  and this does not add new comparison-pattern execution forms or expand
   sandbox-visible runtime capabilities.
 
 Completed in the invalid parenthesized named-expression as-pattern targets

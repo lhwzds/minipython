@@ -33449,6 +33449,18 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use comparison as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as ((target < other)):\n        pass",
+        "parse error: cannot use comparison as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((target is not other)):\n        pass",
+        "parse error: cannot use comparison as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((target not in other)):\n        pass",
+        "parse error: cannot use comparison as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as (target() < other):\n        pass",
         "parse error: cannot use comparison as pattern target",
     );
