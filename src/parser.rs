@@ -1127,6 +1127,9 @@ impl Parser<'_> {
             Some(Token::Identifier(_)) if matches!(self.peek(), Some(Token::LeftParen)) => {
                 Err("cannot use function call as pattern target".to_string())
             }
+            Some(token) if is_literal_pattern_target_token(&token) => {
+                Err("cannot use literal as pattern target".to_string())
+            }
             Some(Token::Identifier(name)) if name == "_" => {
                 Err("cannot use '_' as a target".to_string())
             }
@@ -4768,6 +4771,18 @@ fn is_literal_pattern_start(token: Option<&Token>) -> bool {
                 | Token::None
                 | Token::Minus
         )
+    )
+}
+
+fn is_literal_pattern_target_token(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Number(_)
+            | Token::BigInt(_)
+            | Token::Float(_)
+            | Token::Imaginary(_)
+            | Token::String(_)
+            | Token::Bytes(_)
     )
 }
 

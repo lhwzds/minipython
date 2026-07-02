@@ -33078,7 +33078,7 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match 1:\n    case 1 as 2:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use literal as pattern target",
     );
     assert_error(
         "match 1:\n    case 1 as target.attr:\n        pass",

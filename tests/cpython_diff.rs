@@ -293,6 +293,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         "cannot use except statement with attribute"
         | "cannot use attribute as pattern target"
         | "cannot use function call as pattern target"
+        | "cannot use literal as pattern target"
         | "alternative patterns bind different names"
         | "name capture 'x' makes remaining patterns unreachable"
         | "wildcard makes remaining patterns unreachable"
@@ -41778,6 +41779,12 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-stmt-invalid-as-expr-message",
             source: "\nmatch 1:\n    case x as obj.attr:\n        ...\n",
             expected_message: "cannot use attribute as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-literal-target-message",
+            source: "match 1:\n    case 1 as 2:\n        pass\n",
+            expected_message: "cannot use literal as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
