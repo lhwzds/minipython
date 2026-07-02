@@ -41923,6 +41923,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-dict-target-message",
+            source: "match 1:\n    case 1 as ({x: y}):\n        pass\n",
+            expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-empty-dict-target-message",
+            source: "match 1:\n    case 1 as ({}):\n        pass\n",
+            expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-literal-key-dict-target-message",
+            source: "match 1:\n    case 1 as ({'x': y}):\n        pass\n",
+            expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-dict-unpack-target-message",
+            source: "match 1:\n    case 1 as ({**d}):\n        pass\n",
+            expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-dict-target-message",
+            source: "match 1:\n    case 1 as (({x: y})):\n        pass\n",
+            expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-lambda-target-message",
             source: "match 1:\n    case 1 as lambda: 1:\n        pass\n",
             expected_message: "cannot use lambda as pattern target",

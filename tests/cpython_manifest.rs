@@ -48760,7 +48760,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as {x: y}"] {
+    for required_source in [
+        "case 1 as {x: y}",
+        "case 1 as ({x: y})",
+        "case 1 as ({})",
+        "case 1 as ({'x': y})",
+        "case 1 as ({**d})",
+        "case 1 as (({x: y}))",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid dict as-pattern target CPython diff must cover `{required_source}`"

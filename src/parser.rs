@@ -1187,6 +1187,10 @@ impl Parser<'_> {
             return Err("cannot use dict literal as pattern target".to_string());
         }
 
+        if self.is_parenthesized_dict_literal_as_pattern_target() {
+            return Err("cannot use dict literal as pattern target".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Lambda)) {
             self.advance();
             return Err("cannot use lambda as pattern target".to_string());
@@ -1412,6 +1416,104 @@ impl Parser<'_> {
                         && brace_depth == 1 =>
                 {
                     return true;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
+    fn is_parenthesized_dict_literal_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        if !matches!(self.tokens.get(start), Some(Token::LeftBrace)) {
+            return false;
+        }
+        let Some(dict_end) = self.find_matching_brace(start) else {
+            return false;
+        };
+        if dict_end != end.saturating_sub(1) {
+            return false;
+        }
+
+        self.is_dict_literal_display(start, dict_end)
+    }
+
+    fn is_dict_literal_display(&self, dict_start: usize, dict_end: usize) -> bool {
+        if dict_end == dict_start + 1 {
+            return true;
+        }
+
+        let mut paren_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 1usize;
+        let mut at_top_level_item_start = true;
+
+        for index in (dict_start + 1)..dict_end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    if paren_depth == 0 {
+                        at_top_level_item_start = false;
+                    }
+                    paren_depth += 1
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 1 => {
+                    if bracket_depth == 0 {
+                        at_top_level_item_start = false;
+                    }
+                    bracket_depth += 1
+                }
+                Some(Token::RightBracket) if brace_depth == 1 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => {
+                    if brace_depth == 1 {
+                        at_top_level_item_start = false;
+                    }
+                    brace_depth += 1
+                }
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(Token::Comma)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 =>
+                {
+                    at_top_level_item_start = true
+                }
+                Some(Token::DoubleStar)
+                    if at_top_level_item_start
+                        && paren_depth == 0
+                        && bracket_depth == 0
+                        && brace_depth == 1 =>
+                {
+                    return true;
+                }
+                Some(Token::Colon)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 =>
+                {
+                    return true;
+                }
+                Some(_) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 => {
+                    at_top_level_item_start = false
                 }
                 _ => {}
             }

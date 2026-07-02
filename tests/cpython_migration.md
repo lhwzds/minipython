@@ -5041,8 +5041,11 @@ message pass:
 Completed in the invalid dict as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as {x: y}` now uses
-  CPython's public `cannot use dict literal as pattern target` message.
+  `cpython_invalid_match_pattern_subset` so dict literal targets such as
+  `case 1 as {x: y}`, `case 1 as ({x: y})`, `case 1 as ({})`,
+  `case 1 as ({'x': y})`, `case 1 as ({**d})`, and
+  `case 1 as (({x: y}))` now use CPython's public
+  `cannot use dict literal as pattern target` message.
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
