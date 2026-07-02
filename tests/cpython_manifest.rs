@@ -28575,6 +28575,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
+            "cpython_io_bytesio_seek_method_descriptor_subset",
             "cpython_io_bytesio_readable_method_descriptor_subset",
             "cpython_io_bytesio_writable_method_descriptor_subset",
             "cpython_io_bytesio_seekable_method_descriptor_subset",
@@ -28650,6 +28651,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_tell_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO tell method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_seek_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO seek method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -29506,6 +29512,84 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let seek_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_seek_method_descriptor_diff_subset",
+    );
+    let seek_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_seek_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.seek",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.seek(bio, 2)",
+        "io.BytesIO.seek(bio, 1, io.SEEK_CUR)",
+        "io.BytesIO.seek(bio, -2, io.SEEK_END)",
+        "io.BytesIO.seek(object(), 0)",
+        "io.BytesIO.seek()",
+        "io.BytesIO.seek(bio)",
+        "io.BytesIO.seek(bio, 0, 0, 0)",
+        "io.BytesIO.seek(bio, -1)",
+        "io.BytesIO.seek(bio, 0, 99)",
+        "io.BytesIO.seek(offset=0)",
+        "io.BytesIO.seek(bio, offset=1)",
+    ] {
+        assert!(
+            seek_descriptor_diff.contains(required),
+            "io.BytesIO seek method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            seek_descriptor_subset.contains(required),
+            "io.BytesIO seek method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call-offset ok (2, 2) tuple",
+        "call-whence-cur ok (3, 3) tuple",
+        "call-whence-end ok (4, 4) tuple",
+        "descriptor 'seek' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.seek() needs an argument",
+        "seek expected at least 1 argument, got 0",
+        "seek expected at most 2 arguments, got 3",
+        "negative seek value -1",
+        "invalid whence (99, should be 0, 1 or 2)",
+        "BytesIO.seek() takes no keyword arguments",
+    ] {
+        assert!(
+            seek_descriptor_subset.contains(required),
+            "io.BytesIO seek method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"seek\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'seek' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.seek() needs an argument",
+        "\"BytesIO.seek\"",
+        "reject_bytesio_method_keywords(\"seek\", &keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO seek method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_seek_method_descriptor_subset",
+            "cpython_io_bytesio_seek_method_descriptor_diff_subset",
+            "`io.BytesIO.seek` method descriptor",
+            "position-changing unbound descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO seek method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let readable_descriptor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_io_bytesio_readable_method_descriptor_diff_subset",
@@ -30353,6 +30437,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_tell_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_seek_method_descriptor_subset",
+            "cpython_io_bytesio_seek_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_readable_method_descriptor_subset",

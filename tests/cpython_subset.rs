@@ -23799,6 +23799,54 @@ show('keyword-missing-receiver', lambda: io.BytesIO.tell(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_seek_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abcdef')
+descriptor = io.BytesIO.seek
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-offset', lambda: (io.BytesIO.seek(bio, 2), bio.tell()))
+show('call-whence-cur', lambda: (io.BytesIO.seek(bio, 1, io.SEEK_CUR), bio.tell()))
+show('call-whence-end', lambda: (io.BytesIO.seek(bio, -2, io.SEEK_END), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.seek(object(), 0))
+show('missing-receiver', lambda: io.BytesIO.seek())
+bio = io.BytesIO(b'abcdef')
+show('missing-offset', lambda: io.BytesIO.seek(bio))
+bio = io.BytesIO(b'abcdef')
+show('extra', lambda: io.BytesIO.seek(bio, 0, 0, 0))
+bio = io.BytesIO(b'abcdef')
+show('negative-set', lambda: io.BytesIO.seek(bio, -1))
+bio = io.BytesIO(b'abcdef')
+show('bad-whence', lambda: io.BytesIO.seek(bio, 0, 99))
+bio = io.BytesIO(b'abcdef')
+show('keyword-missing-receiver', lambda: io.BytesIO.seek(offset=0))
+bio = io.BytesIO(b'abcdef')
+show('receiver-keyword', lambda: io.BytesIO.seek(bio, offset=1))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-offset ok (2, 2) tuple",
+            "call-whence-cur ok (3, 3) tuple",
+            "call-whence-end ok (4, 4) tuple",
+            "wrong-receiver TypeError descriptor 'seek' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.seek() needs an argument",
+            "missing-offset TypeError seek expected at least 1 argument, got 0",
+            "extra TypeError seek expected at most 2 arguments, got 3",
+            "negative-set ValueError negative seek value -1",
+            "bad-whence ValueError invalid whence (99, should be 0, 1 or 2)",
+            "keyword-missing-receiver TypeError unbound method BytesIO.seek() needs an argument",
+            "receiver-keyword TypeError BytesIO.seek() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_readable_method_descriptor_subset() {
     assert_output(
         r#"import io
