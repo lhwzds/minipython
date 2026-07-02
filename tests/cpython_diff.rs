@@ -15580,6 +15580,49 @@ for alias in (types.NoneType, types.NotImplementedType, types.EllipsisType):
 }
 
 #[test]
+fn cpython_types_nonetype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.NoneType base subset",
+        name: "types-nonetype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'NoneType' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.NoneType
+try:
+    class NoneTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-nonetype', error)
+else:
+    print('class-nonetype ok')
+
+for label, call in [
+    ('type-nonetype', lambda: type('NoneTypeClass', (types.NoneType,), {})),
+    ('type-new-nonetype', lambda: type.__new__(type, 'NoneTypeNew', (types.NoneType,), {})),
+    ('new-class-nonetype', lambda: types.new_class('NoneTypeNewClass', (types.NoneType,), {})),
+    ('class-runtime-none', lambda: type('RuntimeNoneClass', (None.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",
