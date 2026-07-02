@@ -42724,6 +42724,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-wildcard-target-message",
+            source: "match {'x': 1}:\n    case {**_}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-attribute-target-message",
+            source: "match {'x': 1}:\n    case {**rest.attr}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-call-target-message",
+            source: "match {'x': 1}:\n    case {**target()}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-subscript-target-message",
+            source: "match {'x': 1}:\n    case {**target[0]}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-unary-target-message",
+            source: "match {'x': 1}:\n    case {**-rest}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-literal-target-message",
+            source: "match {'x': 1}:\n    case {**1}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
             name: "syntax-match-mapping-bare-name-key-message",
             source: "match {'x': 1}:\n    case {key: value}:\n        pass\n",
             expected_message: "invalid syntax",

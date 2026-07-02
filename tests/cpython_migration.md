@@ -5342,9 +5342,12 @@ Completed in the invalid mapping rest capture target SyntaxError message pass:
 - Extended `cpython_syntax_error_message_parity_diff_subset`,
   `cpython_match_mapping_helper_rules_subset`, and
   `cpython_invalid_match_pattern_subset` so invalid mapping rest capture targets
-  such as `case {**+x}` now use CPython's public `invalid syntax` message.
-- Kept this as parser-message parity only; it does not add new match-pattern
-  execution forms or expand sandbox-visible runtime capabilities.
+  such as `case {**+x}`, `case {**_}`, `case {**rest.attr}`,
+  `case {**target()}`, `case {**target[0]}`, `case {**-rest}`, and
+  `case {**1}` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid `**rest` mapping patterns are
+  unchanged, and this does not add new match-pattern execution forms or expand
+  sandbox-visible runtime capabilities.
 
 Completed in the invalid class starred-argument SyntaxError message pass:
 

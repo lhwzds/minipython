@@ -2820,12 +2820,21 @@ impl Parser<'_> {
     }
 
     fn parse_mapping_rest_capture_target(&mut self) -> Result<String, String> {
-        if matches!(self.peek(), Some(Token::Plus)) {
-            self.advance();
+        if !matches!(self.peek(), Some(Token::Identifier(name)) if name != "_") {
             return Err("invalid syntax".to_string());
         }
 
-        self.parse_pattern_capture_target()
+        if matches!(
+            self.peek_next(),
+            Some(Token::Dot | Token::LeftParen | Token::LeftBracket | Token::Equal)
+        ) {
+            return Err("invalid syntax".to_string());
+        }
+
+        match self.advance().cloned() {
+            Some(Token::Identifier(name)) => Ok(name),
+            _ => unreachable!("mapping rest capture target starts with an identifier"),
+        }
     }
 
     fn parse_sequence_match_patterns(&mut self, end: Token) -> Result<Vec<Pattern>, String> {
