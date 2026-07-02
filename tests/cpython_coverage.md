@@ -8277,7 +8277,9 @@ Invalid match-pattern SyntaxError message parity is covered by
 `alternative patterns bind different names`,
 `name capture 'x' makes remaining patterns unreachable`,
 `wildcard makes remaining patterns unreachable`, `multiple assignments to name`,
-`cannot use '_' as a target`, `mapping pattern checks duplicate key ('x')`,
+`positional patterns follow keyword patterns`,
+`attribute name repeated in class pattern: x`, `cannot use '_' as a target`,
+`mapping pattern checks duplicate key ('x')`,
 `mapping pattern checks duplicate key (False)`,
 `mapping pattern checks duplicate key (0.0)`, and
 `mapping pattern checks duplicate key (0j)`.

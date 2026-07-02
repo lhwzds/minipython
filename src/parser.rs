@@ -1057,7 +1057,7 @@ impl Parser<'_> {
                 };
                 self.expect_equal()?;
                 if keywords.iter().any(|(existing, _)| existing == &name) {
-                    return Err("unsupported match pattern".to_string());
+                    return Err(format!("attribute name repeated in class pattern: {name}"));
                 }
                 keywords.push((name, self.parse_match_pattern()?));
             } else {
@@ -1065,7 +1065,7 @@ impl Parser<'_> {
                     if !self.remaining_contains_right_paren() {
                         return Err(unclosed_delimiter_message('('));
                     }
-                    return Err("unsupported match pattern".to_string());
+                    return Err("positional patterns follow keyword patterns".to_string());
                 }
                 positional.push(self.parse_match_pattern()?);
             }

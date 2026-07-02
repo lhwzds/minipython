@@ -32940,11 +32940,11 @@ fn cpython_match_class_helper_rules_subset() {
     );
     assert_error(
         "class Point:\n    pass\nmatch Point():\n    case Point(x=1, 2):\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: positional patterns follow keyword patterns",
     );
     assert_error(
         "class Point:\n    pass\nmatch Point():\n    case Point(x=1, x=2):\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: attribute name repeated in class pattern: x",
     );
     assert_output(
         "class Class:\n    __match_args__ = \"XYZ\"\nx = Class()\ny = z = None\ntry:\n    match x:\n        case Class(y):\n            z = 0\nexcept TypeError as error:\n    print(error)\nprint(y, z)",
@@ -33078,11 +33078,15 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match point:\n    case Point(x=1, 2):\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: positional patterns follow keyword patterns",
     );
     assert_error(
         "match point:\n    case Point(0, x=1, 2):\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: positional patterns follow keyword patterns",
+    );
+    assert_error(
+        "match point:\n    case Point(x=1, x=2):\n        pass",
+        "parse error: attribute name repeated in class pattern: x",
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass",

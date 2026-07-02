@@ -3041,6 +3041,14 @@ fn reports_unsupported_match_patterns() {
         Err("runtime error: TypeError: called match pattern must be a class".to_string())
     );
     assert_eq!(
+        run_source("match point:\n    case Point(x=1, 2):\n        pass"),
+        Err("parse error: positional patterns follow keyword patterns".to_string())
+    );
+    assert_eq!(
+        run_source("match point:\n    case Point(x=1, x=2):\n        pass"),
+        Err("parse error: attribute name repeated in class pattern: x".to_string())
+    );
+    assert_eq!(
         run_source(
             "w = None\ntry:\n    match 1:\n        case max(0, 1):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w)"
         ),
