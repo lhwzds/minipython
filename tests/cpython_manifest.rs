@@ -48757,6 +48757,45 @@ fn cpython_missing_return_annotation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_empty_positional_only_marker_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "empty positional-only marker SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function empty positional-only marker runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda empty positional-only marker runtime subset evidence must exist"
+    );
+
+    for required_source in ["def f(/, a):\\n    pass", "lambda /, a: None"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "empty positional-only marker CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "empty positional-only marker subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("empty positional-only marker forms")
+                && document.contains("at least one argument must precede /"),
+            "empty positional-only marker docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_var_keyword_follower_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

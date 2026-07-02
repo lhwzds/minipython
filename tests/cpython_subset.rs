@@ -35631,7 +35631,7 @@ fn cpython_invalid_parameter_syntax_subset() {
 fn cpython_invalid_parameters_subset() {
     assert_error(
         "def f(/, a):\n    pass",
-        "parse error: at least one parameter must precede /",
+        "parse error: at least one argument must precede /",
     );
     assert_error(
         "def f(a, /, b, /):\n    pass",
@@ -35826,7 +35826,7 @@ fn cpython_invalid_lambda_parameter_syntax_subset() {
 fn cpython_invalid_lambda_parameters_subset() {
     assert_error(
         "lambda /, a: None",
-        "parse error: at least one parameter must precede /",
+        "parse error: at least one argument must precede /",
     );
     assert_error(
         "lambda a, /, b, /: None",

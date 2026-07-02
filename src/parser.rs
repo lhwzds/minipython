@@ -3844,7 +3844,7 @@ impl Parser<'_> {
                     return Err("/ may appear only once".to_string());
                 }
                 if params.positional.is_empty() {
-                    return Err("at least one parameter must precede /".to_string());
+                    return Err("at least one argument must precede /".to_string());
                 }
 
                 self.advance();

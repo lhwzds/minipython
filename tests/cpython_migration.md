@@ -5981,6 +5981,14 @@ Completed in the var-keyword follower diagnostic pass:
   `lambda **kwargs, a: None`, and `lambda **kwargs, /: None` use CPython's public
   `arguments cannot follow var-keyword argument` message.
 
+Completed in the empty positional-only marker diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so empty positional-only marker forms
+  `def f(/, a)` and `lambda /, a: None` use CPython's public
+  `at least one argument must precede /` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

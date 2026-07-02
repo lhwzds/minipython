@@ -41409,6 +41409,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "arguments cannot follow var-keyword argument",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram empty positional-only marker rejection",
+            name: "def-empty-positional-only-marker-message",
+            source: "def f(/, a):\n    pass",
+            expected_message: "at least one argument must precede /",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda empty positional-only marker rejection",
+            name: "lambda-empty-positional-only-marker-message",
+            source: "lambda /, a: None",
+            expected_message: "at least one argument must precede /",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
