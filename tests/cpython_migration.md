@@ -5047,6 +5047,16 @@ Completed in the invalid f/t-string literal-pattern SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid f/t-string mapping-key SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset`,
+  `cpython_match_mapping_helper_rules_subset`, `cpython_grammar_match_stmt_subset`,
+  and `cpython_invalid_match_pattern_subset` so f-string and t-string mapping
+  keys now use CPython's public
+  `mapping pattern keys may only match literals and attribute lookups` message.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid control-flow syntax supported-promotion pass:
 
 - Expanded `cpython_invalid_control_flow_syntax_subset` and promoted

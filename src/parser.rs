@@ -1006,7 +1006,9 @@ impl Parser<'_> {
 
         let key = self.parse_literal_pattern_expr()?;
         if !is_supported_literal_pattern(&key) {
-            return Err("unsupported match pattern".to_string());
+            return Err(
+                "mapping pattern keys may only match literals and attribute lookups".to_string(),
+            );
         }
 
         Ok(key)

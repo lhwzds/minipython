@@ -32367,7 +32367,11 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match {'a': 1}:\n    case {f\"a\": value}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
+    );
+    assert_error(
+        "match {'a': 1}:\n    case {t\"a\": value}:\n        pass",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
     );
     assert_error(
         "match ...:\n    case 0 + 0:\n        pass",
@@ -32853,6 +32857,14 @@ fn cpython_match_mapping_helper_rules_subset() {
         "parse error: mapping pattern checks duplicate key ('x')",
     );
     assert_error(
+        "match {'x': 1}:\n    case {f\"x\": value}:\n        pass",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {t\"x\": value}:\n        pass",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
+    );
+    assert_error(
         "match {0: 'zero'}:\n    case {0: _, False: _}:\n        pass",
         "parse error: mapping pattern checks duplicate key (False)",
     );
@@ -33166,7 +33178,11 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match {\"\": 1}:\n    case {f\"\": _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
+    );
+    assert_error(
+        "match {\"\": 1}:\n    case {t\"\": _}:\n        pass",
+        "parse error: mapping pattern keys may only match literals and attribute lookups",
     );
 }
 
