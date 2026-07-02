@@ -874,12 +874,20 @@ impl Parser<'_> {
             Some(
                 Token::Plus
                     | Token::Tilde
+                    | Token::In
+                    | Token::Is
                     | Token::Not
                     | Token::Dot
                     | Token::Pipe
                     | Token::DoubleStar
                     | Token::Colon
                     | Token::Equal
+                    | Token::EqualEqual
+                    | Token::BangEqual
+                    | Token::Less
+                    | Token::LessEqual
+                    | Token::Greater
+                    | Token::GreaterEqual
                     | Token::If
                     | Token::RightBrace
                     | Token::RightBracket
