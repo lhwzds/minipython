@@ -19340,6 +19340,21 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_types_celltype_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType __module__ metadata subset",
+        name: "types-celltype-module-metadata",
+        source: r#"import types
+
+print('module', types.CellType.__module__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__module__'))
+print('getattr-default-dict', '__module__' in getattr(types.CellType, '__dict__', {}))
+print('dir-module', '__module__' in dir(types.CellType))
+print('all', 'CellType' in types.__all__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_unacceptable_base_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public class-construction non-subclassable types.CellType base subset",

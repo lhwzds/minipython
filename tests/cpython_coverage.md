@@ -806,6 +806,7 @@ Recent runtime migration notes:
   `cpython_types_methodwrappertype_unacceptable_base_type_diff_subset`,
   `cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
+  `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -4013,6 +4014,14 @@ without adding general custom encoder/decoder class support.
   rejection for `types.MemberDescriptorType` class statements, `type(...)`,
   `type.__new__(...)`, `types.new_class(...)`, and runtime member descriptor `__class__`
   bases while preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_celltype_module_metadata_subset`, backed by
+  `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's
+  public `types.CellType.__module__` metadata returning `builtins` through
+  direct lookup and `object.__getattribute__`. The slice keeps `__module__`
+  absent from `dir(types.CellType)` and the fallback `__dict__` probe, so
+  broader `CellType` type-object metadata and a writable type dictionary remain
+  outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by
   `cpython_types_celltype_keyword_error_diff_subset`, covering
