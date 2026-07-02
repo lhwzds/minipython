@@ -48731,6 +48731,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case {**target[0]}",
         "case {**-rest}",
         "case {**1}",
+        "case {1:}",
         "case {key: value}",
         "case {key(): value}",
         "case {[1]: value}",
@@ -49528,6 +49529,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid mapping rest capture targets")
                 && document.contains("invalid syntax"),
             "invalid mapping rest target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing mapping pattern values")
+                && document.contains("invalid syntax"),
+            "missing mapping pattern value SyntaxError docs must describe the CPython message"
         );
     }
 

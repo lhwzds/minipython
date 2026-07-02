@@ -880,6 +880,7 @@ impl Parser<'_> {
                     | Token::DoubleStar
                     | Token::Colon
                     | Token::If
+                    | Token::RightBrace
                     | Token::RightBracket
                     | Token::RightParen
                     | Token::Comma
