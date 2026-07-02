@@ -28569,6 +28569,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_read_method_descriptor_subset",
             "cpython_io_bytesio_read1_method_descriptor_subset",
+            "cpython_io_bytesio_readline_method_descriptor_subset",
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
@@ -28617,6 +28618,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_read1_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO read1 method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_readline_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO readline method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -29061,6 +29067,80 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO read1 method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
+    let readline_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_readline_method_descriptor_diff_subset",
+    );
+    let readline_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_readline_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.readline",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.readline(bio)",
+        "io.BytesIO.readline(bio, 2)",
+        "io.BytesIO.readline(bio, None)",
+        "io.BytesIO.readline(bio, -1)",
+        "io.BytesIO.readline(object())",
+        "io.BytesIO.readline()",
+        "io.BytesIO.readline(bio, 1, 2)",
+        "io.BytesIO.readline(bio=bio)",
+        "io.BytesIO.readline(bio, size=1)",
+    ] {
+        assert!(
+            readline_descriptor_diff.contains(required),
+            "io.BytesIO readline method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            readline_descriptor_subset.contains(required),
+            "io.BytesIO readline method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        r"call-none ok (b'ab\\n', 3) tuple",
+        "call-size ok (b'ab', 2) tuple",
+        r"call-none-size ok (b'ab\\n', 3) tuple",
+        r"call-negative ok (b'ab\\n', 3) tuple",
+        "descriptor 'readline' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.readline() needs an argument",
+        "readline expected at most 1 argument, got 2",
+        "BytesIO.readline() takes no keyword arguments",
+    ] {
+        assert!(
+            readline_descriptor_subset.contains(required),
+            "io.BytesIO readline method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"readline\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'readline' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.readline() needs an argument",
+        "\"BytesIO.readline\"",
+        "reject_bytesio_method_keywords(\"readline\", &keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO readline method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_readline_method_descriptor_subset",
+            "cpython_io_bytesio_readline_method_descriptor_diff_subset",
+            "`io.BytesIO.readline` method descriptor",
+            "line-returning descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO readline method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -30085,6 +30165,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_read1_method_descriptor_subset",
             "cpython_io_bytesio_read1_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_readline_method_descriptor_subset",
+            "cpython_io_bytesio_readline_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getvalue_method_descriptor_subset",

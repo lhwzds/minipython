@@ -23564,6 +23564,50 @@ show('receiver-keyword', lambda: io.BytesIO.read1(bio, size=1))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_readline_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'ab\ncd\nef')
+descriptor = io.BytesIO.readline
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.readline(bio), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-size', lambda: (io.BytesIO.readline(bio, 2), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-none-size', lambda: (io.BytesIO.readline(bio, None), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-negative', lambda: (io.BytesIO.readline(bio, -1), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.readline(object()))
+show('missing-receiver', lambda: io.BytesIO.readline())
+bio = io.BytesIO(b'ab\ncd\nef')
+show('extra', lambda: io.BytesIO.readline(bio, 1, 2))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('keyword-missing-receiver', lambda: io.BytesIO.readline(bio=bio))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('receiver-keyword', lambda: io.BytesIO.readline(bio, size=1))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-none ok (b'ab\\n', 3) tuple",
+            "call-size ok (b'ab', 2) tuple",
+            "call-none-size ok (b'ab\\n', 3) tuple",
+            "call-negative ok (b'ab\\n', 3) tuple",
+            "wrong-receiver TypeError descriptor 'readline' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.readline() needs an argument",
+            "extra TypeError readline expected at most 1 argument, got 2",
+            "keyword-missing-receiver TypeError unbound method BytesIO.readline() needs an argument",
+            "receiver-keyword TypeError BytesIO.readline() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
     assert_output(
         r#"import io

@@ -20908,13 +20908,18 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("readline", &keywords)?;
-        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
             return Err(format!(
-                "TypeError: readline expected at most 1 argument, got {}",
-                method_arg_count(&args)
+                "TypeError: unbound method BytesIO.readline() needs an argument"
             ));
         };
+        let Value::BytesIO(bytes_io) = receiver else {
+            return Err(format!(
+                "TypeError: descriptor 'readline' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
+        reject_bytesio_method_keywords("readline", &keywords)?;
         bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
@@ -61591,6 +61596,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     name,
                     "read"
                         | "read1"
+                        | "readline"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65200,6 +65206,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
             method,
             "BytesIO.read"
                 | "BytesIO.read1"
+                | "BytesIO.readline"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
@@ -65282,6 +65289,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
             method,
             "BytesIO.read"
                 | "BytesIO.read1"
+                | "BytesIO.readline"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
