@@ -35677,6 +35677,15 @@ fn cpython_invalid_parameters_subset() {
     ] {
         assert_error(source, "parse error: invalid syntax");
     }
+    for source in [
+        "def f(a.b):\n    pass",
+        "def f(a[0]):\n    pass",
+        "def f(a()):\n    pass",
+        "def f(*a.b):\n    pass",
+        "def f(**a[0]):\n    pass",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "def f(a, a):\n    pass",
         "parse error: duplicate argument 'a' in function definition",
@@ -35921,6 +35930,15 @@ fn cpython_invalid_lambda_parameters_subset() {
         "lambda {}: None",
         "lambda *[x]: None",
         "lambda **{}: None",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
+    for source in [
+        "lambda a.b: None",
+        "lambda a[0]: None",
+        "lambda a(): None",
+        "lambda *a.b: None",
+        "lambda **a[0]: None",
     ] {
         assert_error(source, "parse error: invalid syntax");
     }

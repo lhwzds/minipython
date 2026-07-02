@@ -3879,6 +3879,7 @@ impl Parser<'_> {
                 }
                 self.advance();
                 let name = self.expect_parameter_identifier("** parameter name")?;
+                self.reject_invalid_parameter_name_follower()?;
                 validate_binding_name(&name)?;
                 params.kwarg_annotation = self
                     .parse_optional_parameter_annotation(allow_annotations)?
@@ -3917,6 +3918,7 @@ impl Parser<'_> {
                 match self.peek() {
                     Some(Token::Identifier(_)) => {
                         let name = self.expect_parameter_identifier("* parameter name")?;
+                        self.reject_invalid_parameter_name_follower()?;
                         validate_binding_name(&name)?;
                         params.vararg_annotation = self
                             .parse_optional_parameter_annotation(allow_annotations)?
@@ -4026,6 +4028,7 @@ impl Parser<'_> {
         check_unique_name: bool,
     ) -> Result<Param, String> {
         let name = self.expect_parameter_identifier("parameter name")?;
+        self.reject_invalid_parameter_name_follower()?;
         validate_binding_name(&name)?;
         if check_unique_name {
             ensure_unique_parameter_name(&name, seen_names)?;
@@ -6440,6 +6443,17 @@ impl Parser<'_> {
     fn reject_invalid_parameter_name_token(&mut self) -> Result<(), String> {
         if matches!(self.peek(), Some(token) if is_invalid_parameter_name_token(token)) {
             self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
+        Ok(())
+    }
+
+    fn reject_invalid_parameter_name_follower(&self) -> Result<(), String> {
+        if matches!(
+            self.peek(),
+            Some(Token::Dot | Token::LeftParen | Token::LeftBracket)
+        ) {
             return Err("invalid syntax".to_string());
         }
 
