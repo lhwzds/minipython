@@ -1077,6 +1077,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_getbuffer_method_descriptor_diff_subset`,
   `cpython_io_bytesio_tell_method_descriptor_diff_subset`,
   `cpython_io_bytesio_seek_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_truncate_method_descriptor_diff_subset`,
   `cpython_io_bytesio_readable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_writable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_seekable_method_descriptor_diff_subset`,
@@ -4411,6 +4412,13 @@ without adding general custom encoder/decoder class support.
   position-changing unbound descriptor calls for `SEEK_SET`, `SEEK_CUR`, and
   `SEEK_END`, wrong-receiver descriptor `TypeError`, missing-receiver keyword
   behavior, exact arity / keyword diagnostics, and invalid seek boundaries.
+  `cpython_io_bytesio_truncate_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_truncate_method_descriptor_subset` covers the
+  `io.BytesIO.truncate` method descriptor, including descriptor type visibility,
+  size-changing unbound descriptor calls for omitted, explicit, `None`, and
+  growth-size arguments, wrong-receiver descriptor `TypeError`,
+  missing-receiver keyword behavior, exact arity / keyword diagnostics, and
+  negative-size rejection.
   `cpython_io_bytesio_readable_method_descriptor_diff_subset` /
   `cpython_io_bytesio_readable_method_descriptor_subset` covers the
   `io.BytesIO.readable` method descriptor, including descriptor type visibility,

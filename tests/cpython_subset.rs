@@ -23847,6 +23847,55 @@ show('receiver-keyword', lambda: io.BytesIO.seek(bio, offset=1))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_truncate_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abcdef')
+bio.seek(3)
+descriptor = io.BytesIO.truncate
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.truncate(bio), bio.getvalue(), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-size', lambda: (io.BytesIO.truncate(bio, 2), bio.getvalue(), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+bio.seek(4)
+show('call-none-size', lambda: (io.BytesIO.truncate(bio, None), bio.getvalue(), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-grow', lambda: (io.BytesIO.truncate(bio, 9), bio.getvalue(), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.truncate(object(), 0))
+show('missing-receiver', lambda: io.BytesIO.truncate())
+bio = io.BytesIO(b'abcdef')
+show('extra', lambda: io.BytesIO.truncate(bio, 1, 2))
+bio = io.BytesIO(b'abcdef')
+show('negative', lambda: io.BytesIO.truncate(bio, -1))
+bio = io.BytesIO(b'abcdef')
+show('keyword-missing-receiver', lambda: io.BytesIO.truncate(size=0))
+bio = io.BytesIO(b'abcdef')
+show('receiver-keyword', lambda: io.BytesIO.truncate(bio, size=2))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-none ok (3, b'abc', 3) tuple",
+            "call-size ok (2, b'ab', 0) tuple",
+            "call-none-size ok (4, b'abcd', 4) tuple",
+            "call-grow ok (9, b'abcdef', 0) tuple",
+            "wrong-receiver TypeError descriptor 'truncate' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.truncate() needs an argument",
+            "extra TypeError truncate expected at most 1 argument, got 2",
+            "negative ValueError negative size value -1",
+            "keyword-missing-receiver TypeError unbound method BytesIO.truncate() needs an argument",
+            "receiver-keyword TypeError BytesIO.truncate() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_readable_method_descriptor_subset() {
     assert_output(
         r#"import io

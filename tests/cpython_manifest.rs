@@ -28576,6 +28576,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
             "cpython_io_bytesio_seek_method_descriptor_subset",
+            "cpython_io_bytesio_truncate_method_descriptor_subset",
             "cpython_io_bytesio_readable_method_descriptor_subset",
             "cpython_io_bytesio_writable_method_descriptor_subset",
             "cpython_io_bytesio_seekable_method_descriptor_subset",
@@ -28656,6 +28657,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_seek_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO seek method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_truncate_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO truncate method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -29590,6 +29596,82 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let truncate_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_truncate_method_descriptor_diff_subset",
+    );
+    let truncate_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_truncate_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.truncate",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.truncate(bio)",
+        "io.BytesIO.truncate(bio, 2)",
+        "io.BytesIO.truncate(bio, None)",
+        "io.BytesIO.truncate(bio, 9)",
+        "io.BytesIO.truncate(object(), 0)",
+        "io.BytesIO.truncate()",
+        "io.BytesIO.truncate(bio, 1, 2)",
+        "io.BytesIO.truncate(bio, -1)",
+        "io.BytesIO.truncate(size=0)",
+        "io.BytesIO.truncate(bio, size=2)",
+    ] {
+        assert!(
+            truncate_descriptor_diff.contains(required),
+            "io.BytesIO truncate method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            truncate_descriptor_subset.contains(required),
+            "io.BytesIO truncate method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call-none ok (3, b'abc', 3) tuple",
+        "call-size ok (2, b'ab', 0) tuple",
+        "call-none-size ok (4, b'abcd', 4) tuple",
+        "call-grow ok (9, b'abcdef', 0) tuple",
+        "descriptor 'truncate' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.truncate() needs an argument",
+        "truncate expected at most 1 argument, got 2",
+        "negative size value -1",
+        "BytesIO.truncate() takes no keyword arguments",
+    ] {
+        assert!(
+            truncate_descriptor_subset.contains(required),
+            "io.BytesIO truncate method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"truncate\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'truncate' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.truncate() needs an argument",
+        "\"BytesIO.truncate\"",
+        "reject_bytesio_method_keywords(\"truncate\", &keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO truncate method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_truncate_method_descriptor_subset",
+            "cpython_io_bytesio_truncate_method_descriptor_diff_subset",
+            "`io.BytesIO.truncate` method descriptor",
+            "size-changing unbound descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO truncate method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let readable_descriptor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_io_bytesio_readable_method_descriptor_diff_subset",
@@ -30441,6 +30523,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_seek_method_descriptor_subset",
             "cpython_io_bytesio_seek_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_truncate_method_descriptor_subset",
+            "cpython_io_bytesio_truncate_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_readable_method_descriptor_subset",
