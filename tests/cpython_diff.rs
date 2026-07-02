@@ -43018,6 +43018,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-top-level-double-star-pattern-message",
+            source: "match value:\n    case **rest:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-grouped-double-star-pattern-message",
+            source: "match value:\n    case (**rest):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-double-star-pattern-message",
+            source: "match [1]:\n    case [**rest]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
             name: "syntax-match-sequence-star-plus-target-message",
             source: "match [1]:\n    case [*+x]:\n        pass\n",
             expected_message: "invalid syntax",

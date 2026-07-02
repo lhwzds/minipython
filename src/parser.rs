@@ -877,6 +877,7 @@ impl Parser<'_> {
                     | Token::Not
                     | Token::Dot
                     | Token::Pipe
+                    | Token::DoubleStar
                     | Token::Colon
                     | Token::If
                     | Token::RightBracket

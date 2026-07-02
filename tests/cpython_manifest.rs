@@ -48767,6 +48767,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case **rest", "case (**rest)", "case [**rest]"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid standalone double-star-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid standalone double-star-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in [
         "case [*+x]",
         "case [*rest.attr]",
@@ -49294,6 +49305,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             document.contains("standalone star patterns") && document.contains("invalid syntax"),
             "invalid standalone star-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("standalone double-star patterns")
+                && document.contains("invalid syntax"),
+            "invalid standalone double-star-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
