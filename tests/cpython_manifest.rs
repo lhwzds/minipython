@@ -48676,6 +48676,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case [*+x]"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid sequence-star target SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid sequence-star target subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case 1 as -1", "case 1 as +x"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48691,6 +48702,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             document.contains("standalone star patterns") && document.contains("invalid syntax"),
             "invalid standalone star-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid sequence-star capture targets")
+                && document.contains("invalid syntax"),
+            "invalid sequence-star target SyntaxError docs must describe the CPython message"
         );
     }
 

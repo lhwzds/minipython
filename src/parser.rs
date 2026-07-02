@@ -1167,6 +1167,15 @@ impl Parser<'_> {
         self.parse_pattern_capture_target()
     }
 
+    fn parse_star_pattern_capture_target(&mut self) -> Result<String, String> {
+        if matches!(self.peek(), Some(Token::Plus)) {
+            self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
+        self.parse_pattern_capture_target()
+    }
+
     fn parse_sequence_match_patterns(&mut self, end: Token) -> Result<Vec<Pattern>, String> {
         if token_matches(self.peek(), &end) {
             return Ok(Vec::new());
@@ -1206,7 +1215,7 @@ impl Parser<'_> {
             self.advance();
             Ok(Pattern::Star(None))
         } else {
-            self.parse_pattern_capture_target()
+            self.parse_star_pattern_capture_target()
                 .map(|name| Pattern::Star(Some(name)))
         }
     }

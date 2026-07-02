@@ -32731,6 +32731,10 @@ fn cpython_match_capture_target_and_star_pattern_helper_rules_subset() {
         "parse error: cannot use attribute as pattern target",
     );
     assert_error(
+        "match [1]:\n    case [*+x]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match {'x': 1}:\n    case {**_}:\n        pass",
         "parse error: cannot use '_' as a target",
     );
@@ -32821,6 +32825,10 @@ fn cpython_match_sequence_helper_rules_subset() {
     );
     assert_error(
         "match 1:\n    case (*rest):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [*+x]:\n        pass",
         "parse error: invalid syntax",
     );
 }
@@ -33154,6 +33162,10 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match 1:\n    case (*rest):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [*+x]:\n        pass",
         "parse error: invalid syntax",
     );
     assert_error(
