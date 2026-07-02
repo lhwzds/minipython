@@ -42189,6 +42189,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram floor division function parameter rejection",
+            name: "def-floor-div-parameter-name-message",
+            source: "def f(a // b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram floor division function parameter rejection",
+            name: "def-floor-div-vararg-parameter-name-message",
+            source: "def f(*a // b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram floor division function parameter rejection",
+            name: "def-floor-div-kwarg-parameter-name-message",
+            source: "def f(**a // b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram floor division lambda parameter rejection",
+            name: "lambda-floor-div-parameter-name-message",
+            source: "lambda a // b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram floor division lambda parameter rejection",
+            name: "lambda-floor-div-vararg-parameter-name-message",
+            source: "lambda *a // b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram floor division lambda parameter rejection",
+            name: "lambda-floor-div-kwarg-parameter-name-message",
+            source: "lambda **a // b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

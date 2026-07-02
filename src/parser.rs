@@ -6460,6 +6460,7 @@ impl Parser<'_> {
                     | Token::Minus
                     | Token::Star
                     | Token::Slash
+                    | Token::DoubleSlash
                     | Token::Percent
                     | Token::EqualEqual
                     | Token::BangEqual
