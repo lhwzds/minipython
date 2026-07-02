@@ -39746,6 +39746,105 @@ fn types_celltype_constructor_behavior_docs_cover_core_runtime() {
 }
 
 #[test]
+fn types_celltype_cell_contents_descriptor_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_cell_contents_descriptor_diff_subset";
+    let subset_name = "cpython_types_celltype_cell_contents_descriptor_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType cell_contents descriptor CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType cell_contents descriptor runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.cell_contents",
+        "types.GetSetDescriptorType",
+        "descriptor.__name__",
+        "descriptor.__qualname__",
+        "descriptor.__objclass__ is types.CellType",
+        "'cell_contents' in dir(types.CellType)",
+        "getattr(types.CellType, '__dict__', {})['cell_contents'] is descriptor",
+        "descriptor.__get__(cell, types.CellType)",
+        "descriptor.__set__(cell, 'y')",
+        "descriptor.__delete__(cell)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType cell_contents descriptor diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"meta getset_descriptor True True\"",
+        "\"repr <attribute 'cell_contents' of 'cell' objects>\"",
+        "\"names cell_contents cell.cell_contents True None\"",
+        "\"visibility True True True\"",
+        "\"get-empty ValueError Cell is empty ('Cell is empty',)\"",
+        "\"get-none-owner ok <attribute 'cell_contents' of 'cell' objects> getset_descriptor\"",
+        "\"get-wrong TypeError descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object",
+        "\"after-set ok 'y' str\"",
+        "\"after-delete ValueError Cell is empty ('Cell is empty',)\"",
+        "\"delete-empty ok None NoneType\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType cell_contents descriptor subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const CELL_CONTENTS_GETSET_DESCRIPTOR",
+        "cell_contents_getset_descriptor_get",
+        "cell_contents_getset_descriptor_set",
+        "cell_contents_getset_descriptor_delete",
+        "getset_descriptor_public_name",
+        "getset_descriptor_qualname",
+        "getset_descriptor_owner_name",
+        "getset_descriptor_doc_value",
+        "function_name == \"CellType\" && name == \"cell_contents\"",
+        "Value::Builtin(CELL_CONTENTS_GETSET_DESCRIPTOR.to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType cell_contents descriptor implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "builtin_getset_descriptor_repr",
+        "<attribute 'cell_contents' of 'cell' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "types CellType cell_contents descriptor display implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`types.CellType.cell_contents`",
+            "`types.GetSetDescriptorType`",
+            "`descriptor.__get__(cell, types.CellType)`",
+            "`descriptor.__set__(cell, value)`",
+            "`descriptor.__delete__(cell)`",
+            "pure-memory descriptor",
+            "pickle",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType cell_contents descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn types_celltype_attribute_errors_docs_cover_core_runtime() {
     let diff_name = "cpython_types_celltype_attribute_errors_diff_subset";
     let subset_name = "cpython_types_celltype_attribute_errors_subset";

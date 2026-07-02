@@ -1555,8 +1555,13 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_typing_special_form_name(name) => {
                 write!(f, "{name}")
             }
-            Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
-                write!(f, "<attribute 'maxlen' of 'collections.deque' objects>")
+            Value::Builtin(name) if builtin_getset_descriptor_repr(name).is_some() => {
+                write!(
+                    f,
+                    "{}",
+                    builtin_getset_descriptor_repr(name)
+                        .expect("guard checked getset descriptor repr")
+                )
             }
             Value::Builtin(name) if is_defaultdict_missing_method_descriptor(name) => {
                 write!(
@@ -2071,8 +2076,10 @@ fn format_value_repr(value: &Value) -> String {
             let field = namedtuple_field_name(typ, *index);
             format!("<namedtuple field '{field}' of '{}'>", typ.name)
         }
-        Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
-            "<attribute 'maxlen' of 'collections.deque' objects>".to_string()
+        Value::Builtin(name) if builtin_getset_descriptor_repr(name).is_some() => {
+            builtin_getset_descriptor_repr(name)
+                .expect("guard checked getset descriptor repr")
+                .to_string()
         }
         Value::Builtin(name) if super_wrapper_descriptor_method_name(name).is_some() => {
             let method = super_wrapper_descriptor_method_name(name)
@@ -2523,8 +2530,16 @@ fn is_typing_special_form_name(name: &str) -> bool {
     matches!(name, "typing.Any" | "typing.NoReturn" | "typing.Optional")
 }
 
-fn is_deque_maxlen_getset_descriptor(name: &str) -> bool {
-    name == "deque.maxlen.getset_descriptor"
+fn builtin_getset_descriptor_repr(name: &str) -> Option<&'static str> {
+    match name {
+        "deque.maxlen.getset_descriptor" => {
+            Some("<attribute 'maxlen' of 'collections.deque' objects>")
+        }
+        "CellType.cell_contents.getset_descriptor" => {
+            Some("<attribute 'cell_contents' of 'cell' objects>")
+        }
+        _ => None,
+    }
 }
 
 fn is_defaultdict_missing_method_descriptor(name: &str) -> bool {

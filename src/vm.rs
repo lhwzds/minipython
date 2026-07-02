@@ -16948,15 +16948,21 @@ impl Vm {
             }
             return Ok(descriptor.clone());
         }
-        let Value::Deque { maxlen, .. } = object else {
-            return Err(format!(
-                "TypeError: descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a '{}' object",
-                type_name(object)
-            ));
-        };
-        Ok(maxlen
-            .map(|value| Value::Number(value as i64))
-            .unwrap_or(Value::None))
+        match descriptor_name.as_str() {
+            "deque.maxlen.getset_descriptor" => {
+                let Value::Deque { maxlen, .. } = object else {
+                    return Err(format!(
+                        "TypeError: descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                };
+                Ok(maxlen
+                    .map(|value| Value::Number(value as i64))
+                    .unwrap_or(Value::None))
+            }
+            CELL_CONTENTS_GETSET_DESCRIPTOR => cell_contents_getset_descriptor_get(object),
+            _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+        }
     }
 
     fn call_getset_descriptor_set(
@@ -16974,10 +16980,17 @@ impl Vm {
             return Err("TypeError: __set__() expected a getset_descriptor receiver".to_string());
         }
         descriptor_set_reject_method_wrapper_args("__set__", rest, &keywords)?;
-        let [object, _value] = rest else {
+        let [object, value] = rest else {
             unreachable!("descriptor_set_reject_method_wrapper_args checked arity");
         };
-        readonly_deque_maxlen_descriptor_error(object)
+        match descriptor_name.as_str() {
+            "deque.maxlen.getset_descriptor" => readonly_deque_maxlen_descriptor_error(object),
+            CELL_CONTENTS_GETSET_DESCRIPTOR => {
+                cell_contents_getset_descriptor_set(object, value.clone())?;
+                Ok(Value::None)
+            }
+            _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+        }
     }
 
     fn call_getset_descriptor_delete(
@@ -17004,7 +17017,14 @@ impl Vm {
         let [object] = rest else {
             unreachable!("descriptor_delete_reject_method_wrapper_args checked arity");
         };
-        readonly_deque_maxlen_descriptor_error(object)
+        match descriptor_name.as_str() {
+            "deque.maxlen.getset_descriptor" => readonly_deque_maxlen_descriptor_error(object),
+            CELL_CONTENTS_GETSET_DESCRIPTOR => {
+                cell_contents_getset_descriptor_delete(object)?;
+                Ok(Value::None)
+            }
+            _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+        }
     }
 
     fn property_get(&mut self, property: Value, object: Value) -> Result<Value, String> {
@@ -51300,6 +51320,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     .collect::<Vec<_>>();
     if name == "CellType" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
+        names.push("cell_contents".to_string());
     }
 
     let methods: &[&str] = match name {
@@ -53043,6 +53064,36 @@ fn readonly_deque_maxlen_descriptor_error(object: &Value) -> Result<Value, Strin
     ))
 }
 
+fn cell_contents_getset_descriptor_get(object: &Value) -> Result<Value, String> {
+    let Value::Cell { name, scope, .. } = object else {
+        return Err(cell_contents_getset_descriptor_type_error(object));
+    };
+    cell_contents(name, scope)
+}
+
+fn cell_contents_getset_descriptor_set(object: &Value, value: Value) -> Result<(), String> {
+    let Value::Cell { name, scope, .. } = object else {
+        return Err(cell_contents_getset_descriptor_type_error(object));
+    };
+    set_cell_contents(name, scope, value);
+    Ok(())
+}
+
+fn cell_contents_getset_descriptor_delete(object: &Value) -> Result<(), String> {
+    let Value::Cell { name, scope, .. } = object else {
+        return Err(cell_contents_getset_descriptor_type_error(object));
+    };
+    scope.borrow_mut().remove(name);
+    Ok(())
+}
+
+fn cell_contents_getset_descriptor_type_error(object: &Value) -> String {
+    format!(
+        "TypeError: descriptor 'cell_contents' for 'cell' objects doesn't apply to a '{}' object",
+        type_name(object)
+    )
+}
+
 fn descriptor_owner_from_object(object: &Value) -> Option<Value> {
     match object {
         Value::None => None,
@@ -53262,8 +53313,47 @@ fn is_data_descriptor(value: &Value) -> bool {
         || instance_special_method(value, "__delete__").is_some()
 }
 
+const CELL_CONTENTS_GETSET_DESCRIPTOR: &str = "CellType.cell_contents.getset_descriptor";
+
 fn is_builtin_getset_descriptor_name(name: &str) -> bool {
-    name == "deque.maxlen.getset_descriptor"
+    matches!(
+        name,
+        "deque.maxlen.getset_descriptor" | CELL_CONTENTS_GETSET_DESCRIPTOR
+    )
+}
+
+fn getset_descriptor_public_name(name: &str) -> &'static str {
+    match name {
+        "deque.maxlen.getset_descriptor" => "maxlen",
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell_contents",
+        _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+    }
+}
+
+fn getset_descriptor_qualname(name: &str) -> &'static str {
+    match name {
+        "deque.maxlen.getset_descriptor" => "deque.maxlen",
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell.cell_contents",
+        _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+    }
+}
+
+fn getset_descriptor_owner_name(name: &str) -> &'static str {
+    match name {
+        "deque.maxlen.getset_descriptor" => "deque",
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "CellType",
+        _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+    }
+}
+
+fn getset_descriptor_doc_value(name: &str) -> Value {
+    match name {
+        "deque.maxlen.getset_descriptor" => {
+            Value::String("maximum size of a deque or None if unbounded".to_string())
+        }
+        CELL_CONTENTS_GETSET_DESCRIPTOR => Value::None,
+        _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
+    }
 }
 
 fn is_iterator_value(value: &Value) -> bool {
@@ -60850,12 +60940,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::Builtin(function_name)),
                     identity: Rc::new(()),
                 }),
-                "__name__" => Ok(Value::String("maxlen".to_string())),
-                "__qualname__" => Ok(Value::String("deque.maxlen".to_string())),
-                "__objclass__" => Ok(Value::Builtin("deque".to_string())),
-                "__doc__" => Ok(Value::String(
-                    "maximum size of a deque or None if unbounded".to_string(),
+                "__name__" => Ok(Value::String(
+                    getset_descriptor_public_name(&function_name).to_string(),
                 )),
+                "__qualname__" => Ok(Value::String(
+                    getset_descriptor_qualname(&function_name).to_string(),
+                )),
+                "__objclass__" => Ok(Value::Builtin(
+                    getset_descriptor_owner_name(&function_name).to_string(),
+                )),
+                "__doc__" => Ok(getset_descriptor_doc_value(&function_name)),
                 _ => Err(format!(
                     "AttributeError: 'getset_descriptor' object has no attribute '{name}'"
                 )),
@@ -61179,6 +61273,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "deque" && name == "maxlen" => {
             Ok(Value::Builtin("deque.maxlen.getset_descriptor".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "CellType" && name == "cell_contents" => {
+            Ok(Value::Builtin(CELL_CONTENTS_GETSET_DESCRIPTOR.to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "deque" && is_builtin_deque_type_method(name) =>
@@ -61873,6 +61970,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("__name__".to_string()),
                     Value::String(class_name.to_string()),
+                ));
+            }
+            if class_name == "CellType" {
+                entries.push((
+                    Value::String("cell_contents".to_string()),
+                    Value::Builtin(CELL_CONTENTS_GETSET_DESCRIPTOR.to_string()),
                 ));
             }
             if class_name == "int" {

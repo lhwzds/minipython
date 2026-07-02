@@ -807,6 +807,7 @@ Recent runtime migration notes:
   `cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_constructor_behavior_diff_subset`,
+  `cpython_types_celltype_cell_contents_descriptor_diff_subset`,
   `cpython_types_celltype_attribute_errors_diff_subset`,
   `cpython_types_celltype_dir_surface_diff_subset`,
   `cpython_types_celltype_hash_semantics_diff_subset`,
@@ -4034,6 +4035,15 @@ without adding general custom encoder/decoder class support.
   arity text `cell expected at most 1 argument, got N`. The slice stays inside
   pure-memory cells and keeps CPython object-layout internals, pickle identity
   matrices, and a writable type dictionary outside this sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_cell_contents_descriptor_subset`, backed by
+  `cpython_types_celltype_cell_contents_descriptor_diff_subset`, covering
+  CPython's public `types.CellType.cell_contents` getset descriptor metadata,
+  visibility through `dir(types.CellType)` / the type `__dict__`, and
+  `descriptor.__get__(cell, types.CellType)`, `descriptor.__set__(cell, value)`,
+  and `descriptor.__delete__(cell)` for the pure-memory descriptor over cell contents. This slice
+  keeps pickle behavior, `__sizeof__`, and CPython object-layout internals
+  outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_attribute_errors_subset`, backed by
   `cpython_types_celltype_attribute_errors_diff_subset`, covering CPython's

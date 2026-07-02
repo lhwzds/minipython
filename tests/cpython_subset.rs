@@ -72773,6 +72773,71 @@ for callback in [lambda: types.CellType(1, 2), lambda: types.CellType(1, 2, 3)]:
     );
 }
 
+// Adapted from CPython public `types.CellType.cell_contents` descriptor
+// behavior. This keeps the supported surface to the pure-memory descriptor
+// for cell contents and does not add pickle or object-layout behavior.
+#[test]
+fn cpython_types_celltype_cell_contents_descriptor_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+cell = types.CellType('x')
+empty = types.CellType()
+descriptor = types.CellType.cell_contents
+print('meta', type(descriptor).__name__, isinstance(descriptor, types.GetSetDescriptorType), descriptor.__class__ is types.GetSetDescriptorType)
+print('repr', repr(descriptor))
+print('names', descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is types.CellType, descriptor.__doc__)
+print('visibility', 'cell_contents' in dir(types.CellType), 'cell_contents' in getattr(types.CellType, '__dict__', {}), getattr(types.CellType, '__dict__', {})['cell_contents'] is descriptor)
+print('dir-methods', [name for name in dir(descriptor) if name in {'__delete__', '__doc__', '__get__', '__name__', '__objclass__', '__qualname__', '__set__'}])
+for label, callback in [
+    ('get-full', lambda: descriptor.__get__(cell, types.CellType)),
+    ('get-empty', lambda: descriptor.__get__(empty, types.CellType)),
+    ('get-none-owner', lambda: descriptor.__get__(None, types.CellType)),
+    ('get-wrong', lambda: descriptor.__get__(1, int)),
+    ('set-full', lambda: descriptor.__set__(cell, 'y')),
+    ('after-set', lambda: cell.cell_contents),
+    ('delete-full', lambda: descriptor.__delete__(cell)),
+    ('after-delete', lambda: cell.cell_contents),
+    ('delete-empty', lambda: descriptor.__delete__(empty)),
+    ('get-none-none', lambda: descriptor.__get__(None, None)),
+    ('set-wrong', lambda: descriptor.__set__(1, 'z')),
+    ('delete-wrong', lambda: descriptor.__delete__(1)),
+    ('set-missing', lambda: descriptor.__set__()),
+    ('delete-missing', lambda: descriptor.__delete__()),
+]:
+    show(label, callback)"#,
+        &[
+            "meta getset_descriptor True True",
+            "repr <attribute 'cell_contents' of 'cell' objects>",
+            "names cell_contents cell.cell_contents True None",
+            "visibility True True True",
+            "dir-methods ['__delete__', '__doc__', '__get__', '__name__', '__objclass__', '__qualname__', '__set__']",
+            "get-full ok 'x' str",
+            "get-empty ValueError Cell is empty ('Cell is empty',)",
+            "get-none-owner ok <attribute 'cell_contents' of 'cell' objects> getset_descriptor",
+            "get-wrong TypeError descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object (\"descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object\",)",
+            "set-full ok None NoneType",
+            "after-set ok 'y' str",
+            "delete-full ok None NoneType",
+            "after-delete ValueError Cell is empty ('Cell is empty',)",
+            "delete-empty ok None NoneType",
+            "get-none-none TypeError __get__(None, None) is invalid ('__get__(None, None) is invalid',)",
+            "set-wrong TypeError descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object (\"descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object\",)",
+            "delete-wrong TypeError descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object (\"descriptor 'cell_contents' for 'cell' objects doesn't apply to a 'int' object\",)",
+            "set-missing TypeError __set__ expected 2 arguments, got 0 ('__set__ expected 2 arguments, got 0',)",
+            "delete-missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public cell object missing-attribute errors. This pins
 // attribute diagnostics without adding a writable instance dictionary.
 #[test]
