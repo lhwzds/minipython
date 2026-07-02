@@ -12,6 +12,7 @@ const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
 const PYTHON_VERSION_FILE: &str = include_str!("../.python-version");
 const GAP_SWEEP_TOOL: &str = include_str!("../tools/cpython_gap_sweep.py");
+const GAP_SWEEP_TESTS: &str = include_str!("../tools/test_cpython_gap_sweep.py");
 const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
@@ -45660,6 +45661,22 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     }
 
     for required in [
+        "unittest",
+        "ClassifyTests",
+        "CorpusLoadingTests",
+        "ReportTests",
+        "gap.classify",
+        "gap.load_cases",
+        "gap.write_reports",
+        "if __name__ == \"__main__\"",
+    ] {
+        assert!(
+            GAP_SWEEP_TESTS.contains(required),
+            "gap sweep driver tests must keep `{required}`"
+        );
+    }
+
+    for required in [
         "uv run",
         "--python \"$python_version\"",
         "cargo build --bin mnpy",
@@ -45672,6 +45689,16 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         assert!(
             GAP_SWEEP_RUNNER.contains(required),
             "gap sweep uv runner must keep `{required}`"
+        );
+    }
+
+    for required in [
+        "uv run --python \"$(cat .python-version)\" python tools/test_cpython_gap_sweep.py",
+        "tools/run_cpython_gap_sweep.sh",
+    ] {
+        assert!(
+            README.contains(required) && README_CN.contains(required),
+            "README testing docs must keep `{required}`"
         );
     }
 
