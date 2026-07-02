@@ -33087,6 +33087,30 @@ fn cpython_match_pattern_helper_rules_subset() {
         "match [1, 2]:\n    case [x] | [x, y]:\n        pass",
         "parse error: alternative patterns bind different names",
     );
+    assert_error(
+        "match 1:\n    case | 1:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case 1 |:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (1 |):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [| 1]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [1 |]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1, 2]:\n    case [1 |, 2]:\n        pass",
+        "parse error: invalid syntax",
+    );
     assert_output(
         "match [1, 2]:\n    case ([1, value]):\n        print(value)",
         &["2"],
@@ -33798,6 +33822,30 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match [1]:\n    case [.x]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case | 1:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case 1 |:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (1 |):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [| 1]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [1 |]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1, 2]:\n    case [1 |, 2]:\n        pass",
         "parse error: invalid syntax",
     );
     assert_error(

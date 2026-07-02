@@ -42759,6 +42759,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "wildcard makes remaining patterns unreachable",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-or-pattern-leading-empty-alternative-message",
+            source: "match 1:\n    case | 1:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-or-pattern-trailing-empty-alternative-message",
+            source: "match 1:\n    case 1 |:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-parenthesized-or-pattern-trailing-empty-alternative-message",
+            source: "match 1:\n    case (1 |):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-sequence-or-pattern-leading-empty-alternative-message",
+            source: "match [1]:\n    case [| 1]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-sequence-or-pattern-trailing-empty-alternative-message",
+            source: "match [1]:\n    case [1 |]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-sequence-or-pattern-comma-empty-alternative-message",
+            source: "match [1, 2]:\n    case [1 |, 2]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid class pattern public SyntaxError subset",
             name: "syntax-match-class-positional-after-keyword-message",
             source: "match point:\n    case Point(x=1, 2):\n        pass\n",

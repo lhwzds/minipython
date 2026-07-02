@@ -48678,6 +48678,32 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case | 1",
+        "case 1 |",
+        "case (1 |)",
+        "case [| 1]",
+        "case [1 |]",
+        "case [1 |, 2]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid empty OR-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid empty OR-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("empty OR-pattern alternatives")
+                && document.contains("invalid syntax"),
+            "invalid empty OR-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for required_source in [
         "case {**rest, 'x': value}",
         "case {'x': x, **rest, 'y': y}",
         "case {**+x}",
