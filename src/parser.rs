@@ -837,7 +837,7 @@ impl Parser<'_> {
         }
 
         self.advance();
-        let name = self.parse_pattern_capture_target()?;
+        let name = self.parse_as_pattern_capture_target()?;
         Ok(Pattern::As {
             pattern: Box::new(pattern),
             name,
@@ -1156,6 +1156,15 @@ impl Parser<'_> {
             }
             _ => Err("unsupported match pattern".to_string()),
         }
+    }
+
+    fn parse_as_pattern_capture_target(&mut self) -> Result<String, String> {
+        if matches!(self.peek(), Some(Token::Plus)) {
+            self.advance();
+            return Err("cannot use expression as pattern target".to_string());
+        }
+
+        self.parse_pattern_capture_target()
     }
 
     fn parse_sequence_match_patterns(&mut self, end: Token) -> Result<Vec<Pattern>, String> {

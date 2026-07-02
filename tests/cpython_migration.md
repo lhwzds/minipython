@@ -4990,8 +4990,9 @@ Completed in the invalid as-pattern t-string-target SyntaxError message pass:
 Completed in the invalid as-pattern unary-expression-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as -1` now uses CPython's
-  public `cannot use expression as pattern target` message.
+  `cpython_invalid_match_pattern_subset` so `case 1 as -1` and
+  `case 1 as +x` now use CPython's public
+  `cannot use expression as pattern target` message.
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
