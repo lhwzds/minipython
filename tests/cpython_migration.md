@@ -6176,6 +6176,14 @@ Completed in the await expression parameter-name diagnostic pass:
   such as `def f(a await b)`, `def f(**a await b)`, `lambda a await b: None`,
   and `lambda *a await b: None` use CPython's public `invalid syntax` message.
 
+Completed in the else-clause parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so else-clause parameter name forms
+  such as `def f(a else b)`, `def f(**a else b)`, `lambda a else b: None`, and
+  `lambda *a else b: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

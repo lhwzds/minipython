@@ -42585,6 +42585,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause function parameter rejection",
+            name: "def-else-clause-parameter-name-message",
+            source: "def f(a else b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause function parameter rejection",
+            name: "def-else-clause-vararg-parameter-name-message",
+            source: "def f(*a else b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause function parameter rejection",
+            name: "def-else-clause-kwarg-parameter-name-message",
+            source: "def f(**a else b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause lambda parameter rejection",
+            name: "lambda-else-clause-parameter-name-message",
+            source: "lambda a else b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause lambda parameter rejection",
+            name: "lambda-else-clause-vararg-parameter-name-message",
+            source: "lambda *a else b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram else-clause lambda parameter rejection",
+            name: "lambda-else-clause-kwarg-parameter-name-message",
+            source: "lambda **a else b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
