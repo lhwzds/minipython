@@ -1074,6 +1074,7 @@ impl Parser<'_> {
                         | Token::Imaginary(_)
                         | Token::String(_)
                         | Token::Bytes(_)
+                        | Token::Tilde
                 )
             )
         {

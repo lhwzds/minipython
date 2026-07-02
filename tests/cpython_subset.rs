@@ -34459,6 +34459,22 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: invalid syntax",
     );
     assert_error(
+        "match 1:\n    case _ ~ y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (_ ~ y):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [_ ~ y]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {1: 2}:\n    case {1: _ ~ y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match 1:\n    case x & y:\n        pass",
         "parse error: invalid syntax",
     );

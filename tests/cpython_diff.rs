@@ -43875,6 +43875,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-wildcard-tilde-message",
+            source: "match 1:\n    case _ ~ y:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-grouped-wildcard-tilde-message",
+            source: "match 1:\n    case (_ ~ y):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-sequence-wildcard-tilde-message",
+            source: "match [1]:\n    case [_ ~ y]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-mapping-value-wildcard-tilde-message",
+            source: "match {1: 2}:\n    case {1: _ ~ y}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
             name: "syntax-match-bare-name-ampersand-message",
             source: "match 1:\n    case x & y:\n        pass\n",

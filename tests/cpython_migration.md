@@ -4924,6 +4924,16 @@ SyntaxError message pass:
   patterns, guards, capture aliases, sequence commas, and OR-pattern
   diagnostics remain unchanged.
 
+Completed in the invalid wildcard unary-invert match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard unary-invert match patterns
+  such as `case _ ~ y`, `case (_ ~ y)`, `case [_ ~ y]`, and
+  `case {1: _ ~ y}` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, guards,
+  capture aliases, and OR-pattern diagnostics remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 
