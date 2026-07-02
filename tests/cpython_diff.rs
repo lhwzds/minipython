@@ -43899,6 +43899,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-wildcard-empty-brace-message",
+            source: "match 1:\n    case _ {}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-grouped-wildcard-empty-brace-message",
+            source: "match 1:\n    case (_ {}):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-sequence-wildcard-empty-brace-message",
+            source: "match [1]:\n    case [_ {}]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-mapping-value-wildcard-empty-brace-message",
+            source: "match {1: 2}:\n    case {1: _ {}}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-wildcard-set-display-message",
+            source: "match 1:\n    case _ {1}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid wildcard pattern public SyntaxError subset",
+            name: "syntax-match-wildcard-dict-display-message",
+            source: "match 1:\n    case _ {'x': 1}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
             name: "syntax-match-bare-name-ampersand-message",
             source: "match 1:\n    case x & y:\n        pass\n",

@@ -1064,6 +1064,7 @@ impl Parser<'_> {
                         | Token::Dot
                         | Token::LeftBracket
                         | Token::LeftParen
+                        | Token::LeftBrace
                         | Token::Ellipsis
                         | Token::None
                         | Token::True

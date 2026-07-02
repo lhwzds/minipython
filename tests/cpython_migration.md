@@ -4934,6 +4934,17 @@ message pass:
 - Kept this as parser-message parity only; valid wildcard patterns, guards,
   capture aliases, and OR-pattern diagnostics remain unchanged.
 
+Completed in the invalid wildcard brace-display-adjacent match-pattern
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard brace-display-adjacent match patterns
+  such as `case _ {}`, `case (_ {})`, `case [_ {}]`, `case {1: _ {}}`,
+  `case _ {1}`, and `case _ {'x': 1}` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, mapping
+  patterns, guards, capture aliases, and OR-pattern diagnostics remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 
