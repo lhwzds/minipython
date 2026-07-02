@@ -25920,6 +25920,38 @@ show('closed', lambda: io.BytesIO.__exit__(bio, None, None, None))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_iter_wrapper_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO __iter__ wrapper descriptor subset",
+        name: "io-bytesio-iter-wrapper-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'ab\ncd')
+descriptor = io.BytesIO.__iter__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: (io.BytesIO.__iter__(bio) is bio, bio.tell()))
+show('next-after-iter', lambda: next(bio))
+show('wrong-receiver', lambda: io.BytesIO.__iter__(object()))
+show('missing-receiver', lambda: io.BytesIO.__iter__())
+bio = io.BytesIO(b'ab\ncd')
+show('extra', lambda: io.BytesIO.__iter__(bio, 1))
+bio = io.BytesIO(b'ab\ncd')
+show('keyword-missing-receiver', lambda: io.BytesIO.__iter__(bio=bio))
+bio = io.BytesIO(b'ab\ncd')
+show('receiver-keyword', lambda: io.BytesIO.__iter__(bio, x=1))
+bio = io.BytesIO(b'ab\ncd')
+bio.close()
+show('closed', lambda: io.BytesIO.__iter__(bio).__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",

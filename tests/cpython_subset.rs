@@ -24273,6 +24273,47 @@ show('closed', lambda: io.BytesIO.__exit__(bio, None, None, None))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_iter_wrapper_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'ab\ncd')
+descriptor = io.BytesIO.__iter__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: (io.BytesIO.__iter__(bio) is bio, bio.tell()))
+show('next-after-iter', lambda: next(bio))
+show('wrong-receiver', lambda: io.BytesIO.__iter__(object()))
+show('missing-receiver', lambda: io.BytesIO.__iter__())
+bio = io.BytesIO(b'ab\ncd')
+show('extra', lambda: io.BytesIO.__iter__(bio, 1))
+bio = io.BytesIO(b'ab\ncd')
+show('keyword-missing-receiver', lambda: io.BytesIO.__iter__(bio=bio))
+bio = io.BytesIO(b'ab\ncd')
+show('receiver-keyword', lambda: io.BytesIO.__iter__(bio, x=1))
+bio = io.BytesIO(b'ab\ncd')
+bio.close()
+show('closed', lambda: io.BytesIO.__iter__(bio).__class__.__name__)"#,
+        &[
+            "descriptor wrapper_descriptor True",
+            "call ok (True, 0) tuple",
+            "next-after-iter ok b'ab\\n' bytes",
+            "wrong-receiver TypeError descriptor '__iter__' requires a '_io.BytesIO' object but received a 'object'",
+            "missing-receiver TypeError descriptor '__iter__' of '_io.BytesIO' object needs an argument",
+            "extra TypeError expected 0 arguments, got 1",
+            "keyword-missing-receiver TypeError descriptor '__iter__' of '_io.BytesIO' object needs an argument",
+            "receiver-keyword TypeError wrapper __iter__() takes no keyword arguments",
+            "closed ok 'BytesIO' str",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

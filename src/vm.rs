@@ -21268,13 +21268,27 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("__iter__", &keywords)?;
-        let [receiver @ Value::BytesIO(_)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__iter__' of '_io.BytesIO' object needs an argument"
+                    .to_string(),
+            );
+        };
+        let Value::BytesIO(_) = receiver else {
             return Err(format!(
-                "TypeError: expected 0 arguments, got {}",
-                method_arg_count(&args)
+                "TypeError: descriptor '__iter__' requires a '_io.BytesIO' object but received a '{}'",
+                type_name(receiver)
             ));
         };
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __iter__() takes no keyword arguments".to_string());
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
         Ok(receiver.clone())
     }
 
@@ -61655,6 +61669,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "writelines"
                         | "__enter__"
                         | "__exit__"
+                        | "__iter__"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65420,6 +65435,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__hash__"
         ),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
+        "io" => matches!(method, "BytesIO.__iter__"),
         "super" => is_super_wrapper_descriptor_name(method),
         _ => false,
     }
