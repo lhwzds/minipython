@@ -42789,6 +42789,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-star-attribute-target-message",
+            source: "match [1, 2]:\n    case [*rest.attr]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-star-call-target-message",
+            source: "match [1]:\n    case [*target()]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-star-subscript-target-message",
+            source: "match [1]:\n    case [*target[0]]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-star-unary-target-message",
+            source: "match [1]:\n    case [*-x]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid star pattern public SyntaxError subset",
+            name: "syntax-match-sequence-star-literal-target-message",
+            source: "match [1]:\n    case [*1]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid sequence pattern public SyntaxError subset",
             name: "syntax-match-sequence-duplicate-star-message",
             source: "match [1, 2]:\n    case [*left, *right]:\n        pass\n",

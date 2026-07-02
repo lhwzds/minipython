@@ -5033,6 +5033,17 @@ Completed in the invalid star as-pattern targets SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid sequence star-target SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so invalid sequence star targets such
+  as `case [*+x]`, `case [*rest.attr]`, `case [*target()]`,
+  `case [*target[0]]`, `case [*-x]`, and `case [*1]` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid `*rest` and `*_` sequence
+  patterns are unchanged, and this does not add new match-pattern execution
+  forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid list as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
