@@ -42502,8 +42502,32 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-empty-tuple-target-message",
+            source: "match 1:\n    case 1 as (()):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-tuple-target-message",
+            source: "match 1:\n    case 1 as ((x, y)):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-tuple-guard-target-message",
+            source: "match 1:\n    case 1 as ((x, y)) if True:\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-tuple-subscript-target-message",
             source: "match 1:\n    case 1 as (target[0], y):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-tuple-attribute-target-message",
+            source: "match 1:\n    case 1 as ((target.attr, value)):\n        pass\n",
             expected_message: "cannot use tuple as pattern target",
         },
         ErrorMessageCase {

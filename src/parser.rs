@@ -2751,14 +2751,30 @@ impl Parser<'_> {
     }
 
     fn is_parenthesized_tuple_as_pattern_target(&self) -> bool {
-        if !matches!(self.peek(), Some(Token::LeftParen)) {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
             return false;
+        };
+
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start + 1), Some(Token::LeftParen))
+            && self.find_matching_paren(start + 1) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
         }
 
         let mut depth = 0usize;
         let mut has_top_level_comma = false;
 
-        for index in self.current..self.tokens.len() {
+        for index in start..=end {
             match self.tokens.get(index) {
                 Some(Token::LeftParen) => depth += 1,
                 Some(Token::RightParen) => {
@@ -2767,10 +2783,8 @@ impl Parser<'_> {
                     }
                     depth -= 1;
                     if depth == 0 {
-                        let is_empty_tuple = index == self.current + 1;
-                        let has_case_boundary =
-                            matches!(self.tokens.get(index + 1), Some(Token::Colon | Token::If));
-                        return has_case_boundary && (is_empty_tuple || has_top_level_comma);
+                        let is_empty_tuple = index == start + 1;
+                        return index == end && (is_empty_tuple || has_top_level_comma);
                     }
                 }
                 Some(Token::Comma) if depth == 1 => has_top_level_comma = true,

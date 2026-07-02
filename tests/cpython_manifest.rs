@@ -49081,7 +49081,11 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     for required_source in [
         "case 1 as (x, y)",
         "case 1 as ()",
+        "case 1 as (())",
+        "case 1 as ((x, y))",
+        "case 1 as ((x, y)) if True",
         "case 1 as (target[0], y)",
+        "case 1 as ((target.attr, value))",
         "case 1 as (target := other, value)",
         "case 1 as (target if cond else other, value)",
         "case 1 as ((target if cond else other), value)",

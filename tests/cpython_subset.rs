@@ -33585,7 +33585,23 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use tuple as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as (()):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((x, y)):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((x, y)) if True:\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as (target[0], y):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((target.attr, value)):\n        pass",
         "parse error: cannot use tuple as pattern target",
     );
     assert_error(

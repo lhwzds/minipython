@@ -5239,7 +5239,9 @@ Completed in the invalid tuple as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
   `cpython_invalid_match_pattern_subset` so tuple-shaped targets such as
-  `case 1 as (x, y)` and `case 1 as ()` now use CPython's public
+  `case 1 as (x, y)`, `case 1 as ()`, `case 1 as (())`,
+  `case 1 as ((x, y))`, `case 1 as ((x, y)) if True`, and
+  `case 1 as ((target.attr, value))` now use CPython's public
   `cannot use tuple as pattern target` message.
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
