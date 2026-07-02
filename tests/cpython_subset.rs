@@ -70827,6 +70827,58 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for non-subclassable
+// singleton type aliases.
+#[test]
+fn cpython_types_ellipsistype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'ellipsis' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.EllipsisType
+try:
+    class EllipsisTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-ellipsistype', error)
+else:
+    print('class-ellipsistype ok')
+
+for label, call in [
+    ('type-ellipsistype', lambda: type('EllipsisTypeClass', (types.EllipsisType,), {})),
+    ('type-new-ellipsistype', lambda: type.__new__(type, 'EllipsisTypeNew', (types.EllipsisType,), {})),
+    ('new-class-ellipsistype', lambda: types.new_class('EllipsisTypeNewClass', (types.EllipsisType,), {})),
+    ('class-runtime-ellipsis', lambda: type('RuntimeEllipsisClass', (Ellipsis.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-ellipsistype TypeError type 'ellipsis' is not an acceptable base type (\"type 'ellipsis' is not an acceptable base type\",) True",
+            "type-ellipsistype TypeError type 'ellipsis' is not an acceptable base type (\"type 'ellipsis' is not an acceptable base type\",) True",
+            "type-new-ellipsistype TypeError type 'ellipsis' is not an acceptable base type (\"type 'ellipsis' is not an acceptable base type\",) True",
+            "new-class-ellipsistype TypeError type 'ellipsis' is not an acceptable base type (\"type 'ellipsis' is not an acceptable base type\",) True",
+            "class-runtime-ellipsis TypeError type 'ellipsis' is not an acceptable base type (\"type 'ellipsis' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

@@ -39227,6 +39227,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_singleton_type_aliases_subset",
             "cpython_types_nonetype_unacceptable_base_type_subset",
             "cpython_types_notimplementedtype_unacceptable_base_type_subset",
+            "cpython_types_ellipsistype_unacceptable_base_type_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
             "cpython_types_generic_alias_union_type_subset",
@@ -39325,6 +39326,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_singleton_type_aliases_diff_subset",
         "cpython_types_nonetype_unacceptable_base_type_diff_subset",
         "cpython_types_notimplementedtype_unacceptable_base_type_diff_subset",
+        "cpython_types_ellipsistype_unacceptable_base_type_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
@@ -42199,6 +42201,105 @@ fn types_notimplementedtype_unacceptable_base_type_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types NotImplementedType unacceptable-base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_ellipsistype_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_ellipsistype_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_types_ellipsistype_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types EllipsisType unacceptable-base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types EllipsisType unacceptable-base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "base = types.EllipsisType",
+        "class EllipsisTypeClass(base):",
+        "type('EllipsisTypeClass', (types.EllipsisType,), {})",
+        "type.__new__(type, 'EllipsisTypeNew', (types.EllipsisType,), {})",
+        "types.new_class('EllipsisTypeNewClass', (types.EllipsisType,), {})",
+        "type('RuntimeEllipsisClass', (Ellipsis.__class__,), {})",
+        "class ModuleClass(types.ModuleType):",
+        "type 'ellipsis' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types EllipsisType unacceptable-base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-ellipsistype TypeError type 'ellipsis' is not an acceptable base type",
+        "\"type-ellipsistype TypeError type 'ellipsis' is not an acceptable base type",
+        "\"type-new-ellipsistype TypeError type 'ellipsis' is not an acceptable base type",
+        "\"new-class-ellipsistype TypeError type 'ellipsis' is not an acceptable base type",
+        "\"class-runtime-ellipsis TypeError type 'ellipsis' is not an acceptable base type",
+        "\"module-control ModuleClass True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types EllipsisType unacceptable-base subset output must pin `{required}`"
+        );
+    }
+
+    let class_base_body = VM_SOURCE
+        .split("fn is_class_base_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn base_needs_original_bases").next())
+        .expect("is_class_base_builtin_type implementation must be extractable");
+    assert!(
+        class_base_body.contains("\"ellipsis\""),
+        "ellipsis must be recognized as a class-base candidate before final validation"
+    );
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"ellipsis\""),
+        "ellipsis must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "is_class_base_builtin_type(&name)",
+        "type '{public_name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types EllipsisType unacceptable-base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.EllipsisType",
+            "type 'ellipsis' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "runtime Ellipsis",
+            "ModuleType",
+        ] {
+            assert!(
+                document.contains(required),
+                "types EllipsisType unacceptable-base docs must contain `{required}`"
             );
         }
     }

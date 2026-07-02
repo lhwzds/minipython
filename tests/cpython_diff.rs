@@ -15666,6 +15666,49 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_ellipsistype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.EllipsisType base subset",
+        name: "types-ellipsistype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'ellipsis' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.EllipsisType
+try:
+    class EllipsisTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-ellipsistype', error)
+else:
+    print('class-ellipsistype ok')
+
+for label, call in [
+    ('type-ellipsistype', lambda: type('EllipsisTypeClass', (types.EllipsisType,), {})),
+    ('type-new-ellipsistype', lambda: type.__new__(type, 'EllipsisTypeNew', (types.EllipsisType,), {})),
+    ('new-class-ellipsistype', lambda: types.new_class('EllipsisTypeNewClass', (types.EllipsisType,), {})),
+    ('class-runtime-ellipsis', lambda: type('RuntimeEllipsisClass', (Ellipsis.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",
