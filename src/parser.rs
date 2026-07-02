@@ -884,6 +884,29 @@ impl Parser<'_> {
                     | Token::Equal
                     | Token::EqualEqual
                     | Token::BangEqual
+                    | Token::At
+                    | Token::AtEqual
+                    | Token::ColonEqual
+                    | Token::PlusEqual
+                    | Token::MinusEqual
+                    | Token::Arrow
+                    | Token::StarEqual
+                    | Token::Slash
+                    | Token::SlashEqual
+                    | Token::DoubleSlash
+                    | Token::DoubleSlashEqual
+                    | Token::Percent
+                    | Token::PercentEqual
+                    | Token::DoubleStarEqual
+                    | Token::PipeEqual
+                    | Token::Caret
+                    | Token::CaretEqual
+                    | Token::Ampersand
+                    | Token::AmpersandEqual
+                    | Token::LeftShift
+                    | Token::LeftShiftEqual
+                    | Token::RightShift
+                    | Token::RightShiftEqual
                     | Token::Less
                     | Token::LessEqual
                     | Token::Greater

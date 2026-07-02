@@ -48813,6 +48813,41 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case @ x",
+        "case @= x",
+        "case := x",
+        "case += x",
+        "case -= x",
+        "case -> x",
+        "case *= x",
+        "case / x",
+        "case /= x",
+        "case // x",
+        "case //= x",
+        "case % x",
+        "case %= x",
+        "case **= x",
+        "case |= x",
+        "case ^ x",
+        "case ^= x",
+        "case & x",
+        "case &= x",
+        "case << x",
+        "case <<= x",
+        "case >> x",
+        "case >>= x",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid operator-start match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid operator-start match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case [*+x]",
         "case [*rest.attr]",
         "case [*target()]",
@@ -49362,6 +49397,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("comparison-start match patterns")
                 && document.contains("invalid syntax"),
             "invalid comparison-start match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("operator-start match patterns")
+                && document.contains("invalid syntax"),
+            "invalid operator-start match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
