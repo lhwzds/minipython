@@ -49097,7 +49097,12 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as (target).attr", "case 1 as (target.attr)"] {
+    for required_source in [
+        "case 1 as (target).attr",
+        "case 1 as (target.attr)",
+        "case 1 as ((target.attr))",
+        "case 1 as ((target).attr)",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid parenthesized attribute as-pattern target CPython diff must cover `{required_source}`"

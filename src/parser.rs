@@ -2653,31 +2653,69 @@ impl Parser<'_> {
     }
 
     fn is_parenthesized_attribute_as_pattern_target(&self) -> bool {
-        matches!(
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+
+        if matches!(
             (
-                self.peek(),
-                self.peek_next(),
-                self.tokens.get(self.current + 2),
-                self.tokens.get(self.current + 3),
-                self.tokens.get(self.current + 4),
-                self.tokens.get(self.current + 5),
+                self.tokens.get(outer_end + 1),
+                self.tokens.get(outer_end + 2),
+                self.tokens.get(outer_end + 3),
             ),
             (
-                Some(Token::LeftParen),
-                Some(Token::Identifier(_)),
-                Some(Token::RightParen),
                 Some(Token::Dot),
                 Some(Token::Identifier(_)),
-                Some(Token::Colon | Token::If),
-            ) | (
-                Some(Token::LeftParen),
-                Some(Token::Identifier(_)),
-                Some(Token::Dot),
-                Some(Token::Identifier(_)),
-                Some(Token::RightParen),
                 Some(Token::Colon | Token::If),
             )
-        )
+        ) {
+            return true;
+        }
+
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        matches!(
+            (
+                self.tokens.get(start),
+                self.tokens.get(start + 1),
+                self.tokens.get(start + 2),
+            ),
+            (
+                Some(Token::Identifier(_)),
+                Some(Token::Dot),
+                Some(Token::Identifier(_)),
+            )
+        ) && start + 3 == end
+            || matches!(
+                (
+                    self.tokens.get(start),
+                    self.tokens.get(start + 1),
+                    self.tokens.get(start + 2),
+                    self.tokens.get(start + 3),
+                    self.tokens.get(start + 4),
+                ),
+                (
+                    Some(Token::LeftParen),
+                    Some(Token::Identifier(_)),
+                    Some(Token::RightParen),
+                    Some(Token::Dot),
+                    Some(Token::Identifier(_)),
+                )
+            ) && start + 5 == end
     }
 
     fn is_parenthesized_tuple_as_pattern_target(&self) -> bool {
