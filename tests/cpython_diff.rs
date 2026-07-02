@@ -721,6 +721,19 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_module_version_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public module __version__ metadata subset",
+        name: "json-module-version-metadata",
+        source: r#"import json
+print(hasattr(json, '__version__'))
+print(json.__version__, type(json.__version__).__name__)
+print(object.__getattribute__(json, '__version__'))
+print('__version__' in dir(json), json.__dict__['__version__'])"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_module_identity_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __module__ identity metadata subset",

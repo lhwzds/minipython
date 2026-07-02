@@ -39471,6 +39471,18 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_module_version_metadata_subset() {
+    assert_output(
+        r#"import json
+print(hasattr(json, '__version__'))
+print(json.__version__, type(json.__version__).__name__)
+print(object.__getattribute__(json, '__version__'))
+print('__version__' in dir(json), json.__dict__['__version__'])"#,
+        &["True", "2.0.9 str", "2.0.9", "True 2.0.9"],
+    );
+}
+
+#[test]
 fn cpython_json_function_module_identity_metadata_subset() {
     assert_output(
         r#"import json

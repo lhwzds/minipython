@@ -9398,6 +9398,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json",
         &[
             "cpython_json_module_package_metadata_subset",
+            "cpython_json_module_version_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_assignment_metadata_subset",
             "cpython_json_function_annotate_metadata_subset",
@@ -9556,6 +9557,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_diff_subset",
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
+        "cpython_json_module_version_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
         "cpython_json_function_type_params_assignment_metadata_diff_subset",
         "cpython_json_function_annotate_metadata_diff_subset",
@@ -9708,6 +9710,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_package_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_module_package_metadata_subset",
+    );
+    let json_version_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_module_version_metadata_diff_subset",
+    );
+    let json_version_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_module_version_metadata_subset",
     );
     let json_function_module_identity_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10253,6 +10263,26 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_package_subset_body.contains(required),
             "json module package metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "hasattr(json, '__version__')",
+        "json.__version__",
+        "type(json.__version__).__name__",
+        "object.__getattribute__(json, '__version__')",
+        "'__version__' in dir(json)",
+        "json.__dict__['__version__']",
+    ] {
+        assert!(
+            json_version_diff_body.contains(required)
+                && json_version_subset_body.contains(required),
+            "json module version metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"True\"", "\"2.0.9 str\"", "\"True 2.0.9\""] {
+        assert!(
+            json_version_subset_body.contains(required),
+            "json module version metadata subset output must pin `{required}`"
         );
     }
     for required in [
@@ -13076,6 +13106,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json stdlib module registry must set CPython-compatible __package__ metadata"
     );
     assert!(
+        STDLIB_SOURCE.contains("(\"__version__\", Value::String(\"2.0.9\".to_string()))"),
+        "json stdlib module registry must set CPython-compatible __version__ metadata"
+    );
+    assert!(
         VM_SOURCE.contains("static JSON_BUILTIN_MODULE: RefCell<Option<Value>>")
             && VM_SOURCE
                 .contains("static JSON_BUILTIN_MODULE_OVERRIDES: RefCell<HashMap<String, Value>>")
@@ -13432,6 +13466,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         for required in [
             "cpython_json_module_package_metadata_subset",
             "cpython_json_module_package_metadata_diff_subset",
+            "cpython_json_module_version_metadata_subset",
+            "cpython_json_module_version_metadata_diff_subset",
             "cpython_json_function_module_identity_metadata_subset",
             "cpython_json_function_module_identity_metadata_diff_subset",
             "cpython_json_function_name_qualname_identity_metadata_subset",
@@ -13566,6 +13602,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_builtins_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
+            "json module `__version__` metadata",
+            "`json.__version__`",
             "`json.loads.__module__`",
             "`json.dumps.__module__`",
             "json public function `__module__` identity",
@@ -14192,7 +14230,7 @@ fn json_hook_boundaries_stay_sandbox_classified() {
 }
 
 #[test]
-fn json_stdlib_registry_stays_loads_dumps_only() {
+fn json_stdlib_registry_stays_metadata_loads_dumps_only() {
     let json_start = STDLIB_SOURCE
         .find("\"json\" => Ok(module_value(")
         .expect("stdlib registry must expose a json module arm");
@@ -14205,6 +14243,7 @@ fn json_stdlib_registry_stays_loads_dumps_only() {
     for required in [
         "\"json\"",
         "(\"__package__\", Value::String(\"json\".to_string()))",
+        "(\"__version__\", Value::String(\"2.0.9\".to_string()))",
         "(\"loads\", Value::Builtin(\"json.loads\".to_string()))",
         "(\"dumps\", Value::Builtin(\"json.dumps\".to_string()))",
     ] {
@@ -14235,9 +14274,10 @@ fn json_stdlib_registry_stays_loads_dumps_only() {
             && LANGUAGE_TESTS.contains("JSONDecoder")
             && LANGUAGE_TESTS.contains("JSONEncoder")
             && LANGUAGE_TESTS.contains("__all__")
+            && LANGUAGE_TESTS.contains("__version__")
             && LANGUAGE_TESTS.contains("dir(json)")
             && LANGUAGE_TESTS.contains("'load', 'dump'"),
-        "language tests must keep json file APIs, encoder/decoder classes, and module export metadata unavailable at runtime"
+        "language tests must keep json file APIs, encoder/decoder classes, and unsupported module export metadata unavailable while exposing supported metadata at runtime"
     );
 }
 

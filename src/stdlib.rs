@@ -692,6 +692,7 @@ pub(crate) fn create_module(
             "json",
             vec![
                 ("__package__", Value::String("json".to_string())),
+                ("__version__", Value::String("2.0.9".to_string())),
                 ("loads", Value::Builtin("json.loads".to_string())),
                 ("dumps", Value::Builtin("json.dumps".to_string())),
             ],
