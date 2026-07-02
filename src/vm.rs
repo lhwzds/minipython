@@ -38996,7 +38996,13 @@ fn is_class_base_builtin_type(name: &str) -> bool {
     is_class_like_builtin(name)
         || matches!(
             name,
-            "code" | "coroutine" | "frame" | "function" | "generator" | "traceback"
+            "async_generator"
+                | "code"
+                | "coroutine"
+                | "frame"
+                | "function"
+                | "generator"
+                | "traceback"
         )
 }
 
@@ -39139,6 +39145,7 @@ fn is_final_builtin_type(name: &str) -> bool {
     matches!(
         name,
         "bool"
+            | "async_generator"
             | "CellType"
             | "code"
             | "coroutine"

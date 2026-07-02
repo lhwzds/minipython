@@ -18481,6 +18481,54 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_asyncgeneratortype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.AsyncGeneratorType base subset",
+        name: "types-asyncgeneratortype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'async_generator' is not an acceptable base type"
+
+async def agen():
+    yield 1
+
+async_generator = agen()
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.AsyncGeneratorType
+try:
+    class AsyncGeneratorClass(base):
+        pass
+except Exception as error:
+    print_error('class-asyncgeneratortype', error)
+else:
+    print('class-asyncgeneratortype ok')
+
+for label, call in [
+    ('type-asyncgeneratortype', lambda: type('AsyncGeneratorTypeClass', (types.AsyncGeneratorType,), {})),
+    ('type-new-asyncgeneratortype', lambda: type.__new__(type, 'AsyncGeneratorTypeNew', (types.AsyncGeneratorType,), {})),
+    ('new-class-asyncgeneratortype', lambda: types.new_class('AsyncGeneratorTypeNewClass', (types.AsyncGeneratorType,), {})),
+    ('class-async-generator-runtime', lambda: type('RuntimeAsyncGeneratorClass', (async_generator.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",
