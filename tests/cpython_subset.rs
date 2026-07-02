@@ -27831,6 +27831,69 @@ for label, call in [
     );
 }
 
+// Adapted from CPython's public class-construction behavior. MiniPython rejects
+// `slice` as a base type across direct class statements and public class
+// construction helpers while keeping ordinary supported builtin bases intact.
+#[test]
+fn cpython_slice_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'slice' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+try:
+    class SliceClass(slice):
+        pass
+except Exception as error:
+    print_error('class-slice', error)
+else:
+    print('class-slice ok')
+
+base = slice
+try:
+    class VariableSlice(base):
+        pass
+except Exception as error:
+    print_error('variable-slice', error)
+else:
+    print('variable-slice ok')
+
+for label, call in [
+    ('type-slice', lambda: type('SliceType', (slice,), {})),
+    ('type-new-slice', lambda: type.__new__(type, 'SliceNew', (slice,), {})),
+    ('new-class-slice', lambda: types.new_class('SliceNewClass', (slice,), {})),
+]:
+    show(label, call)
+
+class ListClass(list):
+    pass
+print('class-list', ListClass.__name__, ListClass.__bases__[0] is list, isinstance(ListClass(), list))
+TypeList = type('TypeList', (list,), {})
+print('type-list', TypeList.__name__, TypeList.__bases__[0] is list, isinstance(TypeList(), list))"#,
+        &[
+            "class-slice TypeError type 'slice' is not an acceptable base type (\"type 'slice' is not an acceptable base type\",) True",
+            "variable-slice TypeError type 'slice' is not an acceptable base type (\"type 'slice' is not an acceptable base type\",) True",
+            "type-slice TypeError type 'slice' is not an acceptable base type (\"type 'slice' is not an acceptable base type\",) True",
+            "type-new-slice TypeError type 'slice' is not an acceptable base type (\"type 'slice' is not an acceptable base type\",) True",
+            "new-class-slice TypeError type 'slice' is not an acceptable base type (\"type 'slice' is not an acceptable base type\",) True",
+            "class-list ListClass True True",
+            "type-list TypeList True True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Mirrors CPython's public `slice` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]

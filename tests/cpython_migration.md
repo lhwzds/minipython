@@ -82,9 +82,8 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_range_unacceptable_base_type_diff_subset` for CPython's
   `type 'range' is not an acceptable base type` rejection through class
   statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
-  while keeping supported `list` subclass creation working and without adding
-  the adjacent `slice` base-type rejection or a broader non-subclassable
-  builtin matrix.
+  while keeping supported `list` subclass creation working and without adding a
+  broader non-subclassable builtin matrix.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
@@ -245,7 +244,13 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_slice_new_direct_allocation_subset` and
   `cpython_slice_new_direct_allocation_diff_subset` for `slice.__new__` direct allocation,
   type and instance `__new__` visibility, slice constructor arity reuse,
-  keyword rejection, and exact slice subtype error classification without adding slice subclassing or class-base validation parity.
+  keyword rejection, and exact slice subtype error classification without adding successful slice subclass allocation.
+- Added `cpython_slice_unacceptable_base_type_subset` and
+  `cpython_slice_unacceptable_base_type_diff_subset` for CPython's
+  `type 'slice' is not an acceptable base type` rejection through class
+  statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
+  while keeping supported `list` subclass creation working and without adding a
+  broader non-subclassable builtin matrix.
 - Added `cpython_complex_public_attributes_subset` and
   `cpython_complex_public_attributes_diff_subset` for `complex.real` and
   `complex.imag` as readonly public float attributes across zero, finite, and

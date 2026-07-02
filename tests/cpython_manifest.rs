@@ -2596,7 +2596,7 @@ fn range_unacceptable_base_type_docs_cover_core_runtime() {
             "`type(...)`",
             "`type.__new__(...)`",
             "`types.new_class(...)`",
-            "adjacent `slice` base-type rejection",
+            "broader non-subclassable builtin matrix",
         ] {
             assert!(
                 document.contains(required),
@@ -34439,11 +34439,98 @@ fn slice_new_direct_allocation_docs_cover_core_runtime() {
             "type and instance `__new__` visibility",
             "slice constructor arity reuse",
             "keyword rejection",
-            "without adding slice subclassing or class-base validation parity",
+            "without adding successful slice subclass allocation",
         ] {
             assert!(
                 document.contains(required),
                 "slice.__new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn slice_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_slice_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_slice_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "slice unacceptable base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "slice unacceptable base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class SliceClass(slice):",
+        "base = slice",
+        "class VariableSlice(base):",
+        "type('SliceType', (slice,), {})",
+        "type.__new__(type, 'SliceNew', (slice,), {})",
+        "types.new_class('SliceNewClass', (slice,), {})",
+        "class ListClass(list):",
+        "type 'slice' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "slice unacceptable base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-slice TypeError type 'slice' is not an acceptable base type",
+        "\"variable-slice TypeError type 'slice' is not an acceptable base type",
+        "\"type-slice TypeError type 'slice' is not an acceptable base type",
+        "\"type-new-slice TypeError type 'slice' is not an acceptable base type",
+        "\"new-class-slice TypeError type 'slice' is not an acceptable base type",
+        "\"class-list ListClass True True\"",
+        "\"type-list TypeList True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "slice unacceptable base subset output must pin `{required}`"
+        );
+    }
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"slice\""),
+        "slice must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "type '{name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "slice unacceptable base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "type 'slice' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "broader non-subclassable builtin matrix",
+        ] {
+            assert!(
+                document.contains(required),
+                "slice unacceptable base docs must contain `{required}`"
             );
         }
     }

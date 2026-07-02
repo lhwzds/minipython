@@ -70,9 +70,8 @@ Recent runtime migration notes:
   `cpython_range_unacceptable_base_type_diff_subset`, now pins CPython's
   `type 'range' is not an acceptable base type` rejection for class statements,
   `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
-  while preserving supported `list` subclass creation and without adding the
-  adjacent `slice` base-type rejection or a broader non-subclassable builtin
-  matrix.
+  while preserving supported `list` subclass creation and without adding a
+  broader non-subclassable builtin matrix.
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
@@ -235,7 +234,13 @@ Recent runtime migration notes:
 - `cpython_slice_new_direct_allocation_subset`, backed by
   `cpython_slice_new_direct_allocation_diff_subset`, now pins `slice.__new__` direct allocation,
   type and instance `__new__` visibility, slice constructor arity reuse,
-  keyword rejection, and exact slice subtype error classification without adding slice subclassing or class-base validation parity.
+  keyword rejection, and exact slice subtype error classification without adding successful slice subclass allocation.
+- `cpython_slice_unacceptable_base_type_subset`, backed by
+  `cpython_slice_unacceptable_base_type_diff_subset`, now pins CPython's
+  `type 'slice' is not an acceptable base type` rejection for class
+  statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
+  while preserving supported `list` subclass creation and without adding a
+  broader non-subclassable builtin matrix.
 - `cpython_super_attribute_assignment_errors_subset`, backed by
   `cpython_super_attribute_assignment_errors_diff_subset`, now pins super object attribute assignment/deletion errors
   for readonly public data attributes (`__thisclass__`, `__self__`, and
