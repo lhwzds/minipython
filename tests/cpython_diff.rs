@@ -25392,6 +25392,30 @@ show('keyword-missing-receiver', lambda: io.BytesIO.writable(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_seekable_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO seekable method descriptor subset",
+        name: "io-bytesio-seekable-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.seekable
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.seekable(bio))
+show('wrong-receiver', lambda: io.BytesIO.seekable(object()))
+show('missing-receiver', lambda: io.BytesIO.seekable())
+show('extra', lambda: io.BytesIO.seekable(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.seekable(bio=bio))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",
