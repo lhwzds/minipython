@@ -25368,6 +25368,30 @@ show('keyword-missing-receiver', lambda: io.BytesIO.readable(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_writable_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO writable method descriptor subset",
+        name: "io-bytesio-writable-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.writable
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.writable(bio))
+show('wrong-receiver', lambda: io.BytesIO.writable(object()))
+show('missing-receiver', lambda: io.BytesIO.writable())
+show('extra', lambda: io.BytesIO.writable(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.writable(bio=bio))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",

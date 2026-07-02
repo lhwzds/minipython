@@ -61523,7 +61523,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "io.BytesIO"
-                && matches!(name, "getvalue" | "tell" | "readable") =>
+                && matches!(name, "getvalue" | "tell" | "readable" | "writable") =>
         {
             Ok(Value::Builtin(format!("io.BytesIO.{name}")))
         }
@@ -65122,6 +65122,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
             "BytesIO.getvalue"
                 | "BytesIO.tell"
                 | "BytesIO.readable"
+                | "BytesIO.writable"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ) =>
@@ -65194,6 +65195,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
             "BytesIO.getvalue"
                 | "BytesIO.tell"
                 | "BytesIO.readable"
+                | "BytesIO.writable"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ),

@@ -28570,6 +28570,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
             "cpython_io_bytesio_readable_method_descriptor_subset",
+            "cpython_io_bytesio_writable_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28612,6 +28613,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_readable_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO readable method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_writable_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO writable method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -28897,11 +28903,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\")",
+        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\" | \"writable\")",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor 'getvalue' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.getvalue() needs an argument",
-        "\"BytesIO.readable\"",
+        "\"BytesIO.writable\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -28962,11 +28968,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\")",
+        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\" | \"writable\")",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor 'tell' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.tell() needs an argument",
-        "\"BytesIO.readable\"",
+        "\"BytesIO.writable\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29027,11 +29033,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\")",
+        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\" | \"writable\")",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.{method}() needs an argument",
-        "\"BytesIO.readable\"",
+        "\"BytesIO.writable\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29048,6 +29054,71 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO readable method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
+    let writable_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_writable_method_descriptor_diff_subset",
+    );
+    let writable_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_writable_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.writable",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.writable(bio)",
+        "io.BytesIO.writable(object())",
+        "io.BytesIO.writable()",
+        "io.BytesIO.writable(bio, 1)",
+        "io.BytesIO.writable(bio=bio)",
+    ] {
+        assert!(
+            writable_descriptor_diff.contains(required),
+            "io.BytesIO writable method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            writable_descriptor_subset.contains(required),
+            "io.BytesIO writable method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call ok True bool",
+        "descriptor 'writable' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.writable() needs an argument",
+        "BytesIO.writable() takes no arguments (1 given)",
+    ] {
+        assert!(
+            writable_descriptor_subset.contains(required),
+            "io.BytesIO writable method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"io.BytesIO\"\n                && matches!(name, \"getvalue\" | \"tell\" | \"readable\" | \"writable\")",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.{method}() needs an argument",
+        "\"BytesIO.writable\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO writable method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_writable_method_descriptor_subset",
+            "cpython_io_bytesio_writable_method_descriptor_diff_subset",
+            "`io.BytesIO.writable` method descriptor",
+            "bool-returning writable descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO writable method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -29180,7 +29251,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "function_name == \"io.BytesIO\"",
         "matches!(name, \"__getstate__\" | \"__setstate__\")",
-        "\"BytesIO.readable\"",
+        "\"BytesIO.writable\"",
         "descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.__setstate__() needs an argument",
     ] {
@@ -29358,6 +29429,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_readable_method_descriptor_subset",
             "cpython_io_bytesio_readable_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_writable_method_descriptor_subset",
+            "cpython_io_bytesio_writable_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",
