@@ -1068,6 +1068,7 @@ Recent runtime migration notes:
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_io_module_package_metadata_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
+  `cpython_io_bytesio_getvalue_method_descriptor_diff_subset`,
   `cpython_io_bytesio_getstate_diff_subset`,
   `cpython_io_bytesio_setstate_diff_subset`,
   `cpython_io_bytesio_state_method_descriptor_diff_subset`,
@@ -4345,7 +4346,11 @@ without adding general custom encoder/decoder class support.
   position, and attribute merge behavior for open streams, bytes-like state
   inputs, materialized empty attrs, active-export `BufferError`, closed-stream
   `ValueError`, and exact state-shape, item-type, arity, and keyword
-  diagnostics. `cpython_io_bytesio_state_method_descriptor_diff_subset` /
+  diagnostics. `cpython_io_bytesio_getvalue_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_getvalue_method_descriptor_subset` covers the
+  `io.BytesIO.getvalue` method descriptor, including descriptor type visibility,
+  unbound descriptor calls, wrong-receiver descriptor `TypeError`, and
+  missing-receiver keyword behavior. `cpython_io_bytesio_state_method_descriptor_diff_subset` /
   `cpython_io_bytesio_state_method_descriptor_subset` covers the
   `io.BytesIO.__getstate__` / `io.BytesIO.__setstate__` state method descriptors,
   including descriptor type visibility, unbound calls, wrong-receiver descriptor `TypeError`,

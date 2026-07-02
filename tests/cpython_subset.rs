@@ -23475,6 +23475,36 @@ show('setstate-keyword', lambda: io.BytesIO.__setstate__(bio=bio, state=(b'a', 0
     );
 }
 
+#[test]
+fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.getvalue
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.getvalue(bio))
+show('wrong-receiver', lambda: io.BytesIO.getvalue(object()))
+show('missing-receiver', lambda: io.BytesIO.getvalue())
+show('extra', lambda: io.BytesIO.getvalue(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.getvalue(bio=bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call ok b'abc' bytes",
+            "wrong-receiver TypeError descriptor 'getvalue' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.getvalue() needs an argument",
+            "extra TypeError BytesIO.getvalue() takes no arguments (1 given)",
+            "keyword-missing-receiver TypeError unbound method BytesIO.getvalue() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

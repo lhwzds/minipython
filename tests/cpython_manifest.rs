@@ -28567,6 +28567,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
+            "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28594,6 +28595,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_public_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for public BytesIO behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_getvalue_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO getvalue method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -28839,6 +28845,71 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let getvalue_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_getvalue_method_descriptor_diff_subset",
+    );
+    let getvalue_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_getvalue_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.getvalue",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.getvalue(bio)",
+        "io.BytesIO.getvalue(object())",
+        "io.BytesIO.getvalue()",
+        "io.BytesIO.getvalue(bio, 1)",
+        "io.BytesIO.getvalue(bio=bio)",
+    ] {
+        assert!(
+            getvalue_descriptor_diff.contains(required),
+            "io.BytesIO getvalue method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            getvalue_descriptor_subset.contains(required),
+            "io.BytesIO getvalue method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call ok b'abc' bytes",
+        "descriptor 'getvalue' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.getvalue() needs an argument",
+        "BytesIO.getvalue() takes no arguments (1 given)",
+    ] {
+        assert!(
+            getvalue_descriptor_subset.contains(required),
+            "io.BytesIO getvalue method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"io.BytesIO\" && name == \"getvalue\"",
+        "Value::Builtin(\"io.BytesIO.getvalue\".to_string())",
+        "descriptor 'getvalue' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.getvalue() needs an argument",
+        "\"BytesIO.getvalue\" | \"BytesIO.__getstate__\" | \"BytesIO.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO getvalue method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_getvalue_method_descriptor_subset",
+            "cpython_io_bytesio_getvalue_method_descriptor_diff_subset",
+            "`io.BytesIO.getvalue` method descriptor",
+            "unbound descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO getvalue method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let setstate_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_setstate_diff_subset");
     let setstate_subset =
@@ -28967,7 +29038,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "function_name == \"io.BytesIO\"",
         "matches!(name, \"__getstate__\" | \"__setstate__\")",
-        "matches!(method, \"BytesIO.__getstate__\" | \"BytesIO.__setstate__\")",
+        "\"BytesIO.getvalue\" | \"BytesIO.__getstate__\" | \"BytesIO.__setstate__\"",
         "descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.__setstate__() needs an argument",
     ] {
@@ -29133,6 +29204,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_public_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_getvalue_method_descriptor_subset",
+            "cpython_io_bytesio_getvalue_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",
