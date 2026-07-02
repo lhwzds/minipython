@@ -23686,6 +23686,36 @@ show('keyword-missing-receiver', lambda: io.BytesIO.flush(bio=bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_fileno_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.fileno
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.fileno(bio))
+show('wrong-receiver', lambda: io.BytesIO.fileno(object()))
+show('missing-receiver', lambda: io.BytesIO.fileno())
+show('extra', lambda: io.BytesIO.fileno(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.fileno(bio=bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call UnsupportedOperation fileno",
+            "wrong-receiver TypeError descriptor 'fileno' for '_io._IOBase' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method _IOBase.fileno() needs an argument",
+            "extra TypeError fileno() takes no arguments",
+            "keyword-missing-receiver TypeError unbound method _IOBase.fileno() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

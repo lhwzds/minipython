@@ -21102,6 +21102,24 @@ impl Vm {
         keywords: Vec<(String, Value)>,
         method: &str,
     ) -> Result<Value, String> {
+        if method == "fileno" {
+            let Some((receiver, rest)) = args.split_first() else {
+                return Err(
+                    "TypeError: unbound method _IOBase.fileno() needs an argument".to_string(),
+                );
+            };
+            let Value::BytesIO(_) = receiver else {
+                return Err(format!(
+                    "TypeError: descriptor 'fileno' for '_io._IOBase' objects doesn't apply to a '{}' object",
+                    type_name(receiver)
+                ));
+            };
+            reject_bytesio_method_keywords(method, &keywords)?;
+            if !rest.is_empty() {
+                return Err("TypeError: fileno() takes no arguments".to_string());
+            }
+            return Err(format!("io.UnsupportedOperation: {method}"));
+        }
         reject_bytesio_method_keywords(method, &keywords)?;
         let [Value::BytesIO(_)] = args.as_slice() else {
             return Err(format!(
@@ -61538,6 +61556,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "seekable"
                         | "isatty"
                         | "flush"
+                        | "fileno"
                 ) =>
         {
             Ok(Value::Builtin(format!("io.BytesIO.{name}")))
@@ -65141,6 +65160,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.seekable"
                 | "BytesIO.isatty"
                 | "BytesIO.flush"
+                | "BytesIO.fileno"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ) =>
@@ -65217,6 +65237,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.seekable"
                 | "BytesIO.isatty"
                 | "BytesIO.flush"
+                | "BytesIO.fileno"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ),
