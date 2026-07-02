@@ -42369,6 +42369,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram arrow function parameter rejection",
+            name: "def-arrow-parameter-name-message",
+            source: "def f(a -> int):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram arrow function parameter rejection",
+            name: "def-arrow-vararg-parameter-name-message",
+            source: "def f(*a -> int):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram arrow function parameter rejection",
+            name: "def-arrow-kwarg-parameter-name-message",
+            source: "def f(**a -> int):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram arrow lambda parameter rejection",
+            name: "lambda-arrow-parameter-name-message",
+            source: "lambda a -> int: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram arrow lambda parameter rejection",
+            name: "lambda-arrow-vararg-parameter-name-message",
+            source: "lambda *a -> int: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram arrow lambda parameter rejection",
+            name: "lambda-arrow-kwarg-parameter-name-message",
+            source: "lambda **a -> int: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

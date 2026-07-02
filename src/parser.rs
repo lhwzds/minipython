@@ -6461,6 +6461,7 @@ impl Parser<'_> {
                     | Token::Star
                     | Token::DoubleStar
                     | Token::At
+                    | Token::Arrow
                     | Token::Slash
                     | Token::DoubleSlash
                     | Token::Percent
