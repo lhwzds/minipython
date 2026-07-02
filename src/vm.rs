@@ -21220,13 +21220,24 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("__getstate__", &keywords)?;
-        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method BytesIO.__getstate__() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: BytesIO.__getstate__() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        reject_bytesio_method_keywords("__getstate__", &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: BytesIO.__getstate__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_open(bytes_io)?;
         let state = bytes_io.borrow();
         let attrs = state.attrs.borrow();
@@ -21253,11 +21264,22 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method BytesIO.__setstate__() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
+            return Err(format!(
+                "TypeError: descriptor '__setstate__' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
         reject_bytesio_method_keywords("__setstate__", &keywords)?;
-        let [Value::BytesIO(bytes_io), state] = args.as_slice() else {
+        let [state] = rest else {
             return Err(format!(
                 "TypeError: BytesIO.__setstate__() takes exactly one argument ({} given)",
-                method_arg_count(&args)
+                rest.len()
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
@@ -61472,6 +61494,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin("object.__getstate__".to_string()))
         }
         Value::Builtin(function_name)
+            if function_name == "io.BytesIO"
+                && matches!(name, "__getstate__" | "__setstate__") =>
+        {
+            Ok(Value::Builtin(format!("io.BytesIO.{name}")))
+        }
+        Value::Builtin(function_name)
             if function_name == "deque" && is_builtin_deque_type_method(name) =>
         {
             Ok(Value::Builtin(format!("deque.{name}")))
@@ -65055,6 +65083,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "Counter" => is_builtin_counter_type_method(method),
         "ChainMap" => is_builtin_chain_map_type_method(method),
         "deque" => is_builtin_deque_type_method(method),
+        "io" if matches!(method, "BytesIO.__getstate__" | "BytesIO.__setstate__") => true,
         "complex" => is_builtin_complex_type_method(method),
         "int" | "bool" => is_builtin_int_type_method(method) && method != "from_bytes",
         "list" => is_builtin_list_type_method(method),
@@ -65116,6 +65145,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
     match type_name {
         "object" => matches!(method, "__getstate__"),
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
+        "io" => matches!(method, "BytesIO.__getstate__" | "BytesIO.__setstate__"),
         "int" | "bool" => {
             is_builtin_int_type_method(method) && !matches!(method, "__new__" | "from_bytes")
         }

@@ -28569,6 +28569,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
+            "cpython_io_bytesio_state_method_descriptor_subset",
             "cpython_memoryview_bytesio_readinto_subset",
         ],
         &[
@@ -28603,6 +28604,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_setstate_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __setstate__ behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_state_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO state method descriptors"
     );
     assert!(
         row.diff_evidence
@@ -28911,6 +28917,79 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let state_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_state_method_descriptor_diff_subset",
+    );
+    let state_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_state_method_descriptor_subset",
+    );
+    for required in [
+        "getattr(io.BytesIO, name)",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.__getstate__(bio)",
+        "io.BytesIO.__setstate__(bio, (b'xy', 1, None))",
+        "io.BytesIO.__getstate__(object())",
+        "io.BytesIO.__setstate__(object(), (b'a', 0, None))",
+        "io.BytesIO.__getstate__()",
+        "io.BytesIO.__setstate__()",
+        "io.BytesIO.__getstate__(bio, 1)",
+        "io.BytesIO.__setstate__(bio, (b'a', 0, None), 1)",
+        "io.BytesIO.__getstate__(bio=bio)",
+        "io.BytesIO.__setstate__(bio=bio, state=(b'a', 0, None))",
+    ] {
+        assert!(
+            state_descriptor_diff.contains(required),
+            "io.BytesIO state method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            state_descriptor_subset.contains(required),
+            "io.BytesIO state method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "__getstate__ method_descriptor True",
+        "__setstate__ method_descriptor True",
+        "getstate-call ok (b'abc', 0, None) tuple",
+        "after-setstate b'xy' 1 (b'xy', 1, None)",
+        "descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply",
+        "descriptor '__setstate__' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.__getstate__() needs an argument",
+        "unbound method BytesIO.__setstate__() needs an argument",
+    ] {
+        assert!(
+            state_descriptor_subset.contains(required),
+            "io.BytesIO state method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"io.BytesIO\"",
+        "matches!(name, \"__getstate__\" | \"__setstate__\")",
+        "matches!(method, \"BytesIO.__getstate__\" | \"BytesIO.__setstate__\")",
+        "descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.__setstate__() needs an argument",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO state method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_state_method_descriptor_subset",
+            "cpython_io_bytesio_state_method_descriptor_diff_subset",
+            "state method descriptors",
+            "wrong-receiver descriptor `TypeError`",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO state method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let readinto_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_memoryview_bytesio_readinto_diff_subset",
@@ -29062,6 +29141,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_setstate_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_state_method_descriptor_subset",
+            "cpython_io_bytesio_state_method_descriptor_diff_subset",
         ),
         (
             "cpython_memoryview_bytesio_readinto_subset",

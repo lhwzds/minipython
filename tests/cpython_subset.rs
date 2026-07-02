@@ -23429,6 +23429,52 @@ show('keyword', lambda: io.BytesIO().__setstate__(state=(b'a', 0, None)))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_state_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+for name in ['__getstate__', '__setstate__']:
+    descriptor = getattr(io.BytesIO, name)
+    print(name, type(descriptor).__name__, callable(descriptor))
+show('getstate-call', lambda: io.BytesIO.__getstate__(bio))
+show('setstate-missing-state', lambda: io.BytesIO.__setstate__(bio))
+show('setstate-call', lambda: io.BytesIO.__setstate__(bio, (b'xy', 1, None)))
+print('after-setstate', bio.getvalue(), bio.tell(), bio.__getstate__())
+show('getstate-wrong-receiver', lambda: io.BytesIO.__getstate__(object()))
+show('setstate-wrong-receiver', lambda: io.BytesIO.__setstate__(object(), (b'a', 0, None)))
+show('getstate-missing', lambda: io.BytesIO.__getstate__())
+show('setstate-missing', lambda: io.BytesIO.__setstate__())
+show('getstate-extra', lambda: io.BytesIO.__getstate__(bio, 1))
+show('setstate-extra', lambda: io.BytesIO.__setstate__(bio, (b'a', 0, None), 1))
+show('getstate-keyword', lambda: io.BytesIO.__getstate__(bio=bio))
+show('setstate-keyword', lambda: io.BytesIO.__setstate__(bio=bio, state=(b'a', 0, None)))"#,
+        &[
+            "__getstate__ method_descriptor True",
+            "__setstate__ method_descriptor True",
+            "getstate-call ok (b'abc', 0, None) tuple",
+            "setstate-missing-state TypeError BytesIO.__setstate__() takes exactly one argument (0 given)",
+            "setstate-call ok None NoneType",
+            "after-setstate b'xy' 1 (b'xy', 1, None)",
+            "getstate-wrong-receiver TypeError descriptor '__getstate__' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "setstate-wrong-receiver TypeError descriptor '__setstate__' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "getstate-missing TypeError unbound method BytesIO.__getstate__() needs an argument",
+            "setstate-missing TypeError unbound method BytesIO.__setstate__() needs an argument",
+            "getstate-extra TypeError BytesIO.__getstate__() takes no arguments (1 given)",
+            "setstate-extra TypeError BytesIO.__setstate__() takes exactly one argument (2 given)",
+            "getstate-keyword TypeError unbound method BytesIO.__getstate__() needs an argument",
+            "setstate-keyword TypeError unbound method BytesIO.__setstate__() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

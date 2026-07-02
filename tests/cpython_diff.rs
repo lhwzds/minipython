@@ -25263,6 +25263,38 @@ show('keyword', lambda: io.BytesIO().__setstate__(state=(b'a', 0, None)))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_state_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO state method descriptor subset",
+        name: "io-bytesio-state-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+for name in ['__getstate__', '__setstate__']:
+    descriptor = getattr(io.BytesIO, name)
+    print(name, type(descriptor).__name__, callable(descriptor))
+show('getstate-call', lambda: io.BytesIO.__getstate__(bio))
+show('setstate-missing-state', lambda: io.BytesIO.__setstate__(bio))
+show('setstate-call', lambda: io.BytesIO.__setstate__(bio, (b'xy', 1, None)))
+print('after-setstate', bio.getvalue(), bio.tell(), bio.__getstate__())
+show('getstate-wrong-receiver', lambda: io.BytesIO.__getstate__(object()))
+show('setstate-wrong-receiver', lambda: io.BytesIO.__setstate__(object(), (b'a', 0, None)))
+show('getstate-missing', lambda: io.BytesIO.__getstate__())
+show('setstate-missing', lambda: io.BytesIO.__setstate__())
+show('getstate-extra', lambda: io.BytesIO.__getstate__(bio, 1))
+show('setstate-extra', lambda: io.BytesIO.__setstate__(bio, (b'a', 0, None), 1))
+show('getstate-keyword', lambda: io.BytesIO.__getstate__(bio=bio))
+show('setstate-keyword', lambda: io.BytesIO.__setstate__(bio=bio, state=(b'a', 0, None)))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",
