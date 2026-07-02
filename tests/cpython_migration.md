@@ -5437,6 +5437,15 @@ Completed in the invalid standalone double-star-pattern SyntaxError message pass
   `case {**rest}` are unchanged, and this does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid equal-start match-pattern SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so equal-start match patterns such as
+  `case =`, `case (=)`, and `case [=]` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid sequence-star capture target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset`,

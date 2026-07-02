@@ -48779,6 +48779,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case =", "case (=)", "case [=]"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid equal-start match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid equal-start match-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in [
         "case [*+x]",
         "case [*rest.attr]",
@@ -49314,6 +49325,13 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("standalone double-star patterns")
                 && document.contains("invalid syntax"),
             "invalid standalone double-star-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("equal-start match patterns") && document.contains("invalid syntax"),
+            "invalid equal-start match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 

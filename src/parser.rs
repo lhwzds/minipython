@@ -879,6 +879,7 @@ impl Parser<'_> {
                     | Token::Pipe
                     | Token::DoubleStar
                     | Token::Colon
+                    | Token::Equal
                     | Token::If
                     | Token::RightBrace
                     | Token::RightBracket
