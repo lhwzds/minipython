@@ -72785,6 +72785,32 @@ print('mro-names', types.CellType.__mro__[0].__name__, types.CellType.__mro__[1]
     );
 }
 
+// Adapted from CPython public `types.CellType` display metadata. This covers
+// type-object display without expanding to CPython object-layout internals.
+#[test]
+fn cpython_types_celltype_display_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('repr-type', repr(types.CellType))
+print('str-type', str(types.CellType))
+print('format-empty', format(types.CellType, ''))
+print('repr-mro0', repr(types.CellType.__mro__[0]))
+print('repr-base', repr(types.CellType.__base__))
+print('class-name', types.CellType.__class__.__name__)
+print('alias', types.CellType.__name__, types.CellType.__module__, types.CellType.__qualname__)"#,
+        &[
+            "repr-type <class 'cell'>",
+            "str-type <class 'cell'>",
+            "format-empty <class 'cell'>",
+            "repr-mro0 <class 'cell'>",
+            "repr-base <class 'object'>",
+            "class-name type",
+            "alias cell builtins cell",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` name metadata. This covers the
 // public cell type name and keeps the synthetic alias name out of type
 // dictionary and dir visibility.

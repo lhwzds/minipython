@@ -19375,6 +19375,23 @@ print('mro-names', types.CellType.__mro__[0].__name__, types.CellType.__mro__[1]
 }
 
 #[test]
+fn cpython_types_celltype_display_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType display metadata subset",
+        name: "types-celltype-display-metadata",
+        source: r#"import types
+
+print('repr-type', repr(types.CellType))
+print('str-type', str(types.CellType))
+print('format-empty', format(types.CellType, ''))
+print('repr-mro0', repr(types.CellType.__mro__[0]))
+print('repr-base', repr(types.CellType.__base__))
+print('class-name', types.CellType.__class__.__name__)
+print('alias', types.CellType.__name__, types.CellType.__module__, types.CellType.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_name_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __name__ metadata subset",

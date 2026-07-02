@@ -39311,6 +39311,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
+            "cpython_types_celltype_display_metadata_subset",
             "cpython_types_celltype_name_metadata_subset",
             "cpython_types_celltype_qualname_metadata_subset",
             "cpython_types_celltype_text_signature_metadata_subset",
@@ -39410,6 +39411,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
+        "cpython_types_celltype_display_metadata_diff_subset",
         "cpython_types_celltype_name_metadata_diff_subset",
         "cpython_types_celltype_qualname_metadata_diff_subset",
         "cpython_types_celltype_text_signature_metadata_diff_subset",
@@ -39807,6 +39809,83 @@ fn types_celltype_base_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_display_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_display_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_display_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType display CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType display runtime subset evidence must exist"
+    );
+
+    for required in [
+        "repr(types.CellType)",
+        "str(types.CellType)",
+        "format(types.CellType, '')",
+        "repr(types.CellType.__mro__[0])",
+        "repr(types.CellType.__base__)",
+        "types.CellType.__class__.__name__",
+        "types.CellType.__name__",
+        "types.CellType.__module__",
+        "types.CellType.__qualname__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType display diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"repr-type <class 'cell'>\"",
+        "\"str-type <class 'cell'>\"",
+        "\"format-empty <class 'cell'>\"",
+        "\"repr-mro0 <class 'cell'>\"",
+        "\"repr-base <class 'object'>\"",
+        "\"class-name type\"",
+        "\"alias cell builtins cell\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType display subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "| \"CellType\"",
+        "if name == \"CellType\"",
+        "return \"cell\";",
+        "write!(f, \"<class '{}'>\", builtin_type_public_name(name))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "types CellType display implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "repr(types.CellType)",
+            "format(types.CellType, '')",
+            "`<class 'cell'>`",
+            "`types.CellType.__mro__`",
+            "CPython object-layout internals",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType display docs must contain `{required}`"
             );
         }
     }

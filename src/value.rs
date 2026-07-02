@@ -2459,6 +2459,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "super"
             | "staticmethod"
             | "classmethod"
+            | "CellType"
             | "PyCapsule"
             | "classmethod_descriptor"
             | "DynamicClassAttribute"
@@ -2569,6 +2570,9 @@ fn builtin_type_public_name(name: &str) -> &str {
     }
     if name == "defaultdict" {
         return "collections.defaultdict";
+    }
+    if name == "CellType" {
+        return "cell";
     }
     name.strip_prefix("ast.").unwrap_or(name)
 }

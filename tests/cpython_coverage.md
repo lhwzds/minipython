@@ -808,6 +808,7 @@ Recent runtime migration notes:
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
+  `cpython_types_celltype_display_metadata_diff_subset`,
   `cpython_types_celltype_name_metadata_diff_subset`,
   `cpython_types_celltype_qualname_metadata_diff_subset`,
   `cpython_types_celltype_text_signature_metadata_diff_subset`,
@@ -4037,6 +4038,14 @@ without adding general custom encoder/decoder class support.
   broader CellType constructor behavior, CPython implementation fields such as
   `__basicsize__`, and a writable type dictionary outside this sandbox contract
   slice.
+- The bundled `types` module also includes
+  `cpython_types_celltype_display_metadata_subset`, backed by
+  `cpython_types_celltype_display_metadata_diff_subset`, covering CPython's
+  public `repr(types.CellType)`, `str(types.CellType)`,
+  `format(types.CellType, '')`, and `types.CellType.__mro__` display shape as
+  `<class 'cell'>`. The slice reuses the existing `object` display for
+  `types.CellType.__base__` and keeps CPython object-layout internals and a
+  writable type dictionary outside this sandbox contract slice.
 - The bundled `types` module also includes
   `cpython_types_celltype_name_metadata_subset`, backed by
   `cpython_types_celltype_name_metadata_diff_subset`, covering CPython's public
