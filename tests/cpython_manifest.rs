@@ -31035,6 +31035,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_unicode_error_attributes_subset",
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
+            "cpython_object_getstate_direct_subset",
             "cpython_bool_instance_doc_attribute_subset",
             "cpython_int_instance_doc_attribute_subset",
             "cpython_float_instance_doc_attribute_subset",
@@ -31121,6 +31122,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_unicode_error_attributes_diff_subset",
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
+        "cpython_object_getstate_direct_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",
         "cpython_float_instance_doc_attribute_diff_subset",
@@ -36965,6 +36967,80 @@ fn object_repr_str_direct_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_object_repr_str_direct_diff_subset"),
             "focused object repr/str evidence must be documented in coverage and CPython test manifest"
         );
+    }
+}
+
+#[test]
+fn object_getstate_direct_subset_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_object_getstate_direct_subset");
+    for required in [
+        "obj.__getstate__()",
+        "object.__getattribute__(obj, '__getstate__')()",
+        "object.__getstate__(obj)",
+        "object.__getstate__(1)",
+        "obj.__getstate__(1)",
+        "obj.__getstate__(x=1)",
+        "object.__getstate__()",
+        "object-instance-getstate ok None NoneType",
+        "object-getattribute-getstate ok None NoneType",
+        "object-type-getstate-int ok None NoneType",
+        "object.__getstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object getstate subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_object_getstate_direct_diff_subset");
+    for required in [
+        "CPython public object.__getstate__ descriptor subset",
+        "obj.__getstate__()",
+        "object.__getattribute__(obj, '__getstate__')()",
+        "object.__getstate__(obj)",
+        "object.__getstate__(1)",
+        "obj.__getstate__(1)",
+        "obj.__getstate__(x=1)",
+        "object.__getstate__()",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object getstate CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_object_getstate(",
+        "Value::Builtin(name) if name == \"object.__getstate__\"",
+        "function: Box::new(Value::Builtin(\"object.__getstate__\".to_string()))",
+        "if name == \"__getstate__\"",
+        "\"object\" => matches!(method, \"__getstate__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object getstate VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_getstate_direct_subset",
+            "cpython_object_getstate_direct_diff_subset",
+            "`obj.__getstate__()`",
+            "`object.__getattribute__(obj, '__getstate__')()`",
+            "`object.__getstate__(obj)`",
+            "pure-memory no-state",
+            "pickle",
+            "custom instance state",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object getstate docs must contain `{required}`"
+            );
+        }
     }
 }
 

@@ -13609,6 +13609,32 @@ for expr in [lambda: object.__repr__(), lambda: object.__repr__(plain, plain), l
 }
 
 #[test]
+fn cpython_object_getstate_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object.__getstate__ descriptor subset",
+        name: "object-getstate-direct",
+        source: r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+obj = object()
+for label, cb in [
+    ('object-instance-getstate', lambda: obj.__getstate__()),
+    ('object-getattribute-getstate', lambda: object.__getattribute__(obj, '__getstate__')()),
+    ('object-type-getstate-object', lambda: object.__getstate__(obj)),
+    ('object-type-getstate-int', lambda: object.__getstate__(1)),
+    ('object-instance-extra', lambda: obj.__getstate__(1)),
+    ('object-instance-keyword', lambda: obj.__getstate__(x=1)),
+    ('object-type-missing', lambda: object.__getstate__()),
+]:
+    show(label, cb)"#,
+    });
+}
+
+#[test]
 fn cpython_str_builtin_custom_dunder_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr / ::test_format public str dispatch subset",

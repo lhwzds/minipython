@@ -27322,6 +27322,42 @@ fn cpython_object_repr_str_direct_subset() {
     );
 }
 
+// Adapted from CPython public `object.__getstate__` behavior. This pins the
+// default pure-memory no-state object result without promoting pickle support
+// or CPython object-layout state extraction.
+#[test]
+fn cpython_object_getstate_direct_subset() {
+    assert_output(
+        r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+obj = object()
+for label, cb in [
+    ('object-instance-getstate', lambda: obj.__getstate__()),
+    ('object-getattribute-getstate', lambda: object.__getattribute__(obj, '__getstate__')()),
+    ('object-type-getstate-object', lambda: object.__getstate__(obj)),
+    ('object-type-getstate-int', lambda: object.__getstate__(1)),
+    ('object-instance-extra', lambda: obj.__getstate__(1)),
+    ('object-instance-keyword', lambda: obj.__getstate__(x=1)),
+    ('object-type-missing', lambda: object.__getstate__()),
+]:
+    show(label, cb)"#,
+        &[
+            "object-instance-getstate ok None NoneType",
+            "object-getattribute-getstate ok None NoneType",
+            "object-type-getstate-object ok None NoneType",
+            "object-type-getstate-int ok None NoneType",
+            "object-instance-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "object-instance-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+            "object-type-missing TypeError unbound method object.__getstate__() needs an argument ('unbound method object.__getstate__() needs an argument',)",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` public str/format behavior.
 // This covers ordinary `str()` conversion paths separately from direct
 // `object.__str__` descriptor calls above.

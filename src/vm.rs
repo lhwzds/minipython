@@ -14859,6 +14859,14 @@ impl Vm {
                     return Ok(object_dir_bound_method(instance));
                 }
 
+                if name == "__getstate__" {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin("object.__getstate__".to_string())),
+                        receiver: Box::new(instance),
+                        identity: Rc::new(()),
+                    });
+                }
+
                 if name == "__replace__" && class_bases_include_builtin(&class_bases, "AST") {
                     return Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin("ast.__replace__".to_string())),
@@ -58446,6 +58454,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     class_attrs,
                     class_bases,
                 }));
+            }
+
+            if name == "__getstate__" {
+                return Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("object.__getstate__".to_string())),
+                    receiver: Box::new(Value::Instance {
+                        class_name,
+                        fields,
+                        class_attrs,
+                        class_bases,
+                    }),
+                    identity: Rc::new(()),
+                });
             }
 
             Err(format!("AttributeError: object has no attribute '{name}'"))
