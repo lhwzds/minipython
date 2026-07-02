@@ -15780,6 +15780,10 @@ impl Vm {
             return Ok(identity_hash_value(value));
         }
 
+        if matches!(value, Value::Cell { .. }) {
+            return Err("TypeError: unhashable type: 'cell'".to_string());
+        }
+
         if let Some(method) = instance_hash_method(value)? {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(value) => value,
@@ -58664,6 +58668,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ..
         } => match name {
             "cell_contents" => cell_contents(&cell_name, &scope),
+            "__hash__" => Ok(Value::None),
             _ => Err(format!(
                 "AttributeError: 'cell' object has no attribute '{name}'"
             )),
@@ -61380,6 +61385,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__module__" && function_name == "CellType" => {
             Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__hash__" && function_name == "CellType" => {
+            Ok(Value::None)
         }
         Value::Builtin(function_name) if name == "__base__" && function_name == "CellType" => {
             Ok(Value::Builtin("object".to_string()))
@@ -84475,7 +84483,6 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::BytesIO(_)
         | Value::Bool(_)
         | Value::CodeObject { .. }
-        | Value::Cell { .. }
         | Value::Range { .. }
         | Value::Function { .. }
         | Value::TypesCoroutineFunction { .. }
@@ -84553,6 +84560,7 @@ fn is_hashable_key(value: &Value) -> bool {
         Value::CmpToKey { .. }
         | Value::CmpToKeyObject { .. }
         | Value::WeakProxy { .. }
+        | Value::Cell { .. }
         | Value::List(_)
         | Value::UserList { .. }
         | Value::Deque { .. }

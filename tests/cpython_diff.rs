@@ -19420,6 +19420,37 @@ for label, cell in [('full', types.CellType(1)), ('empty', types.CellType())]:
 }
 
 #[test]
+fn cpython_types_celltype_hash_semantics_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public cell object hash semantics subset",
+        name: "types-celltype-hash-semantics",
+        source: r#"import types
+
+expected_errors = {
+    'hash': "unhashable type: 'cell'",
+    'dunder-call': "'NoneType' object is not callable",
+}
+for label, cell in [('full', types.CellType('x')), ('empty', types.CellType())]:
+    print(label, 'attr-none',
+          cell.__hash__ is None,
+          object.__getattribute__(cell, '__hash__') is None,
+          types.CellType.__hash__ is None,
+          getattr(types.CellType, '__hash__') is None)
+    for name, callback in [
+        ('hash', lambda cell=cell: hash(cell)),
+        ('object-hash', lambda cell=cell: object.__hash__(cell)),
+        ('dunder-call', lambda cell=cell: cell.__hash__()),
+    ]:
+        try:
+            value = callback()
+            print(label, name, 'ok', type(value).__name__, isinstance(value, int))
+        except Exception as error:
+            print(label, name, type(error).__name__, str(error), error.args,
+                  str(error) == expected_errors[name])"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

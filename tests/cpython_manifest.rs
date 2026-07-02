@@ -39312,6 +39312,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_celltype_constructor_behavior_subset",
             "cpython_types_celltype_attribute_errors_subset",
             "cpython_types_celltype_dir_surface_subset",
+            "cpython_types_celltype_hash_semantics_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_display_metadata_subset",
@@ -39415,6 +39416,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_celltype_constructor_behavior_diff_subset",
         "cpython_types_celltype_attribute_errors_diff_subset",
         "cpython_types_celltype_dir_surface_diff_subset",
+        "cpython_types_celltype_hash_semantics_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_display_metadata_diff_subset",
@@ -39896,6 +39898,86 @@ fn types_celltype_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType dir docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_hash_semantics_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_hash_semantics_diff_subset";
+    let subset_name = "cpython_types_celltype_hash_semantics_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType hash CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType hash runtime subset evidence must exist"
+    );
+
+    for required in [
+        "cell.__hash__ is None",
+        "object.__getattribute__(cell, '__hash__') is None",
+        "types.CellType.__hash__ is None",
+        "getattr(types.CellType, '__hash__') is None",
+        "hash(cell)",
+        "object.__hash__(cell)",
+        "cell.__hash__()",
+        "unhashable type: 'cell'",
+        "'NoneType' object is not callable",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType hash diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"full attr-none True True True True\"",
+        "\"full hash TypeError unhashable type: 'cell' (\\\"unhashable type: 'cell'\\\",) True\"",
+        "\"full object-hash ok int True\"",
+        "\"full dunder-call TypeError 'NoneType' object is not callable (\\\"'NoneType' object is not callable\\\",) True\"",
+        "\"empty attr-none True True True True\"",
+        "\"empty hash TypeError unhashable type: 'cell' (\\\"unhashable type: 'cell'\\\",) True\"",
+        "\"empty object-hash ok int True\"",
+        "\"empty dunder-call TypeError 'NoneType' object is not callable (\\\"'NoneType' object is not callable\\\",) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType hash subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "if matches!(value, Value::Cell { .. })",
+        "TypeError: unhashable type: 'cell'",
+        "\"__hash__\" => Ok(Value::None)",
+        "name == \"__hash__\" && function_name == \"CellType\"",
+        "| Value::Cell { .. }",
+        "Value::Cell { identity, .. } => rc_plain_identity_bits(identity)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType hash implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`hash(cell)`",
+            "`cell.__hash__ is None`",
+            "`types.CellType.__hash__ is None`",
+            "`object.__hash__(cell)`",
+            "identity hash",
+            "dict/set key error text",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType hash docs must contain `{required}`"
             );
         }
     }

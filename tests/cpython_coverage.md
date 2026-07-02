@@ -809,6 +809,7 @@ Recent runtime migration notes:
   `cpython_types_celltype_constructor_behavior_diff_subset`,
   `cpython_types_celltype_attribute_errors_diff_subset`,
   `cpython_types_celltype_dir_surface_diff_subset`,
+  `cpython_types_celltype_hash_semantics_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4049,6 +4050,14 @@ without adding general custom encoder/decoder class support.
   `__sizeof__`. This slice pins name visibility only; pickle behavior,
   `__sizeof__` object-layout values, and other CPython object-layout internals
   remain outside this sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_hash_semantics_subset`, backed by
+  `cpython_types_celltype_hash_semantics_diff_subset`, covering CPython's
+  public cell hash contract: `hash(cell)` raises `unhashable type: 'cell'`,
+  `cell.__hash__ is None`, `types.CellType.__hash__ is None`, and direct
+  `object.__hash__(cell)` still returns an identity hash. This slice does not
+  attempt to align dict/set key error text for cells or any CPython object
+  layout details behind the identity hash.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's
