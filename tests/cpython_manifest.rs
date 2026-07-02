@@ -28568,6 +28568,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
+            "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
             "cpython_io_bytesio_readable_method_descriptor_subset",
             "cpython_io_bytesio_writable_method_descriptor_subset",
@@ -28609,6 +28610,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_getvalue_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO getvalue method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_getbuffer_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO getbuffer method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -28960,6 +28966,73 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO getvalue method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
+    let getbuffer_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_getbuffer_method_descriptor_diff_subset",
+    );
+    let getbuffer_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_getbuffer_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.getbuffer",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.getbuffer(bio)",
+        "io.BytesIO.getbuffer(object())",
+        "io.BytesIO.getbuffer()",
+        "io.BytesIO.getbuffer(bio, 1)",
+        "io.BytesIO.getbuffer(bio=bio)",
+        "io.BytesIO.getbuffer(bio, size=1)",
+    ] {
+        assert!(
+            getbuffer_descriptor_diff.contains(required),
+            "io.BytesIO getbuffer method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            getbuffer_descriptor_subset.contains(required),
+            "io.BytesIO getbuffer method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call ok ('memoryview', 3, [97, 98, 99], False, 'B') tuple",
+        "descriptor 'getbuffer' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.getbuffer() needs an argument",
+        "getbuffer() takes no arguments",
+    ] {
+        assert!(
+            getbuffer_descriptor_subset.contains(required),
+            "io.BytesIO getbuffer method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"getbuffer\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'getbuffer' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.getbuffer() needs an argument",
+        "\"BytesIO.getbuffer\"",
+        "TypeError: getbuffer() takes no arguments",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO getbuffer method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_getbuffer_method_descriptor_subset",
+            "cpython_io_bytesio_getbuffer_method_descriptor_diff_subset",
+            "`io.BytesIO.getbuffer` method descriptor",
+            "memoryview-returning descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO getbuffer method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -29848,6 +29921,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getvalue_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_getbuffer_method_descriptor_subset",
+            "cpython_io_bytesio_getbuffer_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_tell_method_descriptor_subset",

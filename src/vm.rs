@@ -21276,13 +21276,20 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("getbuffer", &keywords)?;
-        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method BytesIO.getbuffer() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: BytesIO.getbuffer() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor 'getbuffer' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        if !rest.is_empty() || !keywords.is_empty() {
+            return Err("TypeError: getbuffer() takes no arguments".to_string());
+        }
         bytes_io_getbuffer(bytes_io)
     }
 
@@ -61578,6 +61585,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 && matches!(
                     name,
                     "getvalue"
+                        | "getbuffer"
                         | "tell"
                         | "readable"
                         | "writable"
@@ -65184,6 +65192,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "io" if matches!(
             method,
             "BytesIO.getvalue"
+                | "BytesIO.getbuffer"
                 | "BytesIO.tell"
                 | "BytesIO.readable"
                 | "BytesIO.writable"
@@ -65263,6 +65272,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         "io" => matches!(
             method,
             "BytesIO.getvalue"
+                | "BytesIO.getbuffer"
                 | "BytesIO.tell"
                 | "BytesIO.readable"
                 | "BytesIO.writable"

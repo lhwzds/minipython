@@ -23506,6 +23506,44 @@ show('keyword-missing-receiver', lambda: io.BytesIO.getvalue(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_getbuffer_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def snapshot(bio):
+    view = io.BytesIO.getbuffer(bio)
+    result = (type(view).__name__, len(view), view.tolist(), view.readonly, view.format)
+    view.release()
+    return result
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.getbuffer
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: snapshot(bio))
+show('wrong-receiver', lambda: io.BytesIO.getbuffer(object()))
+show('missing-receiver', lambda: io.BytesIO.getbuffer())
+show('extra', lambda: io.BytesIO.getbuffer(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.getbuffer(bio=bio))
+show('receiver-keyword', lambda: io.BytesIO.getbuffer(bio, size=1))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call ok ('memoryview', 3, [97, 98, 99], False, 'B') tuple",
+            "wrong-receiver TypeError descriptor 'getbuffer' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.getbuffer() needs an argument",
+            "extra TypeError getbuffer() takes no arguments",
+            "keyword-missing-receiver TypeError unbound method BytesIO.getbuffer() needs an argument",
+            "receiver-keyword TypeError getbuffer() takes no arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_tell_method_descriptor_subset() {
     assert_output(
         r#"import io
