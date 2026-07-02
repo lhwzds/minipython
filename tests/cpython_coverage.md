@@ -810,6 +810,7 @@ Recent runtime migration notes:
   `cpython_types_celltype_cell_contents_descriptor_diff_subset`,
   `cpython_types_celltype_attribute_errors_diff_subset`,
   `cpython_types_celltype_dir_surface_diff_subset`,
+  `cpython_types_celltype_getstate_diff_subset`,
   `cpython_types_celltype_hash_semantics_diff_subset`,
   `cpython_types_celltype_instance_display_diff_subset`,
   `cpython_types_celltype_rich_compare_diff_subset`,
@@ -4062,6 +4063,16 @@ without adding general custom encoder/decoder class support.
   `__sizeof__`. This slice pins name visibility only; pickle behavior,
   `__sizeof__` object-layout values, and other CPython object-layout internals
   remain outside this sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_getstate_subset`, backed by
+  `cpython_types_celltype_getstate_diff_subset`, covering CPython's public
+  inherited `object.__getstate__` behavior for closure cells:
+  `cell.__getstate__()`, `object.__getstate__(cell)`, and
+  `types.CellType.__getstate__(cell)` return the pure-memory no-state value
+  `None`, while extra positional arguments, keyword arguments, and a missing
+  receiver keep CPython's public `TypeError` text. This slice deliberately
+  keeps pickle behavior, custom instance state, and CPython object-layout
+  internals outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_hash_semantics_subset`, backed by
   `cpython_types_celltype_hash_semantics_diff_subset`, covering CPython's

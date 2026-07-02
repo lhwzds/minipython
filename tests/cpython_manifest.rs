@@ -39312,6 +39312,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_celltype_constructor_behavior_subset",
             "cpython_types_celltype_attribute_errors_subset",
             "cpython_types_celltype_dir_surface_subset",
+            "cpython_types_celltype_getstate_subset",
             "cpython_types_celltype_hash_semantics_subset",
             "cpython_types_celltype_instance_display_subset",
             "cpython_types_celltype_module_metadata_subset",
@@ -39417,6 +39418,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_celltype_constructor_behavior_diff_subset",
         "cpython_types_celltype_attribute_errors_diff_subset",
         "cpython_types_celltype_dir_surface_diff_subset",
+        "cpython_types_celltype_getstate_diff_subset",
         "cpython_types_celltype_hash_semantics_diff_subset",
         "cpython_types_celltype_instance_display_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
@@ -39999,6 +40001,90 @@ fn types_celltype_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType dir docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_getstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_getstate_diff_subset";
+    let subset_name = "cpython_types_celltype_getstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType getstate CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType getstate runtime subset evidence must exist"
+    );
+
+    for required in [
+        "cell.__getstate__()",
+        "empty.__getstate__()",
+        "object.__getstate__(cell)",
+        "object.__getstate__(empty)",
+        "types.CellType.__getstate__(cell)",
+        "types.CellType.__getstate__(empty)",
+        "types.CellType.__getstate__(1)",
+        "cell.__getstate__(1)",
+        "cell.__getstate__(x=1)",
+        "object.__getstate__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType getstate diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"cell-getstate-full ok None NoneType\"",
+        "\"cell-getstate-empty ok None NoneType\"",
+        "\"object-getstate-cell ok None NoneType\"",
+        "\"object-getstate-empty ok None NoneType\"",
+        "\"type-getstate-cell ok None NoneType\"",
+        "\"type-getstate-empty ok None NoneType\"",
+        "\"type-getstate-int ok None NoneType\"",
+        "\"cell-getstate-extra TypeError object.__getstate__() takes no arguments (1 given)",
+        "\"cell-getstate-keyword TypeError object.__getstate__() takes no keyword arguments",
+        "\"object-getstate-missing TypeError unbound method object.__getstate__() needs an argument",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType getstate subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_object_getstate(",
+        "Value::Builtin(name) if name == \"object.__getstate__\"",
+        "\"__getstate__\" => Ok(Value::BoundMethod",
+        "Value::Builtin(\"object.__getstate__\".to_string())",
+        "function_name == \"CellType\" && name == \"__getstate__\"",
+        "\"object\" => matches!(method, \"__getstate__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType getstate implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`cell.__getstate__()`",
+            "`object.__getstate__(cell)`",
+            "`types.CellType.__getstate__(cell)`",
+            "pure-memory no-state",
+            "pickle",
+            "custom instance state",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType getstate docs must contain `{required}`"
             );
         }
     }

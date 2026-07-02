@@ -19462,6 +19462,38 @@ for label, cell in [('full', types.CellType(1)), ('empty', types.CellType())]:
 }
 
 #[test]
+fn cpython_types_celltype_getstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object.__getstate__ behavior inherited by types.CellType",
+        name: "types-celltype-getstate",
+        source: r#"import types
+
+def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+cell = types.CellType('x')
+empty = types.CellType()
+for label, cb in [
+    ('cell-getstate-full', lambda: cell.__getstate__()),
+    ('cell-getstate-empty', lambda: empty.__getstate__()),
+    ('object-getstate-cell', lambda: object.__getstate__(cell)),
+    ('object-getstate-empty', lambda: object.__getstate__(empty)),
+    ('type-getstate-cell', lambda: types.CellType.__getstate__(cell)),
+    ('type-getstate-empty', lambda: types.CellType.__getstate__(empty)),
+    ('type-getstate-int', lambda: types.CellType.__getstate__(1)),
+    ('cell-getstate-extra', lambda: cell.__getstate__(1)),
+    ('cell-getstate-keyword', lambda: cell.__getstate__(x=1)),
+    ('object-getstate-missing', lambda: object.__getstate__()),
+]:
+    show(label, cb)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_hash_semantics_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public cell object hash semantics subset",

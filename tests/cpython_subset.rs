@@ -72903,6 +72903,52 @@ for label, cell in [('full', types.CellType(1)), ('empty', types.CellType())]:
     );
 }
 
+// Adapted from CPython public `object.__getstate__` behavior inherited by
+// `types.CellType`. This pins the pure-memory no-state result for cells without
+// adding pickle support or CPython object-layout state extraction.
+#[test]
+fn cpython_types_celltype_getstate_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+cell = types.CellType('x')
+empty = types.CellType()
+for label, cb in [
+    ('cell-getstate-full', lambda: cell.__getstate__()),
+    ('cell-getstate-empty', lambda: empty.__getstate__()),
+    ('object-getstate-cell', lambda: object.__getstate__(cell)),
+    ('object-getstate-empty', lambda: object.__getstate__(empty)),
+    ('type-getstate-cell', lambda: types.CellType.__getstate__(cell)),
+    ('type-getstate-empty', lambda: types.CellType.__getstate__(empty)),
+    ('type-getstate-int', lambda: types.CellType.__getstate__(1)),
+    ('cell-getstate-extra', lambda: cell.__getstate__(1)),
+    ('cell-getstate-keyword', lambda: cell.__getstate__(x=1)),
+    ('object-getstate-missing', lambda: object.__getstate__()),
+]:
+    show(label, cb)"#,
+        &[
+            "cell-getstate-full ok None NoneType",
+            "cell-getstate-empty ok None NoneType",
+            "object-getstate-cell ok None NoneType",
+            "object-getstate-empty ok None NoneType",
+            "type-getstate-cell ok None NoneType",
+            "type-getstate-empty ok None NoneType",
+            "type-getstate-int ok None NoneType",
+            "cell-getstate-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "cell-getstate-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+            "object-getstate-missing TypeError unbound method object.__getstate__() needs an argument ('unbound method object.__getstate__() needs an argument',)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public cell object hash semantics. This covers the
 // public `__hash__ = None` contract while preserving direct object identity
 // hashing through `object.__hash__`.

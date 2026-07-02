@@ -9965,6 +9965,9 @@ impl Vm {
 
                 self.call_object_getattribute(args)
             }
+            Value::Builtin(name) if name == "object.__getstate__" => {
+                self.call_object_getstate(args, keywords)
+            }
             Value::Builtin(name) if name == "defaultdict.__getattribute__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -16492,6 +16495,30 @@ impl Vm {
             return Err(missing_type_attribute_error("type", &name));
         }
         result
+    }
+
+    fn call_object_getstate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: object.__getstate__() takes no keyword arguments".to_string());
+        }
+
+        let Some((_receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method object.__getstate__() needs an argument".to_string(),
+            );
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: object.__getstate__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        Ok(Value::None)
     }
 
     fn call_default_dict_getattribute(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -51913,6 +51940,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__dir__",
             "__format__",
             "__getattribute__",
+            "__getstate__",
             "__hash__",
             "__setattr__",
             "__delattr__",
@@ -58909,6 +58937,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => match name {
             "cell_contents" => cell_contents(&cell_name, &scope),
             "__hash__" => Ok(Value::None),
+            "__getstate__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__getstate__".to_string())),
+                receiver: Box::new(Value::Cell {
+                    name: cell_name,
+                    scope,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("cell.{name}"))),
@@ -61278,6 +61315,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(CELL_CONTENTS_GETSET_DESCRIPTOR.to_string()))
         }
         Value::Builtin(function_name)
+            if function_name == "CellType" && name == "__getstate__" =>
+        {
+            Ok(Value::Builtin("object.__getstate__".to_string()))
+        }
+        Value::Builtin(function_name)
             if function_name == "deque" && is_builtin_deque_type_method(name) =>
         {
             Ok(Value::Builtin(format!("deque.{name}")))
@@ -61385,6 +61427,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__new__"
                         | "__format__"
                         | "__dir__"
+                        | "__getstate__"
                 ) =>
         {
             Ok(Value::Builtin(format!("object.{name}")))
@@ -64852,6 +64895,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
     }
 
     match type_name {
+        "object" => matches!(method, "__getstate__"),
         "dict" | "OrderedDict" => is_builtin_dict_type_method(method),
         "defaultdict" => {
             is_builtin_dict_type_method(method) || matches!(method, "__copy__" | "__missing__")
@@ -64918,6 +64962,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         return false;
     };
     match type_name {
+        "object" => matches!(method, "__getstate__"),
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "int" | "bool" => {
             is_builtin_int_type_method(method) && !matches!(method, "__new__" | "from_bytes")
