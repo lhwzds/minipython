@@ -48757,6 +48757,45 @@ fn cpython_missing_return_annotation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_lambda_missing_default_before_body_colon_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "lambda missing-default SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "lambda missing-default runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "lambda a=: None",
+        "lambda a, b=: None",
+        "lambda a, /, b=: None",
+        "lambda *, a=: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "lambda missing-default CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "lambda missing-default subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("lambda default values before body colons")
+                && document.contains("invalid syntax"),
+            "lambda missing-default docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_missing_parameter_annotation_expression_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_parameters_subset";

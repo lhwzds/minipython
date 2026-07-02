@@ -3955,7 +3955,7 @@ impl Parser<'_> {
                 }
             } else {
                 let mut param =
-                    self.parse_parameter(&mut seen_names, allow_annotations, !after_star)?;
+                    self.parse_parameter(&mut seen_names, allow_annotations, end, !after_star)?;
                 if let Some(comment) = self.take_type_comment() {
                     param.type_comment = Some(comment);
                 }
@@ -4020,6 +4020,7 @@ impl Parser<'_> {
         &mut self,
         seen_names: &mut Vec<String>,
         allow_annotations: bool,
+        end: ParameterListEnd,
         check_unique_name: bool,
     ) -> Result<Param, String> {
         let name = self.expect_identifier("parameter name")?;
@@ -4032,7 +4033,7 @@ impl Parser<'_> {
         let default = if matches!(self.peek(), Some(Token::Equal)) {
             self.advance();
             if is_parameter_default_end(self.peek()) {
-                return Err("expected default value expression".to_string());
+                return Err(parameter_missing_default_message(end, self.peek()).to_string());
             }
             Some(self.parse_expression()?)
         } else {
@@ -7362,6 +7363,14 @@ fn is_parameter_default_end(token: Option<&Token>) -> bool {
         token,
         Some(Token::Comma | Token::RightParen | Token::Colon) | None
     )
+}
+
+fn parameter_missing_default_message(end: ParameterListEnd, token: Option<&Token>) -> &'static str {
+    if matches!(end, ParameterListEnd::Colon) && matches!(token, Some(Token::Colon)) {
+        "invalid syntax"
+    } else {
+        "expected default value expression"
+    }
 }
 
 fn is_assignment_target_syntax_error(error: &str) -> bool {

@@ -41277,6 +41277,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram lambda parameter missing default before body colon",
+            name: "missing-lambda-positional-default-before-body-colon-message",
+            source: "lambda a=: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda parameter missing default before body colon",
+            name: "missing-lambda-second-positional-default-before-body-colon-message",
+            source: "lambda a, b=: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda parameter missing default before body colon",
+            name: "missing-lambda-positional-only-default-before-body-colon-message",
+            source: "lambda a, /, b=: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda parameter missing default before body colon",
+            name: "missing-lambda-keyword-only-default-before-body-colon-message",
+            source: "lambda *, a=: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

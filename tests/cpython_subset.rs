@@ -35852,10 +35852,14 @@ fn cpython_invalid_lambda_parameters_subset() {
         "lambda a=1,/*,b,c: None",
         "parse error: expected comma between / and *",
     );
-    assert_error(
+    for source in [
         "lambda a=: None",
-        "parse error: expected default value expression",
-    );
+        "lambda a, b=: None",
+        "lambda a, /, b=: None",
+        "lambda *, a=: None",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "lambda a=, b=1: None",
         "parse error: expected default value expression",

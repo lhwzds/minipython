@@ -5946,6 +5946,14 @@ Completed in the lambda-parameter supported-promotion pass:
   missing default values before `,` and non-default parameters following
   ordinary or positional-only defaults.
 
+Completed in the lambda missing-default body-colon diagnostic pass:
+
+- Extended `cpython_invalid_lambda_parameters_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so lambda default values before body colons
+  such as `lambda a=: None`, `lambda a, /, b=: None`, and `lambda *, a=: None`
+  use CPython's public `invalid syntax` message while preserving
+  `expected default value expression` for missing defaults followed by `,`.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
