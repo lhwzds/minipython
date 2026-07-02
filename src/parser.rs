@@ -3878,7 +3878,7 @@ impl Parser<'_> {
                     return Err("named arguments must follow bare *".to_string());
                 }
                 self.advance();
-                let name = self.expect_identifier("** parameter name")?;
+                let name = self.expect_parameter_identifier("** parameter name")?;
                 validate_binding_name(&name)?;
                 params.kwarg_annotation = self
                     .parse_optional_parameter_annotation(allow_annotations)?
@@ -3913,8 +3913,8 @@ impl Parser<'_> {
                 after_star = true;
 
                 match self.peek() {
-                    Some(Token::Identifier(_)) => {
-                        let name = self.expect_identifier("* parameter name")?;
+                    Some(Token::Identifier(_) | Token::True | Token::False | Token::None) => {
+                        let name = self.expect_parameter_identifier("* parameter name")?;
                         validate_binding_name(&name)?;
                         params.vararg_annotation = self
                             .parse_optional_parameter_annotation(allow_annotations)?
@@ -4023,7 +4023,7 @@ impl Parser<'_> {
         end: ParameterListEnd,
         check_unique_name: bool,
     ) -> Result<Param, String> {
-        let name = self.expect_identifier("parameter name")?;
+        let name = self.expect_parameter_identifier("parameter name")?;
         validate_binding_name(&name)?;
         if check_unique_name {
             ensure_unique_parameter_name(&name, seen_names)?;
@@ -6428,6 +6428,15 @@ impl Parser<'_> {
             Some(token) => Err(format!("expected {expected}, found {token:?}")),
             None => Err(format!("expected {expected}, found end of input")),
         }
+    }
+
+    fn expect_parameter_identifier(&mut self, expected: &str) -> Result<String, String> {
+        if matches!(self.peek(), Some(Token::True | Token::False | Token::None)) {
+            self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
+        self.expect_identifier(expected)
     }
 
     fn expect_soft_keyword(&mut self, keyword: &str) -> Result<(), String> {

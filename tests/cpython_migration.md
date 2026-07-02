@@ -5997,6 +5997,14 @@ Completed in the duplicate parameter diagnostic pass:
   `def f(a, a)` and `lambda a, a: None` use CPython's public
   `duplicate argument 'a' in function definition` message.
 
+Completed in the singleton parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so singleton parameter name forms
+  such as `def f(None)`, `def f(True)`, `lambda None: None`, and
+  `lambda **False: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
