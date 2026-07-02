@@ -1190,6 +1190,10 @@ impl Parser<'_> {
             return Err("cannot use None as pattern target".to_string());
         }
 
+        if self.is_parenthesized_true_as_pattern_target() {
+            return Err("cannot use True as pattern target".to_string());
+        }
+
         if self.is_dict_comprehension_as_pattern_target() {
             return Err("cannot use dict comprehension as pattern target".to_string());
         }
@@ -1440,6 +1444,29 @@ impl Parser<'_> {
         }
 
         matches!(self.tokens.get(start), Some(Token::None)) && start + 1 == end
+    }
+
+    fn is_parenthesized_true_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        matches!(self.tokens.get(start), Some(Token::True)) && start + 1 == end
     }
 
     fn is_dict_comprehension_as_pattern_target(&self) -> bool {

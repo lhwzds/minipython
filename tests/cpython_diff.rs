@@ -41854,6 +41854,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-true-target-message",
+            source: "match 1:\n    case 1 as (True):\n        pass\n",
+            expected_message: "cannot use True as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-true-target-message",
+            source: "match 1:\n    case 1 as ((True)):\n        pass\n",
+            expected_message: "cannot use True as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-false-target-message",
             source: "match 1:\n    case 1 as False:\n        pass\n",
             expected_message: "cannot use False as pattern target",

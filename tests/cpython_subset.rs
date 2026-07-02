@@ -33153,6 +33153,14 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use True as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as (True):\n        pass",
+        "parse error: cannot use True as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((True)):\n        pass",
+        "parse error: cannot use True as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as False:\n        pass",
         "parse error: cannot use False as pattern target",
     );

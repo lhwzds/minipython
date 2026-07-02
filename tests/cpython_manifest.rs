@@ -48726,6 +48726,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case 1 as True", "case 1 as (True)", "case 1 as ((True))"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid True as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid True as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case 1 as -1", "case 1 as +x"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
