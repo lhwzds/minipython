@@ -1159,6 +1159,11 @@ impl Parser<'_> {
     }
 
     fn parse_as_pattern_capture_target(&mut self) -> Result<String, String> {
+        if matches!(self.peek(), Some(Token::Not)) {
+            self.advance();
+            return Err("cannot use expression as pattern target".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Plus)) {
             self.advance();
             return Err("cannot use expression as pattern target".to_string());
@@ -2434,6 +2439,14 @@ impl Parser<'_> {
                     | Token::LeftShift
                     | Token::RightShift,
                 ) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                    has_top_level_expression_operator = true
+                }
+                Some(Token::Not)
+                    if index == start
+                        && paren_depth == 0
+                        && bracket_depth == 0
+                        && brace_depth == 0 =>
+                {
                     has_top_level_expression_operator = true
                 }
                 _ => {}

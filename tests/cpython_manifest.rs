@@ -48799,6 +48799,9 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as ((-1))",
         "case 1 as ((+x))",
         "case 1 as ((x + y))",
+        "case 1 as not x",
+        "case 1 as (not x)",
+        "case 1 as ((not x))",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
