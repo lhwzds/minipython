@@ -14860,11 +14860,7 @@ impl Vm {
                 }
 
                 if name == "__getstate__" {
-                    return Ok(Value::BoundMethod {
-                        function: Box::new(Value::Builtin("object.__getstate__".to_string())),
-                        receiver: Box::new(instance),
-                        identity: Rc::new(()),
-                    });
+                    return Ok(object_getstate_bound_method(instance));
                 }
 
                 if name == "__replace__" && class_bases_include_builtin(&class_bases, "AST") {
@@ -58317,6 +58313,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         return Ok(object_dir_bound_method(object));
     }
 
+    if name == "__getstate__" && has_default_object_getstate(&object) {
+        return Ok(object_getstate_bound_method(object));
+    }
+
     if let Value::Builtin(function_name) = &object
         && is_json_builtin(function_name)
         && !json_builtin_controlled_attribute(name)
@@ -58457,16 +58457,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
 
             if name == "__getstate__" {
-                return Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin("object.__getstate__".to_string())),
-                    receiver: Box::new(Value::Instance {
-                        class_name,
-                        fields,
-                        class_attrs,
-                        class_bases,
-                    }),
-                    identity: Rc::new(()),
-                });
+                return Ok(object_getstate_bound_method(Value::Instance {
+                    class_name,
+                    fields,
+                    class_attrs,
+                    class_bases,
+                }));
             }
 
             Err(format!("AttributeError: object has no attribute '{name}'"))
@@ -58958,15 +58954,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => match name {
             "cell_contents" => cell_contents(&cell_name, &scope),
             "__hash__" => Ok(Value::None),
-            "__getstate__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin("object.__getstate__".to_string())),
-                receiver: Box::new(Value::Cell {
-                    name: cell_name,
-                    scope,
-                    identity,
-                }),
-                identity: Rc::new(()),
-            }),
+            "__getstate__" => Ok(object_getstate_bound_method(Value::Cell {
+                name: cell_name,
+                scope,
+                identity,
+            })),
             "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("cell.{name}"))),
@@ -65354,6 +65346,37 @@ fn object_dir_bound_method(receiver: Value) -> Value {
         receiver: Box::new(receiver),
         identity: Rc::new(()),
     }
+}
+
+fn object_getstate_bound_method(receiver: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("object.__getstate__".to_string())),
+        receiver: Box::new(receiver),
+        identity: Rc::new(()),
+    }
+}
+
+fn has_default_object_getstate(receiver: &Value) -> bool {
+    matches!(
+        receiver,
+        Value::None
+            | Value::Bool(_)
+            | Value::Number(_)
+            | Value::BigInt(_)
+            | Value::Float(_)
+            | Value::Complex { .. }
+            | Value::String(_)
+            | Value::IdentityString { .. }
+            | Value::Bytes(_)
+            | Value::ByteArray(_)
+            | Value::Tuple(_)
+            | Value::List(_)
+            | Value::Dict(_)
+            | Value::Set(_)
+            | Value::FrozenSet(_)
+            | Value::Range { .. }
+            | Value::Slice { .. }
+    )
 }
 
 fn is_builtin_name(name: &str) -> bool {

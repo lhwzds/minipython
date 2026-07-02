@@ -663,6 +663,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
+  `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,
@@ -7057,6 +7058,18 @@ without adding general custom encoder/decoder class support.
   while extra positional arguments, keyword arguments, and a missing receiver
   preserve CPython's public `TypeError` text. This slice deliberately keeps
   pickle behavior, custom instance state, and CPython object-layout internals
+  outside the sandbox contract.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_object_getstate_builtin_instance_subset` with direct CPython output
+  parity in `cpython_object_getstate_builtin_instance_diff_subset`, covering
+  inherited `object.__getstate__` on built-in pure-memory instances through
+  `value.__getstate__()` and
+  `object.__getattribute__(value, '__getstate__')()`. The supported default
+  pure-memory no-state surface returns `None` for `None`, booleans, integers,
+  floats, complex numbers, strings, bytes, bytearrays, tuples, lists, dicts,
+  sets, frozensets, ranges, and slices, while preserving CPython's public
+  extra-argument and keyword `TypeError` text. Pickle behavior, custom
+  instance state, class object state, and CPython object-layout internals remain
   outside the sandbox contract.
 - `RUNTIME_BUILTINS` also includes
   `cpython_str_builtin_custom_dunder_subset` with direct CPython output parity

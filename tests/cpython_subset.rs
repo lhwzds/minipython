@@ -27358,6 +27358,80 @@ for label, cb in [
     );
 }
 
+// Adapted from CPython public inherited `object.__getstate__` behavior for
+// built-in pure-memory instances. This pins the default no-state result without
+// promoting pickle support, custom instance state, or CPython object-layout
+// state extraction.
+#[test]
+fn cpython_object_getstate_builtin_instance_subset() {
+    assert_output(
+        r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+samples = [
+    ('none', None),
+    ('bool', True),
+    ('int', 1),
+    ('bigint', 10**30),
+    ('float', 1.5),
+    ('complex', 1+2j),
+    ('str', 'x'),
+    ('bytes', b'x'),
+    ('bytearray', bytearray(b'x')),
+    ('tuple', (1,)),
+    ('list', [1]),
+    ('dict', {'a': 1}),
+    ('set', {1}),
+    ('frozenset', frozenset({1})),
+    ('range', range(2)),
+    ('slice', slice(1)),
+]
+for label, value in samples:
+    show(label + '-instance-getstate', lambda value=value: value.__getstate__())
+
+for label, value in [('none', None), ('int', 1), ('list', [1]), ('dict', {'a': 1})]:
+    show(label + '-getattribute-getstate', lambda value=value: object.__getattribute__(value, '__getstate__')())
+
+for label, cb in [
+    ('int-instance-extra', lambda: (1).__getstate__(2)),
+    ('list-instance-extra', lambda: [1].__getstate__(2)),
+    ('int-instance-keyword', lambda: (1).__getstate__(x=2)),
+    ('list-instance-keyword', lambda: [1].__getstate__(x=2)),
+]:
+    show(label, cb)"#,
+        &[
+            "none-instance-getstate ok None NoneType",
+            "bool-instance-getstate ok None NoneType",
+            "int-instance-getstate ok None NoneType",
+            "bigint-instance-getstate ok None NoneType",
+            "float-instance-getstate ok None NoneType",
+            "complex-instance-getstate ok None NoneType",
+            "str-instance-getstate ok None NoneType",
+            "bytes-instance-getstate ok None NoneType",
+            "bytearray-instance-getstate ok None NoneType",
+            "tuple-instance-getstate ok None NoneType",
+            "list-instance-getstate ok None NoneType",
+            "dict-instance-getstate ok None NoneType",
+            "set-instance-getstate ok None NoneType",
+            "frozenset-instance-getstate ok None NoneType",
+            "range-instance-getstate ok None NoneType",
+            "slice-instance-getstate ok None NoneType",
+            "none-getattribute-getstate ok None NoneType",
+            "int-getattribute-getstate ok None NoneType",
+            "list-getattribute-getstate ok None NoneType",
+            "dict-getattribute-getstate ok None NoneType",
+            "int-instance-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "list-instance-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "int-instance-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+            "list-instance-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py` public str/format behavior.
 // This covers ordinary `str()` conversion paths separately from direct
 // `object.__str__` descriptor calls above.

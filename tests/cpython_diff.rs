@@ -13635,6 +13635,52 @@ for label, cb in [
 }
 
 #[test]
+fn cpython_object_getstate_builtin_instance_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public inherited object.__getstate__ behavior for built-in pure-memory instances",
+        name: "object-getstate-builtin-instance",
+        source: r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+samples = [
+    ('none', None),
+    ('bool', True),
+    ('int', 1),
+    ('bigint', 10**30),
+    ('float', 1.5),
+    ('complex', 1+2j),
+    ('str', 'x'),
+    ('bytes', b'x'),
+    ('bytearray', bytearray(b'x')),
+    ('tuple', (1,)),
+    ('list', [1]),
+    ('dict', {'a': 1}),
+    ('set', {1}),
+    ('frozenset', frozenset({1})),
+    ('range', range(2)),
+    ('slice', slice(1)),
+]
+for label, value in samples:
+    show(label + '-instance-getstate', lambda value=value: value.__getstate__())
+
+for label, value in [('none', None), ('int', 1), ('list', [1]), ('dict', {'a': 1})]:
+    show(label + '-getattribute-getstate', lambda value=value: object.__getattribute__(value, '__getstate__')())
+
+for label, cb in [
+    ('int-instance-extra', lambda: (1).__getstate__(2)),
+    ('list-instance-extra', lambda: [1].__getstate__(2)),
+    ('int-instance-keyword', lambda: (1).__getstate__(x=2)),
+    ('list-instance-keyword', lambda: [1].__getstate__(x=2)),
+]:
+    show(label, cb)"#,
+    });
+}
+
+#[test]
 fn cpython_str_builtin_custom_dunder_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr / ::test_format public str dispatch subset",

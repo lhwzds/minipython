@@ -31036,6 +31036,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_object_getstate_direct_subset",
+            "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
             "cpython_int_instance_doc_attribute_subset",
             "cpython_float_instance_doc_attribute_subset",
@@ -31123,6 +31124,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
+        "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",
         "cpython_float_instance_doc_attribute_diff_subset",
@@ -37039,6 +37041,108 @@ fn object_getstate_direct_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused object getstate docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn object_getstate_builtin_instance_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_getstate_builtin_instance_subset",
+    );
+    for required in [
+        "value.__getstate__()",
+        "object.__getattribute__(value, '__getstate__')()",
+        "none-instance-getstate ok None NoneType",
+        "bool-instance-getstate ok None NoneType",
+        "int-instance-getstate ok None NoneType",
+        "bigint-instance-getstate ok None NoneType",
+        "float-instance-getstate ok None NoneType",
+        "complex-instance-getstate ok None NoneType",
+        "str-instance-getstate ok None NoneType",
+        "bytes-instance-getstate ok None NoneType",
+        "bytearray-instance-getstate ok None NoneType",
+        "tuple-instance-getstate ok None NoneType",
+        "list-instance-getstate ok None NoneType",
+        "dict-instance-getstate ok None NoneType",
+        "set-instance-getstate ok None NoneType",
+        "frozenset-instance-getstate ok None NoneType",
+        "range-instance-getstate ok None NoneType",
+        "slice-instance-getstate ok None NoneType",
+        "int-instance-extra TypeError object.__getstate__() takes no arguments",
+        "list-instance-keyword TypeError object.__getstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused built-in instance getstate subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_getstate_builtin_instance_diff_subset",
+    );
+    for required in [
+        "CPython public inherited object.__getstate__ behavior for built-in pure-memory instances",
+        "object-getstate-builtin-instance",
+        "value.__getstate__()",
+        "object.__getattribute__(value, '__getstate__')()",
+        "int-instance-extra",
+        "list-instance-keyword",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused built-in instance getstate CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn object_getstate_bound_method(receiver: Value) -> Value",
+        "fn has_default_object_getstate(receiver: &Value) -> bool",
+        "name == \"__getstate__\" && has_default_object_getstate(&object)",
+        "Value::Builtin(\"object.__getstate__\".to_string())",
+        "Value::None",
+        "Value::Bool(_)",
+        "Value::Number(_)",
+        "Value::BigInt(_)",
+        "Value::Float(_)",
+        "Value::Complex { .. }",
+        "Value::String(_)",
+        "Value::IdentityString { .. }",
+        "Value::Bytes(_)",
+        "Value::ByteArray(_)",
+        "Value::Tuple(_)",
+        "Value::List(_)",
+        "Value::Dict(_)",
+        "Value::Set(_)",
+        "Value::FrozenSet(_)",
+        "Value::Range { .. }",
+        "Value::Slice { .. }",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "built-in instance getstate VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_getstate_builtin_instance_subset",
+            "cpython_object_getstate_builtin_instance_diff_subset",
+            "`value.__getstate__()`",
+            "`object.__getattribute__(value, '__getstate__')()`",
+            "built-in pure-memory instances",
+            "pure-memory no-state",
+            "pickle",
+            "custom instance state",
+            "class object state",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused built-in instance getstate docs must contain `{required}`"
             );
         }
     }
