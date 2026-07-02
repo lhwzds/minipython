@@ -42261,6 +42261,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram power operator function parameter rejection",
+            name: "def-power-parameter-name-message",
+            source: "def f(a ** b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram power operator function parameter rejection",
+            name: "def-power-vararg-parameter-name-message",
+            source: "def f(*a ** b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram power operator function parameter rejection",
+            name: "def-power-kwarg-parameter-name-message",
+            source: "def f(**a ** b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram power operator lambda parameter rejection",
+            name: "lambda-power-parameter-name-message",
+            source: "lambda a ** b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram power operator lambda parameter rejection",
+            name: "lambda-power-vararg-parameter-name-message",
+            source: "lambda *a ** b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram power operator lambda parameter rejection",
+            name: "lambda-power-kwarg-parameter-name-message",
+            source: "lambda **a ** b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
