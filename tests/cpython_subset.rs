@@ -34051,6 +34051,58 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: invalid syntax",
     );
     assert_error(
+        "match 1:\n    case _ == y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (_ == y):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [_ == y]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {1: 2}:\n    case {1: _ == y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ != y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ < y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ <= y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ > y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ >= y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ is y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ is not y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ in y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ not in y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match 1:\n    case x & y:\n        pass",
         "parse error: invalid syntax",
     );
