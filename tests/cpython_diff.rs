@@ -18195,6 +18195,52 @@ for expr in [lambda: types.FunctionType(1, {}, 'func', (1,), None), lambda: type
 }
 
 #[test]
+fn cpython_types_functiontype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.FunctionType base subset",
+        name: "types-functiontype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'function' is not an acceptable base type"
+
+def f():
+    pass
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.FunctionType
+try:
+    class FunctionClass(base):
+        pass
+except Exception as error:
+    print_error('class-functiontype', error)
+else:
+    print('class-functiontype ok')
+
+for label, call in [
+    ('type-functiontype', lambda: type('FunctionTypeClass', (types.FunctionType,), {})),
+    ('type-new-functiontype', lambda: type.__new__(type, 'FunctionTypeNew', (types.FunctionType,), {})),
+    ('new-class-functiontype', lambda: types.new_class('FunctionTypeNewClass', (types.FunctionType,), {})),
+    ('class-function-runtime', lambda: type('RuntimeFunctionClass', (f.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",

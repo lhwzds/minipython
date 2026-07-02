@@ -38824,7 +38824,7 @@ fn normalize_class_bases(bases: Vec<Value>) -> Result<Vec<Value>, String> {
             Value::Builtin(name) if is_typing_protocol_type_name(&name) => {
                 normalized.push(Value::Builtin(name));
             }
-            Value::Builtin(name) if is_class_like_builtin(&name) => {
+            Value::Builtin(name) if is_class_base_builtin_type(&name) => {
                 normalized.push(Value::Builtin(name));
             }
             Value::GenericAlias { origin, .. } => match *origin {
@@ -38992,6 +38992,10 @@ fn base_is_generic_alias(base: &Value) -> bool {
     matches!(base, Value::GenericAlias { .. })
 }
 
+fn is_class_base_builtin_type(name: &str) -> bool {
+    is_class_like_builtin(name) || matches!(name, "function")
+}
+
 fn base_needs_original_bases(base: &Value) -> bool {
     base_is_generic_alias(base)
         || is_typing_named_tuple_base(base)
@@ -39132,6 +39136,7 @@ fn is_final_builtin_type(name: &str) -> bool {
         name,
         "bool"
             | "CellType"
+            | "function"
             | "mappingproxy"
             | "memoryview"
             | "range"

@@ -71375,6 +71375,63 @@ fn cpython_types_function_type_subset() {
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.FunctionType`. MiniPython recognizes the public function type object
+// as a class-base candidate only so the final-base validator can reject it with
+// CPython's public TypeError.
+#[test]
+fn cpython_types_functiontype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'function' is not an acceptable base type"
+
+def f():
+    pass
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.FunctionType
+try:
+    class FunctionClass(base):
+        pass
+except Exception as error:
+    print_error('class-functiontype', error)
+else:
+    print('class-functiontype ok')
+
+for label, call in [
+    ('type-functiontype', lambda: type('FunctionTypeClass', (types.FunctionType,), {})),
+    ('type-new-functiontype', lambda: type.__new__(type, 'FunctionTypeNew', (types.FunctionType,), {})),
+    ('new-class-functiontype', lambda: types.new_class('FunctionTypeNewClass', (types.FunctionType,), {})),
+    ('class-function-runtime', lambda: type('RuntimeFunctionClass', (f.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-functiontype TypeError type 'function' is not an acceptable base type (\"type 'function' is not an acceptable base type\",) True",
+            "type-functiontype TypeError type 'function' is not an acceptable base type (\"type 'function' is not an acceptable base type\",) True",
+            "type-new-functiontype TypeError type 'function' is not an acceptable base type (\"type 'function' is not an acceptable base type\",) True",
+            "new-class-functiontype TypeError type 'function' is not an acceptable base type (\"type 'function' is not an acceptable base type\",) True",
+            "class-function-runtime TypeError type 'function' is not an acceptable base type (\"type 'function' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]
