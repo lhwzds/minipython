@@ -18793,6 +18793,50 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.GetSetDescriptorType base subset",
+        name: "types-getsetdescriptortype-unacceptable-base-type",
+        source: r#"import types
+from collections import deque
+
+EXPECTED_MESSAGE = "type 'getset_descriptor' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.GetSetDescriptorType
+try:
+    class GetSetDescriptorClass(base):
+        pass
+except Exception as error:
+    print_error('class-getset-descriptor', error)
+else:
+    print('class-getset-descriptor ok')
+
+for label, call in [
+    ('type-getset-descriptor', lambda: type('GetSetDescriptorClass', (types.GetSetDescriptorType,), {})),
+    ('type-new-getset-descriptor', lambda: type.__new__(type, 'GetSetDescriptorNew', (types.GetSetDescriptorType,), {})),
+    ('new-class-getset-descriptor', lambda: types.new_class('GetSetDescriptorNewClass', (types.GetSetDescriptorType,), {})),
+    ('class-runtime-getset-descriptor', lambda: type('RuntimeGetSetDescriptorClass', (deque.__dict__['maxlen'].__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",
