@@ -10354,6 +10354,58 @@ for label, call in [
 }
 
 #[test]
+fn cpython_range_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable range base subset",
+        name: "range-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'range' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+try:
+    class RangeClass(range):
+        pass
+except Exception as error:
+    print_error('class-range', error)
+else:
+    print('class-range ok')
+
+base = range
+try:
+    class VariableRange(base):
+        pass
+except Exception as error:
+    print_error('variable-range', error)
+else:
+    print('variable-range ok')
+
+for label, call in [
+    ('type-range', lambda: type('RangeType', (range,), {})),
+    ('type-new-range', lambda: type.__new__(type, 'RangeNew', (range,), {})),
+    ('new-class-range', lambda: types.new_class('RangeNewClass', (range,), {})),
+]:
+    show(label, call)
+
+class ListClass(list):
+    pass
+print('class-list', ListClass.__name__, ListClass.__bases__[0] is list, isinstance(ListClass(), list))
+TypeList = type('TypeList', (list,), {})
+print('type-list', TypeList.__name__, TypeList.__bases__[0] is list, isinstance(TypeList(), list))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_hasattr_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hasattr public supported subset",

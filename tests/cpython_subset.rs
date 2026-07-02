@@ -67709,6 +67709,69 @@ for label, call in [
     );
 }
 
+// Adapted from CPython's public class-construction behavior. MiniPython rejects
+// `range` as a base type across direct class statements and public class
+// construction helpers while keeping ordinary supported builtin bases intact.
+#[test]
+fn cpython_range_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'range' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+try:
+    class RangeClass(range):
+        pass
+except Exception as error:
+    print_error('class-range', error)
+else:
+    print('class-range ok')
+
+base = range
+try:
+    class VariableRange(base):
+        pass
+except Exception as error:
+    print_error('variable-range', error)
+else:
+    print('variable-range ok')
+
+for label, call in [
+    ('type-range', lambda: type('RangeType', (range,), {})),
+    ('type-new-range', lambda: type.__new__(type, 'RangeNew', (range,), {})),
+    ('new-class-range', lambda: types.new_class('RangeNewClass', (range,), {})),
+]:
+    show(label, call)
+
+class ListClass(list):
+    pass
+print('class-list', ListClass.__name__, ListClass.__bases__[0] is list, isinstance(ListClass(), list))
+TypeList = type('TypeList', (list,), {})
+print('type-list', TypeList.__name__, TypeList.__bases__[0] is list, isinstance(TypeList(), list))"#,
+        &[
+            "class-range TypeError type 'range' is not an acceptable base type (\"type 'range' is not an acceptable base type\",) True",
+            "variable-range TypeError type 'range' is not an acceptable base type (\"type 'range' is not an acceptable base type\",) True",
+            "type-range TypeError type 'range' is not an acceptable base type (\"type 'range' is not an acceptable base type\",) True",
+            "type-new-range TypeError type 'range' is not an acceptable base type (\"type 'range' is not an acceptable base type\",) True",
+            "new-class-range TypeError type 'range' is not an acceptable base type (\"type 'range' is not an acceptable base type\",) True",
+            "class-list ListClass True True",
+            "type-list TypeList True True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython grammar `break_stmt` and `continue_stmt` coverage in
 // Lib/test/test_grammar.py. These cases make jump behavior observable through
 // output instead of checking CPython's internal AST/compiler objects.

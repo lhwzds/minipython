@@ -77,7 +77,14 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_range_new_direct_allocation_diff_subset` for `range.__new__` direct allocation,
   type and instance `__new__` visibility, range constructor arity reuse, zero-step
   ValueError propagation, keyword rejection, and exact range subtype error classification
-  without adding range subclassing or class-base validation parity.
+  without adding successful range subclass allocation.
+- Added `cpython_range_unacceptable_base_type_subset` and
+  `cpython_range_unacceptable_base_type_diff_subset` for CPython's
+  `type 'range' is not an acceptable base type` rejection through class
+  statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
+  while keeping supported `list` subclass creation working and without adding
+  the adjacent `slice` base-type rejection or a broader non-subclassable
+  builtin matrix.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
