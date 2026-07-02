@@ -5043,6 +5043,20 @@ SyntaxError message pass:
   this does not add new as-pattern execution forms or expand sandbox-visible
   runtime capabilities.
 
+Completed in the invalid parenthesized comparison as-pattern targets
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so comparison-shaped targets such as
+  `case 1 as (target < other)`, `case 1 as (target == other)`,
+  `case 1 as (target is not other)`, `case 1 as (target not in other)`, and
+  `case 1 as (target() < other)` now use CPython's public
+  `cannot use comparison as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as (target < other, value)` still use tuple-target diagnostics, and
+  this does not add new comparison-pattern execution forms or expand
+  sandbox-visible runtime capabilities.
+
 Completed in the invalid parenthesized-name as-pattern targets SyntaxError
 message pass:
 
