@@ -6452,7 +6452,16 @@ impl Parser<'_> {
     fn reject_invalid_parameter_name_follower(&self) -> Result<(), String> {
         if matches!(
             self.peek(),
-            Some(Token::Dot | Token::LeftParen | Token::LeftBracket)
+            Some(
+                Token::Dot
+                    | Token::LeftParen
+                    | Token::LeftBracket
+                    | Token::Plus
+                    | Token::Minus
+                    | Token::Star
+                    | Token::Slash
+                    | Token::Percent
+            )
         ) {
             return Err("invalid syntax".to_string());
         }

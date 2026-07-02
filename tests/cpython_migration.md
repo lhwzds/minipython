@@ -6053,6 +6053,14 @@ Completed in the postfix expression parameter-name diagnostic pass:
   such as `def f(a.b)`, `def f(a[0])`, `lambda a(): None`, and
   `lambda **a[0]: None` use CPython's public `invalid syntax` message.
 
+Completed in the binary arithmetic parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so binary arithmetic parameter name forms
+  such as `def f(a+b)`, `def f(a*b)`, `lambda a/b: None`, and
+  `lambda **a*b: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
