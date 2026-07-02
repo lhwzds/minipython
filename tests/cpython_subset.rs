@@ -33217,6 +33217,18 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use expression as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as ((-1)):\n        pass",
+        "parse error: cannot use expression as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((+x)):\n        pass",
+        "parse error: cannot use expression as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((x + y)):\n        pass",
+        "parse error: cannot use expression as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as *x:\n        pass",
         "parse error: invalid syntax",
     );
