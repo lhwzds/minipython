@@ -6467,6 +6467,9 @@ impl Parser<'_> {
                     | Token::LessEqual
                     | Token::Greater
                     | Token::GreaterEqual
+                    | Token::Is
+                    | Token::In
+                    | Token::Not
             )
         ) {
             return Err("invalid syntax".to_string());
