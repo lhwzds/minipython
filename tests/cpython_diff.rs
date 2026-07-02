@@ -41836,6 +41836,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-none-target-message",
+            source: "match 1:\n    case 1 as (None):\n        pass\n",
+            expected_message: "cannot use None as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-none-target-message",
+            source: "match 1:\n    case 1 as ((None)):\n        pass\n",
+            expected_message: "cannot use None as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-true-target-message",
             source: "match 1:\n    case 1 as True:\n        pass\n",
             expected_message: "cannot use True as pattern target",
