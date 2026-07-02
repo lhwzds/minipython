@@ -18419,6 +18419,52 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_types_celltype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.CellType base subset",
+        name: "types-celltype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'cell' is not an acceptable base type"
+
+def make_cell(value):
+    return (lambda x: lambda: x)(value).__closure__[0]
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.CellType
+try:
+    class CellClass(base):
+        pass
+except Exception as error:
+    print_error('class-celltype', error)
+else:
+    print('class-celltype ok')
+
+for label, call in [
+    ('type-celltype', lambda: type('CellTypeClass', (types.CellType,), {})),
+    ('type-new-celltype', lambda: type.__new__(type, 'CellTypeNew', (types.CellType,), {})),
+    ('new-class-celltype', lambda: types.new_class('CellTypeNewClass', (types.CellType,), {})),
+    ('class-cell-closure', lambda: type('ClosureCellClass', (make_cell(1).__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_method_descriptor_types_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests::test_method_descriptor_types",

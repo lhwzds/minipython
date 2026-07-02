@@ -71573,6 +71573,62 @@ fn cpython_types_celltype_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython public class-construction behavior for `types.CellType`.
+// MiniPython recognizes the public cell type object and rejects it through the
+// same class-base path used by direct class statements and type helpers.
+#[test]
+fn cpython_types_celltype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'cell' is not an acceptable base type"
+
+def make_cell(value):
+    return (lambda x: lambda: x)(value).__closure__[0]
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.CellType
+try:
+    class CellClass(base):
+        pass
+except Exception as error:
+    print_error('class-celltype', error)
+else:
+    print('class-celltype ok')
+
+for label, call in [
+    ('type-celltype', lambda: type('CellTypeClass', (types.CellType,), {})),
+    ('type-new-celltype', lambda: type.__new__(type, 'CellTypeNew', (types.CellType,), {})),
+    ('new-class-celltype', lambda: types.new_class('CellTypeNewClass', (types.CellType,), {})),
+    ('class-cell-closure', lambda: type('ClosureCellClass', (make_cell(1).__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-celltype TypeError type 'cell' is not an acceptable base type (\"type 'cell' is not an acceptable base type\",) True",
+            "type-celltype TypeError type 'cell' is not an acceptable base type (\"type 'cell' is not an acceptable base type\",) True",
+            "type-new-celltype TypeError type 'cell' is not an acceptable base type (\"type 'cell' is not an acceptable base type\",) True",
+            "new-class-celltype TypeError type 'cell' is not an acceptable base type (\"type 'cell' is not an acceptable base type\",) True",
+            "class-cell-closure TypeError type 'cell' is not an acceptable base type (\"type 'cell' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython's `type_alias` grammar rule and PEP 695 soft-keyword
 // behavior. `type` starts a type alias only in the statement form
 // `type NAME [type_params] = expression`; otherwise it remains an ordinary name.

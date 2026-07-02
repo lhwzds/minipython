@@ -2577,7 +2577,7 @@ fn range_unacceptable_base_type_docs_cover_core_runtime() {
 
     for required in [
         "fn validate_type_constructor_bases(",
-        "type '{name}' is not an acceptable base type",
+        "type '{public_name}' is not an acceptable base type",
         "validate_type_constructor_bases(&normalized_bases)?",
         "validate_type_constructor_bases(&bases)?",
     ] {
@@ -34507,7 +34507,7 @@ fn slice_unacceptable_base_type_docs_cover_core_runtime() {
 
     for required in [
         "fn validate_type_constructor_bases(",
-        "type '{name}' is not an acceptable base type",
+        "type '{public_name}' is not an acceptable base type",
         "validate_type_constructor_bases(&normalized_bases)?",
         "validate_type_constructor_bases(&bases)?",
     ] {
@@ -38240,7 +38240,7 @@ fn memoryview_unacceptable_base_type_docs_cover_core_runtime() {
 
     for required in [
         "fn validate_type_constructor_bases(",
-        "type '{name}' is not an acceptable base type",
+        "type '{public_name}' is not an acceptable base type",
         "validate_type_constructor_bases(&normalized_bases)?",
         "validate_type_constructor_bases(&bases)?",
     ] {
@@ -39573,6 +39573,104 @@ fn types_celltype_keyword_error_subset_has_focused_diff_evidence() {
                 && document.contains("cell() takes no keyword arguments"),
             "types CellType keyword-error evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn types_celltype_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_types_celltype_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType unacceptable-base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType unacceptable-base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "base = types.CellType",
+        "class CellClass(base):",
+        "type('CellTypeClass', (types.CellType,), {})",
+        "type.__new__(type, 'CellTypeNew', (types.CellType,), {})",
+        "types.new_class('CellTypeNewClass', (types.CellType,), {})",
+        "type('ClosureCellClass', (make_cell(1).__class__,), {})",
+        "class ModuleClass(types.ModuleType):",
+        "type 'cell' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType unacceptable-base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-celltype TypeError type 'cell' is not an acceptable base type",
+        "\"type-celltype TypeError type 'cell' is not an acceptable base type",
+        "\"type-new-celltype TypeError type 'cell' is not an acceptable base type",
+        "\"new-class-celltype TypeError type 'cell' is not an acceptable base type",
+        "\"class-cell-closure TypeError type 'cell' is not an acceptable base type",
+        "\"module-control ModuleClass True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType unacceptable-base subset output must pin `{required}`"
+        );
+    }
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"CellType\""),
+        "CellType must be classified as a non-subclassable builtin type"
+    );
+
+    let class_like_body = VM_SOURCE
+        .split("fn is_class_like_builtin(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn is_ast_type_name").next())
+        .expect("is_class_like_builtin implementation must be extractable");
+    assert!(
+        class_like_body.contains("\"CellType\""),
+        "CellType must be recognized as a type object before class-base validation"
+    );
+
+    for required in [
+        "fn final_builtin_base_public_name(",
+        "\"CellType\" => \"cell\"",
+        "final_builtin_base_public_name(name)",
+        "type '{public_name}' is not an acceptable base type",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType unacceptable-base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType",
+            "type 'cell' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "closure cell",
+            "ModuleType",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType unacceptable-base docs must contain `{required}`"
+            );
+        }
     }
 }
 

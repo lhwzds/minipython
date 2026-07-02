@@ -39039,8 +39039,9 @@ fn validate_type_constructor_bases(bases: &[Value]) -> Result<(), String> {
     for base in bases {
         if let Value::Builtin(name) = base {
             if is_final_builtin_type(name) {
+                let public_name = final_builtin_base_public_name(name);
                 return Err(format!(
-                    "TypeError: type '{name}' is not an acceptable base type"
+                    "TypeError: type '{public_name}' is not an acceptable base type"
                 ));
             }
             if builtin_has_instance_layout(name) {
@@ -39119,10 +39120,18 @@ fn contains_unlisted_type_param(value: &Value, type_params: &[Value]) -> bool {
     }
 }
 
+fn final_builtin_base_public_name(name: &str) -> &str {
+    match name {
+        "CellType" => "cell",
+        _ => name,
+    }
+}
+
 fn is_final_builtin_type(name: &str) -> bool {
     matches!(
         name,
         "bool"
+            | "CellType"
             | "mappingproxy"
             | "memoryview"
             | "range"
@@ -65152,6 +65161,7 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "type"
             | "Generic"
             | "GenericAlias"
+            | "CellType"
             | "Template"
             | "Interpolation"
             | "TemplateIter"
