@@ -1202,6 +1202,7 @@ Recent runtime migration notes:
   `cpython_json_function_getattribute_wrapper_metadata_diff_subset`,
   `cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset`,
   `cpython_json_function_doc_module_assignment_metadata_diff_subset`,
+  `cpython_json_function_doc_intro_metadata_diff_subset`,
   `cpython_json_function_dict_assignment_metadata_diff_subset`,
   `cpython_json_function_type_params_metadata_diff_subset`,
   `cpython_json_function_type_params_assignment_metadata_diff_subset`,
@@ -1921,6 +1922,8 @@ Recent runtime migration notes:
   `cpython_json_function_setattr_delattr_wrapper_metadata_subset`,
   `cpython_json_function_doc_module_assignment_metadata_diff_subset` /
   `cpython_json_function_doc_module_assignment_metadata_subset`,
+  `cpython_json_function_doc_intro_metadata_diff_subset` /
+  `cpython_json_function_doc_intro_metadata_subset`,
   `cpython_json_function_dict_assignment_metadata_diff_subset` /
   `cpython_json_function_dict_assignment_metadata_subset`,
   `cpython_json_function_builtins_assignment_metadata_diff_subset` /
@@ -2781,6 +2784,12 @@ CPython for `loads` / `dumps`, including bound-method delegation, no
 `None`, and restoration of the default shared `json` module identity, without
 adding full Python function object mutation semantics, function `__code__`,
 pickle helpers, file APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_function_doc_intro_metadata_subset`, backed by
+`cpython_json_function_doc_intro_metadata_diff_subset`, keeps json public function `__doc__` intro metadata aligned with CPython for the first `splitlines()`
+entries of `json.loads.__doc__` and `json.dumps.__doc__`, including
+bound-method delegation, without adding full CPython docstring text, function
+`__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_dict_assignment_metadata_subset`, backed by
 `cpython_json_function_dict_assignment_metadata_diff_subset`, keeps json public function `__dict__` assignment aligned with CPython for `loads` / `dumps`,

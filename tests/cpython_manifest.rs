@@ -9432,6 +9432,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_getattribute_wrapper_metadata_subset",
             "cpython_json_function_setattr_delattr_wrapper_metadata_subset",
             "cpython_json_function_doc_module_assignment_metadata_subset",
+            "cpython_json_function_doc_intro_metadata_subset",
             "cpython_json_function_dict_assignment_metadata_subset",
             "cpython_json_function_dict_identity_metadata_subset",
             "cpython_json_function_annotations_identity_metadata_subset",
@@ -9592,6 +9593,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_getattribute_wrapper_metadata_diff_subset",
         "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
         "cpython_json_function_doc_module_assignment_metadata_diff_subset",
+        "cpython_json_function_doc_intro_metadata_diff_subset",
         "cpython_json_function_dict_assignment_metadata_diff_subset",
         "cpython_json_function_dict_identity_metadata_diff_subset",
         "cpython_json_function_annotations_identity_metadata_diff_subset",
@@ -9886,6 +9888,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_doc_module_assignment_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_doc_module_assignment_metadata_subset",
+    );
+    let json_function_doc_intro_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_doc_intro_metadata_diff_subset",
+    );
+    let json_function_doc_intro_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_doc_intro_metadata_subset",
     );
     let json_function_dict_assignment_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -11364,6 +11374,42 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_function_doc_module_assignment_subset_body.contains(required),
             "json public function __doc__ / __module__ assignment metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "function.__doc__.splitlines()",
+        "bound.__doc__.splitlines()[:2] == lines[:2]",
+        "type(function.__doc__).__name__",
+        "bool(function.__doc__)",
+        "len(lines) >= 2",
+    ] {
+        assert!(
+            json_function_doc_intro_diff_body.contains(required)
+                && json_function_doc_intro_subset_body.contains(required),
+            "json public function __doc__ intro metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads ['Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance', 'containing a JSON document) to a Python object.']\"",
+        "\"loads str True True\"",
+        "\"loads True\"",
+        "\"dumps ['Serialize ``obj`` to a JSON formatted ``str``.', '']\"",
+        "\"dumps str True True\"",
+        "\"dumps True\"",
+    ] {
+        assert!(
+            json_function_doc_intro_subset_body.contains(required),
+            "json public function __doc__ intro metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance",
+        "containing a JSON document) to a Python object.",
+        "Serialize ``obj`` to a JSON formatted ``str``.",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __doc__ intro implementation must contain `{required}`"
         );
     }
     for required in [
@@ -13546,6 +13592,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_setattr_delattr_wrapper_metadata_diff_subset",
             "cpython_json_function_doc_module_assignment_metadata_subset",
             "cpython_json_function_doc_module_assignment_metadata_diff_subset",
+            "cpython_json_function_doc_intro_metadata_subset",
+            "cpython_json_function_doc_intro_metadata_diff_subset",
             "cpython_json_function_dict_assignment_metadata_subset",
             "cpython_json_function_dict_assignment_metadata_diff_subset",
             "cpython_json_function_type_params_metadata_subset",
@@ -13659,6 +13707,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "json public function `__subclasshook__` wrapper metadata",
             "json public function `__getattribute__` wrapper metadata",
             "json public function `__doc__` / `__module__` assignment",
+            "json public function `__doc__` intro metadata",
             "json public function `__dict__` assignment",
             "json public function `__type_params__` metadata",
             "`json.loads.__type_params__`",

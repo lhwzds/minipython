@@ -1271,6 +1271,22 @@ print(json.loads.__module__ is json.dumps.__module__, json.loads.__module__, jso
 }
 
 #[test]
+fn cpython_json_function_doc_intro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __doc__ intro metadata subset",
+        name: "json-function-doc-intro-metadata",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    lines = function.__doc__.splitlines()
+    bound = function.__get__('receiver', str)
+    print(name, lines[:2])
+    print(name, type(function.__doc__).__name__, bool(function.__doc__), len(lines) >= 2)
+    print(name, bound.__doc__.splitlines()[:2] == lines[:2])"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_dict_assignment_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __dict__ assignment metadata subset",

@@ -63568,8 +63568,11 @@ fn copy_builtin_doc(name: &str) -> &'static str {
 
 fn json_builtin_doc(name: &str) -> &'static str {
     match name {
-        "json.loads" => "Deserialize JSON text to a Python object.",
-        "json.dumps" => "Serialize a Python object to a JSON formatted string.",
+        "json.loads" => {
+            "Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance\n\
+             containing a JSON document) to a Python object."
+        }
+        "json.dumps" => "Serialize ``obj`` to a JSON formatted ``str``.\n\n",
         _ => "",
     }
 }

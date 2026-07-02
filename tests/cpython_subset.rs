@@ -40718,6 +40718,28 @@ print(json.loads.__globals__ is json.dumps.__globals__)"#,
 }
 
 #[test]
+fn cpython_json_function_doc_intro_metadata_subset() {
+    assert_output(
+        r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    lines = function.__doc__.splitlines()
+    bound = function.__get__('receiver', str)
+    print(name, lines[:2])
+    print(name, type(function.__doc__).__name__, bool(function.__doc__), len(lines) >= 2)
+    print(name, bound.__doc__.splitlines()[:2] == lines[:2])"#,
+        &[
+            "loads ['Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance', 'containing a JSON document) to a Python object.']",
+            "loads str True True",
+            "loads True",
+            "dumps ['Serialize ``obj`` to a JSON formatted ``str``.', '']",
+            "dumps str True True",
+            "dumps True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_function_doc_identity_metadata_subset() {
     assert_output(
         r#"import json
