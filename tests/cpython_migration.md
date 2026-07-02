@@ -4937,6 +4937,17 @@ SyntaxError message pass:
   string expressions, template string expressions, guards, capture aliases,
   sequence commas, and OR-pattern diagnostics remain unchanged.
 
+Completed in the invalid wildcard semicolon-adjacent match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard semicolon-adjacent match patterns
+  such as `case _ ;`, `case (_ ;)`, `case [_ ;]`, and
+  `case {1: _ ;}` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, inline
+  suites with semicolon-separated statements after `case _:`, guards, capture
+  aliases, sequence commas, and OR-pattern diagnostics remain unchanged.
+
 Completed in the invalid wildcard unary-invert match-pattern SyntaxError
 message pass:
 

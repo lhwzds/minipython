@@ -49100,6 +49100,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case _ ;", "case (_ ;)", "case [_ ;]", "case {1: _ ;}"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid wildcard semicolon-adjacent match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid wildcard semicolon-adjacent match-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in [
         "case _ ~ y",
         "case (_ ~ y)",
@@ -50034,6 +50045,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("wildcard interpolated-string-adjacent match patterns")
                 && document.contains("invalid syntax"),
             "invalid wildcard interpolated-string-adjacent match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("wildcard semicolon-adjacent match patterns")
+                && document.contains("invalid syntax"),
+            "invalid wildcard semicolon-adjacent match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 

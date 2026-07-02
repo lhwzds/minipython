@@ -1077,6 +1077,7 @@ impl Parser<'_> {
                         | Token::Bytes(_)
                         | Token::FString(_)
                         | Token::TString(_)
+                        | Token::Semicolon
                         | Token::Tilde
                 )
             )
