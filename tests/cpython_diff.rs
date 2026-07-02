@@ -41871,6 +41871,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-lambda-target-message",
+            source: "match 1:\n    case 1 as (lambda: 1):\n        pass\n",
+            expected_message: "cannot use lambda as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-lambda-parameters-target-message",
+            source: "match 1:\n    case 1 as (lambda x, y: x):\n        pass\n",
+            expected_message: "cannot use lambda as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-lambda-target-message",
+            source: "match 1:\n    case 1 as ((lambda: 1)):\n        pass\n",
+            expected_message: "cannot use lambda as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-lambda-conditional-body-target-message",
+            source: "match 1:\n    case 1 as (lambda: target if cond else other):\n        pass\n",
+            expected_message: "cannot use lambda as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-lambda-tuple-target-message",
+            source: "match 1:\n    case 1 as (lambda: 1, value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-lambda-tuple-target-message",
+            source: "match 1:\n    case 1 as ((lambda: 1), value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-parenthesized-expression-target-message",
             source: "match 1:\n    case 1 as (target + other):\n        pass\n",
             expected_message: "cannot use expression as pattern target",

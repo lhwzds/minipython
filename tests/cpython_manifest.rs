@@ -48735,7 +48735,13 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as lambda: 1"] {
+    for required_source in [
+        "case 1 as lambda: 1",
+        "case 1 as (lambda: 1)",
+        "case 1 as (lambda x, y: x)",
+        "case 1 as ((lambda: 1))",
+        "case 1 as (lambda: target if cond else other)",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid lambda as-pattern target CPython diff must cover `{required_source}`"
@@ -48829,6 +48835,8 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as (target := other, value)",
         "case 1 as (target if cond else other, value)",
         "case 1 as ((target if cond else other), value)",
+        "case 1 as (lambda: 1, value)",
+        "case 1 as ((lambda: 1), value)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),

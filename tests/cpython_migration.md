@@ -5023,11 +5023,15 @@ Completed in the invalid dict as-pattern targets SyntaxError message pass:
 Completed in the invalid lambda as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as lambda: 1` now uses
-  CPython's public `cannot use lambda as pattern target` message.
+  `cpython_invalid_match_pattern_subset` so lambda targets such as
+  `case 1 as lambda: 1`, `case 1 as (lambda: 1)`,
+  `case 1 as (lambda x, y: x)`, `case 1 as ((lambda: 1))`, and
+  `case 1 as (lambda: target if cond else other)` now use CPython's public
+  `cannot use lambda as pattern target` message.
 - Kept this as parser-message parity only; it does not add new lambda or
-  as-pattern execution forms and does not expand sandbox-visible runtime
-  capabilities.
+  as-pattern execution forms. Tuple-shaped forms such as
+  `case 1 as (lambda: 1, value)` still use tuple-target diagnostics, and this
+  does not expand sandbox-visible runtime capabilities.
 
 Completed in the invalid parenthesized expression as-pattern targets
 SyntaxError message pass:

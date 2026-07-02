@@ -33169,6 +33169,30 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use lambda as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as (lambda: 1):\n        pass",
+        "parse error: cannot use lambda as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as (lambda x, y: x):\n        pass",
+        "parse error: cannot use lambda as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((lambda: 1)):\n        pass",
+        "parse error: cannot use lambda as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as (lambda: target if cond else other):\n        pass",
+        "parse error: cannot use lambda as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as (lambda: 1, value):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((lambda: 1), value):\n        pass",
+        "parse error: cannot use tuple as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as (target + other):\n        pass",
         "parse error: cannot use expression as pattern target",
     );
