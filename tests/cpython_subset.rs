@@ -71548,6 +71548,65 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.FrameType`. MiniPython recognizes the public frame type object as a
+// class-base candidate only so the final-base validator can reject it with
+// CPython's public TypeError.
+#[test]
+fn cpython_types_frametype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import sys, types
+
+EXPECTED_MESSAGE = "type 'frame' is not an acceptable base type"
+
+def capture():
+    return sys._getframe()
+
+frame = capture()
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.FrameType
+try:
+    class FrameClass(base):
+        pass
+except Exception as error:
+    print_error('class-frametype', error)
+else:
+    print('class-frametype ok')
+
+for label, call in [
+    ('type-frametype', lambda: type('FrameTypeClass', (types.FrameType,), {})),
+    ('type-new-frametype', lambda: type.__new__(type, 'FrameTypeNew', (types.FrameType,), {})),
+    ('new-class-frametype', lambda: types.new_class('FrameTypeNewClass', (types.FrameType,), {})),
+    ('class-frame-runtime', lambda: type('RuntimeFrameClass', (frame.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-frametype TypeError type 'frame' is not an acceptable base type (\"type 'frame' is not an acceptable base type\",) True",
+            "type-frametype TypeError type 'frame' is not an acceptable base type (\"type 'frame' is not an acceptable base type\",) True",
+            "type-new-frametype TypeError type 'frame' is not an acceptable base type (\"type 'frame' is not an acceptable base type\",) True",
+            "new-class-frametype TypeError type 'frame' is not an acceptable base type (\"type 'frame' is not an acceptable base type\",) True",
+            "class-frame-runtime TypeError type 'frame' is not an acceptable base type (\"type 'frame' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]
@@ -71581,7 +71640,7 @@ fn cpython_types_code_traceback_type_aliases_subset() {
 // attributes MiniPython already exposes through `sys._getframe()`.
 #[test]
 fn cpython_types_frame_type_alias_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import sys, types\n",
             "def capture():\n",
@@ -71612,6 +71671,7 @@ fn cpython_types_frame_type_alias_subset() {
             "True True",
             "AttributeError True",
         ],
+        32 * 1024 * 1024,
     );
 }
 
