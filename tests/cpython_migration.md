@@ -5004,6 +5004,14 @@ Completed in the invalid star as-pattern targets SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid list as-pattern targets SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so `case 1 as [x]` now uses
+  CPython's public `cannot use list as pattern target` message.
+- Kept this as parser-message parity only; it does not add new as-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid as-pattern call-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
