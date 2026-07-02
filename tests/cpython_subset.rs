@@ -32861,6 +32861,10 @@ fn cpython_match_mapping_helper_rules_subset() {
         "parse error: cannot use '_' as a target",
     );
     assert_error(
+        "match {'x': 1}:\n    case {**+x}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass",
         "parse error: invalid syntax",
     );
@@ -33206,6 +33210,10 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match {'x': 1, 'y': 2, 'z': 3}:\n    case {'x': x, **rest, 'y': y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {**+x}:\n        pass",
         "parse error: invalid syntax",
     );
     assert_error(

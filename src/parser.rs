@@ -963,7 +963,7 @@ impl Parser<'_> {
         loop {
             if matches!(self.peek(), Some(Token::DoubleStar)) {
                 self.advance();
-                rest = Some(self.parse_pattern_capture_target()?);
+                rest = Some(self.parse_mapping_rest_capture_target()?);
                 if matches!(self.peek(), Some(Token::Comma)) {
                     self.advance();
                 }
@@ -1168,6 +1168,15 @@ impl Parser<'_> {
     }
 
     fn parse_star_pattern_capture_target(&mut self) -> Result<String, String> {
+        if matches!(self.peek(), Some(Token::Plus)) {
+            self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
+        self.parse_pattern_capture_target()
+    }
+
+    fn parse_mapping_rest_capture_target(&mut self) -> Result<String, String> {
         if matches!(self.peek(), Some(Token::Plus)) {
             self.advance();
             return Err("invalid syntax".to_string());
