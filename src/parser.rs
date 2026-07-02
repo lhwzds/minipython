@@ -1040,6 +1040,15 @@ impl Parser<'_> {
                         | Token::Ampersand
                         | Token::LeftShift
                         | Token::RightShift
+                        | Token::EqualEqual
+                        | Token::BangEqual
+                        | Token::Less
+                        | Token::LessEqual
+                        | Token::Greater
+                        | Token::GreaterEqual
+                        | Token::Is
+                        | Token::In
+                        | Token::Not
                 )
             )
         ) {
