@@ -28583,6 +28583,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_seekable_method_descriptor_subset",
             "cpython_io_bytesio_isatty_method_descriptor_subset",
             "cpython_io_bytesio_flush_method_descriptor_subset",
+            "cpython_io_bytesio_check_closed_method_descriptor_subset",
             "cpython_io_bytesio_fileno_method_descriptor_subset",
             "cpython_io_bytesio_detach_method_descriptor_subset",
             "cpython_io_bytesio_close_method_descriptor_subset",
@@ -28697,6 +28698,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_flush_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO flush method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_check_closed_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO _checkClosed method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -30103,6 +30109,83 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let check_closed_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_check_closed_method_descriptor_diff_subset",
+    );
+    let check_closed_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_check_closed_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO._checkClosed",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "bio._checkClosed()",
+        "io.BytesIO._checkClosed(bio)",
+        "bio.close()",
+        "io.BytesIO._checkClosed(object())",
+        "io.BytesIO._checkClosed()",
+        "io.BytesIO._checkClosed(bio, 1)",
+        "io.BytesIO._checkClosed(bio=bio)",
+        "io.BytesIO._checkClosed(bio, x=1)",
+        "'_checkClosed' in dir(io.BytesIO)",
+        "'_checkClosed' in dir(io.BytesIO())",
+    ] {
+        assert!(
+            check_closed_descriptor_diff.contains(required),
+            "io.BytesIO _checkClosed method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            check_closed_descriptor_subset.contains(required),
+            "io.BytesIO _checkClosed method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "open-bound ok None NoneType",
+        "open-type ok None NoneType",
+        "closed-bound ValueError I/O operation on closed file.",
+        "descriptor '_checkClosed' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase._checkClosed() needs an argument",
+        "_IOBase._checkClosed() takes no arguments (1 given)",
+        "_IOBase._checkClosed() takes no keyword arguments",
+        "dir True True",
+    ] {
+        assert!(
+            check_closed_descriptor_subset.contains(required),
+            "io.BytesIO _checkClosed method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"_checkClosed\"",
+        "Value::Builtin(name) if name == \"io.BytesIO._checkClosed\"",
+        "call_io_bytesio_check_closed",
+        "descriptor '_checkClosed' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase._checkClosed() needs an argument",
+        "_IOBase._checkClosed() takes no keyword arguments",
+        "\"BytesIO._checkClosed\"",
+        "bytes_io_ensure_open(bytes_io)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO _checkClosed method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_check_closed_method_descriptor_subset",
+            "cpython_io_bytesio_check_closed_method_descriptor_diff_subset",
+            "`io.BytesIO._checkClosed` method descriptor",
+            "closed-state guard descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO _checkClosed method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let fileno_descriptor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_io_bytesio_fileno_method_descriptor_diff_subset",
@@ -30948,6 +31031,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_flush_method_descriptor_subset",
             "cpython_io_bytesio_flush_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_check_closed_method_descriptor_subset",
+            "cpython_io_bytesio_check_closed_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_fileno_method_descriptor_subset",

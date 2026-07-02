@@ -24093,6 +24093,48 @@ show('keyword-missing-receiver', lambda: io.BytesIO.flush(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_check_closed_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+descriptor = io.BytesIO._checkClosed
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+bio = io.BytesIO(b'abc')
+show('open-bound', lambda: bio._checkClosed())
+show('open-type', lambda: io.BytesIO._checkClosed(bio))
+bio.close()
+show('closed-bound', lambda: bio._checkClosed())
+show('wrong-receiver', lambda: io.BytesIO._checkClosed(object()))
+show('missing-receiver', lambda: io.BytesIO._checkClosed())
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO._checkClosed(bio, 1))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO._checkClosed(bio=bio))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO._checkClosed(bio, x=1))
+print('dir', '_checkClosed' in dir(io.BytesIO), '_checkClosed' in dir(io.BytesIO()))"#,
+        &[
+            "descriptor method_descriptor True",
+            "open-bound ok None NoneType",
+            "open-type ok None NoneType",
+            "closed-bound ValueError I/O operation on closed file.",
+            "wrong-receiver TypeError descriptor '_checkClosed' for '_io._IOBase' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method _IOBase._checkClosed() needs an argument",
+            "extra TypeError _IOBase._checkClosed() takes no arguments (1 given)",
+            "keyword-missing-receiver TypeError unbound method _IOBase._checkClosed() needs an argument",
+            "receiver-keyword TypeError _IOBase._checkClosed() takes no keyword arguments",
+            "dir True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_fileno_method_descriptor_subset() {
     assert_output(
         r#"import io

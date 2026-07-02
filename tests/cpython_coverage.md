@@ -1084,6 +1084,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_seekable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_isatty_method_descriptor_diff_subset`,
   `cpython_io_bytesio_flush_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_check_closed_method_descriptor_diff_subset`,
   `cpython_io_bytesio_fileno_method_descriptor_diff_subset`,
   `cpython_io_bytesio_detach_method_descriptor_diff_subset`,
   `cpython_io_bytesio_close_method_descriptor_diff_subset`,
@@ -4451,7 +4452,15 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_flush_method_descriptor_subset` covers the
   `io.BytesIO.flush` method descriptor, including descriptor type visibility,
   none-returning flush descriptor calls, wrong-receiver descriptor `TypeError`,
-  and missing-receiver keyword behavior. `cpython_io_bytesio_fileno_method_descriptor_diff_subset` /
+  and missing-receiver keyword behavior.
+  `cpython_io_bytesio_check_closed_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_check_closed_method_descriptor_subset` covers the
+  `io.BytesIO._checkClosed` method descriptor, including descriptor type
+  visibility, closed-state guard descriptor calls for open-stream no-op bound
+  and type-level calls plus closed-stream `ValueError`, `_io._IOBase`
+  wrong-receiver descriptor `TypeError`, exact extra-argument / keyword
+  diagnostics, and `dir()` visibility.
+  `cpython_io_bytesio_fileno_method_descriptor_diff_subset` /
   `cpython_io_bytesio_fileno_method_descriptor_subset` covers the
   `io.BytesIO.fileno` method descriptor, including descriptor type visibility,
   unsupported fileno descriptor calls, `_io._IOBase` wrong-receiver descriptor
