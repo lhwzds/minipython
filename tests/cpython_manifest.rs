@@ -48744,6 +48744,23 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case 1 as (target + other)",
+        "case 1 as (target() + other)",
+        "case 1 as (target * other)",
+        "case 1 as (target | other)",
+        "case 1 as (target << other)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized expression as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized expression as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case 1 as (x)"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48858,6 +48875,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid lambda as-pattern targets")
                 && document.contains("cannot use lambda as pattern target"),
             "invalid lambda as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized expression as-pattern targets")
+                && document.contains("cannot use expression as pattern target"),
+            "invalid parenthesized expression as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
