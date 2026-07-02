@@ -24314,6 +24314,49 @@ show('closed', lambda: io.BytesIO.__iter__(bio).__class__.__name__)"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_next_wrapper_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, repr(str(error)))
+
+bio = io.BytesIO(b'ab\ncd')
+descriptor = io.BytesIO.__next__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('first', lambda: (io.BytesIO.__next__(bio), bio.tell()))
+show('second', lambda: (io.BytesIO.__next__(bio), bio.tell()))
+show('eof', lambda: io.BytesIO.__next__(bio))
+show('wrong-receiver', lambda: io.BytesIO.__next__(object()))
+show('missing-receiver', lambda: io.BytesIO.__next__())
+bio = io.BytesIO(b'ab\ncd')
+show('extra', lambda: io.BytesIO.__next__(bio, 1))
+bio = io.BytesIO(b'ab\ncd')
+show('keyword-missing-receiver', lambda: io.BytesIO.__next__(bio=bio))
+bio = io.BytesIO(b'ab\ncd')
+show('receiver-keyword', lambda: io.BytesIO.__next__(bio, x=1))
+bio = io.BytesIO(b'ab\ncd')
+bio.close()
+show('closed', lambda: io.BytesIO.__next__(bio))"#,
+        &[
+            "descriptor wrapper_descriptor True",
+            "first ok (b'ab\\n', 3) tuple",
+            "second ok (b'cd', 5) tuple",
+            "eof StopIteration ''",
+            "wrong-receiver TypeError \"descriptor '__next__' requires a '_io.BytesIO' object but received a 'object'\"",
+            "missing-receiver TypeError \"descriptor '__next__' of '_io.BytesIO' object needs an argument\"",
+            "extra TypeError 'expected 0 arguments, got 1'",
+            "keyword-missing-receiver TypeError \"descriptor '__next__' of '_io.BytesIO' object needs an argument\"",
+            "receiver-keyword TypeError 'wrapper __next__() takes no keyword arguments'",
+            "closed ValueError 'I/O operation on closed file.'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

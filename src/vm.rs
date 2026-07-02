@@ -21297,13 +21297,27 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("__next__", &keywords)?;
-        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__next__' of '_io.BytesIO' object needs an argument"
+                    .to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: expected 0 arguments, got {}",
-                method_arg_count(&args)
+                "TypeError: descriptor '__next__' requires a '_io.BytesIO' object but received a '{}'",
+                type_name(receiver)
             ));
         };
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __next__() takes no keyword arguments".to_string());
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_open(bytes_io)?;
         let line = bytes_io_readline_chunk(bytes_io, None);
         if line.is_empty() {
@@ -61670,6 +61684,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__enter__"
                         | "__exit__"
                         | "__iter__"
+                        | "__next__"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65435,7 +65450,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__hash__"
         ),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
-        "io" => matches!(method, "BytesIO.__iter__"),
+        "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
         _ => false,
     }
