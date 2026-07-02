@@ -2470,11 +2470,13 @@ impl Parser<'_> {
             return false;
         };
 
-        if self.is_subscript_start_inside_parentheses(outer_end) {
-            return matches!(
+        if self.is_subscript_start_inside_parentheses(outer_end)
+            && matches!(
                 self.tokens.get(outer_end + 1),
                 Some(Token::Colon | Token::If)
-            );
+            )
+        {
+            return true;
         }
 
         if matches!(self.tokens.get(outer_end + 1), Some(Token::LeftBracket)) {
@@ -2491,11 +2493,20 @@ impl Parser<'_> {
     }
 
     fn is_subscript_start_inside_parentheses(&self, outer_end: usize) -> bool {
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
         let mut paren_depth = 1usize;
         let mut bracket_depth = 0usize;
         let mut has_top_level_subscript = false;
 
-        for index in (self.current + 1)..outer_end {
+        for index in start..end {
             match self.tokens.get(index) {
                 Some(Token::LeftParen) if bracket_depth == 0 => paren_depth += 1,
                 Some(Token::RightParen) if bracket_depth == 0 => {

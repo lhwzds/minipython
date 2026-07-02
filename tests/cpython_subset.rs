@@ -33625,6 +33625,18 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use subscript as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as ((target[0])):\n        pass",
+        "parse error: cannot use subscript as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as (target[0])[1]:\n        pass",
+        "parse error: cannot use subscript as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ((target[0]))[1]:\n        pass",
+        "parse error: cannot use subscript as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as target[0]:\n        pass",
         "parse error: invalid syntax",
     );

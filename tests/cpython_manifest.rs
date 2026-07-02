@@ -49130,7 +49130,13 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as (target)[0]", "case 1 as (target[0])"] {
+    for required_source in [
+        "case 1 as (target)[0]",
+        "case 1 as (target[0])",
+        "case 1 as ((target[0]))",
+        "case 1 as (target[0])[1]",
+        "case 1 as ((target[0]))[1]",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid parenthesized subscript as-pattern target CPython diff must cover `{required_source}`"
