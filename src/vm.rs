@@ -61350,6 +61350,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("([contents])".to_string()))
         }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "CellType" => {
+            Ok(Value::String(
+                "Create a new cell object.\n\n  contents\n    the contents of the cell. If not specified, the cell will be empty,\n    and \n further attempts to access its cell_contents attribute will\n    raise a ValueError."
+                    .to_string(),
+            ))
+        }
         Value::Builtin(function_name) if name == "__module__" && function_name == "PyCapsule" => {
             Ok(Value::String("builtins".to_string()))
         }

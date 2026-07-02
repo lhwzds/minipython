@@ -809,6 +809,7 @@ Recent runtime migration notes:
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_qualname_metadata_diff_subset`,
   `cpython_types_celltype_text_signature_metadata_diff_subset`,
+  `cpython_types_celltype_doc_metadata_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -4041,6 +4042,14 @@ without adding general custom encoder/decoder class support.
   `__dict__` probe, so `__name__`, `__doc__`, broader CellType constructor
   behavior, and a writable type dictionary remain outside this sandbox contract
   slice.
+- The bundled `types` module also includes
+  `cpython_types_celltype_doc_metadata_subset`, backed by
+  `cpython_types_celltype_doc_metadata_diff_subset`, covering CPython's public
+  `types.CellType.__doc__` metadata as a string through direct lookup and
+  `object.__getattribute__`, plus the existing `dir(types.CellType)`
+  visibility. The slice avoids fallback `__dict__` parity and keeps broader
+  CellType constructor behavior and a writable type dictionary outside this
+  sandbox contract slice.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by
   `cpython_types_celltype_keyword_error_diff_subset`, covering

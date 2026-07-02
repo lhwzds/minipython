@@ -72799,6 +72799,33 @@ print('alias', types.CellType.__module__, types.CellType.__qualname__)"#,
     );
 }
 
+// Adapted from CPython public `types.CellType` doc metadata. This covers direct
+// doc lookup and dir visibility without promoting a writable type dictionary.
+#[test]
+fn cpython_types_celltype_doc_metadata_subset() {
+    assert_output(
+        r#"import types
+
+doc = types.CellType.__doc__
+print('doc-type', type(doc).__name__)
+print('doc-prefix', doc[:24])
+print('doc-contents', 'contents' in doc)
+print('doc-valueerror', 'ValueError' in doc)
+print('object-getattribute-prefix', object.__getattribute__(types.CellType, '__doc__')[:24])
+print('dir-doc', '__doc__' in dir(types.CellType))
+print('alias', types.CellType.__module__, types.CellType.__qualname__, types.CellType.__text_signature__)"#,
+        &[
+            "doc-type str",
+            "doc-prefix Create a new cell object",
+            "doc-contents True",
+            "doc-valueerror True",
+            "object-getattribute-prefix Create a new cell object",
+            "dir-doc True",
+            "alias builtins cell ([contents])",
+        ],
+    );
+}
+
 // Adapted from CPython public class-construction behavior for `types.CellType`.
 // MiniPython recognizes the public cell type object and rejects it through the
 // same class-base path used by direct class statements and type helpers.

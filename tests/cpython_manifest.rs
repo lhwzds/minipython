@@ -39312,6 +39312,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_qualname_metadata_subset",
             "cpython_types_celltype_text_signature_metadata_subset",
+            "cpython_types_celltype_doc_metadata_subset",
             "cpython_types_celltype_keyword_error_subset",
             "cpython_types_slot_and_method_wrapper_types_subset",
             "cpython_types_frame_locals_proxy_type_subset",
@@ -39408,6 +39409,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_qualname_metadata_diff_subset",
         "cpython_types_celltype_text_signature_metadata_diff_subset",
+        "cpython_types_celltype_doc_metadata_diff_subset",
         "cpython_types_celltype_keyword_error_diff_subset",
         "cpython_types_float_constructor_edges_diff_subset",
         "cpython_types_float_to_string_diff_subset",
@@ -39857,6 +39859,88 @@ fn types_celltype_text_signature_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType __text_signature__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_doc_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_doc_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_doc_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType __doc__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType __doc__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.__doc__",
+        "object.__getattribute__(types.CellType, '__doc__')",
+        "'contents' in doc",
+        "'ValueError' in doc",
+        "'__doc__' in dir(types.CellType)",
+        "types.CellType.__module__",
+        "types.CellType.__qualname__",
+        "types.CellType.__text_signature__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType __doc__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"doc-type str\"",
+        "\"doc-prefix Create a new cell object\"",
+        "\"doc-contents True\"",
+        "\"doc-valueerror True\"",
+        "\"object-getattribute-prefix Create a new cell object\"",
+        "\"dir-doc True\"",
+        "\"alias builtins cell ([contents])\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType __doc__ subset output must pin `{required}`"
+        );
+    }
+
+    let celltype_doc_start = VM_SOURCE
+        .find("name == \"__doc__\" && function_name == \"CellType\"")
+        .expect("CellType __doc__ implementation must be present");
+    let celltype_doc_end = (celltype_doc_start + 520).min(VM_SOURCE.len());
+    let celltype_doc_body = &VM_SOURCE[celltype_doc_start..celltype_doc_end];
+    for required in [
+        "name == \"__doc__\"",
+        "function_name == \"CellType\"",
+        "Create a new cell object",
+        "ValueError",
+        "Value::String",
+    ] {
+        assert!(
+            celltype_doc_body.contains(required),
+            "types CellType __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType.__doc__",
+            "`object.__getattribute__`",
+            "`dir(types.CellType)`",
+            "`__dict__`",
+            "writable type dictionary",
+            "constructor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType __doc__ docs must contain `{required}`"
             );
         }
     }

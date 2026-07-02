@@ -19385,6 +19385,24 @@ print('alias', types.CellType.__module__, types.CellType.__qualname__)"#,
 }
 
 #[test]
+fn cpython_types_celltype_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType __doc__ metadata subset",
+        name: "types-celltype-doc-metadata",
+        source: r#"import types
+
+doc = types.CellType.__doc__
+print('doc-type', type(doc).__name__)
+print('doc-prefix', doc[:24])
+print('doc-contents', 'contents' in doc)
+print('doc-valueerror', 'ValueError' in doc)
+print('object-getattribute-prefix', object.__getattribute__(types.CellType, '__doc__')[:24])
+print('dir-doc', '__doc__' in dir(types.CellType))
+print('alias', types.CellType.__module__, types.CellType.__qualname__, types.CellType.__text_signature__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_unacceptable_base_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public class-construction non-subclassable types.CellType base subset",
