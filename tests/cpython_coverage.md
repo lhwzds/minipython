@@ -8268,7 +8268,7 @@ matching scope-backed namespace `__format__` lookup.
 | `invalid_case_block` | supported | Missing case colons and missing case indentation with and without guards are rejected by `cpython_invalid_match_pattern_subset` |
 | `invalid_as_pattern` | supported | `_`, literal expression, CPython `test_syntax.py` attribute targets after `case ... as`, and call-form as-pattern targets are rejected by `cpython_invalid_match_pattern_subset` |
 | `invalid_class_pattern` | supported | Positional class patterns after keyword patterns are rejected by `cpython_invalid_match_pattern_subset` |
-| `invalid_mapping_pattern` | supported | Mapping rest patterns before other mapping items, both with and without preceding items, and invalid f-string mapping keys are rejected by `cpython_invalid_match_pattern_subset` |
+| `invalid_mapping_pattern` | supported | Mapping rest patterns before other mapping items, both with and without preceding items, including CPython-style `invalid syntax` messages for mapping `**rest` before later mapping items, and invalid f-string mapping keys are rejected by `cpython_invalid_match_pattern_subset` |
 | `invalid_class_argument_pattern` | supported | Class pattern argument ordering errors with and without leading positional patterns are rejected by `cpython_invalid_match_pattern_subset` |
 
 Invalid match-pattern SyntaxError message parity is covered by

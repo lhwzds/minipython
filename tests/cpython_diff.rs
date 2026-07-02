@@ -41809,6 +41809,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "attribute name repeated in class pattern: x",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-rest-before-item-message",
+            source: "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-item-rest-item-message",
+            source: "match {'x': 1, 'y': 2, 'z': 3}:\n    case {'x': x, **rest, 'y': y}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
             name: "syntax-match-sequence-duplicate-capture-message",
             source: "match 1, 2:\n    case value, value:\n        pass\n",

@@ -968,7 +968,7 @@ impl Parser<'_> {
                     self.advance();
                 }
                 if !matches!(self.peek(), Some(Token::RightBrace)) {
-                    return Err("unsupported match pattern".to_string());
+                    return Err("invalid syntax".to_string());
                 }
                 break;
             }

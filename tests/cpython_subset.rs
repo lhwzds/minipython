@@ -32595,7 +32595,7 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        print(rest, value)",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
     );
     assert_output("match = 1\ncase = 2\nprint(match, case)", &["1 2"]);
     assert_output(
@@ -32842,7 +32842,7 @@ fn cpython_match_mapping_helper_rules_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
     );
     assert_error(
         "match {'x': 1}:\n    case {'x': _, 'x': _}:\n        pass",
@@ -33090,11 +33090,11 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
     );
     assert_error(
         "match {'x': 1, 'y': 2, 'z': 3}:\n    case {'x': x, **rest, 'y': y}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
     );
     assert_error(
         "match {\"\": 1}:\n    case {f\"\": _}:\n        pass",

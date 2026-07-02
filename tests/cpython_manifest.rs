@@ -48614,6 +48614,25 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         }
     }
 
+    for required_source in ["case {**rest, 'x': value}", "case {'x': x, **rest, 'y': y}"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid mapping-rest SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid mapping-rest subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("mapping `**rest` before later mapping items")
+                && document.contains("invalid syntax"),
+            "invalid mapping-rest SyntaxError docs must describe the CPython message"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains(diff_name) && document.contains(subset_name),

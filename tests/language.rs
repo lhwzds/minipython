@@ -3085,7 +3085,7 @@ fn reports_unsupported_match_patterns() {
         run_source(
             "match {\"x\": 1}:\n    case {**rest, \"x\": value}:\n        print(rest, value)"
         ),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: invalid syntax".to_string())
     );
 }
 
