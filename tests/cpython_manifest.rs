@@ -48805,6 +48805,54 @@ fn cpython_singleton_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_reserved_keyword_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "reserved keyword parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function reserved keyword parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda reserved keyword parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(if):\\n    pass",
+        "def f(class):\\n    pass",
+        "def f(*while):\\n    pass",
+        "def f(**for):\\n    pass",
+        "lambda if: None",
+        "lambda class: None",
+        "lambda *while: None",
+        "lambda **for: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "reserved keyword parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "reserved keyword parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("reserved keyword parameter name forms")
+                && document.contains("invalid syntax"),
+            "reserved keyword parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

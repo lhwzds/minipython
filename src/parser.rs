@@ -3912,8 +3912,10 @@ impl Parser<'_> {
                 }
                 after_star = true;
 
+                self.reject_invalid_parameter_name_token()?;
+
                 match self.peek() {
-                    Some(Token::Identifier(_) | Token::True | Token::False | Token::None) => {
+                    Some(Token::Identifier(_)) => {
                         let name = self.expect_parameter_identifier("* parameter name")?;
                         validate_binding_name(&name)?;
                         params.vararg_annotation = self
@@ -6431,12 +6433,17 @@ impl Parser<'_> {
     }
 
     fn expect_parameter_identifier(&mut self, expected: &str) -> Result<String, String> {
-        if matches!(self.peek(), Some(Token::True | Token::False | Token::None)) {
+        self.reject_invalid_parameter_name_token()?;
+        self.expect_identifier(expected)
+    }
+
+    fn reject_invalid_parameter_name_token(&mut self) -> Result<(), String> {
+        if matches!(self.peek(), Some(token) if is_invalid_parameter_name_token(token)) {
             self.advance();
             return Err("invalid syntax".to_string());
         }
 
-        self.expect_identifier(expected)
+        Ok(())
     }
 
     fn expect_soft_keyword(&mut self, keyword: &str) -> Result<(), String> {
@@ -7571,6 +7578,47 @@ fn validate_binding_name(name: &str) -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+fn is_invalid_parameter_name_token(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::If
+            | Token::Elif
+            | Token::Else
+            | Token::While
+            | Token::For
+            | Token::In
+            | Token::Async
+            | Token::Await
+            | Token::Def
+            | Token::Class
+            | Token::Lambda
+            | Token::Return
+            | Token::Yield
+            | Token::Raise
+            | Token::Del
+            | Token::Global
+            | Token::Nonlocal
+            | Token::Assert
+            | Token::Try
+            | Token::Except
+            | Token::With
+            | Token::As
+            | Token::Finally
+            | Token::From
+            | Token::Import
+            | Token::Break
+            | Token::Continue
+            | Token::Pass
+            | Token::And
+            | Token::Or
+            | Token::Not
+            | Token::Is
+            | Token::True
+            | Token::False
+            | Token::None
+    )
 }
 
 fn validate_import_alias_binding(alias: &ImportAlias, is_from_import: bool) -> Result<(), String> {
