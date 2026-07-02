@@ -1124,6 +1124,9 @@ impl Parser<'_> {
                 self.current = start;
                 Err("cannot use attribute as pattern target".to_string())
             }
+            Some(Token::Identifier(_)) if matches!(self.peek(), Some(Token::LeftParen)) => {
+                Err("cannot use function call as pattern target".to_string())
+            }
             Some(Token::Identifier(name)) if name == "_" => {
                 Err("cannot use '_' as a target".to_string())
             }

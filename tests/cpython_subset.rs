@@ -32720,7 +32720,7 @@ fn cpython_match_capture_target_and_star_pattern_helper_rules_subset() {
     );
     assert_error(
         "match 1:\n    case 1 as target():\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use function call as pattern target",
     );
     assert_error(
         "match [1, 2]:\n    case [*rest.attr]:\n        pass",
@@ -33086,7 +33086,7 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match 1:\n    case 1 as target():\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use function call as pattern target",
     );
     assert_error(
         "match 1:\n    case *rest:\n        pass",

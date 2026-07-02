@@ -48593,6 +48593,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "attribute name repeated in class pattern: x",
         "multiple assignments to name",
         "cannot use '_' as a target",
+        "cannot use function call as pattern target",
         "mapping pattern checks duplicate key ('x')",
         "mapping pattern checks duplicate key (False)",
         "mapping pattern checks duplicate key (0.0)",
