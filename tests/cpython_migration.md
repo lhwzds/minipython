@@ -6077,6 +6077,14 @@ Completed in the keyword comparison parameter-name diagnostic pass:
   such as `def f(a is b)`, `def f(a not in b)`, `lambda a in b: None`, and
   `lambda **a in b: None` use CPython's public `invalid syntax` message.
 
+Completed in the boolean operator parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so boolean operator parameter name forms
+  such as `def f(a and b)`, `def f(**a or b)`, `lambda a or b: None`, and
+  `lambda *a and b: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
