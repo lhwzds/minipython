@@ -39226,6 +39226,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_names_public_surface_subset",
             "cpython_types_singleton_type_aliases_subset",
             "cpython_types_nonetype_unacceptable_base_type_subset",
+            "cpython_types_notimplementedtype_unacceptable_base_type_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
             "cpython_types_generic_alias_union_type_subset",
@@ -39323,6 +39324,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_names_public_surface_diff_subset",
         "cpython_types_singleton_type_aliases_diff_subset",
         "cpython_types_nonetype_unacceptable_base_type_diff_subset",
+        "cpython_types_notimplementedtype_unacceptable_base_type_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
@@ -42098,6 +42100,105 @@ fn types_nonetype_unacceptable_base_type_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types NoneType unacceptable-base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_notimplementedtype_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_notimplementedtype_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_types_notimplementedtype_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types NotImplementedType unacceptable-base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types NotImplementedType unacceptable-base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "base = types.NotImplementedType",
+        "class NotImplementedTypeClass(base):",
+        "type('NotImplementedTypeClass', (types.NotImplementedType,), {})",
+        "type.__new__(type, 'NotImplementedTypeNew', (types.NotImplementedType,), {})",
+        "types.new_class('NotImplementedTypeNewClass', (types.NotImplementedType,), {})",
+        "type('RuntimeNotImplementedClass', (NotImplemented.__class__,), {})",
+        "class ModuleClass(types.ModuleType):",
+        "type 'NotImplementedType' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types NotImplementedType unacceptable-base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type",
+        "\"type-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type",
+        "\"type-new-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type",
+        "\"new-class-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type",
+        "\"class-runtime-notimplemented TypeError type 'NotImplementedType' is not an acceptable base type",
+        "\"module-control ModuleClass True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types NotImplementedType unacceptable-base subset output must pin `{required}`"
+        );
+    }
+
+    let class_base_body = VM_SOURCE
+        .split("fn is_class_base_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn base_needs_original_bases").next())
+        .expect("is_class_base_builtin_type implementation must be extractable");
+    assert!(
+        class_base_body.contains("\"NotImplementedType\""),
+        "NotImplementedType must be recognized as a class-base candidate before final validation"
+    );
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"NotImplementedType\""),
+        "NotImplementedType must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "is_class_base_builtin_type(&name)",
+        "type '{public_name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types NotImplementedType unacceptable-base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.NotImplementedType",
+            "type 'NotImplementedType' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "runtime NotImplemented",
+            "ModuleType",
+        ] {
+            assert!(
+                document.contains(required),
+                "types NotImplementedType unacceptable-base docs must contain `{required}`"
             );
         }
     }

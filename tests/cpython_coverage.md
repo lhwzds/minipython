@@ -735,6 +735,7 @@ Recent runtime migration notes:
   `cpython_types_names_public_surface_diff_subset`,
   `cpython_types_singleton_type_aliases_diff_subset`,
   `cpython_types_nonetype_unacceptable_base_type_diff_subset`,
+  `cpython_types_notimplementedtype_unacceptable_base_type_diff_subset`,
   `cpython_types_module_type_diff_subset`,
   `cpython_types_generic_alias_union_type_diff_subset`,
   `cpython_types_union_public_operator_and_classinfo_diff_subset`,
@@ -3695,6 +3696,13 @@ without adding general custom encoder/decoder class support.
   `types.NoneType` class statements, `type(...)`, `type.__new__(...)`,
   `types.new_class(...)`, and runtime None `__class__` bases while preserving
   supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_notimplementedtype_unacceptable_base_type_subset`, backed by
+  `cpython_types_notimplementedtype_unacceptable_base_type_diff_subset`, covering
+  CPython's `type 'NotImplementedType' is not an acceptable base type` rejection
+  for `types.NotImplementedType` class statements, `type(...)`,
+  `type.__new__(...)`, `types.new_class(...)`, and runtime NotImplemented
+  `__class__` bases while preserving supported `ModuleType` subclass creation.
 - The bundled `types` module also includes `cpython_types_module_type_subset`,
   covering CPython public `types.ModuleType` alias identity, construction
   defaults, `name=` / `doc=` keyword construction, builtins metadata, module

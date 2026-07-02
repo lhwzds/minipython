@@ -70775,6 +70775,58 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for non-subclassable
+// singleton type aliases.
+#[test]
+fn cpython_types_notimplementedtype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'NotImplementedType' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.NotImplementedType
+try:
+    class NotImplementedTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-notimplementedtype', error)
+else:
+    print('class-notimplementedtype ok')
+
+for label, call in [
+    ('type-notimplementedtype', lambda: type('NotImplementedTypeClass', (types.NotImplementedType,), {})),
+    ('type-new-notimplementedtype', lambda: type.__new__(type, 'NotImplementedTypeNew', (types.NotImplementedType,), {})),
+    ('new-class-notimplementedtype', lambda: types.new_class('NotImplementedTypeNewClass', (types.NotImplementedType,), {})),
+    ('class-runtime-notimplemented', lambda: type('RuntimeNotImplementedClass', (NotImplemented.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type (\"type 'NotImplementedType' is not an acceptable base type\",) True",
+            "type-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type (\"type 'NotImplementedType' is not an acceptable base type\",) True",
+            "type-new-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type (\"type 'NotImplementedType' is not an acceptable base type\",) True",
+            "new-class-notimplementedtype TypeError type 'NotImplementedType' is not an acceptable base type (\"type 'NotImplementedType' is not an acceptable base type\",) True",
+            "class-runtime-notimplemented TypeError type 'NotImplementedType' is not an acceptable base type (\"type 'NotImplementedType' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

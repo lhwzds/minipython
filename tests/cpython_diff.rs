@@ -15623,6 +15623,49 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_notimplementedtype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.NotImplementedType base subset",
+        name: "types-notimplementedtype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'NotImplementedType' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.NotImplementedType
+try:
+    class NotImplementedTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-notimplementedtype', error)
+else:
+    print('class-notimplementedtype ok')
+
+for label, call in [
+    ('type-notimplementedtype', lambda: type('NotImplementedTypeClass', (types.NotImplementedType,), {})),
+    ('type-new-notimplementedtype', lambda: type.__new__(type, 'NotImplementedTypeNew', (types.NotImplementedType,), {})),
+    ('new-class-notimplementedtype', lambda: types.new_class('NotImplementedTypeNewClass', (types.NotImplementedType,), {})),
+    ('class-runtime-notimplemented', lambda: type('RuntimeNotImplementedClass', (NotImplemented.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",

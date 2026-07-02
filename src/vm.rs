@@ -39010,6 +39010,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
                 | "method_descriptor"
                 | "member_descriptor"
                 | "NoneType"
+                | "NotImplementedType"
                 | "traceback"
                 | "wrapper_descriptor"
         )
@@ -39171,6 +39172,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "mappingproxy"
             | "memoryview"
             | "NoneType"
+            | "NotImplementedType"
             | "range"
             | "slice"
             | "traceback"
