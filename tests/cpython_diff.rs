@@ -19355,6 +19355,21 @@ print('all', 'CellType' in types.__all__)"#,
 }
 
 #[test]
+fn cpython_types_celltype_qualname_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType __qualname__ metadata subset",
+        name: "types-celltype-qualname-metadata",
+        source: r#"import types
+
+print('qualname', types.CellType.__qualname__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__qualname__'))
+print('getattr-default-dict', '__qualname__' in getattr(types.CellType, '__dict__', {}))
+print('dir-qualname', '__qualname__' in dir(types.CellType))
+print('alias', types.CellType.__module__, 'CellType' in types.__all__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_unacceptable_base_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public class-construction non-subclassable types.CellType base subset",

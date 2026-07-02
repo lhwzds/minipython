@@ -72753,6 +72753,29 @@ print('all', 'CellType' in types.__all__)"#,
     );
 }
 
+// Adapted from CPython public `types.CellType` qualname metadata. This covers
+// the alias metadata only; broader CellType type-object metadata remains
+// separate.
+#[test]
+fn cpython_types_celltype_qualname_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('qualname', types.CellType.__qualname__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__qualname__'))
+print('getattr-default-dict', '__qualname__' in getattr(types.CellType, '__dict__', {}))
+print('dir-qualname', '__qualname__' in dir(types.CellType))
+print('alias', types.CellType.__module__, 'CellType' in types.__all__)"#,
+        &[
+            "qualname cell",
+            "object-getattribute cell",
+            "getattr-default-dict False",
+            "dir-qualname False",
+            "alias builtins True",
+        ],
+    );
+}
+
 // Adapted from CPython public class-construction behavior for `types.CellType`.
 // MiniPython recognizes the public cell type object and rejects it through the
 // same class-base path used by direct class statements and type helpers.

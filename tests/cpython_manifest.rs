@@ -39310,6 +39310,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_module_metadata_subset",
+            "cpython_types_celltype_qualname_metadata_subset",
             "cpython_types_celltype_keyword_error_subset",
             "cpython_types_slot_and_method_wrapper_types_subset",
             "cpython_types_frame_locals_proxy_type_subset",
@@ -39404,6 +39405,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
+        "cpython_types_celltype_qualname_metadata_diff_subset",
         "cpython_types_celltype_keyword_error_diff_subset",
         "cpython_types_float_constructor_edges_diff_subset",
         "cpython_types_float_to_string_diff_subset",
@@ -39699,6 +39701,82 @@ fn types_celltype_module_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType __module__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_qualname_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_qualname_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_qualname_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType __qualname__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType __qualname__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.__qualname__",
+        "object.__getattribute__(types.CellType, '__qualname__')",
+        "getattr(types.CellType, '__dict__', {})",
+        "'__qualname__' in dir(types.CellType)",
+        "types.CellType.__module__",
+        "'CellType' in types.__all__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType __qualname__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"qualname cell\"",
+        "\"object-getattribute cell\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-qualname False\"",
+        "\"alias builtins True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType __qualname__ subset output must pin `{required}`"
+        );
+    }
+
+    let celltype_qualname_start = VM_SOURCE
+        .find("name == \"__qualname__\" && function_name == \"CellType\"")
+        .expect("CellType __qualname__ implementation must be present");
+    let celltype_qualname_end = (celltype_qualname_start + 180).min(VM_SOURCE.len());
+    let celltype_qualname_body = &VM_SOURCE[celltype_qualname_start..celltype_qualname_end];
+    for required in [
+        "name == \"__qualname__\"",
+        "function_name == \"CellType\"",
+        "Value::String(\"cell\".to_string())",
+    ] {
+        assert!(
+            celltype_qualname_body.contains(required),
+            "types CellType __qualname__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType.__qualname__",
+            "`object.__getattribute__`",
+            "`cell`",
+            "broader",
+            "`CellType` type-object metadata",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType __qualname__ docs must contain `{required}`"
             );
         }
     }
