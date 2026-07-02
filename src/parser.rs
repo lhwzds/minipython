@@ -1192,6 +1192,14 @@ impl Parser<'_> {
         }
 
         if matches!(
+            (self.peek(), self.peek_next()),
+            (Some(Token::Identifier(_)), Some(Token::LeftBracket))
+        ) {
+            self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
+        if matches!(
             (
                 self.peek(),
                 self.peek_next(),

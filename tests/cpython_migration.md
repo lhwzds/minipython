@@ -5069,6 +5069,17 @@ SyntaxError message pass:
   execution forms, does not change bare `target[0]` invalid-syntax handling,
   and does not expand sandbox-visible runtime capabilities.
 
+Completed in the invalid bare subscript as-pattern targets SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare subscript and slice targets
+  such as `case 1 as target[0]` and `case 1 as target[:]` now use CPython's
+  public `invalid syntax` message instead of falling through to the generic
+  expected-colon parser error.
+- Kept this as parser-message parity only; it does not add new as-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid as-pattern call-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
