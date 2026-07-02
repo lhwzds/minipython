@@ -48982,6 +48982,22 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case x -> y",
+        "case (x -> y)",
+        "case [x -> y]",
+        "case {1: x -> y}",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid bare-name arrow match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid bare-name arrow match-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case ...", "case (...)", "case [...]", "case {1: ...}"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -49696,6 +49712,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("bare-name reserved-keyword match patterns")
                 && document.contains("invalid syntax"),
             "invalid bare-name reserved-keyword match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("bare-name arrow match patterns")
+                && document.contains("invalid syntax"),
+            "invalid bare-name arrow match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 

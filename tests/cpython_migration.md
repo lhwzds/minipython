@@ -4872,6 +4872,16 @@ message pass:
 - Kept this as parser-message parity only; valid capture, guard, and as-pattern
   forms such as `case x`, `case x if x`, and `case 1 as x` remain unchanged.
 
+Completed in the invalid bare-name arrow match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare-name arrow match patterns such
+  as `case x -> y`, `case (x -> y)`, `case [x -> y]`, and
+  `case {1: x -> y}` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid capture and as-pattern forms
+  such as `case x` and `case 1 as x` remain unchanged.
+
 Completed in the match OR-pattern capture promotion pass:
 
 - Expanded `cpython_match_pattern_helper_rules_subset`,

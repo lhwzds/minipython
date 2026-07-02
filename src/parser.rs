@@ -1076,6 +1076,7 @@ impl Parser<'_> {
                         | Token::Pass
                         | Token::Async
                         | Token::Await
+                        | Token::Arrow
                         | Token::ColonEqual
                         | Token::PlusEqual
                         | Token::MinusEqual
