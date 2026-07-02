@@ -1179,6 +1179,10 @@ impl Parser<'_> {
             return Err("cannot use dict literal as pattern target".to_string());
         }
 
+        if self.is_parenthesized_attribute_as_pattern_target() {
+            return Err("cannot use attribute as pattern target".to_string());
+        }
+
         if matches!(
             (
                 self.peek(),
@@ -1202,6 +1206,34 @@ impl Parser<'_> {
         }
 
         self.parse_pattern_capture_target()
+    }
+
+    fn is_parenthesized_attribute_as_pattern_target(&self) -> bool {
+        matches!(
+            (
+                self.peek(),
+                self.peek_next(),
+                self.tokens.get(self.current + 2),
+                self.tokens.get(self.current + 3),
+                self.tokens.get(self.current + 4),
+                self.tokens.get(self.current + 5),
+            ),
+            (
+                Some(Token::LeftParen),
+                Some(Token::Identifier(_)),
+                Some(Token::RightParen),
+                Some(Token::Dot),
+                Some(Token::Identifier(_)),
+                Some(Token::Colon | Token::If),
+            ) | (
+                Some(Token::LeftParen),
+                Some(Token::Identifier(_)),
+                Some(Token::Dot),
+                Some(Token::Identifier(_)),
+                Some(Token::RightParen),
+                Some(Token::Colon | Token::If),
+            )
+        )
     }
 
     fn is_parenthesized_tuple_as_pattern_target(&self) -> bool {

@@ -48754,6 +48754,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case 1 as (target).attr", "case 1 as (target.attr)"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized attribute as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized attribute as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("standalone star patterns") && document.contains("invalid syntax"),
@@ -48806,6 +48817,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid tuple as-pattern targets")
                 && document.contains("cannot use tuple as pattern target"),
             "invalid tuple as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized attribute as-pattern targets")
+                && document.contains("cannot use attribute as pattern target"),
+            "invalid parenthesized attribute as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 

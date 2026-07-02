@@ -5038,6 +5038,16 @@ Completed in the invalid tuple as-pattern targets SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid parenthesized attribute as-pattern targets SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so parenthesized attribute targets
+  such as `case 1 as (target).attr` and `case 1 as (target.attr)` now use
+  CPython's public `cannot use attribute as pattern target` message.
+- Kept this as parser-message parity only; it does not add new as-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid as-pattern call-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
