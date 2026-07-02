@@ -1001,7 +1001,7 @@ impl Parser<'_> {
         }
 
         if !is_literal_pattern_start(self.peek()) {
-            return Err("unsupported match pattern".to_string());
+            return Err("invalid syntax".to_string());
         }
 
         let key = self.parse_literal_pattern_expr()?;

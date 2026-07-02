@@ -32853,6 +32853,18 @@ fn cpython_match_mapping_helper_rules_subset() {
         "parse error: invalid syntax",
     );
     assert_error(
+        "match {'x': 1}:\n    case {key: value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {key(): value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {[1]: value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match {'x': 1}:\n    case {'x': _, 'x': _}:\n        pass",
         "parse error: mapping pattern checks duplicate key ('x')",
     );
@@ -33174,6 +33186,18 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match {'x': 1, 'y': 2, 'z': 3}:\n    case {'x': x, **rest, 'y': y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {key: value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {key(): value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {[1]: value}:\n        pass",
         "parse error: invalid syntax",
     );
     assert_error(

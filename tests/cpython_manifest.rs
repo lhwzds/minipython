@@ -48626,14 +48626,20 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         }
     }
 
-    for required_source in ["case {**rest, 'x': value}", "case {'x': x, **rest, 'y': y}"] {
+    for required_source in [
+        "case {**rest, 'x': value}",
+        "case {'x': x, **rest, 'y': y}",
+        "case {key: value}",
+        "case {key(): value}",
+        "case {[1]: value}",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
-            "invalid mapping-rest SyntaxError CPython diff must cover `{required_source}`"
+            "invalid mapping SyntaxError CPython diff must cover `{required_source}`"
         );
         assert!(
             CPYTHON_SUBSET.contains(required_source),
-            "invalid mapping-rest subset must cover `{required_source}`"
+            "invalid mapping subset must cover `{required_source}`"
         );
     }
 
