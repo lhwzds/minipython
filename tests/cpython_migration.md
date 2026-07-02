@@ -4868,6 +4868,25 @@ message pass:
 - Kept this as parser-message parity only; valid wildcard patterns and
   OR-pattern diagnostics such as `case _` and `case _ | y` remain unchanged.
 
+Completed in the invalid wildcard reserved-keyword match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard reserved-keyword match patterns
+  such as `case _ lambda y`, `case (_ lambda y)`, `case [_ lambda y]`,
+  `case {1: _ lambda y}`, `case _ for y`, `case (_ for y)`,
+  `case [_ for y]`, `case {1: _ for y}`, `case _ while y`, `case _ elif y`,
+  `case _ else y`, `case _ def y`, `case _ class y`, `case _ return y`,
+  `case _ yield y`, `case _ raise y`, `case _ del y`, `case _ global y`,
+  `case _ nonlocal y`, `case _ assert y`, `case _ try y`,
+  `case _ except y`, `case _ with y`, `case _ finally y`, `case _ from y`,
+  `case _ import y`, `case _ break`, `case _ continue`, `case _ pass`,
+  `case _ async y`, and `case _ await y` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns,
+  OR-pattern diagnostics such as `case _ | y`, and arrow forms such as
+  `case _ -> y` remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 

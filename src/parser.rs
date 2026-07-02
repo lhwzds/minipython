@@ -1035,6 +1035,31 @@ impl Parser<'_> {
                         | Token::CaretEqual
                         | Token::LeftShiftEqual
                         | Token::RightShiftEqual
+                        | Token::Lambda
+                        | Token::For
+                        | Token::While
+                        | Token::Elif
+                        | Token::Else
+                        | Token::Def
+                        | Token::Class
+                        | Token::Return
+                        | Token::Yield
+                        | Token::Raise
+                        | Token::Del
+                        | Token::Global
+                        | Token::Nonlocal
+                        | Token::Assert
+                        | Token::Try
+                        | Token::Except
+                        | Token::With
+                        | Token::Finally
+                        | Token::From
+                        | Token::Import
+                        | Token::Async
+                        | Token::Await
+                        | Token::Break
+                        | Token::Continue
+                        | Token::Pass
                 )
             )
         {

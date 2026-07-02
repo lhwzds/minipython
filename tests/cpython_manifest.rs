@@ -48970,6 +48970,49 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case _ lambda y",
+        "case (_ lambda y)",
+        "case [_ lambda y]",
+        "case {1: _ lambda y}",
+        "case _ for y",
+        "case (_ for y)",
+        "case [_ for y]",
+        "case {1: _ for y}",
+        "case _ while y",
+        "case _ elif y",
+        "case _ else y",
+        "case _ def y",
+        "case _ class y",
+        "case _ return y",
+        "case _ yield y",
+        "case _ raise y",
+        "case _ del y",
+        "case _ global y",
+        "case _ nonlocal y",
+        "case _ assert y",
+        "case _ try y",
+        "case _ except y",
+        "case _ with y",
+        "case _ finally y",
+        "case _ from y",
+        "case _ import y",
+        "case _ break",
+        "case _ continue",
+        "case _ pass",
+        "case _ async y",
+        "case _ await y",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid wildcard reserved-keyword match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid wildcard reserved-keyword match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case x & y",
         "case (x & y)",
         "case [x & y]",
@@ -49829,6 +49872,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("wildcard assignment-form match patterns")
                 && document.contains("invalid syntax"),
             "invalid wildcard assignment-form match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("wildcard reserved-keyword match patterns")
+                && document.contains("invalid syntax"),
+            "invalid wildcard reserved-keyword match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 

@@ -34207,6 +34207,130 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: invalid syntax",
     );
     assert_error(
+        "match 1:\n    case _ lambda y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (_ lambda y):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [_ lambda y]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {1: 2}:\n    case {1: _ lambda y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ for y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (_ for y):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [_ for y]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {1: 2}:\n    case {1: _ for y}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ while y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ elif y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ else y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ def y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ class y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ return y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ yield y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ raise y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ del y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ global y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ nonlocal y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ assert y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ try y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ except y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ with y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ finally y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ from y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ import y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ break:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ continue:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ pass:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ async y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case _ await y:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match 1:\n    case x & y:\n        pass",
         "parse error: invalid syntax",
     );
