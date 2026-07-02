@@ -61590,6 +61590,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 && matches!(
                     name,
                     "read"
+                        | "read1"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65198,6 +65199,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "io" if matches!(
             method,
             "BytesIO.read"
+                | "BytesIO.read1"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
@@ -65279,6 +65281,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         "io" => matches!(
             method,
             "BytesIO.read"
+                | "BytesIO.read1"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
