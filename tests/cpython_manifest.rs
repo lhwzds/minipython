@@ -12,6 +12,7 @@ const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
 const PYTHON_VERSION_FILE: &str = include_str!("../.python-version");
 const GAP_SWEEP_TOOL: &str = include_str!("../tools/cpython_gap_sweep.py");
+const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
 const REPORTS_GITIGNORE: &str = include_str!("../reports/.gitignore");
@@ -45017,6 +45018,22 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     }
 
     for required in [
+        "uv run",
+        "--python \"$python_version\"",
+        "cargo build --bin mnpy",
+        "CARGO_TARGET_DIR:=/tmp/minipython-target",
+        "tools/cpython_gap_sweep.py",
+        "--require-version \"$python_version\"",
+        "--fail-on-diff",
+        "reports/cpython-gap-sweep",
+    ] {
+        assert!(
+            GAP_SWEEP_RUNNER.contains(required),
+            "gap sweep uv runner must keep `{required}`"
+        );
+    }
+
+    for required in [
         "syntax-function-closure",
         "syntax-class-method",
         "syntax-match-basic",
@@ -45040,6 +45057,8 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "`nice_to_have`",
         "`wont_fix`",
         "cpython_diff",
+        "tools/run_cpython_gap_sweep.sh",
+        "uv run --python",
     ] {
         assert!(
             GAP_SWEEP_CORPUS_README.contains(required),

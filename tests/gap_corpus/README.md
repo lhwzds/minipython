@@ -1,6 +1,9 @@
 # CPython Gap Corpus
 
-This corpus feeds `tools/cpython_gap_sweep.py`.
+This corpus feeds `tools/cpython_gap_sweep.py`. Prefer
+`tools/run_cpython_gap_sweep.sh` for local runs because it builds `mnpy`, reads
+the pinned `.python-version`, and launches the oracle through
+`uv run --python`.
 
 The sweep is a discovery tool, not a release gate. It compares a fixed CPython
 oracle against MiniPython, classifies differences, and writes structured

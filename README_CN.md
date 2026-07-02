@@ -48,6 +48,17 @@ mnpy -e "1 + 2 * 3"     # 求值表达式
 echo "print(1)" | mnpy  # 管道输入
 ```
 
+## 测试
+
+```bash
+tools/run_cpython_gap_sweep.sh
+```
+
+gap sweep 会用固定 `.python-version` 通过 `uv run --python` 启动 CPython
+oracle，先构建 `mnpy`，再比较有边界的 corpus。它是发现差异的循环；提升为
+支持面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、
+coverage 和 migration 证据。
+
 ## 架构
 
 ```

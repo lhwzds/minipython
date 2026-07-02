@@ -69,6 +69,17 @@ mnpy -e "1 + 2 * 3"     # evaluate an expression
 echo "print(1)" | mnpy  # pipe input
 ```
 
+## Testing
+
+```bash
+tools/run_cpython_gap_sweep.sh
+```
+
+The gap sweep uses `uv run --python` with the pinned `.python-version`, builds
+`mnpy`, and compares the bounded corpus against the fixed CPython oracle. It is
+a discovery loop; promoted behavior still needs focused `cpython_subset`,
+`cpython_diff`, manifest, coverage, and migration evidence.
+
 ## Architecture
 
 ```
