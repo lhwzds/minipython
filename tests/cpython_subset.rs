@@ -32809,7 +32809,11 @@ fn cpython_match_sequence_helper_rules_subset() {
     );
     assert_error(
         "match 1:\n    case *rest:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (*rest):\n        pass",
+        "parse error: invalid syntax",
     );
 }
 
@@ -33083,6 +33087,14 @@ fn cpython_invalid_match_pattern_subset() {
     assert_error(
         "match 1:\n    case 1 as target():\n        pass",
         "parse error: unsupported match pattern",
+    );
+    assert_error(
+        "match 1:\n    case *rest:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (*rest):\n        pass",
+        "parse error: invalid syntax",
     );
     assert_error(
         "match point:\n    case Point(x=1, 2):\n        pass",

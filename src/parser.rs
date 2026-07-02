@@ -812,7 +812,7 @@ impl Parser<'_> {
         let first = self.parse_sequence_match_pattern()?;
         if !matches!(self.peek(), Some(Token::Comma)) {
             if matches!(first, Pattern::Star(_)) {
-                return Err("unsupported match pattern".to_string());
+                return Err("invalid syntax".to_string());
             }
             return Ok(first);
         }
@@ -902,7 +902,7 @@ impl Parser<'_> {
             }
 
             if matches!(first, Pattern::Star(_)) {
-                return Err("unsupported match pattern".to_string());
+                return Err("invalid syntax".to_string());
             }
 
             self.expect_right_paren()?;

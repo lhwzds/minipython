@@ -3022,7 +3022,11 @@ fn reports_unsupported_match_patterns() {
     );
     assert_eq!(
         run_source("match [1, 2]:\n    case (*a):\n        print(a)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: invalid syntax".to_string())
+    );
+    assert_eq!(
+        run_source("match [1, 2]:\n    case *a:\n        print(a)"),
+        Err("parse error: invalid syntax".to_string())
     );
     assert_eq!(
         run_source("match 1:\n    case 1 as _:\n        print(\"bad\")"),
