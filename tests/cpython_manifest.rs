@@ -48521,6 +48521,17 @@ fn cpython_match_value_attr_name_or_attr_helper_diff_covers_runtime_subset() {
         );
     }
 
+    for required_source in ["case A.B = 1", "case A.", "case A..B"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid value/name_or_attr SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid value/name_or_attr subset must cover `{required_source}`"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains(diff_name) && document.contains(subset_name),
@@ -48685,6 +48696,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("mapping `**rest` before later mapping items")
                 && document.contains("invalid syntax"),
             "invalid mapping-rest SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid equality/dangling-dot forms")
+                && document.contains("invalid syntax"),
+            "invalid value/name_or_attr SyntaxError docs must describe the CPython message"
         );
     }
 

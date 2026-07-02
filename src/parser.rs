@@ -1093,7 +1093,7 @@ impl Parser<'_> {
         let expr = self.parse_name_or_attr_pattern_expr()?;
 
         if matches!(self.peek(), Some(Token::LeftParen | Token::Equal)) {
-            return Err("unsupported match pattern".to_string());
+            return Err("invalid syntax".to_string());
         }
 
         Ok(expr)
@@ -1108,7 +1108,7 @@ impl Parser<'_> {
         while matches!(self.peek(), Some(Token::Dot)) {
             self.advance();
             let Some(Token::Identifier(name)) = self.advance().cloned() else {
-                return Err("unsupported match pattern".to_string());
+                return Err("invalid syntax".to_string());
             };
             expr = Expr::Attribute {
                 object: Box::new(expr),

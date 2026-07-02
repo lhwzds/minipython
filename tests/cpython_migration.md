@@ -4761,7 +4761,17 @@ Completed in the match value/attr/name-or-attr supported-promotion pass:
 - Added `cpython_match_value_attr_name_or_attr_helper_rules_subset` and promoted
   `value_pattern`, `attr`, and `name_or_attr` from `partial` to `supported`
   after covering simple and recursive dotted value patterns, dotted mapping
-  keys, bare and dotted class names, and invalid equality/dangling-dot forms.
+  keys, bare and dotted class names, and invalid equality/dangling-dot forms
+  with CPython-style `invalid syntax` messages.
+
+Completed in the invalid value/name-or-attr SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_match_value_attr_name_or_attr_helper_rules_subset` so invalid
+  equality and dangling-dot value patterns such as `case A.B = 1`, `case A.`,
+  and `case A..B` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
 
 Completed in the match OR-pattern capture promotion pass:
 

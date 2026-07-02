@@ -41928,6 +41928,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-value-equals-message",
+            source: "class A:\n    B = 1\nmatch 1:\n    case A.B = 1:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-value-dangling-dot-message",
+            source: "class A:\n    pass\nmatch 1:\n    case A.:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-value-double-dot-message",
+            source: "class A:\n    pass\nmatch 1:\n    case A..B:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid class pattern public SyntaxError subset",
             name: "syntax-match-class-starred-argument-message",
             source: "match point:\n    case Point(*args):\n        pass\n",

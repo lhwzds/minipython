@@ -32764,11 +32764,15 @@ fn cpython_match_value_attr_name_or_attr_helper_rules_subset() {
     );
     assert_error(
         "class A:\n    B = 1\nmatch 1:\n    case A.B = 1:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
     );
     assert_error(
         "class A:\n    pass\nmatch 1:\n    case A.:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "class A:\n    pass\nmatch 1:\n    case A..B:\n        pass",
+        "parse error: invalid syntax",
     );
 }
 
