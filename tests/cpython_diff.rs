@@ -41445,6 +41445,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "expected ':'",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation starred expression",
+            name: "starred-return-annotation-expression-message",
+            source: "def f[*Ts]() -> *Ts:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation starred expression",
+            name: "bare-starred-return-annotation-expression-colon-message",
+            source: "def f() -> *:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation starred expression",
+            name: "bare-starred-return-annotation-expression-newline-message",
+            source: "def f() -> *\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation starred expression",
+            name: "starred-return-annotation-expression-comma-message",
+            source: "def f[*Ts]() -> *Ts, int:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation double-starred expression",
+            name: "double-starred-return-annotation-expression-message",
+            source: "def f() -> **Ts:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation double-starred expression",
+            name: "bare-double-starred-return-annotation-expression-message",
+            source: "def f() -> **:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram async function return annotation starred expression",
+            name: "starred-async-return-annotation-expression-message",
+            source: "async def f[*Ts]() -> *Ts:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_assign_del",
             name: "del-empty-tuple-target-message",
             source: "del (,)",

@@ -6128,6 +6128,14 @@ Completed in the missing return annotation expression diagnostic pass:
   after `->` in ordinary and async function definitions use CPython's public
   `expected ':'` message for colon, newline, EOF, and semicolon boundaries.
 
+Completed in the starred return annotation diagnostic pass:
+
+- Extended `cpython_invalid_function_def_raw_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so starred return annotation expressions
+  such as `-> *Ts`, `-> *`, and `-> **Ts` use CPython's public `expected ':'`
+  message while preserving valid nested starred annotations such as
+  `-> tuple[*Ts]`.
+
 Completed in the parser diagnostic bridge pass:
 
 - Added `ParseError` plus `source_parse_error_diagnostic()` as a bridge API for

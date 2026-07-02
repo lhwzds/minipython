@@ -4062,7 +4062,14 @@ impl Parser<'_> {
     fn parse_function_return_annotation_expression(&mut self) -> Result<Expr, String> {
         if matches!(
             self.peek(),
-            Some(Token::Colon | Token::Semicolon | Token::Newline | Token::Eof) | None
+            Some(
+                Token::Star
+                    | Token::DoubleStar
+                    | Token::Colon
+                    | Token::Semicolon
+                    | Token::Newline
+                    | Token::Eof
+            ) | None
         ) {
             return Err("expected ':'".to_string());
         }

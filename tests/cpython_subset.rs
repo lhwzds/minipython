@@ -25894,6 +25894,17 @@ fn cpython_invalid_function_def_raw_subset() {
     ] {
         assert_error(source, "parse error: expected ':'");
     }
+    for source in [
+        "def f[*Ts]() -> *Ts:\n    pass",
+        "def f() -> *:\n    pass",
+        "def f() -> *\n    pass",
+        "def f[*Ts]() -> *Ts, int:\n    pass",
+        "def f() -> **Ts:\n    pass",
+        "def f() -> **:\n    pass",
+        "async def f[*Ts]() -> *Ts:\n    pass",
+    ] {
+        assert_error(source, "parse error: expected ':'");
+    }
 
     assert_parse_error_diagnostic("def f:\n    pass", "expected '(', found Colon", 1, 6, 1, 7);
     assert_parse_error_diagnostic(
