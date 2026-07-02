@@ -1182,6 +1182,10 @@ impl Parser<'_> {
             return Err("cannot use dict comprehension as pattern target".to_string());
         }
 
+        if self.is_set_comprehension_as_pattern_target() {
+            return Err("cannot use set comprehension as pattern target".to_string());
+        }
+
         if self.is_set_display_as_pattern_target() {
             return Err("cannot use set display as pattern target".to_string());
         }
@@ -1420,6 +1424,110 @@ impl Parser<'_> {
                         && brace_depth == 1 =>
                 {
                     return true;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
+    fn is_set_comprehension_as_pattern_target(&self) -> bool {
+        let (set_start, set_end) = if matches!(self.peek(), Some(Token::LeftBrace)) {
+            let Some(set_end) = self.find_matching_brace(self.current) else {
+                return false;
+            };
+            if !matches!(self.tokens.get(set_end + 1), Some(Token::Colon | Token::If)) {
+                return false;
+            }
+            (self.current, set_end)
+        } else {
+            let Some(outer_end) = self.find_matching_paren(self.current) else {
+                return false;
+            };
+            if !matches!(
+                self.tokens.get(outer_end + 1),
+                Some(Token::Colon | Token::If)
+            ) {
+                return false;
+            }
+
+            let mut start = self.current + 1;
+            let mut end = outer_end;
+            while matches!(self.tokens.get(start), Some(Token::LeftParen))
+                && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+            {
+                start += 1;
+                end = end.saturating_sub(1);
+            }
+
+            if !matches!(self.tokens.get(start), Some(Token::LeftBrace)) {
+                return false;
+            }
+            let Some(set_end) = self.find_matching_brace(start) else {
+                return false;
+            };
+            if set_end != end.saturating_sub(1) {
+                return false;
+            }
+            (start, set_end)
+        };
+
+        let mut paren_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 1usize;
+        let mut at_top_level_item_start = true;
+
+        for index in (set_start + 1)..set_end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    if paren_depth == 0 {
+                        at_top_level_item_start = false;
+                    }
+                    paren_depth += 1
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 1 => {
+                    if bracket_depth == 0 {
+                        at_top_level_item_start = false;
+                    }
+                    bracket_depth += 1
+                }
+                Some(Token::RightBracket) if brace_depth == 1 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => {
+                    if brace_depth == 1 {
+                        at_top_level_item_start = false;
+                    }
+                    brace_depth += 1
+                }
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(Token::Comma)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 =>
+                {
+                    at_top_level_item_start = true
+                }
+                Some(Token::Colon)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 =>
+                {
+                    return false;
+                }
+                Some(Token::DoubleStar)
+                    if at_top_level_item_start
+                        && paren_depth == 0
+                        && bracket_depth == 0
+                        && brace_depth == 1 =>
+                {
+                    return false;
+                }
+                Some(Token::For) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 => {
+                    return true;
+                }
+                Some(_) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 => {
+                    at_top_level_item_start = false
                 }
                 _ => {}
             }
