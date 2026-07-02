@@ -23746,6 +23746,39 @@ show('keyword-missing-receiver', lambda: io.BytesIO.detach(bio=bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_close_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.close
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: (io.BytesIO.close(bio), bio.closed))
+show('call-again', lambda: (io.BytesIO.close(bio), bio.closed))
+show('wrong-receiver', lambda: io.BytesIO.close(object()))
+show('missing-receiver', lambda: io.BytesIO.close())
+fresh = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO.close(fresh, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.close(bio=bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call ok (None, True) tuple",
+            "call-again ok (None, True) tuple",
+            "wrong-receiver TypeError descriptor 'close' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.close() needs an argument",
+            "extra TypeError BytesIO.close() takes no arguments (1 given)",
+            "keyword-missing-receiver TypeError unbound method BytesIO.close() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

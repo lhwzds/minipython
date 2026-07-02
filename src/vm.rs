@@ -21154,13 +21154,22 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("close", &keywords)?;
-        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method BytesIO.close() needs an argument".to_string());
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: BytesIO.close() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor 'close' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        reject_bytesio_method_keywords("close", &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: BytesIO.close() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_resizable(bytes_io)?;
         bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
@@ -61577,6 +61586,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "flush"
                         | "fileno"
                         | "detach"
+                        | "close"
                 ) =>
         {
             Ok(Value::Builtin(format!("io.BytesIO.{name}")))
@@ -65182,6 +65192,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.flush"
                 | "BytesIO.fileno"
                 | "BytesIO.detach"
+                | "BytesIO.close"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ) =>
@@ -65260,6 +65271,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.flush"
                 | "BytesIO.fileno"
                 | "BytesIO.detach"
+                | "BytesIO.close"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ),
