@@ -25882,6 +25882,44 @@ show('closed', lambda: io.BytesIO.__enter__(bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_exit_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO __exit__ method descriptor subset",
+        name: "io-bytesio-exit-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.__exit__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.__exit__(bio, None, None, None), bio.closed))
+bio = io.BytesIO(b'abc')
+err = ValueError('boom')
+show('call-exc', lambda: (io.BytesIO.__exit__(bio, ValueError, err, err.__traceback__), bio.closed))
+show('wrong-receiver', lambda: io.BytesIO.__exit__(object(), None, None, None))
+show('missing-receiver', lambda: io.BytesIO.__exit__())
+bio = io.BytesIO(b'abc')
+show('missing-args', lambda: io.BytesIO.__exit__(bio))
+bio = io.BytesIO(b'abc')
+show('two-args', lambda: io.BytesIO.__exit__(bio, None, None))
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO.__exit__(bio, None, None, None, None))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO.__exit__(exc_type=None, exc_value=None, traceback=None))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO.__exit__(bio, exc_type=None, exc_value=None, traceback=None))
+bio = io.BytesIO(b'abc')
+bio.close()
+show('closed', lambda: io.BytesIO.__exit__(bio, None, None, None))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",

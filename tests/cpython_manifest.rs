@@ -28587,6 +28587,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_detach_method_descriptor_subset",
             "cpython_io_bytesio_close_method_descriptor_subset",
             "cpython_io_bytesio_enter_method_descriptor_subset",
+            "cpython_io_bytesio_exit_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28714,6 +28715,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_enter_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __enter__ method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_exit_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __exit__ method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -30351,6 +30357,82 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let exit_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_exit_method_descriptor_diff_subset",
+    );
+    let exit_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_exit_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.__exit__",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.__exit__(bio, None, None, None)",
+        "io.BytesIO.__exit__(bio, ValueError, err, err.__traceback__)",
+        "io.BytesIO.__exit__(object(), None, None, None)",
+        "io.BytesIO.__exit__()",
+        "io.BytesIO.__exit__(bio)",
+        "io.BytesIO.__exit__(bio, None, None)",
+        "io.BytesIO.__exit__(bio, None, None, None, None)",
+        "io.BytesIO.__exit__(exc_type=None, exc_value=None, traceback=None)",
+        "io.BytesIO.__exit__(bio, exc_type=None, exc_value=None, traceback=None)",
+        "bio.close()",
+    ] {
+        assert!(
+            exit_descriptor_diff.contains(required),
+            "io.BytesIO __exit__ method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            exit_descriptor_subset.contains(required),
+            "io.BytesIO __exit__ method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call-none ok (None, True) tuple",
+        "call-exc ok (None, True) tuple",
+        "descriptor '__exit__' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase.__exit__() needs an argument",
+        "missing-args ok None NoneType",
+        "two-args ok None NoneType",
+        "extra ok None NoneType",
+        "_IOBase.__exit__() takes no keyword arguments",
+        "closed ok None NoneType",
+    ] {
+        assert!(
+            exit_descriptor_subset.contains(required),
+            "io.BytesIO __exit__ method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"__exit__\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor '__exit__' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase.__exit__() needs an argument",
+        "\"BytesIO.__exit__\"",
+        "_IOBase.__exit__() takes no keyword arguments",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO __exit__ method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_exit_method_descriptor_subset",
+            "cpython_io_bytesio_exit_method_descriptor_diff_subset",
+            "`io.BytesIO.__exit__` method descriptor",
+            "context-exit descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO __exit__ method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let setstate_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_setstate_diff_subset");
     let setstate_subset =
@@ -30725,6 +30807,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_enter_method_descriptor_subset",
             "cpython_io_bytesio_enter_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_exit_method_descriptor_subset",
+            "cpython_io_bytesio_exit_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",

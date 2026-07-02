@@ -24224,6 +24224,55 @@ show('closed', lambda: io.BytesIO.__enter__(bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_exit_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.__exit__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.__exit__(bio, None, None, None), bio.closed))
+bio = io.BytesIO(b'abc')
+err = ValueError('boom')
+show('call-exc', lambda: (io.BytesIO.__exit__(bio, ValueError, err, err.__traceback__), bio.closed))
+show('wrong-receiver', lambda: io.BytesIO.__exit__(object(), None, None, None))
+show('missing-receiver', lambda: io.BytesIO.__exit__())
+bio = io.BytesIO(b'abc')
+show('missing-args', lambda: io.BytesIO.__exit__(bio))
+bio = io.BytesIO(b'abc')
+show('two-args', lambda: io.BytesIO.__exit__(bio, None, None))
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO.__exit__(bio, None, None, None, None))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO.__exit__(exc_type=None, exc_value=None, traceback=None))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO.__exit__(bio, exc_type=None, exc_value=None, traceback=None))
+bio = io.BytesIO(b'abc')
+bio.close()
+show('closed', lambda: io.BytesIO.__exit__(bio, None, None, None))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-none ok (None, True) tuple",
+            "call-exc ok (None, True) tuple",
+            "wrong-receiver TypeError descriptor '__exit__' for '_io._IOBase' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method _IOBase.__exit__() needs an argument",
+            "missing-args ok None NoneType",
+            "two-args ok None NoneType",
+            "extra ok None NoneType",
+            "keyword-missing-receiver TypeError unbound method _IOBase.__exit__() needs an argument",
+            "receiver-keyword TypeError _IOBase.__exit__() takes no keyword arguments",
+            "closed ok None NoneType",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

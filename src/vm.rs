@@ -21244,13 +21244,20 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("__exit__", &keywords)?;
-        let [Value::BytesIO(bytes_io), ..] = args.as_slice() else {
+        let Some((receiver, _rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method _IOBase.__exit__() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: _IOBase.__exit__() missing required receiver ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor '__exit__' for '_io._IOBase' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        if !keywords.is_empty() {
+            return Err("TypeError: _IOBase.__exit__() takes no keyword arguments".to_string());
+        }
         bytes_io_ensure_resizable(bytes_io)?;
         bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
@@ -61647,6 +61654,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "write"
                         | "writelines"
                         | "__enter__"
+                        | "__exit__"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65263,6 +65271,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.write"
                 | "BytesIO.writelines"
                 | "BytesIO.__enter__"
+                | "BytesIO.__exit__"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
@@ -65352,6 +65361,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.write"
                 | "BytesIO.writelines"
                 | "BytesIO.__enter__"
+                | "BytesIO.__exit__"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
