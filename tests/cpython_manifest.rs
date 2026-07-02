@@ -49149,6 +49149,62 @@ fn cpython_binary_arithmetic_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_comparison_operator_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "comparison operator parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function comparison operator parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda comparison operator parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a==b):\\n    pass",
+        "def f(a!=b):\\n    pass",
+        "def f(a<b):\\n    pass",
+        "def f(a<=b):\\n    pass",
+        "def f(a>b):\\n    pass",
+        "def f(a>=b):\\n    pass",
+        "def f(*a==b):\\n    pass",
+        "def f(**a<b):\\n    pass",
+        "lambda a==b: None",
+        "lambda a!=b: None",
+        "lambda a<b: None",
+        "lambda a<=b: None",
+        "lambda a>b: None",
+        "lambda a>=b: None",
+        "lambda *a==b: None",
+        "lambda **a<b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "comparison operator parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "comparison operator parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("comparison operator parameter name forms")
+                && document.contains("invalid syntax"),
+            "comparison operator parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
