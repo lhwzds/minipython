@@ -27783,6 +27783,54 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
     );
 }
 
+// Adapted from CPython's public `slice.__new__` behavior. MiniPython exposes
+// the direct type allocation entry point but keeps slice subclassing outside
+// this slice because CPython rejects `slice` as a base type at class creation.
+#[test]
+fn cpython_slice_new_direct_allocation_subset() {
+    assert_output_with_stack(
+        r#"class C:
+    pass
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, type(value).__name__, repr(value), value.start, value.stop, value.step)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+print('visible', hasattr(slice, '__new__'), '__new__' in dir(slice), hasattr(slice(0), '__new__'), '__new__' in dir(slice(0)))
+for label, call in [
+    ('missing', lambda: slice.__new__()),
+    ('no-values', lambda: slice.__new__(slice)),
+    ('exact-stop', lambda: slice.__new__(slice, 4)),
+    ('exact-start-stop', lambda: slice.__new__(slice, 1, 5)),
+    ('exact-step', lambda: slice.__new__(slice, 1, 6, 2)),
+    ('instance-stop', lambda: slice(0).__new__(slice, 2)),
+    ('too-many', lambda: slice.__new__(slice, 1, 2, 3, 4)),
+    ('bad-class', lambda: slice.__new__(list, 4)),
+    ('bad-user-class', lambda: slice.__new__(C, 4)),
+    ('int-arg', lambda: slice.__new__(1, 4)),
+    ('keyword', lambda: slice.__new__(slice, stop=4)),
+]:
+    show(label, call)"#,
+        &[
+            "visible True True True True",
+            "missing TypeError slice.__new__(): not enough arguments ('slice.__new__(): not enough arguments',)",
+            "no-values TypeError slice expected at least 1 argument, got 0 ('slice expected at least 1 argument, got 0',)",
+            "exact-stop slice slice(None, 4, None) None 4 None",
+            "exact-start-stop slice slice(1, 5, None) 1 5 None",
+            "exact-step slice slice(1, 6, 2) 1 6 2",
+            "instance-stop slice slice(None, 2, None) None 2 None",
+            "too-many TypeError slice expected at most 3 arguments, got 4 ('slice expected at most 3 arguments, got 4',)",
+            "bad-class TypeError slice.__new__(list): list is not a subtype of slice ('slice.__new__(list): list is not a subtype of slice',)",
+            "bad-user-class TypeError slice.__new__(C): C is not a subtype of slice ('slice.__new__(C): C is not a subtype of slice',)",
+            "int-arg TypeError slice.__new__(X): X is not a type object (int) ('slice.__new__(X): X is not a type object (int)',)",
+            "keyword TypeError slice() takes no keyword arguments ('slice() takes no keyword arguments',)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Mirrors CPython's public `slice` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]

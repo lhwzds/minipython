@@ -34239,8 +34239,8 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
     for required in [
         "Value::Slice { .. } => Err(slice_attribute_assignment_error(name))",
         "Value::Slice { .. } => names.extend(",
-        "\"slice\" => &[\"indices\", \"start\", \"stop\", \"step\"]",
-        "[\"indices\", \"start\", \"stop\", \"step\"]",
+        "\"slice\" => &[\"__new__\", \"indices\", \"start\", \"stop\", \"step\"]",
+        "[\"__new__\", \"indices\", \"start\", \"stop\", \"step\"]",
         "fn slice_attribute_assignment_error(name: &str) -> String",
         "fn is_slice_readonly_instance_attribute(name: &str) -> bool",
         "builtin_type_dir_names(\"slice\")",
@@ -34267,6 +34267,98 @@ fn slice_public_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("without adding slice instance dictionaries"),
             "focused slice public attribute evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn slice_new_direct_allocation_docs_cover_core_runtime() {
+    let diff_name = "cpython_slice_new_direct_allocation_diff_subset";
+    let subset_name = "cpython_slice_new_direct_allocation_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "slice.__new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "slice.__new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "hasattr(slice, '__new__')",
+        "'__new__' in dir(slice)",
+        "hasattr(slice(0), '__new__')",
+        "'__new__' in dir(slice(0))",
+        "slice.__new__()",
+        "slice.__new__(slice)",
+        "slice.__new__(slice, 4)",
+        "slice.__new__(slice, 1, 5)",
+        "slice.__new__(slice, 1, 6, 2)",
+        "slice(0).__new__(slice, 2)",
+        "slice.__new__(slice, 1, 2, 3, 4)",
+        "slice.__new__(list, 4)",
+        "slice.__new__(C, 4)",
+        "slice.__new__(1, 4)",
+        "slice.__new__(slice, stop=4)",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "slice.__new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible True True True True\"",
+        "\"missing TypeError slice.__new__(): not enough arguments",
+        "\"no-values TypeError slice expected at least 1 argument, got 0",
+        "\"exact-stop slice slice(None, 4, None) None 4 None\"",
+        "\"exact-start-stop slice slice(1, 5, None) 1 5 None\"",
+        "\"exact-step slice slice(1, 6, 2) 1 6 2\"",
+        "\"instance-stop slice slice(None, 2, None) None 2 None\"",
+        "\"too-many TypeError slice expected at most 3 arguments, got 4",
+        "\"bad-class TypeError slice.__new__(list): list is not a subtype of slice",
+        "\"bad-user-class TypeError slice.__new__(C): C is not a subtype of slice",
+        "\"int-arg TypeError slice.__new__(X): X is not a type object (int)",
+        "\"keyword TypeError slice() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "slice.__new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"slice.__new__\"",
+        "fn call_slice_new(",
+        "Value::Builtin(name) if name == \"slice\" => call_slice(values.to_vec())",
+        "slice.__new__({}): {} is not a subtype of slice",
+        "slice.__new__(X): X is not a type object",
+        "function_name == \"slice\" && name == \"__new__\"",
+        "\"__new__\" => Ok(Value::Builtin(\"slice.__new__\".to_string()))",
+        "\"slice\" => &[\"__new__\", \"indices\", \"start\", \"stop\", \"step\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "slice.__new__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`slice.__new__` direct allocation",
+            "type and instance `__new__` visibility",
+            "slice constructor arity reuse",
+            "keyword rejection",
+            "without adding slice subclassing or class-base validation parity",
+        ] {
+            assert!(
+                document.contains(required),
+                "slice.__new__ docs must contain `{required}`"
+            );
+        }
     }
 }
 
@@ -34313,7 +34405,7 @@ fn slice_instance_doc_attribute_subset_has_focused_diff_evidence() {
         "builtins_module_type_doc(\"slice\")",
         "expect(\"slice builtin type doc exists\")",
         "Value::Slice { .. } => names.extend(builtin_type_dir_names(\"slice\"))",
-        "\"slice\" => &[\"indices\", \"start\", \"stop\", \"step\"]",
+        "\"slice\" => &[\"__new__\", \"indices\", \"start\", \"stop\", \"step\"]",
     ] {
         assert!(
             VM_SOURCE.contains(required),

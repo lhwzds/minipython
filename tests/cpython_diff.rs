@@ -11726,6 +11726,38 @@ show('del-extra', lambda: delattr(s, 'extra'))"#,
 }
 
 #[test]
+fn cpython_slice_new_direct_allocation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_slice.py public slice.__new__ behavior subset",
+        name: "slice-new-direct-allocation",
+        source: r#"class C:
+    pass
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, type(value).__name__, repr(value), value.start, value.stop, value.step)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+print('visible', hasattr(slice, '__new__'), '__new__' in dir(slice), hasattr(slice(0), '__new__'), '__new__' in dir(slice(0)))
+for label, call in [
+    ('missing', lambda: slice.__new__()),
+    ('no-values', lambda: slice.__new__(slice)),
+    ('exact-stop', lambda: slice.__new__(slice, 4)),
+    ('exact-start-stop', lambda: slice.__new__(slice, 1, 5)),
+    ('exact-step', lambda: slice.__new__(slice, 1, 6, 2)),
+    ('instance-stop', lambda: slice(0).__new__(slice, 2)),
+    ('too-many', lambda: slice.__new__(slice, 1, 2, 3, 4)),
+    ('bad-class', lambda: slice.__new__(list, 4)),
+    ('bad-user-class', lambda: slice.__new__(C, 4)),
+    ('int-arg', lambda: slice.__new__(1, 4)),
+    ('keyword', lambda: slice.__new__(slice, stop=4)),
+]:
+    show(label, call)"#,
+    });
+}
+
+#[test]
 fn cpython_slice_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_slice.py public slice instance __doc__ attribute subset",

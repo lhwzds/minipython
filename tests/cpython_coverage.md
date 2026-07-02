@@ -225,6 +225,10 @@ Recent runtime migration notes:
   omitted, explicit, stepped, and negative-step slices, slice.indices in dir()
   for both instances and the builtin type, plus CPython's read-only slice method attributes
   (`indices`), readonly, and no-`__dict__` assignment/deletion errors without adding slice instance dictionaries.
+- `cpython_slice_new_direct_allocation_subset`, backed by
+  `cpython_slice_new_direct_allocation_diff_subset`, now pins `slice.__new__` direct allocation,
+  type and instance `__new__` visibility, slice constructor arity reuse,
+  keyword rejection, and exact slice subtype error classification without adding slice subclassing or class-base validation parity.
 - `cpython_super_attribute_assignment_errors_subset`, backed by
   `cpython_super_attribute_assignment_errors_diff_subset`, now pins super object attribute assignment/deletion errors
   for readonly public data attributes (`__thisclass__`, `__self__`, and
