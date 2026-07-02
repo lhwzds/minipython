@@ -41715,6 +41715,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "expected an indented block after 'case' statement",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-literal-semicolon-message",
+            source: "match 1:\n    case 1; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-capture-semicolon-message",
+            source: "match 1:\n    case x; print(x)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-guard-semicolon-message",
+            source: "match 1:\n    case 1 if True; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
+            name: "syntax-case-sequence-semicolon-message",
+            source: "match [1]:\n    case [x]; print(x)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_invalid_line_continuation_error_position",
             name: "syntax-invalid-line-continuation-basic-message",
             source: r#"a = 3 \ 4"#,

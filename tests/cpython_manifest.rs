@@ -48840,6 +48840,29 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case 1; print(2)",
+        "case x; print(x)",
+        "case 1 if True; print(2)",
+        "case [x]; print(x)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "case-block semicolon CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "case-block semicolon subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("case-block semicolon") && document.contains("invalid syntax"),
+            "case-block semicolon docs must describe the CPython message"
+        );
+    }
+
+    for required_source in [
         "case 1:\\npass",
         "case 1:\\n\",",
         "case 1:\\n    case 2",

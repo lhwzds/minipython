@@ -33243,6 +33243,22 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error("match 1:\n    case 1", "parse error: expected ':'");
     assert_error(
+        "match 1:\n    case 1; print(2)",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case x; print(x)",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case 1 if True; print(2)",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [x]; print(x)",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match 1:\n    case 1:\npass",
         "parse error: expected an indented block after 'case' statement",
     );

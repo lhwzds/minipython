@@ -5237,6 +5237,15 @@ Completed in the missing case-block colon SyntaxError message pass:
 - Kept this as parser-message parity only; valid case blocks and missing
   `match` subject colons remain separate parser paths.
 
+Completed in the case-block semicolon SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so case-block semicolon forms such as
+  `case 1; print(2)`, `case x; print(x)`, guarded cases, and sequence patterns
+  now use CPython's public `invalid syntax` message.
+- Kept valid inline case suites such as `case 1: print(1)` and missing
+  case-block colons on their existing parser paths.
+
 Completed in the missing case-indentation SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
