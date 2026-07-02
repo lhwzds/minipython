@@ -4060,6 +4060,13 @@ impl Parser<'_> {
     }
 
     fn parse_parameter_annotation_expression(&mut self) -> Result<Expr, String> {
+        if matches!(
+            self.peek(),
+            Some(Token::RightParen | Token::Comma | Token::Equal)
+        ) {
+            return Err("invalid syntax".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Star)) {
             self.advance();
             if is_invalid_star_expression_end(self.peek()) {

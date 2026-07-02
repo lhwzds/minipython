@@ -48590,6 +48590,54 @@ fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_missing_parameter_annotation_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "missing parameter annotation-expression SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "missing parameter annotation-expression runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(x:):\\n    pass",
+        "def f(x:, y):\\n    pass",
+        "def f(x: = 1):\\n    pass",
+        "def f(*x:):\\n    pass",
+        "def f(*x:, y):\\n    pass",
+        "def f(**x:):\\n    pass",
+        "def f(*, x:, y):\\n    pass",
+        "def f(x:, /):\\n    pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing parameter annotation-expression CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing parameter annotation-expression subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing parameter annotation expressions")
+                && document.contains("invalid syntax"),
+            "missing parameter annotation-expression docs must describe the CPython message"
+        );
+    }
+    assert!(
+        CPYTHON_MIGRATION.contains("Return annotations")
+            && CPYTHON_MIGRATION.contains("outside this slice"),
+        "migration notes must preserve the return-annotation stop-line"
+    );
+}
+
+#[test]
 fn cpython_missing_annotation_expression_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_assignment_and_annotation_subset";

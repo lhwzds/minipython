@@ -35648,6 +35648,18 @@ fn cpython_invalid_parameters_subset() {
         "def f(a, d: int=, c):\n    pass",
         "parse error: expected default value expression",
     );
+    for source in [
+        "def f(x:):\n    pass",
+        "def f(x:, y):\n    pass",
+        "def f(x: = 1):\n    pass",
+        "def f(*x:):\n    pass",
+        "def f(*x:, y):\n    pass",
+        "def f(**x:):\n    pass",
+        "def f(*, x:, y):\n    pass",
+        "def f(x:, /):\n    pass",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "def f(*):\n    pass",
         "parse error: named parameters must follow bare *",

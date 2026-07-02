@@ -5966,6 +5966,15 @@ Completed in the function-parameter supported-promotion pass:
   checks until the parameter list has no higher-priority `*`-placement syntax
   error, matching CPython's invalid-parameter diagnostic priority more closely.
 
+Completed in the missing parameter annotation expression diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so missing parameter annotation expressions
+  before `)`, `,`, and `=` use CPython's public `invalid syntax` message across
+  positional, positional-only comma, keyword-only, `*args`, and `**kwargs`
+  parameters. Return annotations and newline-driven unclosed-parameter-list
+  diagnostics stay outside this slice.
+
 Completed in the invalid expression helper supported-promotion pass:
 
 - Expanded `cpython_invalid_expression_rules_subset` and promoted
