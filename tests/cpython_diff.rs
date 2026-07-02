@@ -43059,6 +43059,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-bare-name-subscript-message",
+            source: "match 1:\n    case x[0]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-grouped-bare-name-subscript-message",
+            source: "match 1:\n    case (x[0]):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-sequence-bare-name-subscript-message",
+            source: "match [1]:\n    case [x[0]]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-mapping-value-bare-name-subscript-message",
+            source: "match {1: 2}:\n    case {1: x[0]}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid value/name_or_attr pattern public SyntaxError subset",
+            name: "syntax-match-bare-name-slice-message",
+            source: "match 1:\n    case x[:]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
             name: "syntax-match-top-level-ellipsis-pattern-message",
             source: "match 1:\n    case ...:\n        pass\n",
