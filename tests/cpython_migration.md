@@ -5026,6 +5026,18 @@ message pass:
   this does not add new comprehension execution forms or expand
   sandbox-visible runtime capabilities.
 
+Completed in the invalid dict-comprehension as-pattern targets SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so dict-comprehension targets such as
+  `case 1 as {x: x for x in xs}`, `case 1 as ({x: x for x in xs})`,
+  `case 1 as {x + 1: x for x in xs}`, and
+  `case 1 as ({x: x for x in xs if x})` now use CPython's public
+  `cannot use dict comprehension as pattern target` message.
+- Kept this as parser-message parity only; this does not add new comprehension
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid dict as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

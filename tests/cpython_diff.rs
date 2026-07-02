@@ -301,6 +301,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use f-string expression as pattern target"
         | "cannot use t-string expression as pattern target"
         | "cannot use list comprehension as pattern target"
+        | "cannot use dict comprehension as pattern target"
         | "cannot use expression as pattern target"
         | "cannot use conditional expression as pattern target"
         | "cannot use yield expression as pattern target"
@@ -41889,6 +41890,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-list-comprehension-tuple-target-message",
             source: "match 1:\n    case 1 as ([x for x in xs], value):\n        pass\n",
             expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-dict-comprehension-target-message",
+            source: "match 1:\n    case 1 as {x: x for x in xs}:\n        pass\n",
+            expected_message: "cannot use dict comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-dict-comprehension-target-message",
+            source: "match 1:\n    case 1 as ({x: x for x in xs}):\n        pass\n",
+            expected_message: "cannot use dict comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-dict-comprehension-key-expression-target-message",
+            source: "match 1:\n    case 1 as {x + 1: x for x in xs}:\n        pass\n",
+            expected_message: "cannot use dict comprehension as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-dict-comprehension-filter-target-message",
+            source: "match 1:\n    case 1 as ({x: x for x in xs if x}):\n        pass\n",
+            expected_message: "cannot use dict comprehension as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",

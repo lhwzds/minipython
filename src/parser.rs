@@ -1178,6 +1178,10 @@ impl Parser<'_> {
             return Err("cannot use list as pattern target".to_string());
         }
 
+        if self.is_dict_comprehension_as_pattern_target() {
+            return Err("cannot use dict comprehension as pattern target".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::LeftBrace)) {
             self.advance();
             return Err("cannot use dict literal as pattern target".to_string());
@@ -1324,6 +1328,89 @@ impl Parser<'_> {
                 Some(Token::LeftBrace) => brace_depth += 1,
                 Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
                 Some(Token::For) if paren_depth == 0 && bracket_depth == 1 && brace_depth == 0 => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
+
+    fn is_dict_comprehension_as_pattern_target(&self) -> bool {
+        let (dict_start, dict_end) = if matches!(self.peek(), Some(Token::LeftBrace)) {
+            let Some(dict_end) = self.find_matching_brace(self.current) else {
+                return false;
+            };
+            if !matches!(
+                self.tokens.get(dict_end + 1),
+                Some(Token::Colon | Token::If)
+            ) {
+                return false;
+            }
+            (self.current, dict_end)
+        } else {
+            let Some(outer_end) = self.find_matching_paren(self.current) else {
+                return false;
+            };
+            if !matches!(
+                self.tokens.get(outer_end + 1),
+                Some(Token::Colon | Token::If)
+            ) {
+                return false;
+            }
+
+            let mut start = self.current + 1;
+            let mut end = outer_end;
+            while matches!(self.tokens.get(start), Some(Token::LeftParen))
+                && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+            {
+                start += 1;
+                end = end.saturating_sub(1);
+            }
+
+            if !matches!(self.tokens.get(start), Some(Token::LeftBrace)) {
+                return false;
+            }
+            let Some(dict_end) = self.find_matching_brace(start) else {
+                return false;
+            };
+            if dict_end != end.saturating_sub(1) {
+                return false;
+            }
+            (start, dict_end)
+        };
+
+        let mut paren_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 1usize;
+        let mut saw_top_level_colon = false;
+
+        for index in (dict_start + 1)..dict_end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    paren_depth += 1
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 1 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 1 => bracket_depth += 1,
+                Some(Token::RightBracket) if brace_depth == 1 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => brace_depth += 1,
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(Token::Colon)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 1 =>
+                {
+                    saw_top_level_colon = true
+                }
+                Some(Token::For)
+                    if saw_top_level_colon
+                        && paren_depth == 0
+                        && bracket_depth == 0
+                        && brace_depth == 1 =>
+                {
                     return true;
                 }
                 _ => {}
@@ -1879,6 +1966,33 @@ impl Parser<'_> {
             match self.tokens.get(index) {
                 Some(Token::LeftBracket) => depth += 1,
                 Some(Token::RightBracket) => {
+                    if depth == 0 {
+                        return None;
+                    }
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(index);
+                    }
+                }
+                Some(Token::Newline | Token::Eof) if depth <= 1 => return None,
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    fn find_matching_brace(&self, start: usize) -> Option<usize> {
+        if !matches!(self.tokens.get(start), Some(Token::LeftBrace)) {
+            return None;
+        }
+
+        let mut depth = 0usize;
+
+        for index in start..self.tokens.len() {
+            match self.tokens.get(index) {
+                Some(Token::LeftBrace) => depth += 1,
+                Some(Token::RightBrace) => {
                     if depth == 0 {
                         return None;
                     }
