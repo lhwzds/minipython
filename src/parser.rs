@@ -1133,6 +1133,7 @@ impl Parser<'_> {
             Some(Token::None) => Err("cannot use None as pattern target".to_string()),
             Some(Token::True) => Err("cannot use True as pattern target".to_string()),
             Some(Token::False) => Err("cannot use False as pattern target".to_string()),
+            Some(Token::Ellipsis) => Err("cannot use ellipsis as pattern target".to_string()),
             Some(Token::Identifier(name)) if name == "_" => {
                 Err("cannot use '_' as a target".to_string())
             }

@@ -3053,6 +3053,10 @@ fn reports_unsupported_match_patterns() {
         Err("parse error: cannot use False as pattern target".to_string())
     );
     assert_eq!(
+        run_source("match 1:\n    case 1 as ...:\n        print(\"bad\")"),
+        Err("parse error: cannot use ellipsis as pattern target".to_string())
+    );
+    assert_eq!(
         run_source("match [1, 2]:\n    case x, x:\n        print(x)"),
         Err("parse error: multiple assignments to name 'x' in pattern".to_string())
     );
