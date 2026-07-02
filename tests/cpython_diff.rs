@@ -42946,6 +42946,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-missing-colon-message",
+            source: "match {1: 2}:\n    case {1}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-missing-colon-trailing-comma-message",
+            source: "match {1: 2}:\n    case {1,}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-missing-colon-comma-message",
+            source: "match {1: 2}:\n    case {1, 2}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-string-key-missing-colon-message",
+            source: "match {'x': 1}:\n    case {'x'}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
+            name: "syntax-match-mapping-later-key-missing-colon-message",
+            source: "match {1: 2, 3: 4}:\n    case {1: a, 3}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping pattern public SyntaxError subset",
             name: "syntax-match-mapping-bare-name-key-message",
             source: "match {'x': 1}:\n    case {key: value}:\n        pass\n",
             expected_message: "invalid syntax",

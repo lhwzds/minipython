@@ -48732,6 +48732,11 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case {**-rest}",
         "case {**1}",
         "case {1:}",
+        "case {1}",
+        "case {1,}",
+        "case {1, 2}",
+        "case {'x'}",
+        "case {1: a, 3}",
         "case {key: value}",
         "case {key(): value}",
         "case {[1]: value}",
@@ -49695,6 +49700,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("missing mapping pattern values")
                 && document.contains("invalid syntax"),
             "missing mapping pattern value SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing mapping pattern key colons")
+                && document.contains("invalid syntax"),
+            "missing mapping pattern key colon SyntaxError docs must describe the CPython message"
         );
     }
 

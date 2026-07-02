@@ -1058,6 +1058,9 @@ impl Parser<'_> {
             }
 
             let key = self.parse_mapping_pattern_key()?;
+            if matches!(self.peek(), Some(Token::RightBrace | Token::Comma)) {
+                return Err("invalid syntax".to_string());
+            }
             self.expect_colon()?;
             let pattern = self.parse_match_pattern()?;
             entries.push((key, pattern));
