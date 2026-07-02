@@ -72171,6 +72171,61 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.MemberDescriptorType`. MiniPython recognizes the public member
+// descriptor type object as a class-base candidate only so the final-base
+// validator can reject it with CPython's public TypeError.
+#[test]
+fn cpython_types_memberdescriptortype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+from collections import defaultdict
+
+EXPECTED_MESSAGE = "type 'member_descriptor' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.MemberDescriptorType
+try:
+    class MemberDescriptorClass(base):
+        pass
+except Exception as error:
+    print_error('class-member-descriptor', error)
+else:
+    print('class-member-descriptor ok')
+
+for label, call in [
+    ('type-member-descriptor', lambda: type('MemberDescriptorClass', (types.MemberDescriptorType,), {})),
+    ('type-new-member-descriptor', lambda: type.__new__(type, 'MemberDescriptorNew', (types.MemberDescriptorType,), {})),
+    ('new-class-member-descriptor', lambda: types.new_class('MemberDescriptorNewClass', (types.MemberDescriptorType,), {})),
+    ('class-runtime-member-descriptor', lambda: type('RuntimeMemberDescriptorClass', (defaultdict.__dict__['default_factory'].__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-member-descriptor TypeError type 'member_descriptor' is not an acceptable base type (\"type 'member_descriptor' is not an acceptable base type\",) True",
+            "type-member-descriptor TypeError type 'member_descriptor' is not an acceptable base type (\"type 'member_descriptor' is not an acceptable base type\",) True",
+            "type-new-member-descriptor TypeError type 'member_descriptor' is not an acceptable base type (\"type 'member_descriptor' is not an acceptable base type\",) True",
+            "new-class-member-descriptor TypeError type 'member_descriptor' is not an acceptable base type (\"type 'member_descriptor' is not an acceptable base type\",) True",
+            "class-runtime-member-descriptor TypeError type 'member_descriptor' is not an acceptable base type (\"type 'member_descriptor' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]

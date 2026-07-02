@@ -39008,6 +39008,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
                 | "method"
                 | "method-wrapper"
                 | "method_descriptor"
+                | "member_descriptor"
                 | "traceback"
                 | "wrapper_descriptor"
         )
@@ -39165,6 +39166,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "method"
             | "method-wrapper"
             | "method_descriptor"
+            | "member_descriptor"
             | "mappingproxy"
             | "memoryview"
             | "range"
