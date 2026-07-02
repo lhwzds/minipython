@@ -41869,6 +41869,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-tuple-target-message",
+            source: "match 1:\n    case 1 as (x, y):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-empty-tuple-target-message",
+            source: "match 1:\n    case 1 as ():\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-function-call-target-message",
             source: "match 1:\n    case 1 as target():\n        pass\n",
             expected_message: "cannot use function call as pattern target",

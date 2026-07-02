@@ -1197,7 +1197,43 @@ impl Parser<'_> {
             return Err("cannot use name as pattern target".to_string());
         }
 
+        if self.is_parenthesized_tuple_as_pattern_target() {
+            return Err("cannot use tuple as pattern target".to_string());
+        }
+
         self.parse_pattern_capture_target()
+    }
+
+    fn is_parenthesized_tuple_as_pattern_target(&self) -> bool {
+        if !matches!(self.peek(), Some(Token::LeftParen)) {
+            return false;
+        }
+
+        let mut depth = 0usize;
+        let mut has_top_level_comma = false;
+
+        for index in self.current..self.tokens.len() {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) => depth += 1,
+                Some(Token::RightParen) => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                    if depth == 0 {
+                        let is_empty_tuple = index == self.current + 1;
+                        let has_case_boundary =
+                            matches!(self.tokens.get(index + 1), Some(Token::Colon | Token::If));
+                        return has_case_boundary && (is_empty_tuple || has_top_level_comma);
+                    }
+                }
+                Some(Token::Comma) if depth == 1 => has_top_level_comma = true,
+                Some(Token::Newline | Token::Eof) if depth <= 1 => return false,
+                _ => {}
+            }
+        }
+
+        false
     }
 
     fn parse_star_pattern_capture_target(&mut self) -> Result<String, String> {
