@@ -42651,6 +42651,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "cannot use function call as pattern target",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-colon-message",
+            source: "match 1:\n    case 1 as:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-parenthesized-message",
+            source: "match 1:\n    case (1 as):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-comma-message",
+            source: "match (1, 2):\n    case (1 as, 2):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-sequence-message",
+            source: "match [1]:\n    case [1 as]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-guard-message",
+            source: "match 1:\n    case 1 as if True:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-missing-target-eof-message",
+            source: "match 1:\n    case 1 as",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid literal-pattern public SyntaxError subset",
             name: "syntax-match-f-string-pattern-message",
             source: "match \"a\":\n    case f\"a\":\n        pass\n",

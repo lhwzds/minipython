@@ -1176,6 +1176,23 @@ impl Parser<'_> {
     }
 
     fn parse_as_pattern_capture_target(&mut self) -> Result<String, String> {
+        if matches!(
+            self.peek(),
+            Some(
+                Token::Colon
+                    | Token::If
+                    | Token::Comma
+                    | Token::RightParen
+                    | Token::RightBracket
+                    | Token::RightBrace
+                    | Token::Newline
+                    | Token::Dedent
+                    | Token::Eof
+            ) | None
+        ) {
+            return Err("invalid syntax".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::Not)) {
             self.advance();
             return Err("cannot use expression as pattern target".to_string());

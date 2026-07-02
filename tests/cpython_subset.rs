@@ -33725,6 +33725,27 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use function call as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (1 as):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match (1, 2):\n    case (1 as, 2):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [1 as]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case 1 as if True:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error("match 1:\n    case 1 as", "parse error: invalid syntax");
+    assert_error(
         "match 1:\n    case *rest:\n        pass",
         "parse error: invalid syntax",
     );
