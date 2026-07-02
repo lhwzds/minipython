@@ -25433,6 +25433,40 @@ show('receiver-keyword', lambda: io.BytesIO.readlines(bio, hint=1))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_write_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO write method descriptor subset",
+        name: "io-bytesio-write-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO()
+descriptor = io.BytesIO.write
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-bytes', lambda: (io.BytesIO.write(bio, b'ab'), bio.getvalue(), bio.tell()))
+show('call-bytearray', lambda: (io.BytesIO.write(bio, bytearray(b'cd')), bio.getvalue(), bio.tell()))
+show('call-memoryview', lambda: (io.BytesIO.write(bio, memoryview(b'ef')), bio.getvalue(), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.write(object(), b'x'))
+show('missing-receiver', lambda: io.BytesIO.write())
+bio = io.BytesIO()
+show('missing-arg', lambda: io.BytesIO.write(bio))
+bio = io.BytesIO()
+show('extra', lambda: io.BytesIO.write(bio, b'x', b'y'))
+bio = io.BytesIO()
+show('bad-data', lambda: io.BytesIO.write(bio, 'x'))
+bio = io.BytesIO()
+show('keyword-missing-receiver', lambda: io.BytesIO.write(bio=bio, b=b'x'))
+bio = io.BytesIO()
+show('receiver-keyword', lambda: io.BytesIO.write(bio, b=b'x'))"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO getvalue method descriptor subset",

@@ -21003,11 +21003,20 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method BytesIO.write() needs an argument".to_string());
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
+            return Err(format!(
+                "TypeError: descriptor 'write' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
         reject_bytesio_method_keywords("write", &keywords)?;
-        let [Value::BytesIO(bytes_io), data] = args.as_slice() else {
+        let [data] = rest else {
             return Err(format!(
                 "TypeError: BytesIO.write() takes exactly one argument ({} given)",
-                method_arg_count(&args)
+                rest.len()
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
@@ -61603,6 +61612,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "read1"
                         | "readline"
                         | "readlines"
+                        | "write"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65214,6 +65224,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.read1"
                 | "BytesIO.readline"
                 | "BytesIO.readlines"
+                | "BytesIO.write"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
@@ -65298,6 +65309,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.read1"
                 | "BytesIO.readline"
                 | "BytesIO.readlines"
+                | "BytesIO.write"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"

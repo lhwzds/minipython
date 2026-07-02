@@ -23655,6 +23655,51 @@ show('receiver-keyword', lambda: io.BytesIO.readlines(bio, hint=1))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_write_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO()
+descriptor = io.BytesIO.write
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-bytes', lambda: (io.BytesIO.write(bio, b'ab'), bio.getvalue(), bio.tell()))
+show('call-bytearray', lambda: (io.BytesIO.write(bio, bytearray(b'cd')), bio.getvalue(), bio.tell()))
+show('call-memoryview', lambda: (io.BytesIO.write(bio, memoryview(b'ef')), bio.getvalue(), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.write(object(), b'x'))
+show('missing-receiver', lambda: io.BytesIO.write())
+bio = io.BytesIO()
+show('missing-arg', lambda: io.BytesIO.write(bio))
+bio = io.BytesIO()
+show('extra', lambda: io.BytesIO.write(bio, b'x', b'y'))
+bio = io.BytesIO()
+show('bad-data', lambda: io.BytesIO.write(bio, 'x'))
+bio = io.BytesIO()
+show('keyword-missing-receiver', lambda: io.BytesIO.write(bio=bio, b=b'x'))
+bio = io.BytesIO()
+show('receiver-keyword', lambda: io.BytesIO.write(bio, b=b'x'))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-bytes ok (2, b'ab', 2) tuple",
+            "call-bytearray ok (2, b'abcd', 4) tuple",
+            "call-memoryview ok (2, b'abcdef', 6) tuple",
+            "wrong-receiver TypeError descriptor 'write' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.write() needs an argument",
+            "missing-arg TypeError BytesIO.write() takes exactly one argument (0 given)",
+            "extra TypeError BytesIO.write() takes exactly one argument (2 given)",
+            "bad-data TypeError a bytes-like object is required, not 'str'",
+            "keyword-missing-receiver TypeError unbound method BytesIO.write() needs an argument",
+            "receiver-keyword TypeError BytesIO.write() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
     assert_output(
         r#"import io
