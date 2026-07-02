@@ -41577,6 +41577,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis function parameter rejection",
+            name: "def-ellipsis-parameter-name-message",
+            source: "def f(...):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis function parameter rejection",
+            name: "def-ellipsis-vararg-name-message",
+            source: "def f(*...):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis function parameter rejection",
+            name: "def-ellipsis-kwarg-name-message",
+            source: "def f(**...):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis lambda parameter rejection",
+            name: "lambda-ellipsis-parameter-name-message",
+            source: "lambda ...: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis lambda parameter rejection",
+            name: "lambda-ellipsis-vararg-name-message",
+            source: "lambda *...: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram ellipsis lambda parameter rejection",
+            name: "lambda-ellipsis-kwarg-name-message",
+            source: "lambda **...: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

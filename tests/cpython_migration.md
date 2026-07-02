@@ -6021,6 +6021,14 @@ Completed in the literal parameter-name diagnostic pass:
   such as `def f(1)`, `def f('x')`, `lambda 1: None`, and
   `lambda **'x': None` use CPython's public `invalid syntax` message.
 
+Completed in the ellipsis parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so ellipsis parameter name forms
+  such as `def f(...)`, `def f(*...)`, `lambda ...: None`, and
+  `lambda **...: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
