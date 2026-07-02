@@ -49541,6 +49541,52 @@ fn cpython_power_operator_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_conditional_expression_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "conditional expression parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function conditional expression parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda conditional expression parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a if b else c):\\n    pass",
+        "def f(*a if b else c):\\n    pass",
+        "def f(**a if b else c):\\n    pass",
+        "lambda a if b else c: None",
+        "lambda *a if b else c: None",
+        "lambda **a if b else c: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "conditional expression parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "conditional expression parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("conditional expression parameter name forms")
+                && document.contains("invalid syntax"),
+            "conditional expression parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

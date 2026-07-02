@@ -42297,6 +42297,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression function parameter rejection",
+            name: "def-conditional-expression-parameter-name-message",
+            source: "def f(a if b else c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression function parameter rejection",
+            name: "def-conditional-expression-vararg-parameter-name-message",
+            source: "def f(*a if b else c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression function parameter rejection",
+            name: "def-conditional-expression-kwarg-parameter-name-message",
+            source: "def f(**a if b else c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression lambda parameter rejection",
+            name: "lambda-conditional-expression-parameter-name-message",
+            source: "lambda a if b else c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression lambda parameter rejection",
+            name: "lambda-conditional-expression-vararg-parameter-name-message",
+            source: "lambda *a if b else c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram conditional expression lambda parameter rejection",
+            name: "lambda-conditional-expression-kwarg-parameter-name-message",
+            source: "lambda **a if b else c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

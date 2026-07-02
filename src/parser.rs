@@ -6470,6 +6470,7 @@ impl Parser<'_> {
                     | Token::LessEqual
                     | Token::Greater
                     | Token::GreaterEqual
+                    | Token::If
                     | Token::Is
                     | Token::In
                     | Token::Not
