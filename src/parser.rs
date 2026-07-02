@@ -4081,7 +4081,7 @@ impl Parser<'_> {
         if matches!(self.peek(), Some(Token::Star)) {
             self.advance();
             if is_invalid_star_expression_end(self.peek()) {
-                return Err("Invalid star expression".to_string());
+                return Err("invalid syntax".to_string());
             }
 
             let value = self.parse_bitwise_or()?;

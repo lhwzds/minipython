@@ -41325,6 +41325,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-positional-parameter-annotation-rparen-message",
+            source: "def f(x: *):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-positional-parameter-annotation-comma-message",
+            source: "def f(x: *, y):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-positional-parameter-annotation-default-message",
+            source: "def f(x: * = 1):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-vararg-parameter-annotation-rparen-message",
+            source: "def f(*x: *):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-vararg-parameter-annotation-comma-message",
+            source: "def f(*x: *, y):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-kwarg-parameter-annotation-rparen-message",
+            source: "def f(**x: *):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter bare starred annotation expression",
+            name: "bare-starred-keyword-only-parameter-annotation-rparen-message",
+            source: "def f(*, x: *):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function return annotation missing expression",
             name: "missing-return-annotation-expression-colon-message",
             source: "def f() ->:\n    pass",
