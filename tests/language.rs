@@ -2821,7 +2821,7 @@ fn runs_match_class_patterns() {
             "y = None\ntry:\n    match range(10):\n        case range(10):\n            y = 0\nexcept TypeError as error:\n    print(error)\nprint(y)"
         ),
         Ok(vec![
-            "range() accepts 0 positional sub-patterns".to_string(),
+            "range() accepts 0 positional sub-patterns (1 given)".to_string(),
             "None".to_string(),
         ])
     );
@@ -2830,7 +2830,7 @@ fn runs_match_class_patterns() {
             "y = None\ntry:\n    match object():\n        case object(y):\n            pass\nexcept TypeError as error:\n    print(error)\nprint(y)"
         ),
         Ok(vec![
-            "object() accepts 0 positional sub-patterns".to_string(),
+            "object() accepts 0 positional sub-patterns (1 given)".to_string(),
             "None".to_string(),
         ])
     );
@@ -2838,7 +2838,10 @@ fn runs_match_class_patterns() {
         run_source(
             "class Class:\n    __match_args__ = ()\nx = Class()\nmatch x:\n    case Class(y):\n        print(y)"
         ),
-        Err("runtime error: TypeError: Class() accepts 0 positional sub-patterns".to_string())
+        Err(
+            "runtime error: TypeError: Class() accepts 0 positional sub-patterns (1 given)"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source(
@@ -2871,14 +2874,17 @@ fn runs_match_class_patterns() {
         run_source(
             "class Class:\n    __match_args__ = None\nx = Class()\nmatch x:\n    case Class(y):\n        print(y)"
         ),
-        Err("runtime error: TypeError: Class.__match_args__ must be a tuple".to_string())
+        Err(
+            "runtime error: TypeError: Class.__match_args__ must be a tuple (got NoneType)"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source(
             "class Class:\n    __match_args__ = \"XYZ\"\nx = Class()\ny = z = None\ntry:\n    match x:\n        case Class(y):\n            z = 0\nexcept TypeError as error:\n    print(error)\nprint(y, z)"
         ),
         Ok(vec![
-            "Class.__match_args__ must be a tuple".to_string(),
+            "Class.__match_args__ must be a tuple (got str)".to_string(),
             "None None".to_string(),
         ])
     );
@@ -2887,7 +2893,7 @@ fn runs_match_class_patterns() {
             "class Class:\n    __match_args__ = [\"spam\", \"eggs\"]\n    spam = 0\n    eggs = 1\nx = Class()\nw = y = z = None\ntry:\n    match x:\n        case Class(y, z):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w, y, z)"
         ),
         Ok(vec![
-            "Class.__match_args__ must be a tuple".to_string(),
+            "Class.__match_args__ must be a tuple (got list)".to_string(),
             "None None None".to_string(),
         ])
     );
@@ -2977,7 +2983,10 @@ fn keeps_match_and_case_as_soft_keywords() {
 fn reports_unsupported_match_patterns() {
     assert_eq!(
         run_source("match 1:\n    case object.attr:\n        print(\"attr\")"),
-        Err("runtime error: AttributeError: <class 'object'> has no attribute 'attr'".to_string())
+        Err(
+            "runtime error: AttributeError: type object 'object' has no attribute 'attr'"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source(
@@ -2993,11 +3002,11 @@ fn reports_unsupported_match_patterns() {
     );
     assert_eq!(
         run_source("match 1:\n    case 0 | value:\n        print(value)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: alternative patterns bind different names".to_string())
     );
     assert_eq!(
         run_source("match [1]:\n    case [x] | [1]:\n        print(x)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: alternative patterns bind different names".to_string())
     );
     assert_eq!(
         run_source("match [1, 2]:\n    case [*a, *b]:\n        print(a, b)"),
@@ -3009,15 +3018,15 @@ fn reports_unsupported_match_patterns() {
     );
     assert_eq!(
         run_source("match 1:\n    case 1 as _:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: cannot use '_' as a target".to_string())
     );
     assert_eq!(
         run_source("match [1, 2]:\n    case x, x:\n        print(x)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: multiple assignments to name 'x' in pattern".to_string())
     );
     assert_eq!(
         run_source("match 1:\n    case x as x:\n        print(x)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: multiple assignments to name 'x' in pattern".to_string())
     );
     assert_eq!(
         run_source("class A:\n    B = 1\nmatch 1:\n    case A.B():\n        print(\"bad\")"),
@@ -3034,27 +3043,27 @@ fn reports_unsupported_match_patterns() {
     );
     assert_eq!(
         run_source("match {\"x\": 1}:\n    case {\"x\": a, \"y\": a}:\n        print(a)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: multiple assignments to name 'a' in pattern".to_string())
     );
     assert_eq!(
         run_source("match {\"x\": 1}:\n    case {\"x\": _, \"x\": _}:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: mapping pattern checks duplicate key ('x')".to_string())
     );
     assert_eq!(
         run_source("match {0: \"zero\"}:\n    case {0: _, False: _}:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: mapping pattern checks duplicate key (False)".to_string())
     );
     assert_eq!(
         run_source("match {0: \"zero\"}:\n    case {0: _, 0.0: _}:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: mapping pattern checks duplicate key (0.0)".to_string())
     );
     assert_eq!(
         run_source("match {0: \"zero\"}:\n    case {0: _, -0: _}:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: mapping pattern checks duplicate key (0)".to_string())
     );
     assert_eq!(
         run_source("match {0: \"zero\"}:\n    case {0: _, 0j: _}:\n        print(\"bad\")"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: mapping pattern checks duplicate key (0j)".to_string())
     );
     assert_eq!(
         run_source(

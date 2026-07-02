@@ -4906,6 +4906,19 @@ Completed in the invalid match-pattern supported-promotion pass:
   as-pattern targets, keyword-then-positional class patterns with and without a
   leading positional pattern, and mapping `**rest` before later mapping items.
 
+Completed in the invalid match-pattern SyntaxError message parity pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so MiniPython now reports CPython's
+  public parser messages for selected invalid match patterns:
+  `alternative patterns bind different names`, `multiple assignments to name`,
+  `cannot use '_' as a target`, `mapping pattern checks duplicate key ('x')`,
+  `mapping pattern checks duplicate key (False)`,
+  `mapping pattern checks duplicate key (0.0)`, and
+  `mapping pattern checks duplicate key (0j)`.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid control-flow syntax supported-promotion pass:
 
 - Expanded `cpython_invalid_control_flow_syntax_subset` and promoted

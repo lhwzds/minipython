@@ -1120,12 +1120,14 @@ impl Parser<'_> {
                 self.current = start;
                 Err("cannot use attribute as pattern target".to_string())
             }
+            Some(Token::Identifier(name)) if name == "_" => {
+                Err("cannot use '_' as a target".to_string())
+            }
             Some(Token::Identifier(name))
-                if name != "_"
-                    && !matches!(
-                        self.peek(),
-                        Some(Token::Dot | Token::LeftParen | Token::Equal)
-                    ) =>
+                if !matches!(
+                    self.peek(),
+                    Some(Token::Dot | Token::LeftParen | Token::Equal)
+                ) =>
             {
                 Ok(name.clone())
             }
@@ -4911,7 +4913,7 @@ fn ensure_or_pattern_capture_compatibility(
         collect_pattern_captures(pattern, &mut names)?;
         match &expected {
             Some(expected) if *expected != names => {
-                return Err("unsupported match pattern".to_string());
+                return Err("alternative patterns bind different names".to_string());
             }
             Some(_) => {}
             None => expected = Some(names),
@@ -4923,7 +4925,7 @@ fn ensure_or_pattern_capture_compatibility(
 
 fn insert_pattern_capture(name: &str, names: &mut HashSet<String>) -> Result<(), String> {
     if !names.insert(name.to_string()) {
-        return Err("unsupported match pattern".to_string());
+        return Err(format!("multiple assignments to name '{name}' in pattern"));
     }
 
     Ok(())
@@ -4935,23 +4937,44 @@ fn ensure_unique_mapping_literal_keys(entries: &[(Expr, Pattern)]) -> Result<(),
             continue;
         };
 
-        if entries[index + 1..]
+        if let Some(duplicate) = entries[index + 1..]
             .iter()
             .map(|(other, _)| static_mapping_literal_key(other))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
-            .any(|other| other == key)
+            .find(|other| other == &key)
         {
-            return Err("unsupported match pattern".to_string());
+            return Err(format!(
+                "mapping pattern checks duplicate key ({})",
+                duplicate.display
+            ));
         }
     }
 
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+struct StaticMappingLiteralKey {
+    value: StaticMappingLiteralKeyValue,
+    display: String,
+}
+
+impl StaticMappingLiteralKey {
+    fn new(value: StaticMappingLiteralKeyValue, display: String) -> Self {
+        Self { value, display }
+    }
+}
+
+impl PartialEq for StaticMappingLiteralKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
-enum StaticMappingLiteralKey {
+enum StaticMappingLiteralKeyValue {
     None,
     String(String),
     Bytes(Vec<u8>),
@@ -4960,49 +4983,85 @@ enum StaticMappingLiteralKey {
 
 fn static_mapping_literal_key(expr: &Expr) -> Result<Option<StaticMappingLiteralKey>, String> {
     match expr {
-        Expr::String(value) => Ok(Some(StaticMappingLiteralKey::String(value.clone()))),
-        Expr::Bytes(value) => Ok(Some(StaticMappingLiteralKey::Bytes(value.clone()))),
-        Expr::None => Ok(Some(StaticMappingLiteralKey::None)),
-        Expr::Bool(value) => Ok(Some(StaticMappingLiteralKey::Number {
-            real: if *value { 1.0 } else { 0.0 },
-            imag: 0.0,
-        })),
-        Expr::Number(value) => Ok(Some(StaticMappingLiteralKey::Number {
-            real: *value as f64,
-            imag: 0.0,
-        })),
-        Expr::BigInt(value) => Ok(Some(StaticMappingLiteralKey::Number {
-            real: parse_pattern_big_int_literal(value)?,
-            imag: 0.0,
-        })),
-        Expr::Float(value) => Ok(Some(StaticMappingLiteralKey::Number {
-            real: parse_pattern_float_literal(value)?,
-            imag: 0.0,
-        })),
-        Expr::Imaginary(value) => Ok(Some(StaticMappingLiteralKey::Number {
-            real: 0.0,
-            imag: parse_pattern_float_literal(value)?,
-        })),
+        Expr::String(value) => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::String(value.clone()),
+            repr_pattern_string(value),
+        ))),
+        Expr::Bytes(value) => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::Bytes(value.clone()),
+            repr_pattern_bytes(value),
+        ))),
+        Expr::None => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::None,
+            "None".to_string(),
+        ))),
+        Expr::Bool(value) => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::Number {
+                real: if *value { 1.0 } else { 0.0 },
+                imag: 0.0,
+            },
+            (if *value { "True" } else { "False" }).to_string(),
+        ))),
+        Expr::Number(value) => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::Number {
+                real: *value as f64,
+                imag: 0.0,
+            },
+            value.to_string(),
+        ))),
+        Expr::BigInt(value) => Ok(Some(StaticMappingLiteralKey::new(
+            StaticMappingLiteralKeyValue::Number {
+                real: parse_pattern_big_int_literal(value)?,
+                imag: 0.0,
+            },
+            value.replace('_', ""),
+        ))),
+        Expr::Float(value) => {
+            let real = parse_pattern_float_literal(value)?;
+            Ok(Some(StaticMappingLiteralKey::new(
+                StaticMappingLiteralKeyValue::Number { real, imag: 0.0 },
+                repr_pattern_float(real),
+            )))
+        }
+        Expr::Imaginary(value) => {
+            let imag = parse_pattern_float_literal(value)?;
+            Ok(Some(StaticMappingLiteralKey::new(
+                StaticMappingLiteralKeyValue::Number { real: 0.0, imag },
+                repr_pattern_imaginary(imag, value),
+            )))
+        }
         Expr::Unary {
             op: UnaryOp::Negative,
             operand,
         } => match operand.as_ref() {
-            Expr::Number(value) => Ok(Some(StaticMappingLiteralKey::Number {
-                real: -(*value as f64),
-                imag: 0.0,
-            })),
-            Expr::BigInt(value) => Ok(Some(StaticMappingLiteralKey::Number {
-                real: -parse_pattern_big_int_literal(value)?,
-                imag: 0.0,
-            })),
-            Expr::Float(value) => Ok(Some(StaticMappingLiteralKey::Number {
-                real: -parse_pattern_float_literal(value)?,
-                imag: 0.0,
-            })),
-            Expr::Imaginary(value) => Ok(Some(StaticMappingLiteralKey::Number {
-                real: 0.0,
-                imag: -parse_pattern_float_literal(value)?,
-            })),
+            Expr::Number(value) => {
+                let real = -(*value as f64);
+                Ok(Some(StaticMappingLiteralKey::new(
+                    StaticMappingLiteralKeyValue::Number { real, imag: 0.0 },
+                    (-*value).to_string(),
+                )))
+            }
+            Expr::BigInt(value) => {
+                let real = -parse_pattern_big_int_literal(value)?;
+                Ok(Some(StaticMappingLiteralKey::new(
+                    StaticMappingLiteralKeyValue::Number { real, imag: 0.0 },
+                    format!("-{}", value.replace('_', "")).replace("-0", "0"),
+                )))
+            }
+            Expr::Float(value) => {
+                let real = -parse_pattern_float_literal(value)?;
+                Ok(Some(StaticMappingLiteralKey::new(
+                    StaticMappingLiteralKeyValue::Number { real, imag: 0.0 },
+                    repr_pattern_float(real),
+                )))
+            }
+            Expr::Imaginary(value) => {
+                let imag = -parse_pattern_float_literal(value)?;
+                Ok(Some(StaticMappingLiteralKey::new(
+                    StaticMappingLiteralKeyValue::Number { real: 0.0, imag },
+                    repr_pattern_imaginary(imag, value),
+                )))
+            }
             _ => Ok(None),
         },
         Expr::Binary { left, op, right } if matches!(op, BinaryOp::Add | BinaryOp::Subtract) => {
@@ -5018,7 +5077,10 @@ fn static_mapping_literal_key(expr: &Expr) -> Result<Option<StaticMappingLiteral
             } else {
                 imaginary
             };
-            Ok(Some(StaticMappingLiteralKey::Number { real, imag }))
+            Ok(Some(StaticMappingLiteralKey::new(
+                StaticMappingLiteralKeyValue::Number { real, imag },
+                repr_pattern_complex(real, imag),
+            )))
         }
         Expr::Attribute { .. } => Ok(None),
         _ => Ok(None),
@@ -5054,6 +5116,46 @@ fn parse_pattern_big_int_literal(value: &str) -> Result<f64, String> {
     value
         .parse::<f64>()
         .map_err(|_| format!("invalid int literal: {value}"))
+}
+
+fn repr_pattern_string(value: &str) -> String {
+    format!("'{}'", value.replace('\\', "\\\\").replace('\'', "\\'"))
+}
+
+fn repr_pattern_bytes(value: &[u8]) -> String {
+    let mut result = String::from("b'");
+    for byte in value {
+        match byte {
+            b'\\' => result.push_str("\\\\"),
+            b'\'' => result.push_str("\\'"),
+            32..=126 => result.push(*byte as char),
+            _ => result.push_str(&format!("\\x{byte:02x}")),
+        }
+    }
+    result.push('\'');
+    result
+}
+
+fn repr_pattern_float(value: f64) -> String {
+    format!("{value:?}")
+}
+
+fn repr_pattern_imaginary(value: f64, source: &str) -> String {
+    if value.is_sign_negative() {
+        format!("-{}j", source.replace('_', ""))
+    } else {
+        format!("{}j", source.replace('_', ""))
+    }
+}
+
+fn repr_pattern_complex(real: f64, imag: f64) -> String {
+    let real = repr_pattern_float(real);
+    let imag_abs = repr_pattern_float(imag.abs());
+    if imag.is_sign_negative() {
+        format!("({real}-{imag_abs}j)")
+    } else {
+        format!("({real}+{imag_abs}j)")
+    }
 }
 
 fn token_matches(token: Option<&Token>, expected: &Token) -> bool {

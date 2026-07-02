@@ -48572,6 +48572,53 @@ fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_match_pattern_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "invalid match-pattern SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "invalid match-pattern runtime subset evidence must exist"
+    );
+
+    for required in [
+        "alternative patterns bind different names",
+        "multiple assignments to name",
+        "cannot use '_' as a target",
+        "mapping pattern checks duplicate key ('x')",
+        "mapping pattern checks duplicate key (False)",
+        "mapping pattern checks duplicate key (0.0)",
+        "mapping pattern checks duplicate key (0j)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "invalid match-pattern CPython diff must cover `{required}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "invalid match-pattern subset must cover `{required}`"
+        );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(required),
+                "invalid match-pattern docs must describe `{required}`"
+            );
+        }
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "invalid match-pattern docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_match_sequence_helper_diff_covers_runtime_subset() {
     let diff_name = "cpython_match_sequence_helper_rules_diff_subset";
     let subset_name = "cpython_match_sequence_helper_rules_subset";

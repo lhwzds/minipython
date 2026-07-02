@@ -8271,6 +8271,15 @@ matching scope-backed namespace `__format__` lookup.
 | `invalid_mapping_pattern` | supported | Mapping rest patterns before other mapping items, both with and without preceding items, and invalid f-string mapping keys are rejected by `cpython_invalid_match_pattern_subset` |
 | `invalid_class_argument_pattern` | supported | Class pattern argument ordering errors with and without leading positional patterns are rejected by `cpython_invalid_match_pattern_subset` |
 
+Invalid match-pattern SyntaxError message parity is covered by
+`cpython_invalid_match_pattern_subset` plus
+`cpython_syntax_error_message_parity_diff_subset`, including
+`alternative patterns bind different names`, `multiple assignments to name`,
+`cannot use '_' as a target`, `mapping pattern checks duplicate key ('x')`,
+`mapping pattern checks duplicate key (False)`,
+`mapping pattern checks duplicate key (0.0)`, and
+`mapping pattern checks duplicate key (0j)`.
+
 ## Expressions
 
 | CPython rule | Status | Rust evidence |

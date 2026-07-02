@@ -292,7 +292,15 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         "Perhaps you forgot a comma" => stderr.contains("invalid syntax"),
         "cannot use except statement with attribute"
         | "cannot use attribute as pattern target"
+        | "alternative patterns bind different names"
+        | "cannot use '_' as a target"
         | "expected expression before 'if', but statement is given" => {
+            stderr.contains("invalid syntax")
+        }
+        message
+            if message.starts_with("multiple assignments to name ")
+                || message.starts_with("mapping pattern checks duplicate key") =>
+        {
             stderr.contains("invalid syntax")
         }
         _ => false,
@@ -41765,6 +41773,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-stmt-invalid-as-expr-message",
             source: "\nmatch 1:\n    case x as obj.attr:\n        ...\n",
             expected_message: "cannot use attribute as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-or-pattern-different-captures-message",
+            source: "match 1:\n    case 0 | value:\n        pass\n",
+            expected_message: "alternative patterns bind different names",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-sequence-duplicate-capture-message",
+            source: "match 1, 2:\n    case value, value:\n        pass\n",
+            expected_message: "multiple assignments to name 'value' in pattern",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-as-wildcard-target-message",
+            source: "match 1:\n    case 1 as _:\n        pass\n",
+            expected_message: "cannot use '_' as a target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-mapping-duplicate-string-key-message",
+            source: "match {'x': 1}:\n    case {'x': _, 'x': _}:\n        pass\n",
+            expected_message: "mapping pattern checks duplicate key ('x')",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-mapping-duplicate-bool-key-message",
+            source: "match {0: 'zero'}:\n    case {0: _, False: _}:\n        pass\n",
+            expected_message: "mapping pattern checks duplicate key (False)",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-mapping-duplicate-float-key-message",
+            source: "match {0: 'zero'}:\n    case {0: _, 0.0: _}:\n        pass\n",
+            expected_message: "mapping pattern checks duplicate key (0.0)",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-mapping-duplicate-complex-key-message",
+            source: "match {0: 'zero'}:\n    case {0: _, 0j: _}:\n        pass\n",
+            expected_message: "mapping pattern checks duplicate key (0j)",
         },
         ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_ifexp_body_stmt_else_expression",

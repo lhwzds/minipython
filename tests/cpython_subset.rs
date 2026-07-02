@@ -32503,15 +32503,15 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match 1:\n    case 1 as _:\n        print(\"bad\")",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use '_' as a target",
     );
     assert_error(
         "match 1:\n    case a as a:\n        print(a)",
-        "parse error: unsupported match pattern",
+        "parse error: multiple assignments to name 'a' in pattern",
     );
     assert_error(
         "match 1, 2:\n    case a, a:\n        print(a)",
-        "parse error: unsupported match pattern",
+        "parse error: multiple assignments to name 'a' in pattern",
     );
     assert_output(
         "class A:\n    B = 0\nmatch 0:\n    case A.B:\n        print(\"value\")",
@@ -32587,11 +32587,11 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {'x': a, 'y': a}:\n        print(a)",
-        "parse error: unsupported match pattern",
+        "parse error: multiple assignments to name 'a' in pattern",
     );
     assert_error(
         "match {'x': 1}:\n    case {'x': _, 'x': _}:\n        print(\"bad\")",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key ('x')",
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        print(rest, value)",
@@ -32612,7 +32612,7 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match 1:\n    case object.attr:\n        print(\"attr\")",
-        "runtime error: AttributeError: <class 'object'> has no attribute 'attr'",
+        "runtime error: AttributeError: type object 'object' has no attribute 'attr'",
     );
 }
 
@@ -32704,7 +32704,7 @@ fn cpython_match_capture_target_and_star_pattern_helper_rules_subset() {
     );
     assert_error(
         "match 1:\n    case 1 as _:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use '_' as a target",
     );
     assert_error(
         "match 1:\n    case 1 as target.attr:\n        pass",
@@ -32728,7 +32728,7 @@ fn cpython_match_capture_target_and_star_pattern_helper_rules_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {**_}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use '_' as a target",
     );
 }
 
@@ -32838,7 +32838,7 @@ fn cpython_match_mapping_helper_rules_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {**_}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use '_' as a target",
     );
     assert_error(
         "match {'x': 1}:\n    case {**rest, 'x': value}:\n        pass",
@@ -32846,23 +32846,23 @@ fn cpython_match_mapping_helper_rules_subset() {
     );
     assert_error(
         "match {'x': 1}:\n    case {'x': _, 'x': _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key ('x')",
     );
     assert_error(
         "match {0: 'zero'}:\n    case {0: _, False: _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key (False)",
     );
     assert_error(
         "match {0: 'zero'}:\n    case {0: _, 0.0: _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key (0.0)",
     );
     assert_error(
         "match {0: 'zero'}:\n    case {0: _, -0: _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key (0)",
     );
     assert_error(
         "match {0: 'zero'}:\n    case {0: _, 0j: _}:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: mapping pattern checks duplicate key (0j)",
     );
     assert_output(
         "class Keys:\n    KEY = \"a\"\nw = y = z = None\ntry:\n    match {'a': 0, 'b': 1}:\n        case {Keys.KEY: y, 'a': z}:\n            w = 0\nexcept ValueError as error:\n    print(error)\nprint(w, y, z)",
@@ -32999,9 +32999,15 @@ fn cpython_match_pattern_helper_rules_subset() {
         "match item := ['go', 'n']:\n    case [command, direction] if direction in \"nesw\" and (seen := command):\n        print(item, seen, direction)",
         &["['go', 'n'] go n"],
     );
-    assert_parse_error("match [1]:\n    case [x] | [y]:\n        pass");
+    assert_error(
+        "match [1]:\n    case [x] | [y]:\n        pass",
+        "parse error: alternative patterns bind different names",
+    );
     assert_parse_error("match [1]:\n    case x | [x]:\n        pass");
-    assert_parse_error("match [1, 2]:\n    case [x] | [x, y]:\n        pass");
+    assert_error(
+        "match [1, 2]:\n    case [x] | [x, y]:\n        pass",
+        "parse error: alternative patterns bind different names",
+    );
     assert_output(
         "match [1, 2]:\n    case ([1, value]):\n        print(value)",
         &["2"],
@@ -33041,7 +33047,7 @@ fn cpython_invalid_match_pattern_subset() {
     assert_parse_error("match 1:\n    pass");
     assert_error(
         "match 1:\n    case 1 as _:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: cannot use '_' as a target",
     );
     assert_error(
         "match 1:\n    case 1 as 2:\n        pass",
