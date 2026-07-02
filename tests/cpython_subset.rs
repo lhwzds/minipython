@@ -72776,6 +72776,29 @@ print('alias', types.CellType.__module__, 'CellType' in types.__all__)"#,
     );
 }
 
+// Adapted from CPython public `types.CellType` text-signature metadata. This
+// covers only the public signature string, not broader CellType constructor or
+// type-dictionary behavior.
+#[test]
+fn cpython_types_celltype_text_signature_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('text-signature', types.CellType.__text_signature__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__text_signature__'))
+print('getattr-default-dict', '__text_signature__' in getattr(types.CellType, '__dict__', {}))
+print('dir-text-signature', '__text_signature__' in dir(types.CellType))
+print('alias', types.CellType.__module__, types.CellType.__qualname__)"#,
+        &[
+            "text-signature ([contents])",
+            "object-getattribute ([contents])",
+            "getattr-default-dict False",
+            "dir-text-signature False",
+            "alias builtins cell",
+        ],
+    );
+}
+
 // Adapted from CPython public class-construction behavior for `types.CellType`.
 // MiniPython recognizes the public cell type object and rejects it through the
 // same class-base path used by direct class statements and type helpers.

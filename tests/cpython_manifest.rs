@@ -39311,6 +39311,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_qualname_metadata_subset",
+            "cpython_types_celltype_text_signature_metadata_subset",
             "cpython_types_celltype_keyword_error_subset",
             "cpython_types_slot_and_method_wrapper_types_subset",
             "cpython_types_frame_locals_proxy_type_subset",
@@ -39406,6 +39407,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_qualname_metadata_diff_subset",
+        "cpython_types_celltype_text_signature_metadata_diff_subset",
         "cpython_types_celltype_keyword_error_diff_subset",
         "cpython_types_float_constructor_edges_diff_subset",
         "cpython_types_float_to_string_diff_subset",
@@ -39777,6 +39779,84 @@ fn types_celltype_qualname_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType __qualname__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_text_signature_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_text_signature_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_text_signature_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType __text_signature__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType __text_signature__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.__text_signature__",
+        "object.__getattribute__(types.CellType, '__text_signature__')",
+        "getattr(types.CellType, '__dict__', {})",
+        "'__text_signature__' in dir(types.CellType)",
+        "types.CellType.__module__",
+        "types.CellType.__qualname__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType __text_signature__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"text-signature ([contents])\"",
+        "\"object-getattribute ([contents])\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-text-signature False\"",
+        "\"alias builtins cell\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType __text_signature__ subset output must pin `{required}`"
+        );
+    }
+
+    let celltype_text_signature_start = VM_SOURCE
+        .find("name == \"__text_signature__\" && function_name == \"CellType\"")
+        .expect("CellType __text_signature__ implementation must be present");
+    let celltype_text_signature_end = (celltype_text_signature_start + 190).min(VM_SOURCE.len());
+    let celltype_text_signature_body =
+        &VM_SOURCE[celltype_text_signature_start..celltype_text_signature_end];
+    for required in [
+        "name == \"__text_signature__\"",
+        "function_name == \"CellType\"",
+        "Value::String(\"([contents])\".to_string())",
+    ] {
+        assert!(
+            celltype_text_signature_body.contains(required),
+            "types CellType __text_signature__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType.__text_signature__",
+            "`object.__getattribute__`",
+            "`([contents])`",
+            "`__name__`",
+            "`__doc__`",
+            "constructor behavior",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType __text_signature__ docs must contain `{required}`"
             );
         }
     }

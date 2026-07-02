@@ -19370,6 +19370,21 @@ print('alias', types.CellType.__module__, 'CellType' in types.__all__)"#,
 }
 
 #[test]
+fn cpython_types_celltype_text_signature_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType __text_signature__ metadata subset",
+        name: "types-celltype-text-signature-metadata",
+        source: r#"import types
+
+print('text-signature', types.CellType.__text_signature__)
+print('object-getattribute', object.__getattribute__(types.CellType, '__text_signature__'))
+print('getattr-default-dict', '__text_signature__' in getattr(types.CellType, '__dict__', {}))
+print('dir-text-signature', '__text_signature__' in dir(types.CellType))
+print('alias', types.CellType.__module__, types.CellType.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_unacceptable_base_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public class-construction non-subclassable types.CellType base subset",
