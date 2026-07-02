@@ -71432,6 +71432,63 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for `types.CodeType`.
+// MiniPython recognizes the public code type object as a class-base candidate
+// only so the final-base validator can reject it with CPython's public
+// TypeError.
+#[test]
+fn cpython_types_codetype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'code' is not an acceptable base type"
+
+def f():
+    return 1
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.CodeType
+try:
+    class CodeClass(base):
+        pass
+except Exception as error:
+    print_error('class-codetype', error)
+else:
+    print('class-codetype ok')
+
+for label, call in [
+    ('type-codetype', lambda: type('CodeTypeClass', (types.CodeType,), {})),
+    ('type-new-codetype', lambda: type.__new__(type, 'CodeTypeNew', (types.CodeType,), {})),
+    ('new-class-codetype', lambda: types.new_class('CodeTypeNewClass', (types.CodeType,), {})),
+    ('class-code-runtime', lambda: type('RuntimeCodeClass', (f.__code__.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-codetype TypeError type 'code' is not an acceptable base type (\"type 'code' is not an acceptable base type\",) True",
+            "type-codetype TypeError type 'code' is not an acceptable base type (\"type 'code' is not an acceptable base type\",) True",
+            "type-new-codetype TypeError type 'code' is not an acceptable base type (\"type 'code' is not an acceptable base type\",) True",
+            "new-class-codetype TypeError type 'code' is not an acceptable base type (\"type 'code' is not an acceptable base type\",) True",
+            "class-code-runtime TypeError type 'code' is not an acceptable base type (\"type 'code' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]

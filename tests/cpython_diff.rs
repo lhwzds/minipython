@@ -18241,6 +18241,52 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_codetype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.CodeType base subset",
+        name: "types-codetype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'code' is not an acceptable base type"
+
+def f():
+    return 1
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.CodeType
+try:
+    class CodeClass(base):
+        pass
+except Exception as error:
+    print_error('class-codetype', error)
+else:
+    print('class-codetype ok')
+
+for label, call in [
+    ('type-codetype', lambda: type('CodeTypeClass', (types.CodeType,), {})),
+    ('type-new-codetype', lambda: type.__new__(type, 'CodeTypeNew', (types.CodeType,), {})),
+    ('new-class-codetype', lambda: types.new_class('CodeTypeNewClass', (types.CodeType,), {})),
+    ('class-code-runtime', lambda: type('RuntimeCodeClass', (f.__code__.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",
