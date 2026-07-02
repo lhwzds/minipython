@@ -5056,6 +5056,17 @@ Completed in the invalid unary match-pattern SyntaxError message pass:
   add new match-pattern execution forms or expand sandbox-visible runtime
   capabilities.
 
+Completed in the invalid non-numeric negative match-pattern SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so non-numeric negative pattern forms
+  such as `case -x`, `case (-x)`, `case [-x]`, and `case {-x: value}` now use
+  CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid negative numeric literal
+  patterns such as `case -1` and `case -1.5j` are unchanged, and this does not
+  add new match-pattern execution forms or expand sandbox-visible runtime
+  capabilities.
+
 Completed in the invalid list as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

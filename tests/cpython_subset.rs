@@ -33761,6 +33761,22 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: invalid syntax",
     );
     assert_error(
+        "match 1:\n    case -x:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (-x):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [-x]:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match {1: 2}:\n    case {-x: value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
         "match point:\n    case Point(x=1, 2):\n        pass",
         "parse error: positional patterns follow keyword patterns",
     );

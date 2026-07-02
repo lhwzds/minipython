@@ -2960,12 +2960,7 @@ impl Parser<'_> {
                     op: UnaryOp::Negative,
                     operand: Box::new(Expr::Imaginary(value.clone())),
                 }),
-                Some(token) => Err(format!(
-                    "expected number after '-' in match pattern, found {token:?}"
-                )),
-                None => Err(
-                    "expected number after '-' in match pattern, found end of input".to_string(),
-                ),
+                Some(_) | None => Err("invalid syntax".to_string()),
             },
             Some(token) => Err(format!("unsupported match pattern token: {token:?}")),
             None => Err("expected match pattern, found end of input".to_string()),

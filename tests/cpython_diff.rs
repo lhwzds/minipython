@@ -42705,6 +42705,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-negative-name-pattern-message",
+            source: "match 1:\n    case -x:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-parenthesized-negative-name-pattern-message",
+            source: "match 1:\n    case (-x):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-sequence-negative-name-pattern-message",
+            source: "match [1]:\n    case [-x]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid mapping-pattern public SyntaxError subset",
+            name: "syntax-match-mapping-negative-name-key-message",
+            source: "match {1: 2}:\n    case {-x: value}:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid mapping-pattern public SyntaxError subset",
             name: "syntax-match-mapping-f-string-key-message",
             source: "match {'a': 1}:\n    case {f\"a\": value}:\n        pass\n",
