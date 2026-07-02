@@ -3018,7 +3018,7 @@ fn reports_unsupported_match_patterns() {
     );
     assert_eq!(
         run_source("match [1, 2]:\n    case [*a, *b]:\n        print(a, b)"),
-        Err("parse error: unsupported match pattern".to_string())
+        Err("parse error: multiple starred names in sequence pattern".to_string())
     );
     assert_eq!(
         run_source("match [1, 2]:\n    case (*a):\n        print(a)"),

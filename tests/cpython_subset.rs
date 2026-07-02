@@ -32805,7 +32805,7 @@ fn cpython_match_sequence_helper_rules_subset() {
     );
     assert_error(
         "match [1, 2, 3]:\n    case [*left, *right]:\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: multiple starred names in sequence pattern",
     );
     assert_error(
         "match 1:\n    case *rest:\n        pass",
@@ -33123,6 +33123,10 @@ fn cpython_invalid_match_pattern_subset() {
     assert_error(
         "match 1:\n    case (*rest):\n        pass",
         "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1, 2]:\n    case [*left, *right]:\n        pass",
+        "parse error: multiple starred names in sequence pattern",
     );
     assert_error(
         "match point:\n    case Point(x=1, 2):\n        pass",

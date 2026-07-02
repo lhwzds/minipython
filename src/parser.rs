@@ -4888,7 +4888,7 @@ fn ensure_at_most_one_star_pattern(patterns: &[Pattern]) -> Result<(), String> {
         .count()
         > 1
     {
-        return Err("unsupported match pattern".to_string());
+        return Err("multiple starred names in sequence pattern".to_string());
     }
 
     Ok(())
