@@ -23608,6 +23608,53 @@ show('receiver-keyword', lambda: io.BytesIO.readline(bio, size=1))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_readlines_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'ab\ncd\nef')
+descriptor = io.BytesIO.readlines
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.readlines(bio), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-hint', lambda: (io.BytesIO.readlines(bio, 3), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-none-hint', lambda: (io.BytesIO.readlines(bio, None), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-zero', lambda: (io.BytesIO.readlines(bio, 0), bio.tell()))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('call-negative', lambda: (io.BytesIO.readlines(bio, -1), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.readlines(object()))
+show('missing-receiver', lambda: io.BytesIO.readlines())
+bio = io.BytesIO(b'ab\ncd\nef')
+show('extra', lambda: io.BytesIO.readlines(bio, 1, 2))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('keyword-missing-receiver', lambda: io.BytesIO.readlines(bio=bio))
+bio = io.BytesIO(b'ab\ncd\nef')
+show('receiver-keyword', lambda: io.BytesIO.readlines(bio, hint=1))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-none ok ([b'ab\\n', b'cd\\n', b'ef'], 8) tuple",
+            "call-hint ok ([b'ab\\n'], 3) tuple",
+            "call-none-hint ok ([b'ab\\n', b'cd\\n', b'ef'], 8) tuple",
+            "call-zero ok ([b'ab\\n', b'cd\\n', b'ef'], 8) tuple",
+            "call-negative ok ([b'ab\\n', b'cd\\n', b'ef'], 8) tuple",
+            "wrong-receiver TypeError descriptor 'readlines' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.readlines() needs an argument",
+            "extra TypeError readlines expected at most 1 argument, got 2",
+            "keyword-missing-receiver TypeError unbound method BytesIO.readlines() needs an argument",
+            "receiver-keyword TypeError BytesIO.readlines() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
     assert_output(
         r#"import io
