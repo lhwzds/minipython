@@ -1036,6 +1036,10 @@ impl Parser<'_> {
                         | Token::Percent
                         | Token::At
                         | Token::DoubleStar
+                        | Token::Caret
+                        | Token::Ampersand
+                        | Token::LeftShift
+                        | Token::RightShift
                 )
             )
         ) {
