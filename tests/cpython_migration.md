@@ -6159,6 +6159,15 @@ Completed in the for-clause parameter-name diagnostic pass:
   `lambda a for b in c: None`, and `lambda *a async for b in c: None`
   use CPython's public `invalid syntax` message.
 
+Completed in the yield expression parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so yield expression parameter name forms
+  such as `def f(a yield b)`, `def f(**a yield from b)`,
+  `lambda a yield b: None`, and `lambda *a yield from b: None` use CPython's public
+  `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
