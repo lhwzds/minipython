@@ -41325,6 +41325,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "var-keyword argument cannot have default value",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram bare-star parameter rejection",
+            name: "def-bare-star-rparen-message",
+            source: "def f(*):\n    pass",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare-star parameter rejection",
+            name: "def-bare-star-comma-rparen-message",
+            source: "def f(*,):\n    pass",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare-star parameter rejection",
+            name: "def-bare-star-kwarg-message",
+            source: "def f(*, **kwargs):\n    pass",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda bare-star parameter rejection",
+            name: "lambda-bare-star-colon-message",
+            source: "lambda *: None",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda bare-star parameter rejection",
+            name: "lambda-bare-star-comma-colon-message",
+            source: "lambda *, : None",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda bare-star parameter rejection",
+            name: "lambda-bare-star-kwarg-message",
+            source: "lambda *, **kwargs: None",
+            expected_message: "named arguments must follow bare *",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

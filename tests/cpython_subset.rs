@@ -35705,7 +35705,7 @@ fn cpython_invalid_parameters_subset() {
     }
     assert_error(
         "def f(*):\n    pass",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
 
     assert_parse_error_diagnostic(
@@ -35726,11 +35726,11 @@ fn cpython_invalid_parameters_subset() {
     );
     assert_error(
         "def f(*,):\n    pass",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
     assert_error(
         "def f(*, **kwargs):\n    pass",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
     assert_parse_error("def f(*,  # type: int\n):\n    pass");
     assert_error(
@@ -35878,15 +35878,15 @@ fn cpython_invalid_lambda_parameters_subset() {
     );
     assert_error(
         "lambda *: None",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
     assert_error(
         "lambda *, : None",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
     assert_error(
         "lambda *, **kwargs: None",
-        "parse error: named parameters must follow bare *",
+        "parse error: named arguments must follow bare *",
     );
     assert_error(
         "lambda *args=1: None",

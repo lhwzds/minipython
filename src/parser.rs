@@ -3875,7 +3875,7 @@ impl Parser<'_> {
 
             if matches!(self.peek(), Some(Token::DoubleStar)) {
                 if bare_star_needs_keyword_only {
-                    return Err("named parameters must follow bare *".to_string());
+                    return Err("named arguments must follow bare *".to_string());
                 }
                 self.advance();
                 let name = self.expect_identifier("** parameter name")?;
@@ -3934,13 +3934,13 @@ impl Parser<'_> {
                     Some(Token::Comma) => {
                         self.advance();
                         if self.at_parameter_list_end(end) {
-                            return Err("named parameters must follow bare *".to_string());
+                            return Err("named arguments must follow bare *".to_string());
                         }
                         bare_star_needs_keyword_only = true;
                         continue;
                     }
                     Some(_) if self.at_parameter_list_end(end) => {
-                        return Err("named parameters must follow bare *".to_string());
+                        return Err("named arguments must follow bare *".to_string());
                     }
                     Some(token) => {
                         return Err(format!(

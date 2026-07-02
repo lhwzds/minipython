@@ -5963,6 +5963,15 @@ Completed in the vararg default diagnostic pass:
   and `lambda **kwargs=1: None` use CPython's public
   `cannot have default value` messages.
 
+Completed in the bare-star parameter diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so bare-star parameter forms
+  such as `def f(*)`, `def f(*, **kwargs)`, `lambda *: None`, and
+  `lambda *, **kwargs: None` use CPython's public
+  `named arguments must follow bare *` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
