@@ -6462,6 +6462,7 @@ impl Parser<'_> {
                     | Token::DoubleStar
                     | Token::Async
                     | Token::At
+                    | Token::Await
                     | Token::Arrow
                     | Token::Slash
                     | Token::DoubleSlash

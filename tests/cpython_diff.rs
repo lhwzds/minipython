@@ -42549,6 +42549,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram await expression function parameter rejection",
+            name: "def-await-expression-parameter-name-message",
+            source: "def f(a await b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram await expression function parameter rejection",
+            name: "def-await-expression-vararg-parameter-name-message",
+            source: "def f(*a await b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram await expression function parameter rejection",
+            name: "def-await-expression-kwarg-parameter-name-message",
+            source: "def f(**a await b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram await expression lambda parameter rejection",
+            name: "lambda-await-expression-parameter-name-message",
+            source: "lambda a await b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram await expression lambda parameter rejection",
+            name: "lambda-await-expression-vararg-parameter-name-message",
+            source: "lambda *a await b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram await expression lambda parameter rejection",
+            name: "lambda-await-expression-kwarg-parameter-name-message",
+            source: "lambda **a await b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

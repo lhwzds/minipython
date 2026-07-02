@@ -49782,6 +49782,52 @@ fn cpython_yield_expression_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_await_expression_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "await expression parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function await expression parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda await expression parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a await b):\\n    pass",
+        "def f(*a await b):\\n    pass",
+        "def f(**a await b):\\n    pass",
+        "lambda a await b: None",
+        "lambda *a await b: None",
+        "lambda **a await b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "await expression parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "await expression parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("await expression parameter name forms")
+                && document.contains("invalid syntax"),
+            "await expression parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
