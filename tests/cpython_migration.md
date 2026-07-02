@@ -4924,6 +4924,19 @@ SyntaxError message pass:
   patterns, guards, capture aliases, sequence commas, and OR-pattern
   diagnostics remain unchanged.
 
+Completed in the invalid wildcard interpolated-string-adjacent match-pattern
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard interpolated-string-adjacent match patterns
+  such as `case _ f'{1}'`, `case (_ f'{1}')`, `case [_ f'{1}']`,
+  `case {1: _ f'{1}'}`, `case _ t'{1}'`, `case (_ t'{1}')`,
+  `case [_ t'{1}']`, and `case {1: _ t'{1}'}` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, formatted
+  string expressions, template string expressions, guards, capture aliases,
+  sequence commas, and OR-pattern diagnostics remain unchanged.
+
 Completed in the invalid wildcard unary-invert match-pattern SyntaxError
 message pass:
 
