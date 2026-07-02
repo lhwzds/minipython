@@ -4897,6 +4897,18 @@ pass:
 - Kept this as parser-message parity only; valid wildcard patterns and
   OR-pattern diagnostics such as `case _` and `case _ | y` remain unchanged.
 
+Completed in the invalid wildcard selector/call match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard selector/call match patterns
+  such as `case _.x`, `case (_.x)`, `case [_.x]`, `case {1: _.x}`,
+  `case _[0]`, `case (_[0])`, `case [_[0]]`, `case {1: _[0]}`,
+  `case _()`, `case (_())`, `case [_()]`, and `case {1: _()}` now use
+  CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, guards,
+  capture aliases, sequence commas, and OR-pattern diagnostics remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 

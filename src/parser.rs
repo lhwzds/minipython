@@ -1061,6 +1061,9 @@ impl Parser<'_> {
                         | Token::Continue
                         | Token::Pass
                         | Token::Arrow
+                        | Token::Dot
+                        | Token::LeftBracket
+                        | Token::LeftParen
                 )
             )
         {

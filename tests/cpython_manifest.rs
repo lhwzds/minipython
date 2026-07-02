@@ -49029,6 +49029,30 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case _.x",
+        "case (_.x)",
+        "case [_.x]",
+        "case {1: _.x}",
+        "case _[0]",
+        "case (_[0])",
+        "case [_[0]]",
+        "case {1: _[0]}",
+        "case _()",
+        "case (_())",
+        "case [_()]",
+        "case {1: _()}",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid wildcard selector/call match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid wildcard selector/call match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case x & y",
         "case (x & y)",
         "case [x & y]",
@@ -49904,6 +49928,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("wildcard arrow match patterns")
                 && document.contains("invalid syntax"),
             "invalid wildcard arrow match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("wildcard selector/call match patterns")
+                && document.contains("invalid syntax"),
+            "invalid wildcard selector/call match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
