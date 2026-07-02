@@ -6477,6 +6477,7 @@ impl Parser<'_> {
                     | Token::For
                     | Token::If
                     | Token::Yield
+                    | Token::Identifier(_)
                     | Token::ColonEqual
                     | Token::Is
                     | Token::In
