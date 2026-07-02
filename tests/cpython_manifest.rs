@@ -48590,6 +48590,48 @@ fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_missing_annotation_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_assignment_and_annotation_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "missing annotation-expression SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "missing annotation-expression runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "x:\\n    pass",
+        "x:",
+        "x: # missing annotation expression\\n",
+        "obj.attr:\\n    pass",
+        "arr[0]:\\n    pass",
+        "x:; pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing annotation-expression CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing annotation-expression subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing annotated-assignment expressions")
+                && document.contains("invalid syntax")
+                && document.contains("illegal target for annotation"),
+            "missing annotation-expression docs must describe CPython message and stop-line"
+        );
+    }
+}
+
+#[test]
 fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_match_pattern_subset";

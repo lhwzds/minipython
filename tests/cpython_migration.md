@@ -6074,6 +6074,17 @@ Completed in the assignment parent-rule supported-promotion pass:
   completed because `star_targets`, `single_target`, `del_target`, and
   `invalid_assignment` were already supported.
 
+Completed in the missing annotated-assignment expression diagnostic pass:
+
+- Extended `cpython_invalid_assignment_and_annotation_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so missing annotated-assignment expressions
+  after name, attribute, and subscript targets (`x:`, `obj.attr:`, and
+  `arr[0]:`) use CPython's public `invalid syntax` message for newline,
+  EOF/comment, and semicolon statement-boundary forms.
+  Illegal annotation targets such as `f(): int` stay on the existing
+  `illegal target for annotation` stop-line instead of expanding this slice into
+  broader invalid-target parity.
+
 Completed in the function-definition supported-promotion pass:
 
 - Added `cpython_function_def_raw_rule_subset` for CPython's

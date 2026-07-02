@@ -41241,6 +41241,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "assign",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-name-annotation-expression-newline-message",
+            source: "x:\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-name-annotation-expression-eof-message",
+            source: "x:",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-name-annotation-expression-comment-message",
+            source: "x: # missing annotation expression\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-attribute-annotation-expression-message",
+            source: "obj.attr:\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-subscript-annotation-expression-message",
+            source: "arr[0]:\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram annotated assignment missing annotation expression",
+            name: "missing-name-annotation-expression-semicolon-message",
+            source: "x:; pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_assign_del",
             name: "del-empty-tuple-target-message",
             source: "del (,)",

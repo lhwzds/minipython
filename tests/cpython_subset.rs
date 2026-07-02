@@ -26209,6 +26209,16 @@ fn cpython_invalid_assignment_and_annotation_subset() {
     );
     assert_error("a + 1: int", "parse error: illegal target for annotation");
     assert_error("f(): int", "parse error: illegal target for annotation");
+    for source in [
+        "x:\n    pass",
+        "x:",
+        "x: # missing annotation expression\n",
+        "obj.attr:\n    pass",
+        "arr[0]:\n    pass",
+        "x:; pass",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "a, b += 1, 2",
         "parse error: 'tuple' is an illegal expression for augmented assignment",

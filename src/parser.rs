@@ -346,7 +346,7 @@ impl Parser<'_> {
                     validate_store_target(&target)?;
                     validate_annotation_target(&target)?;
                     self.advance();
-                    let annotation = self.parse_expression()?;
+                    let annotation = self.parse_assignment_annotation_expression()?;
                     let value = if matches!(self.peek(), Some(Token::Equal)) {
                         self.advance();
                         Some(self.parse_expression_list_until_statement_boundary()?)
@@ -386,6 +386,17 @@ impl Parser<'_> {
             return Err(invalid_annotation_assignment_message(&expr));
         }
         Ok(Stmt::Expr(expr))
+    }
+
+    fn parse_assignment_annotation_expression(&mut self) -> Result<Expr, String> {
+        if matches!(
+            self.peek(),
+            Some(Token::Newline | Token::Semicolon | Token::Dedent | Token::Eof) | None
+        ) {
+            return Err("invalid syntax".to_string());
+        }
+
+        self.parse_expression()
     }
 
     fn parse_assignment_targets_and_value(
