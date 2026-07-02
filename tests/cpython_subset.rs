@@ -23505,6 +23505,37 @@ show('keyword-missing-receiver', lambda: io.BytesIO.getvalue(bio=bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_tell_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+bio.read(2)
+descriptor = io.BytesIO.tell
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.tell(bio))
+show('wrong-receiver', lambda: io.BytesIO.tell(object()))
+show('missing-receiver', lambda: io.BytesIO.tell())
+show('extra', lambda: io.BytesIO.tell(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.tell(bio=bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call ok 2 int",
+            "wrong-receiver TypeError descriptor 'tell' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.tell() needs an argument",
+            "extra TypeError BytesIO.tell() takes no arguments (1 given)",
+            "keyword-missing-receiver TypeError unbound method BytesIO.tell() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

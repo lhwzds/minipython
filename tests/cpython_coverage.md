@@ -1069,6 +1069,7 @@ Recent runtime migration notes:
   `cpython_io_module_package_metadata_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_io_bytesio_getvalue_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_tell_method_descriptor_diff_subset`,
   `cpython_io_bytesio_getstate_diff_subset`,
   `cpython_io_bytesio_setstate_diff_subset`,
   `cpython_io_bytesio_state_method_descriptor_diff_subset`,
@@ -4350,7 +4351,11 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_getvalue_method_descriptor_subset` covers the
   `io.BytesIO.getvalue` method descriptor, including descriptor type visibility,
   unbound descriptor calls, wrong-receiver descriptor `TypeError`, and
-  missing-receiver keyword behavior. `cpython_io_bytesio_state_method_descriptor_diff_subset` /
+  missing-receiver keyword behavior. `cpython_io_bytesio_tell_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_tell_method_descriptor_subset` covers the
+  `io.BytesIO.tell` method descriptor, including descriptor type visibility,
+  position-returning unbound descriptor calls, wrong-receiver descriptor `TypeError`,
+  and missing-receiver keyword behavior. `cpython_io_bytesio_state_method_descriptor_diff_subset` /
   `cpython_io_bytesio_state_method_descriptor_subset` covers the
   `io.BytesIO.__getstate__` / `io.BytesIO.__setstate__` state method descriptors,
   including descriptor type visibility, unbound calls, wrong-receiver descriptor `TypeError`,

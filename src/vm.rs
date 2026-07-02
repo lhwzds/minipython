@@ -21373,13 +21373,22 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("tell", &keywords)?;
-        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method BytesIO.tell() needs an argument".to_string());
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: BytesIO.tell() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor 'tell' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        reject_bytesio_method_keywords("tell", &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: BytesIO.tell() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_open(bytes_io)?;
         i64::try_from(bytes_io.borrow().position)
             .map(Value::Number)
@@ -61504,8 +61513,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin("object.__getstate__".to_string()))
         }
-        Value::Builtin(function_name) if function_name == "io.BytesIO" && name == "getvalue" => {
-            Ok(Value::Builtin("io.BytesIO.getvalue".to_string()))
+        Value::Builtin(function_name)
+            if function_name == "io.BytesIO" && matches!(name, "getvalue" | "tell") =>
+        {
+            Ok(Value::Builtin(format!("io.BytesIO.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "io.BytesIO"
@@ -65099,7 +65110,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "deque" => is_builtin_deque_type_method(method),
         "io" if matches!(
             method,
-            "BytesIO.getvalue" | "BytesIO.__getstate__" | "BytesIO.__setstate__"
+            "BytesIO.getvalue" | "BytesIO.tell" | "BytesIO.__getstate__" | "BytesIO.__setstate__"
         ) =>
         {
             true
@@ -65167,7 +65178,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "io" => matches!(
             method,
-            "BytesIO.getvalue" | "BytesIO.__getstate__" | "BytesIO.__setstate__"
+            "BytesIO.getvalue" | "BytesIO.tell" | "BytesIO.__getstate__" | "BytesIO.__setstate__"
         ),
         "int" | "bool" => {
             is_builtin_int_type_method(method) && !matches!(method, "__new__" | "from_bytes")
