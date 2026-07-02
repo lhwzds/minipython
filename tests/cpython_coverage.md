@@ -199,6 +199,14 @@ Recent runtime migration notes:
   `cpython_memoryview_instance_doc_attribute_diff_subset`, now pins memoryview instance `__doc__`
   lookup for bytes, bytearray, and empty views, matching `memoryview.__doc__`
   and `dir(value)` without adding writable instance dictionaries.
+- `cpython_memoryview_getstate_subset`, backed by
+  `cpython_memoryview_getstate_diff_subset`, now pins inherited
+  `object.__getstate__` behavior for memoryview instances and slices:
+  `memoryview(b'abc').__getstate__()` and
+  `object.__getattribute__(view, '__getstate__')()` return the pure-memory
+  no-state value `None`, while extra positional and keyword arguments preserve
+  CPython's public `object.__getstate__` `TypeError` text without promoting
+  pickle support or CPython buffer lifetime internals.
 - `cpython_memoryview_unacceptable_base_type_subset`, backed by
   `cpython_memoryview_unacceptable_base_type_diff_subset`, now pins CPython's
   `type 'memoryview' is not an acceptable base type` rejection for class
@@ -672,6 +680,7 @@ Recent runtime migration notes:
   `cpython_set_instance_doc_attribute_diff_subset`,
   `cpython_frozenset_instance_doc_attribute_diff_subset`,
   `cpython_memoryview_instance_doc_attribute_diff_subset`,
+  `cpython_memoryview_getstate_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_str_instance_doc_attribute_diff_subset`,
   `cpython_list_instance_doc_attribute_diff_subset`,
@@ -7186,6 +7195,14 @@ without adding general custom encoder/decoder class support.
   `str()` / `repr()`, same-object identity through `with ... as`,
   expression-temporary exported-view release after `Pop`, module-level
   comprehension scope/frame release, and reversed iteration.
+- `RUNTIME_BUILTINS` also includes `cpython_memoryview_getstate_subset` with
+  direct CPython output parity in `cpython_memoryview_getstate_diff_subset`,
+  covering inherited `object.__getstate__` on memoryview instances and sliced
+  views through `memoryview(b'abc').__getstate__()` and
+  `object.__getattribute__(view, '__getstate__')()`. This keeps the supported
+  pure-memory no-state surface at `None` and preserves CPython's public
+  extra-argument and keyword `TypeError` text while leaving pickle behavior and
+  CPython buffer lifetime internals outside the sandbox contract.
 - `RUNTIME_BUILTINS` also includes `cpython_memoryview_getbuf_fail_subset`,
   covering CPython `test_memoryview.py::AbstractMemoryTests::test_getbuf_fail`
   public constructor rejection for non-buffer objects. Direct CPython diff

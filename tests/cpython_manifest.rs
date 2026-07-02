@@ -5280,6 +5280,7 @@ fn cpython_memoryview_evidence_is_documented_in_coverage_and_migration() {
         "cpython_memoryview_array_signed_byte_buffer_diff_subset",
         "cpython_memoryview_array_non_byte_public_read_diff_subset",
         "cpython_memoryview_array_non_byte_writeback_diff_subset",
+        "cpython_memoryview_getstate_diff_subset",
     ];
     let runtime_evidence = [
         "cpython_memoryview_minimal_runtime_subset",
@@ -5303,6 +5304,7 @@ fn cpython_memoryview_evidence_is_documented_in_coverage_and_migration() {
         "cpython_memoryview_release_during_index_subset",
         "cpython_memoryview_bytesio_readinto_subset",
         "cpython_memoryview_weakref_live_subset",
+        "cpython_memoryview_getstate_subset",
     ];
 
     for evidence in diff_evidence {
@@ -31045,6 +31047,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_set_instance_doc_attribute_subset",
             "cpython_frozenset_instance_doc_attribute_subset",
             "cpython_memoryview_instance_doc_attribute_subset",
+            "cpython_memoryview_getstate_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
@@ -31133,6 +31136,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_set_instance_doc_attribute_diff_subset",
         "cpython_frozenset_instance_doc_attribute_diff_subset",
         "cpython_memoryview_instance_doc_attribute_diff_subset",
+        "cpython_memoryview_getstate_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",
@@ -38361,6 +38365,70 @@ fn memoryview_instance_doc_attribute_subset_has_focused_diff_evidence() {
                 && document.contains("without adding writable instance dictionaries"),
             "memoryview instance __doc__ evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn memoryview_getstate_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_memoryview_getstate_subset");
+    for required in [
+        "memoryview(b'abc')",
+        "memoryview(b'abc')[1:]",
+        "value.__getstate__()",
+        "object.__getattribute__(value, '__getstate__')()",
+        "memoryview-instance-getstate ok None NoneType",
+        "memoryview-slice-instance-getstate ok None NoneType",
+        "memoryview-extra TypeError object.__getstate__() takes no arguments",
+        "memoryview-keyword TypeError object.__getstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "memoryview getstate subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_memoryview_getstate_diff_subset");
+    for required in [
+        "CPython public inherited object.__getstate__ behavior for memoryview instances",
+        "memoryview-getstate",
+        "memoryview(b'abc')",
+        "memoryview(b'abc')[1:]",
+        "value.__getstate__()",
+        "object.__getattribute__(value, '__getstate__')()",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "memoryview getstate CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn object_getstate_bound_method(receiver: Value) -> Value",
+        "fn has_default_object_getstate(receiver: &Value) -> bool",
+        "Value::MemoryView(_)",
+        "name == \"__getstate__\" && has_default_object_getstate(&object)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "memoryview getstate VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_memoryview_getstate_subset",
+            "cpython_memoryview_getstate_diff_subset",
+            "`memoryview(b'abc').__getstate__()`",
+            "`object.__getattribute__(view, '__getstate__')()`",
+            "pure-memory no-state",
+            "pickle",
+            "CPython buffer lifetime internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "memoryview getstate docs must contain `{required}`"
+            );
+        }
     }
 }
 

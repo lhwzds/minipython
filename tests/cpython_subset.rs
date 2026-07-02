@@ -27156,6 +27156,39 @@ fn cpython_memoryview_instance_doc_attribute_subset() {
     );
 }
 
+// Mirrors CPython's inherited public `object.__getstate__` behavior for
+// memoryview instances without promoting pickle support or CPython buffer
+// lifetime internals.
+#[test]
+fn cpython_memoryview_getstate_subset() {
+    assert_output(
+        r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+for label, value in [('memoryview', memoryview(b'abc')), ('memoryview-slice', memoryview(b'abc')[1:])]:
+    show(label + '-instance-getstate', lambda value=value: value.__getstate__())
+    show(label + '-getattribute-getstate', lambda value=value: object.__getattribute__(value, '__getstate__')())
+
+for label, cb in [
+    ('memoryview-extra', lambda: memoryview(b'abc').__getstate__(1)),
+    ('memoryview-keyword', lambda: memoryview(b'abc').__getstate__(x=1)),
+]:
+    show(label, cb)"#,
+        &[
+            "memoryview-instance-getstate ok None NoneType",
+            "memoryview-getattribute-getstate ok None NoneType",
+            "memoryview-slice-instance-getstate ok None NoneType",
+            "memoryview-slice-getattribute-getstate ok None NoneType",
+            "memoryview-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "memoryview-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython's public class-construction behavior. MiniPython rejects
 // `memoryview` as a base type across direct class statements and public class
 // construction helpers while keeping ordinary supported builtin bases intact.

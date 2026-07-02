@@ -65369,6 +65369,7 @@ fn has_default_object_getstate(receiver: &Value) -> bool {
             | Value::IdentityString { .. }
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::MemoryView(_)
             | Value::Tuple(_)
             | Value::List(_)
             | Value::Dict(_)

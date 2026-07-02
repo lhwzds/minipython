@@ -13471,6 +13471,30 @@ fn cpython_memoryview_instance_doc_attribute_diff_subset() {
 }
 
 #[test]
+fn cpython_memoryview_getstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public inherited object.__getstate__ behavior for memoryview instances",
+        name: "memoryview-getstate",
+        source: r#"def show(label, cb):
+    try:
+        v = cb()
+        print(label, 'ok', repr(v), type(v).__name__)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+
+for label, value in [('memoryview', memoryview(b'abc')), ('memoryview-slice', memoryview(b'abc')[1:])]:
+    show(label + '-instance-getstate', lambda value=value: value.__getstate__())
+    show(label + '-getattribute-getstate', lambda value=value: object.__getattribute__(value, '__getstate__')())
+
+for label, cb in [
+    ('memoryview-extra', lambda: memoryview(b'abc').__getstate__(1)),
+    ('memoryview-keyword', lambda: memoryview(b'abc').__getstate__(x=1)),
+]:
+    show(label, cb)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_unacceptable_base_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public class-construction non-subclassable memoryview base subset",
