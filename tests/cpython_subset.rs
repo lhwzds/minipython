@@ -72880,6 +72880,43 @@ for label, cell in [('full', types.CellType('x')), ('empty', types.CellType())]:
     );
 }
 
+// Adapted from CPython public cell object display behavior. This pins shape
+// only, not exact object addresses or CPython object-layout internals.
+#[test]
+fn cpython_types_celltype_instance_display_subset() {
+    assert_output(
+        r#"import types
+
+for label, cell in [('empty', types.CellType()), ('str', types.CellType('x')), ('int', types.CellType(1))]:
+    rendered = repr(cell)
+    text = str(cell)
+    formatted = format(cell, '')
+    object_rendered = object.__repr__(cell)
+    print(label, 'same-display', rendered == text, rendered == formatted)
+    print(label, 'repr-shape',
+          rendered.startswith('<cell at 0x'),
+          rendered.endswith('>'),
+          ': empty' in rendered,
+          ' object at 0x' in rendered)
+    print(label, 'object-repr-shape',
+          object_rendered.startswith('<cell object at 0x'),
+          object_rendered.endswith('>'),
+          ': empty' in object_rendered,
+          ' object at 0x' in object_rendered)"#,
+        &[
+            "empty same-display True True",
+            "empty repr-shape True True True False",
+            "empty object-repr-shape True True False True",
+            "str same-display True True",
+            "str repr-shape True True False True",
+            "str object-repr-shape True True False True",
+            "int same-display True True",
+            "int repr-shape True True False True",
+            "int object-repr-shape True True False True",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` module metadata. This covers the
 // alias metadata only; broader CellType type-object metadata remains separate.
 #[test]

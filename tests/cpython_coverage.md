@@ -810,6 +810,7 @@ Recent runtime migration notes:
   `cpython_types_celltype_attribute_errors_diff_subset`,
   `cpython_types_celltype_dir_surface_diff_subset`,
   `cpython_types_celltype_hash_semantics_diff_subset`,
+  `cpython_types_celltype_instance_display_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4058,6 +4059,13 @@ without adding general custom encoder/decoder class support.
   `object.__hash__(cell)` still returns an identity hash. This slice does not
   attempt to align dict/set key error text for cells or any CPython object
   layout details behind the identity hash.
+- The bundled `types` module also includes
+  `cpython_types_celltype_instance_display_subset`, backed by
+  `cpython_types_celltype_instance_display_diff_subset`, covering the public
+  address shape of `repr(cell)`, `str(cell)`, `format(cell, '')`, and
+  `object.__repr__(cell)` for empty and populated cells. This slice pins the
+  CPython display shape only; exact object addresses and CPython object-layout
+  internals remain outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's

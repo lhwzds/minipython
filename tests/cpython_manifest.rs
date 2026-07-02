@@ -39313,6 +39313,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_celltype_attribute_errors_subset",
             "cpython_types_celltype_dir_surface_subset",
             "cpython_types_celltype_hash_semantics_subset",
+            "cpython_types_celltype_instance_display_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_display_metadata_subset",
@@ -39417,6 +39418,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_celltype_attribute_errors_diff_subset",
         "cpython_types_celltype_dir_surface_diff_subset",
         "cpython_types_celltype_hash_semantics_diff_subset",
+        "cpython_types_celltype_instance_display_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_display_metadata_diff_subset",
@@ -39978,6 +39980,89 @@ fn types_celltype_hash_semantics_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType hash docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_instance_display_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_instance_display_diff_subset";
+    let subset_name = "cpython_types_celltype_instance_display_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType display CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType display runtime subset evidence must exist"
+    );
+
+    for required in [
+        "repr(cell)",
+        "str(cell)",
+        "format(cell, '')",
+        "object.__repr__(cell)",
+        "rendered.startswith('<cell at 0x')",
+        "object_rendered.startswith('<cell object at 0x')",
+        "': empty' in rendered",
+        "' object at 0x' in rendered",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType display diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"empty same-display True True\"",
+        "\"empty repr-shape True True True False\"",
+        "\"empty object-repr-shape True True False True\"",
+        "\"str same-display True True\"",
+        "\"str repr-shape True True False True\"",
+        "\"str object-repr-shape True True False True\"",
+        "\"int same-display True True\"",
+        "\"int repr-shape True True False True\"",
+        "\"int object-repr-shape True True False True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType display subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Cell { .. } => repr_value_checked(value)",
+        "Value::Cell { .. } => Ok(cell_repr_value(value))",
+        "Value::Cell { .. } => cell_repr_value(value)",
+        "fn cell_repr_value(value: &Value) -> String",
+        "\"<cell at 0x{cell_address:x}: empty>\"",
+        "\"<cell object at 0x{:x}>\"",
+        "identity_bits(value)",
+        "identity_bits(&contents)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType display implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`repr(cell)`",
+            "`str(cell)`",
+            "`format(cell, '')`",
+            "`object.__repr__(cell)`",
+            "address shape",
+            "exact object addresses",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType display docs must contain `{required}`"
             );
         }
     }

@@ -19451,6 +19451,32 @@ for label, cell in [('full', types.CellType('x')), ('empty', types.CellType())]:
 }
 
 #[test]
+fn cpython_types_celltype_instance_display_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public cell object repr/str/format display subset",
+        name: "types-celltype-instance-display",
+        source: r#"import types
+
+for label, cell in [('empty', types.CellType()), ('str', types.CellType('x')), ('int', types.CellType(1))]:
+    rendered = repr(cell)
+    text = str(cell)
+    formatted = format(cell, '')
+    object_rendered = object.__repr__(cell)
+    print(label, 'same-display', rendered == text, rendered == formatted)
+    print(label, 'repr-shape',
+          rendered.startswith('<cell at 0x'),
+          rendered.endswith('>'),
+          ': empty' in rendered,
+          ' object at 0x' in rendered)
+    print(label, 'object-repr-shape',
+          object_rendered.startswith('<cell object at 0x'),
+          object_rendered.endswith('>'),
+          ': empty' in object_rendered,
+          ' object at 0x' in object_rendered)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

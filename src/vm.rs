@@ -1606,6 +1606,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         {
             repr_value_checked(value)
         }
+        Value::Cell { .. } => repr_value_checked(value),
         Value::List(_)
         | Value::Tuple(_)
         | Value::Set(_)
@@ -1798,6 +1799,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         Value::Traceback { .. } => Ok("<traceback object>".to_string()),
         Value::Super { class, object, .. } => Ok(super_repr_value(class, object)),
         Value::AstNode { .. } => ast_repr_value_checked(value),
+        Value::Cell { .. } => Ok(cell_repr_value(value)),
         Value::BigInt(value) => repr_big_int_checked(value),
         _ => Ok(repr_value(value)),
     }
@@ -2183,6 +2185,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
         Value::Frame { .. } => "<frame object>".to_string(),
         Value::Traceback { .. } => "<traceback object>".to_string(),
         Value::AstNode { .. } => ast_repr_value(value),
+        Value::Cell { .. } => cell_repr_value(value),
         _ => value.to_string(),
     }
 }
@@ -2206,6 +2209,21 @@ fn repr_mapping_view(kind: DictViewKind, mapping: &Value, active: &mut HashSet<u
         .join(", ");
     active.remove(&identity);
     format!("{}([{rendered}])", dict_view_type_name(kind))
+}
+
+fn cell_repr_value(value: &Value) -> String {
+    let Value::Cell { name, scope, .. } = value else {
+        return default_object_repr(value);
+    };
+    let cell_address = identity_bits(value);
+    match cell_contents(name, scope) {
+        Ok(contents) => format!(
+            "<cell at 0x{cell_address:x}: {} object at 0x{:x}>",
+            type_name(&contents),
+            identity_bits(&contents)
+        ),
+        Err(_) => format!("<cell at 0x{cell_address:x}: empty>"),
+    }
 }
 
 fn mapping_view_repr_identity(kind: DictViewKind, mapping: &Value) -> Option<usize> {
@@ -67467,6 +67485,9 @@ impl Vm {
 }
 
 fn default_object_repr(value: &Value) -> String {
+    if matches!(value, Value::Cell { .. }) {
+        return format!("<cell object at 0x{:x}>", identity_bits(value));
+    }
     format!("<{} object>", type_name(value))
 }
 
