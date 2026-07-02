@@ -28573,6 +28573,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_writable_method_descriptor_subset",
             "cpython_io_bytesio_seekable_method_descriptor_subset",
             "cpython_io_bytesio_isatty_method_descriptor_subset",
+            "cpython_io_bytesio_flush_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28630,6 +28631,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_isatty_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO isatty method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_flush_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO flush method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -28915,11 +28921,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor 'getvalue' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.getvalue() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -28980,11 +28986,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor 'tell' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.tell() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29045,11 +29051,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.{method}() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29110,11 +29116,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.{method}() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29175,11 +29181,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.{method}() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29240,11 +29246,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"getvalue\" | \"tell\" | \"readable\" | \"writable\" | \"seekable\" | \"isatty\"",
+        "| \"flush\"",
         "format!(\"io.BytesIO.{name}\")",
         "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
         "unbound method BytesIO.{method}() needs an argument",
-        "\"BytesIO.isatty\"",
+        "\"BytesIO.flush\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29261,6 +29267,71 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO isatty method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
+    let flush_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_flush_method_descriptor_diff_subset",
+    );
+    let flush_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_flush_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.flush",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.flush(bio)",
+        "io.BytesIO.flush(object())",
+        "io.BytesIO.flush()",
+        "io.BytesIO.flush(bio, 1)",
+        "io.BytesIO.flush(bio=bio)",
+    ] {
+        assert!(
+            flush_descriptor_diff.contains(required),
+            "io.BytesIO flush method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            flush_descriptor_subset.contains(required),
+            "io.BytesIO flush method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call ok None NoneType",
+        "descriptor 'flush' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.flush() needs an argument",
+        "BytesIO.flush() takes no arguments (1 given)",
+    ] {
+        assert!(
+            flush_descriptor_subset.contains(required),
+            "io.BytesIO flush method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"flush\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'flush' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.flush() needs an argument",
+        "\"BytesIO.flush\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO flush method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_flush_method_descriptor_subset",
+            "cpython_io_bytesio_flush_method_descriptor_diff_subset",
+            "`io.BytesIO.flush` method descriptor",
+            "none-returning flush descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO flush method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -29583,6 +29654,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_isatty_method_descriptor_subset",
             "cpython_io_bytesio_isatty_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_flush_method_descriptor_subset",
+            "cpython_io_bytesio_flush_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",

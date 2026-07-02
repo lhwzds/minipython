@@ -1074,6 +1074,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_writable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_seekable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_isatty_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_flush_method_descriptor_diff_subset`,
   `cpython_io_bytesio_getstate_diff_subset`,
   `cpython_io_bytesio_setstate_diff_subset`,
   `cpython_io_bytesio_state_method_descriptor_diff_subset`,
@@ -4375,6 +4376,10 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_isatty_method_descriptor_subset` covers the
   `io.BytesIO.isatty` method descriptor, including descriptor type visibility,
   bool-returning isatty descriptor calls, wrong-receiver descriptor `TypeError`,
+  and missing-receiver keyword behavior. `cpython_io_bytesio_flush_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_flush_method_descriptor_subset` covers the
+  `io.BytesIO.flush` method descriptor, including descriptor type visibility,
+  none-returning flush descriptor calls, wrong-receiver descriptor `TypeError`,
   and missing-receiver keyword behavior. `cpython_io_bytesio_state_method_descriptor_diff_subset` /
   `cpython_io_bytesio_state_method_descriptor_subset` covers the
   `io.BytesIO.__getstate__` / `io.BytesIO.__setstate__` state method descriptors,

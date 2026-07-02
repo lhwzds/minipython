@@ -21076,16 +21076,22 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("flush", &keywords)?;
-        let [Value::BytesIO(_)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method BytesIO.flush() needs an argument".to_string());
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: BytesIO.flush() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor 'flush' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
-        let Value::BytesIO(bytes_io) = &args[0] else {
-            unreachable!("BytesIO receiver is checked above")
-        };
+        reject_bytesio_method_keywords("flush", &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: BytesIO.flush() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_open(bytes_io)?;
         Ok(Value::None)
     }
@@ -61525,7 +61531,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "io.BytesIO"
                 && matches!(
                     name,
-                    "getvalue" | "tell" | "readable" | "writable" | "seekable" | "isatty"
+                    "getvalue"
+                        | "tell"
+                        | "readable"
+                        | "writable"
+                        | "seekable"
+                        | "isatty"
+                        | "flush"
                 ) =>
         {
             Ok(Value::Builtin(format!("io.BytesIO.{name}")))
@@ -65128,6 +65140,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.writable"
                 | "BytesIO.seekable"
                 | "BytesIO.isatty"
+                | "BytesIO.flush"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ) =>
@@ -65203,6 +65216,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.writable"
                 | "BytesIO.seekable"
                 | "BytesIO.isatty"
+                | "BytesIO.flush"
                 | "BytesIO.__getstate__"
                 | "BytesIO.__setstate__"
         ),
