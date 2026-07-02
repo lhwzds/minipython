@@ -42687,6 +42687,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-equal-target-message",
+            source: "match 1:\n    case 1 as =:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-pipe-target-message",
+            source: "match 1:\n    case 1 as |:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-leading-dot-target-message",
+            source: "match 1:\n    case 1 as .x:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-equal-target-message",
+            source: "match 1:\n    case (1 as =):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-sequence-pipe-target-message",
+            source: "match [1]:\n    case [1 as |]:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid literal-pattern public SyntaxError subset",
             name: "syntax-match-f-string-pattern-message",
             source: "match \"a\":\n    case f\"a\":\n        pass\n",

@@ -1182,6 +1182,9 @@ impl Parser<'_> {
                 Token::Colon
                     | Token::If
                     | Token::Comma
+                    | Token::Equal
+                    | Token::Pipe
+                    | Token::Dot
                     | Token::RightParen
                     | Token::RightBracket
                     | Token::RightBrace

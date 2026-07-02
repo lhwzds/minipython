@@ -49255,6 +49255,23 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case 1 as =",
+        "case 1 as |",
+        "case 1 as .x",
+        "case (1 as =)",
+        "case [1 as |]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "punctuation-start as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "punctuation-start as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("standalone star patterns") && document.contains("invalid syntax"),
@@ -49442,6 +49459,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             document.contains("missing as-pattern targets") && document.contains("invalid syntax"),
             "missing as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("punctuation-start as-pattern targets")
+                && document.contains("invalid syntax"),
+            "punctuation-start as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
