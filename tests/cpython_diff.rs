@@ -301,6 +301,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use f-string expression as pattern target"
         | "cannot use t-string expression as pattern target"
         | "cannot use expression as pattern target"
+        | "cannot use named expression as pattern target"
         | "patterns may only match literals and attribute lookups"
         | "mapping pattern keys may only match literals and attribute lookups"
         | "alternative patterns bind different names"
@@ -41926,6 +41927,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-parenthesized-call-comparison-target-message",
             source: "match 1:\n    case 1 as (target() < other):\n        pass\n",
             expected_message: "cannot use comparison as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-named-expression-target-message",
+            source: "match 1:\n    case 1 as (target := other):\n        pass\n",
+            expected_message: "cannot use named expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-named-expression-target-message",
+            source: "match 1:\n    case 1 as ((target := other)):\n        pass\n",
+            expected_message: "cannot use named expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-named-expression-with-expression-value-target-message",
+            source: "match 1:\n    case 1 as (target := (other + value)):\n        pass\n",
+            expected_message: "cannot use named expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-named-expression-tuple-target-message",
+            source: "match 1:\n    case 1 as (target := other, value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",

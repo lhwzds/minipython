@@ -1184,6 +1184,10 @@ impl Parser<'_> {
             return Err("cannot use lambda as pattern target".to_string());
         }
 
+        if self.is_parenthesized_named_expression_as_pattern_target() {
+            return Err("cannot use named expression as pattern target".to_string());
+        }
+
         if self.is_parenthesized_comparison_as_pattern_target() {
             return Err("cannot use comparison as pattern target".to_string());
         }
@@ -1235,6 +1239,55 @@ impl Parser<'_> {
         }
 
         self.parse_pattern_capture_target()
+    }
+
+    fn is_parenthesized_named_expression_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut paren_depth = 1usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 0usize;
+        let mut has_name_walrus = false;
+
+        for index in (self.current + 1)..outer_end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth += 1
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 0 => bracket_depth += 1,
+                Some(Token::RightBracket) if brace_depth == 0 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => brace_depth += 1,
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(Token::Comma)
+                    if paren_depth == 1 && bracket_depth == 0 && brace_depth == 0 =>
+                {
+                    return false;
+                }
+                Some(Token::Identifier(_))
+                    if bracket_depth == 0
+                        && brace_depth == 0
+                        && matches!(self.tokens.get(index + 1), Some(Token::ColonEqual)) =>
+                {
+                    has_name_walrus = true
+                }
+                _ => {}
+            }
+        }
+
+        has_name_walrus
     }
 
     fn is_parenthesized_comparison_as_pattern_target(&self) -> bool {

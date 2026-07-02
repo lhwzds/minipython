@@ -48612,6 +48612,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use f-string expression as pattern target",
         "cannot use t-string expression as pattern target",
         "cannot use expression as pattern target",
+        "cannot use named expression as pattern target",
         "cannot use lambda as pattern target",
         "cannot use function call as pattern target",
         "patterns may only match literals and attribute lookups",
@@ -48778,6 +48779,21 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case 1 as (target := other)",
+        "case 1 as ((target := other))",
+        "case 1 as (target := (other + value))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized named-expression as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized named-expression as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case 1 as (x)"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48793,6 +48809,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as (x, y)",
         "case 1 as ()",
         "case 1 as (target[0], y)",
+        "case 1 as (target := other, value)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48908,6 +48925,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid parenthesized comparison as-pattern targets")
                 && document.contains("cannot use comparison as pattern target"),
             "invalid parenthesized comparison as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized named-expression as-pattern targets")
+                && document.contains("cannot use named expression as pattern target"),
+            "invalid parenthesized named-expression as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
