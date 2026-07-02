@@ -48598,6 +48598,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use True as pattern target",
         "cannot use False as pattern target",
         "cannot use ellipsis as pattern target",
+        "cannot use f-string expression as pattern target",
         "cannot use function call as pattern target",
         "mapping pattern checks duplicate key ('x')",
         "mapping pattern checks duplicate key (False)",
