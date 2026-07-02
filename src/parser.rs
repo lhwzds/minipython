@@ -1130,6 +1130,7 @@ impl Parser<'_> {
             Some(token) if is_literal_pattern_target_token(&token) => {
                 Err("cannot use literal as pattern target".to_string())
             }
+            Some(Token::None) => Err("cannot use None as pattern target".to_string()),
             Some(Token::Identifier(name)) if name == "_" => {
                 Err("cannot use '_' as a target".to_string())
             }

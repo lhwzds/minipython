@@ -33081,6 +33081,10 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use literal as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as None:\n        pass",
+        "parse error: cannot use None as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as target.attr:\n        pass",
         "parse error: cannot use attribute as pattern target",
     );
