@@ -1179,6 +1179,11 @@ impl Parser<'_> {
             return Err("cannot use dict literal as pattern target".to_string());
         }
 
+        if matches!(self.peek(), Some(Token::Lambda)) {
+            self.advance();
+            return Err("cannot use lambda as pattern target".to_string());
+        }
+
         if self.is_parenthesized_attribute_as_pattern_target() {
             return Err("cannot use attribute as pattern target".to_string());
         }
