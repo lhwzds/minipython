@@ -48750,6 +48750,32 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "match 1; print(2)",
+        "match x; print(2)",
+        "match f(); print(2)",
+        "match 1, 2; print(2)",
+        "match {'x': 1}; print(2)",
+        "match x if y else z; print(2)",
+        "match 'x'; print(2)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "match-subject semicolon CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "match-subject semicolon subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("match-subject semicolon") && document.contains("invalid syntax"),
+            "match-subject semicolon docs must describe the CPython message"
+        );
+    }
+
+    for required_source in [
         "case 1\\n        pass",
         "case 1 if True\\n        pass",
         "case _\\n        pass",

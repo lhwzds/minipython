@@ -33182,6 +33182,16 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error("match 1", "parse error: expected ':'");
     assert_error("match 'x'", "parse error: expected ':'");
+    assert_error("match 1; print(2)", "parse error: invalid syntax");
+    assert_error("match x; print(2)", "parse error: invalid syntax");
+    assert_error("match f(); print(2)", "parse error: invalid syntax");
+    assert_error("match 1, 2; print(2)", "parse error: invalid syntax");
+    assert_error("match {'x': 1}; print(2)", "parse error: invalid syntax");
+    assert_error(
+        "match x if y else z; print(2)",
+        "parse error: invalid syntax",
+    );
+    assert_error("match 'x'; print(2)", "parse error: invalid syntax");
     assert_parse_error("match 1:\ncase 1:\n    pass");
     assert_parse_error("case 1:\n    pass");
     assert_error(

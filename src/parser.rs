@@ -6426,6 +6426,9 @@ impl Parser<'_> {
         ) {
             return Err("expected ':'".to_string());
         }
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            return Err("invalid syntax".to_string());
+        }
         self.expect_colon()
     }
 

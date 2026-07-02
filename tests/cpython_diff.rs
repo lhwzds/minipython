@@ -42873,6 +42873,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "expected ':'",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-literal-subject-semicolon-message",
+            source: "match 1; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-name-subject-semicolon-message",
+            source: "match x; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-call-subject-semicolon-message",
+            source: "match f(); print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-tuple-subject-semicolon-message",
+            source: "match 1, 2; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-dict-subject-semicolon-message",
+            source: "match {'x': 1}; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-conditional-subject-semicolon-message",
+            source: "match x if y else z; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-string-subject-semicolon-message",
+            source: "match 'x'; print(2)\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid_case_block public SyntaxError subset",
             name: "syntax-match-case-literal-missing-colon-message",
             source: "match 1:\n    case 1\n        pass\n",

@@ -5198,6 +5198,17 @@ Completed in the missing match-subject colon SyntaxError message pass:
   assignments, and arithmetic expressions on their existing non-match paths
   unless an indented `case` block makes the missing match colon unambiguous.
 
+Completed in the match-subject semicolon SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so match-subject semicolon forms such
+  as `match 1; print(2)`, `match x; print(2)`, `match f(); print(2)`,
+  `match 1, 2; print(2)`, `match {'x': 1}; print(2)`,
+  `match x if y else z; print(2)`, and `match 'x'; print(2)` now use
+  CPython's public `invalid syntax` message.
+- Kept ordinary `match` identifier arithmetic/call/subscript expressions and
+  valid semicolon-separated inline match suites on their existing paths.
+
 Completed in the missing case-block colon SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
