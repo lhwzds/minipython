@@ -721,6 +721,19 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_module_author_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public module __author__ metadata subset",
+        name: "json-module-author-metadata",
+        source: r#"import json
+print(hasattr(json, '__author__'))
+print(json.__author__, type(json.__author__).__name__)
+print(object.__getattribute__(json, '__author__'))
+print('__author__' in dir(json), json.__dict__['__author__'])"#,
+    });
+}
+
+#[test]
 fn cpython_json_module_version_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public module __version__ metadata subset",

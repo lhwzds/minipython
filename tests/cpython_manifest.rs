@@ -9398,6 +9398,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json",
         &[
             "cpython_json_module_package_metadata_subset",
+            "cpython_json_module_author_metadata_subset",
             "cpython_json_module_version_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
             "cpython_json_function_type_params_assignment_metadata_subset",
@@ -9557,6 +9558,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_diff_subset",
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
+        "cpython_json_module_author_metadata_diff_subset",
         "cpython_json_module_version_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
         "cpython_json_function_type_params_assignment_metadata_diff_subset",
@@ -9711,6 +9713,12 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         CPYTHON_SUBSET,
         "cpython_json_module_package_metadata_subset",
     );
+    let json_author_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_module_author_metadata_diff_subset",
+    );
+    let json_author_subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_json_module_author_metadata_subset");
     let json_version_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_json_module_version_metadata_diff_subset",
@@ -10263,6 +10271,29 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_package_subset_body.contains(required),
             "json module package metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "hasattr(json, '__author__')",
+        "json.__author__",
+        "type(json.__author__).__name__",
+        "object.__getattribute__(json, '__author__')",
+        "'__author__' in dir(json)",
+        "json.__dict__['__author__']",
+    ] {
+        assert!(
+            json_author_diff_body.contains(required) && json_author_subset_body.contains(required),
+            "json module author metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"True\"",
+        "\"Bob Ippolito <bob@redivi.com> str\"",
+        "\"True Bob Ippolito <bob@redivi.com>\"",
+    ] {
+        assert!(
+            json_author_subset_body.contains(required),
+            "json module author metadata subset output must pin `{required}`"
         );
     }
     for required in [
@@ -13106,6 +13137,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json stdlib module registry must set CPython-compatible __package__ metadata"
     );
     assert!(
+        STDLIB_SOURCE.contains("\"__author__\"")
+            && STDLIB_SOURCE.contains("\"Bob Ippolito <bob@redivi.com>\""),
+        "json stdlib module registry must set CPython-compatible __author__ metadata"
+    );
+    assert!(
         STDLIB_SOURCE.contains("(\"__version__\", Value::String(\"2.0.9\".to_string()))"),
         "json stdlib module registry must set CPython-compatible __version__ metadata"
     );
@@ -13466,6 +13502,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         for required in [
             "cpython_json_module_package_metadata_subset",
             "cpython_json_module_package_metadata_diff_subset",
+            "cpython_json_module_author_metadata_subset",
+            "cpython_json_module_author_metadata_diff_subset",
             "cpython_json_module_version_metadata_subset",
             "cpython_json_module_version_metadata_diff_subset",
             "cpython_json_function_module_identity_metadata_subset",
@@ -13602,6 +13640,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_builtins_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
+            "json module `__author__` metadata",
+            "`json.__author__`",
             "json module `__version__` metadata",
             "`json.__version__`",
             "`json.loads.__module__`",
@@ -14253,6 +14293,12 @@ fn json_stdlib_registry_stays_metadata_loads_dumps_only() {
         );
     }
 
+    assert!(
+        json_registry.contains("\"__author__\"")
+            && json_registry.contains("\"Bob Ippolito <bob@redivi.com>\""),
+        "json registry must expose required author metadata"
+    );
+
     for forbidden in [
         "\"load\"",
         "\"dump\"",
@@ -14274,6 +14320,7 @@ fn json_stdlib_registry_stays_metadata_loads_dumps_only() {
             && LANGUAGE_TESTS.contains("JSONDecoder")
             && LANGUAGE_TESTS.contains("JSONEncoder")
             && LANGUAGE_TESTS.contains("__all__")
+            && LANGUAGE_TESTS.contains("__author__")
             && LANGUAGE_TESTS.contains("__version__")
             && LANGUAGE_TESTS.contains("dir(json)")
             && LANGUAGE_TESTS.contains("'load', 'dump'"),

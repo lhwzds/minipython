@@ -1180,6 +1180,7 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_diff_subset`,
   `cpython_json_loads_dumps_basic_diff_subset`,
   `cpython_json_module_package_metadata_diff_subset`,
+  `cpython_json_module_author_metadata_diff_subset`,
   `cpython_json_module_version_metadata_diff_subset`,
   `cpython_json_function_module_identity_metadata_diff_subset`,
   `cpython_json_function_name_qualname_identity_metadata_diff_subset`,
@@ -1858,6 +1859,8 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_module_package_metadata_diff_subset` /
   `cpython_json_module_package_metadata_subset`,
+  `cpython_json_module_author_metadata_diff_subset` /
+  `cpython_json_module_author_metadata_subset`,
   `cpython_json_module_version_metadata_diff_subset` /
   `cpython_json_module_version_metadata_subset`,
   `cpython_json_function_type_params_metadata_diff_subset` /
@@ -2612,6 +2615,12 @@ aligned with CPython through `json.__package__`,
 `object.__getattribute__`, `dir()`, and `__dict__`, while preserving
 `json.loads.__module__` and `json.dumps.__module__` and without adding file
 APIs, module `__all__`, or encoder/decoder classes.
+
+`cpython_json_module_author_metadata_subset`, backed by
+`cpython_json_module_author_metadata_diff_subset`, keeps json module `__author__` metadata aligned
+with CPython through `json.__author__`, `object.__getattribute__`, `dir()`,
+and `__dict__`, without adding file APIs, module `__all__`, or
+encoder/decoder classes.
 
 `cpython_json_module_version_metadata_subset`, backed by
 `cpython_json_module_version_metadata_diff_subset`, keeps json module `__version__` metadata aligned
