@@ -4979,10 +4979,13 @@ Completed in the invalid as-pattern False-target SyntaxError message pass:
 Completed in the invalid as-pattern ellipsis-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as ...` now uses
+  `cpython_invalid_match_pattern_subset` so ellipsis targets such as
+  `case 1 as ...`, `case 1 as (...)`, and `case 1 as ((...))` now use
   CPython's public `cannot use ellipsis as pattern target` message.
-- Kept this as parser-message parity only; it does not add new as-pattern
-  execution forms or expand sandbox-visible runtime capabilities.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as (..., value)` still use tuple-target diagnostics, and this does
+  not add new as-pattern execution forms or expand sandbox-visible runtime
+  capabilities.
 
 Completed in the invalid as-pattern f-string-target SyntaxError message pass:
 

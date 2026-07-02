@@ -41890,6 +41890,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-ellipsis-target-message",
+            source: "match 1:\n    case 1 as (...):\n        pass\n",
+            expected_message: "cannot use ellipsis as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-ellipsis-target-message",
+            source: "match 1:\n    case 1 as ((...)):\n        pass\n",
+            expected_message: "cannot use ellipsis as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-f-string-target-message",
             source: "match 1:\n    case 1 as f\"x\":\n        pass\n",
             expected_message: "cannot use f-string expression as pattern target",
