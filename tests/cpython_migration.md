@@ -4830,6 +4830,18 @@ pass:
 - Kept this as parser-message parity only; valid capture patterns and class
   keyword patterns such as `case Point(x=1)` remain unchanged.
 
+Completed in the invalid bare-name boolean match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare-name boolean match patterns
+  such as `case x and y`, `case (x and y)`, `case [x and y]`,
+  `case {1: x and y}`, and `case x or y` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid guard patterns such as
+  `case x if x` and OR-pattern diagnostics such as `case x | y` remain
+  unchanged.
+
 Completed in the match OR-pattern capture promotion pass:
 
 - Expanded `cpython_match_pattern_helper_rules_subset`,

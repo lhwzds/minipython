@@ -1049,6 +1049,8 @@ impl Parser<'_> {
                         | Token::Is
                         | Token::In
                         | Token::Not
+                        | Token::And
+                        | Token::Or
                 )
             )
         ) {

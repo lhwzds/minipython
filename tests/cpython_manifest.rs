@@ -48896,6 +48896,23 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case x and y",
+        "case (x and y)",
+        "case [x and y]",
+        "case {1: x and y}",
+        "case x or y",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid bare-name boolean match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid bare-name boolean match-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case ...", "case (...)", "case [...]", "case {1: ...}"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -49586,6 +49603,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("bare-name comparison match patterns")
                 && document.contains("invalid syntax"),
             "invalid bare-name comparison match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("bare-name boolean match patterns")
+                && document.contains("invalid syntax"),
+            "invalid bare-name boolean match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
