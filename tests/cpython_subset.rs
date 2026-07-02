@@ -70978,6 +70978,34 @@ print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__)"#,
     );
 }
 
+// Adapted from CPython public `types.CapsuleType` doc metadata. MiniPython
+// exposes the public docstring lookup without implementing capsule
+// construction, C API behavior, or a writable type dictionary.
+#[test]
+fn cpython_types_capsuletype_doc_metadata_subset() {
+    assert_output(
+        r#"import types
+
+doc = types.CapsuleType.__doc__
+print('doc-type', type(doc).__name__)
+print('doc-prefix', doc[:15])
+print('doc-c-pointer', 'void *' in doc)
+print('doc-extension-modules', 'extension modules' in doc)
+print('object-getattribute-prefix', object.__getattribute__(types.CapsuleType, '__doc__')[:15])
+print('dir-doc', '__doc__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__, types.CapsuleType.__qualname__)"#,
+        &[
+            "doc-type str",
+            "doc-prefix Capsule objects",
+            "doc-c-pointer True",
+            "doc-extension-modules True",
+            "object-getattribute-prefix Capsule objects",
+            "dir-doc True",
+            "alias PyCapsule builtins PyCapsule",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CapsuleType` text-signature metadata.
 // CPython exposes a `None` signature sentinel here; MiniPython keeps that
 // public lookup without implementing capsule construction or C API behavior.

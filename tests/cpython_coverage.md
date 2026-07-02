@@ -740,6 +740,7 @@ Recent runtime migration notes:
   `cpython_types_capsuletype_unacceptable_base_type_diff_subset`,
   `cpython_types_capsuletype_module_metadata_diff_subset`,
   `cpython_types_capsuletype_qualname_metadata_diff_subset`,
+  `cpython_types_capsuletype_doc_metadata_diff_subset`,
   `cpython_types_capsuletype_text_signature_metadata_diff_subset`,
   `cpython_types_module_type_diff_subset`,
   `cpython_types_generic_alias_union_type_diff_subset`,
@@ -3738,6 +3739,13 @@ without adding general custom encoder/decoder class support.
   `__qualname__` absent from `dir(types.CapsuleType)` and the fallback
   `__dict__` probe, so MiniPython does not promote capsule C API behavior or a
   writable type dictionary into the sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_capsuletype_doc_metadata_subset`, backed by
+  `cpython_types_capsuletype_doc_metadata_diff_subset`, covering CPython's
+  public `types.CapsuleType.__doc__` metadata as a string through direct lookup
+  and `object.__getattribute__`, plus the existing `dir(types.CapsuleType)`
+  visibility. The slice keeps capsule construction, capsule C API behavior, and
+  a writable type dictionary outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_capsuletype_text_signature_metadata_subset`, backed by
   `cpython_types_capsuletype_text_signature_metadata_diff_subset`, covering

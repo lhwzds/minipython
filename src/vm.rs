@@ -61342,6 +61342,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "PyCapsule" => {
             Ok(Value::String("builtins".to_string()))
         }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "PyCapsule" => {
+            Ok(Value::String(
+                "Capsule objects let you wrap a C \"void *\" pointer in a Python\nobject.  They're a way of passing data through the Python interpreter\nwithout creating your own custom type.\n\nCapsules are used for communication between extension modules.\nThey provide a way for an extension module to export a C interface\nto other extension modules, so that extension modules can use the\nPython import mechanism to link to one another.\n"
+                    .to_string(),
+            ))
+        }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "PyCapsule" =>
         {

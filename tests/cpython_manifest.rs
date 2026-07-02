@@ -39232,6 +39232,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_capsuletype_unacceptable_base_type_subset",
             "cpython_types_capsuletype_module_metadata_subset",
             "cpython_types_capsuletype_qualname_metadata_subset",
+            "cpython_types_capsuletype_doc_metadata_subset",
             "cpython_types_capsuletype_text_signature_metadata_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
@@ -39335,6 +39336,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_capsuletype_unacceptable_base_type_diff_subset",
         "cpython_types_capsuletype_module_metadata_diff_subset",
         "cpython_types_capsuletype_qualname_metadata_diff_subset",
+        "cpython_types_capsuletype_doc_metadata_diff_subset",
         "cpython_types_capsuletype_text_signature_metadata_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
@@ -42562,6 +42564,88 @@ fn types_capsuletype_qualname_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CapsuleType __qualname__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_capsuletype_doc_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_capsuletype_doc_metadata_diff_subset";
+    let subset_name = "cpython_types_capsuletype_doc_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CapsuleType __doc__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CapsuleType __doc__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CapsuleType.__doc__",
+        "object.__getattribute__(types.CapsuleType, '__doc__')",
+        "'void *' in doc",
+        "'extension modules' in doc",
+        "'__doc__' in dir(types.CapsuleType)",
+        "types.CapsuleType.__name__",
+        "types.CapsuleType.__module__",
+        "types.CapsuleType.__qualname__",
+        "PyCapsule",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __doc__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"doc-type str\"",
+        "\"doc-prefix Capsule objects\"",
+        "\"doc-c-pointer True\"",
+        "\"doc-extension-modules True\"",
+        "\"object-getattribute-prefix Capsule objects\"",
+        "\"dir-doc True\"",
+        "\"alias PyCapsule builtins PyCapsule\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __doc__ subset output must pin `{required}`"
+        );
+    }
+
+    let pycapsule_doc_start = VM_SOURCE
+        .find("name == \"__doc__\" && function_name == \"PyCapsule\"")
+        .expect("PyCapsule __doc__ implementation must be present");
+    let pycapsule_doc_end = (pycapsule_doc_start + 520).min(VM_SOURCE.len());
+    let pycapsule_doc_body = &VM_SOURCE[pycapsule_doc_start..pycapsule_doc_end];
+    for required in [
+        "name == \"__doc__\"",
+        "function_name == \"PyCapsule\"",
+        "Capsule objects let you wrap a C",
+        "extension modules",
+        "Value::String",
+    ] {
+        assert!(
+            pycapsule_doc_body.contains(required),
+            "types CapsuleType __doc__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CapsuleType.__doc__",
+            "`object.__getattribute__`",
+            "`dir(types.CapsuleType)`",
+            "capsule C API",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CapsuleType __doc__ docs must contain `{required}`"
             );
         }
     }
