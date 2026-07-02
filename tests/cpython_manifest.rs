@@ -39310,6 +39310,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_constructor_behavior_subset",
+            "cpython_types_celltype_attribute_errors_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_display_metadata_subset",
@@ -39411,6 +39412,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_constructor_behavior_diff_subset",
+        "cpython_types_celltype_attribute_errors_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_display_metadata_diff_subset",
@@ -39732,6 +39734,81 @@ fn types_celltype_constructor_behavior_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CellType constructor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_celltype_attribute_errors_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_attribute_errors_diff_subset";
+    let subset_name = "cpython_types_celltype_attribute_errors_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType attribute-error CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType attribute-error runtime subset evidence must exist"
+    );
+
+    for required in [
+        "cell.missing",
+        "object.__getattribute__(cell, 'missing')",
+        "setattr(cell, 'missing', 1)",
+        "delattr(cell, 'missing')",
+        "empty.cell_contents",
+        "delattr(empty, 'cell_contents')",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType attribute-error diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"get-missing AttributeError 'cell' object has no attribute 'missing' (\\\"'cell' object has no attribute 'missing'\\\",)\"",
+        "\"object-getattribute-missing AttributeError 'cell' object has no attribute 'missing' (\\\"'cell' object has no attribute 'missing'\\\",)\"",
+        "\"set-missing AttributeError 'cell' object has no attribute 'missing' and no __dict__ for setting new attributes (\\\"'cell' object has no attribute 'missing' and no __dict__ for setting new attributes\\\",)\"",
+        "\"del-missing AttributeError 'cell' object has no attribute 'missing' and no __dict__ for setting new attributes (\\\"'cell' object has no attribute 'missing' and no __dict__ for setting new attributes\\\",)\"",
+        "\"get-empty-contents ValueError Cell is empty ('Cell is empty',)\"",
+        "\"del-empty-contents ok None\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType attribute-error subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "AttributeError: 'cell' object has no attribute '{name}'",
+        "AttributeError: 'cell' object has no attribute '{name}' and no __dict__ for setting new attributes",
+        "\"cell_contents\" => cell_contents",
+        "set_cell_contents(&cell_name, &scope, value)",
+        "scope.borrow_mut().remove(&cell_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType attribute-error implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`cell.missing`",
+            "`object.__getattribute__`",
+            "`setattr(cell, 'missing', 1)`",
+            "`delattr(cell, 'missing')`",
+            "`no __dict__ for setting new attributes`",
+            "writable instance dictionary",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType attribute-error docs must contain `{required}`"
             );
         }
     }

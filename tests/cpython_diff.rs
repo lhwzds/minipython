@@ -19371,6 +19371,31 @@ for callback in [lambda: types.CellType(1, 2), lambda: types.CellType(1, 2, 3)]:
 }
 
 #[test]
+fn cpython_types_celltype_attribute_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public cell object missing attribute errors subset",
+        name: "types-celltype-attribute-errors",
+        source: r#"import types
+
+cell = types.CellType('x')
+empty = types.CellType()
+for label, callback in [
+    ('get-missing', lambda: cell.missing),
+    ('object-getattribute-missing', lambda: object.__getattribute__(cell, 'missing')),
+    ('set-missing', lambda: setattr(cell, 'missing', 1)),
+    ('del-missing', lambda: delattr(cell, 'missing')),
+    ('get-empty-contents', lambda: empty.cell_contents),
+    ('del-empty-contents', lambda: delattr(empty, 'cell_contents')),
+]:
+    try:
+        result = callback()
+        print(label, 'ok', result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

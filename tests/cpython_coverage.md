@@ -807,6 +807,7 @@ Recent runtime migration notes:
   `cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_constructor_behavior_diff_subset`,
+  `cpython_types_celltype_attribute_errors_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4029,6 +4030,15 @@ without adding general custom encoder/decoder class support.
   arity text `cell expected at most 1 argument, got N`. The slice stays inside
   pure-memory cells and keeps CPython object-layout internals, pickle identity
   matrices, and a writable type dictionary outside this sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_attribute_errors_subset`, backed by
+  `cpython_types_celltype_attribute_errors_diff_subset`, covering CPython's
+  public missing-attribute diagnostics for `cell.missing`,
+  `object.__getattribute__`, `setattr(cell, 'missing', 1)`, and
+  `delattr(cell, 'missing')`, including CPython's mutation suffix,
+  `no __dict__ for setting new attributes`. The slice preserves
+  `cell_contents` deletion behavior while keeping a writable instance dictionary
+  and CPython object-layout internals outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's

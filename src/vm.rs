@@ -58630,7 +58630,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ..
         } => match name {
             "cell_contents" => cell_contents(&cell_name, &scope),
-            _ => Err(format!("AttributeError: cell has no attribute '{name}'")),
+            _ => Err(format!(
+                "AttributeError: 'cell' object has no attribute '{name}'"
+            )),
         },
         code @ Value::CodeObject { .. } => load_code_object_attribute(code, name),
         Value::Property {
@@ -63496,6 +63498,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             set_cell_contents(&cell_name, &scope, value);
             Ok(())
         }
+        Value::Cell { .. } => Err(format!(
+            "AttributeError: 'cell' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )),
         Value::UserDict { attrs, .. } => {
             insert_live_dict_entry(
                 &mut attrs.borrow_mut(),
@@ -63894,6 +63899,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             scope.borrow_mut().remove(&cell_name);
             Ok(())
         }
+        Value::Cell { .. } => Err(format!(
+            "AttributeError: 'cell' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )),
         Value::AstNode { kind, attrs, .. } => {
             let mut attrs = attrs.borrow_mut();
             if let Some(position) = attrs

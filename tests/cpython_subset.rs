@@ -72773,6 +72773,39 @@ for callback in [lambda: types.CellType(1, 2), lambda: types.CellType(1, 2, 3)]:
     );
 }
 
+// Adapted from CPython public cell object missing-attribute errors. This pins
+// attribute diagnostics without adding a writable instance dictionary.
+#[test]
+fn cpython_types_celltype_attribute_errors_subset() {
+    assert_output(
+        r#"import types
+
+cell = types.CellType('x')
+empty = types.CellType()
+for label, callback in [
+    ('get-missing', lambda: cell.missing),
+    ('object-getattribute-missing', lambda: object.__getattribute__(cell, 'missing')),
+    ('set-missing', lambda: setattr(cell, 'missing', 1)),
+    ('del-missing', lambda: delattr(cell, 'missing')),
+    ('get-empty-contents', lambda: empty.cell_contents),
+    ('del-empty-contents', lambda: delattr(empty, 'cell_contents')),
+]:
+    try:
+        result = callback()
+        print(label, 'ok', result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "get-missing AttributeError 'cell' object has no attribute 'missing' (\"'cell' object has no attribute 'missing'\",)",
+            "object-getattribute-missing AttributeError 'cell' object has no attribute 'missing' (\"'cell' object has no attribute 'missing'\",)",
+            "set-missing AttributeError 'cell' object has no attribute 'missing' and no __dict__ for setting new attributes (\"'cell' object has no attribute 'missing' and no __dict__ for setting new attributes\",)",
+            "del-missing AttributeError 'cell' object has no attribute 'missing' and no __dict__ for setting new attributes (\"'cell' object has no attribute 'missing' and no __dict__ for setting new attributes\",)",
+            "get-empty-contents ValueError Cell is empty ('Cell is empty',)",
+            "del-empty-contents ok None",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` module metadata. This covers the
 // alias metadata only; broader CellType type-object metadata remains separate.
 #[test]
