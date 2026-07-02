@@ -6472,6 +6472,9 @@ impl Parser<'_> {
                     | Token::Not
                     | Token::And
                     | Token::Or
+                    | Token::Pipe
+                    | Token::Caret
+                    | Token::Ampersand
             )
         ) {
             return Err("invalid syntax".to_string());
