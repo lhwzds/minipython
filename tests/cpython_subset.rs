@@ -71666,6 +71666,67 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.CoroutineType`. MiniPython recognizes the public coroutine type object
+// as a class-base candidate only so the final-base validator can reject it with
+// CPython's public TypeError.
+#[test]
+fn cpython_types_coroutinetype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'coroutine' is not an acceptable base type"
+
+async def coro():
+    return 1
+
+coroutine = coro()
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.CoroutineType
+try:
+    class CoroutineClass(base):
+        pass
+except Exception as error:
+    print_error('class-coroutinetype', error)
+else:
+    print('class-coroutinetype ok')
+
+for label, call in [
+    ('type-coroutinetype', lambda: type('CoroutineTypeClass', (types.CoroutineType,), {})),
+    ('type-new-coroutinetype', lambda: type.__new__(type, 'CoroutineTypeNew', (types.CoroutineType,), {})),
+    ('new-class-coroutinetype', lambda: types.new_class('CoroutineTypeNewClass', (types.CoroutineType,), {})),
+    ('class-coroutine-runtime', lambda: type('RuntimeCoroutineClass', (coroutine.__class__,), {})),
+]:
+    show(label, call)
+
+coroutine.close()
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-coroutinetype TypeError type 'coroutine' is not an acceptable base type (\"type 'coroutine' is not an acceptable base type\",) True",
+            "type-coroutinetype TypeError type 'coroutine' is not an acceptable base type (\"type 'coroutine' is not an acceptable base type\",) True",
+            "type-new-coroutinetype TypeError type 'coroutine' is not an acceptable base type (\"type 'coroutine' is not an acceptable base type\",) True",
+            "new-class-coroutinetype TypeError type 'coroutine' is not an acceptable base type (\"type 'coroutine' is not an acceptable base type\",) True",
+            "class-coroutine-runtime TypeError type 'coroutine' is not an acceptable base type (\"type 'coroutine' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]
