@@ -302,6 +302,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use t-string expression as pattern target"
         | "cannot use list comprehension as pattern target"
         | "cannot use dict comprehension as pattern target"
+        | "cannot use set display as pattern target"
         | "cannot use expression as pattern target"
         | "cannot use conditional expression as pattern target"
         | "cannot use yield expression as pattern target"
@@ -41950,6 +41951,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-nested-parenthesized-dict-target-message",
             source: "match 1:\n    case 1 as (({x: y})):\n        pass\n",
             expected_message: "cannot use dict literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-set-display-target-message",
+            source: "match 1:\n    case 1 as {x}:\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-set-display-target-message",
+            source: "match 1:\n    case 1 as ({x}):\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-set-display-multi-item-target-message",
+            source: "match 1:\n    case 1 as {x, y}:\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-set-display-multi-item-target-message",
+            source: "match 1:\n    case 1 as ({x, y}):\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-dict-set-display-target-message",
+            source: "match 1:\n    case 1 as {{x: y}}:\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-set-display-expression-target-message",
+            source: "match 1:\n    case 1 as ({x ** y}):\n        pass\n",
+            expected_message: "cannot use set display as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",

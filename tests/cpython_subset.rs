@@ -33221,6 +33221,30 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use dict literal as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as {x}:\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ({x}):\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as {x, y}:\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ({x, y}):\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as {{x: y}}:\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as ({x ** y}):\n        pass",
+        "parse error: cannot use set display as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as lambda: 1:\n        pass",
         "parse error: cannot use lambda as pattern target",
     );

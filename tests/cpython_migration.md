@@ -5049,6 +5049,20 @@ Completed in the invalid dict as-pattern targets SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid set-display as-pattern targets SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so set-display targets such as
+  `case 1 as {x}`, `case 1 as ({x})`, `case 1 as {x, y}`,
+  `case 1 as ({x, y})`, `case 1 as {{x: y}}`, and
+  `case 1 as ({x ** y})` now use CPython's public
+  `cannot use set display as pattern target` message.
+- Kept this as parser-message parity only; set-comprehension targets such as
+  `case 1 as {x for x in xs}` remain a separate message-family gap, and this
+  does not add new set-display execution forms or expand sandbox-visible
+  runtime capabilities.
+
 Completed in the invalid lambda as-pattern targets SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

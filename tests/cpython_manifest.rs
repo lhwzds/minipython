@@ -48613,6 +48613,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use t-string expression as pattern target",
         "cannot use list comprehension as pattern target",
         "cannot use dict comprehension as pattern target",
+        "cannot use set display as pattern target",
         "cannot use expression as pattern target",
         "cannot use conditional expression as pattern target",
         "cannot use yield expression as pattern target",
@@ -48775,6 +48776,24 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             CPYTHON_SUBSET.contains(required_source),
             "invalid dict as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
+        "case 1 as {x}",
+        "case 1 as ({x})",
+        "case 1 as {x, y}",
+        "case 1 as ({x, y})",
+        "case 1 as {{x: y}}",
+        "case 1 as ({x ** y})",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid set-display as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid set-display as-pattern target subset must cover `{required_source}`"
         );
     }
 
@@ -49026,6 +49045,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid dict as-pattern targets")
                 && document.contains("cannot use dict literal as pattern target"),
             "invalid dict as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid set-display as-pattern targets")
+                && document.contains("cannot use set display as pattern target"),
+            "invalid set-display as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
