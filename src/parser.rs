@@ -1137,6 +1137,9 @@ impl Parser<'_> {
             Some(Token::FString(_)) => {
                 Err("cannot use f-string expression as pattern target".to_string())
             }
+            Some(Token::TString(_)) => {
+                Err("cannot use t-string expression as pattern target".to_string())
+            }
             Some(Token::Identifier(name)) if name == "_" => {
                 Err("cannot use '_' as a target".to_string())
             }

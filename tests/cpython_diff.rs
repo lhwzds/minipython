@@ -299,6 +299,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use False as pattern target"
         | "cannot use ellipsis as pattern target"
         | "cannot use f-string expression as pattern target"
+        | "cannot use t-string expression as pattern target"
         | "alternative patterns bind different names"
         | "name capture 'x' makes remaining patterns unreachable"
         | "wildcard makes remaining patterns unreachable"
@@ -41820,6 +41821,12 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-f-string-target-message",
             source: "match 1:\n    case 1 as f\"x\":\n        pass\n",
             expected_message: "cannot use f-string expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-t-string-target-message",
+            source: "match 1:\n    case 1 as t\"x\":\n        pass\n",
+            expected_message: "cannot use t-string expression as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
