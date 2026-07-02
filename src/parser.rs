@@ -1064,6 +1064,16 @@ impl Parser<'_> {
                         | Token::Dot
                         | Token::LeftBracket
                         | Token::LeftParen
+                        | Token::Ellipsis
+                        | Token::None
+                        | Token::True
+                        | Token::False
+                        | Token::Number(_)
+                        | Token::BigInt(_)
+                        | Token::Float(_)
+                        | Token::Imaginary(_)
+                        | Token::String(_)
+                        | Token::Bytes(_)
                 )
             )
         {

@@ -4909,6 +4909,21 @@ message pass:
 - Kept this as parser-message parity only; valid wildcard patterns, guards,
   capture aliases, sequence commas, and OR-pattern diagnostics remain unchanged.
 
+Completed in the invalid wildcard literal/singleton-adjacent match-pattern
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard literal/singleton-adjacent match patterns
+  such as `case _ ...`, `case (_ ...)`, `case [_ ...]`, `case {1: _ ...}`,
+  `case _ None`, `case (_ None)`, `case [_ None]`, `case {1: _ None}`,
+  `case _ True`, `case _ False`, `case _ 1`,
+  `case _ 999999999999999999999999999999`, `case _ 1.5`, `case _ 1j`,
+  `case _ 'x'`, and `case _ b'x'` now use CPython's public
+  `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns, literal
+  patterns, guards, capture aliases, sequence commas, and OR-pattern
+  diagnostics remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 
