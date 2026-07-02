@@ -4939,6 +4939,14 @@ Completed in the invalid mapping-rest SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid class starred-argument SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so class pattern starred arguments now
+  use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid control-flow syntax supported-promotion pass:
 
 - Expanded `cpython_invalid_control_flow_syntax_subset` and promoted

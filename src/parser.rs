@@ -1047,6 +1047,10 @@ impl Parser<'_> {
         }
 
         loop {
+            if matches!(self.peek(), Some(Token::Star | Token::DoubleStar)) {
+                return Err("invalid syntax".to_string());
+            }
+
             if matches!(
                 (self.peek(), self.peek_next()),
                 (Some(Token::Identifier(_)), Some(Token::Equal))

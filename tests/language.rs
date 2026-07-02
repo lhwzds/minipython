@@ -3049,6 +3049,14 @@ fn reports_unsupported_match_patterns() {
         Err("parse error: attribute name repeated in class pattern: x".to_string())
     );
     assert_eq!(
+        run_source("match point:\n    case Point(*args):\n        pass"),
+        Err("parse error: invalid syntax".to_string())
+    );
+    assert_eq!(
+        run_source("match point:\n    case Point(**kwargs):\n        pass"),
+        Err("parse error: invalid syntax".to_string())
+    );
+    assert_eq!(
         run_source(
             "w = None\ntry:\n    match 1:\n        case max(0, 1):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w)"
         ),

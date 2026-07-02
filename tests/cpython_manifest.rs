@@ -48625,6 +48625,25 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["case Point(*args)", "case Point(x=1, **kwargs)"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid class starred-argument SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid class starred-argument subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("class pattern starred arguments")
+                && document.contains("invalid syntax"),
+            "invalid class starred-argument SyntaxError docs must describe the CPython message"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("mapping `**rest` before later mapping items")
