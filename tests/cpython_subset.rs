@@ -72731,6 +72731,48 @@ fn cpython_types_celltype_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython public `types.CellType` constructor and cell attribute
+// behavior. This stays in the pure-memory cell surface and excludes CPython
+// object-layout and pickle identity internals.
+#[test]
+fn cpython_types_celltype_constructor_behavior_subset() {
+    assert_output(
+        r#"import types
+
+empty = types.CellType()
+full = types.CellType('x')
+print('types', type(empty).__name__, isinstance(empty, types.CellType), isinstance(full, types.CellType))
+for label, cell in [('empty', empty), ('full', full)]:
+    try:
+        print(label, 'contents', cell.cell_contents)
+    except Exception as error:
+        print(label, 'error', type(error).__name__, str(error), error.args)
+print('full-before', full.cell_contents)
+full.cell_contents = 'y'
+print('full-after-set', full.cell_contents)
+del full.cell_contents
+try:
+    print('full-after-del', full.cell_contents)
+except Exception as error:
+    print('full-after-del-error', type(error).__name__, str(error), error.args)
+for callback in [lambda: types.CellType(1, 2), lambda: types.CellType(1, 2, 3)]:
+    try:
+        callback()
+    except Exception as error:
+        print('arity-error', type(error).__name__, str(error), error.args)"#,
+        &[
+            "types cell True True",
+            "empty error ValueError Cell is empty ('Cell is empty',)",
+            "full contents x",
+            "full-before x",
+            "full-after-set y",
+            "full-after-del-error ValueError Cell is empty ('Cell is empty',)",
+            "arity-error TypeError cell expected at most 1 argument, got 2 ('cell expected at most 1 argument, got 2',)",
+            "arity-error TypeError cell expected at most 1 argument, got 3 ('cell expected at most 1 argument, got 3',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` module metadata. This covers the
 // alias metadata only; broader CellType type-object metadata remains separate.
 #[test]

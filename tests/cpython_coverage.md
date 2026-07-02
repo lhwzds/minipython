@@ -806,6 +806,7 @@ Recent runtime migration notes:
   `cpython_types_methodwrappertype_unacceptable_base_type_diff_subset`,
   `cpython_types_getsetdescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_memberdescriptortype_unacceptable_base_type_diff_subset`,
+  `cpython_types_celltype_constructor_behavior_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4020,6 +4021,14 @@ without adding general custom encoder/decoder class support.
   rejection for `types.MemberDescriptorType` class statements, `type(...)`,
   `type.__new__(...)`, `types.new_class(...)`, and runtime member descriptor `__class__`
   bases while preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_celltype_constructor_behavior_subset`, backed by
+  `cpython_types_celltype_constructor_behavior_diff_subset`, covering CPython's
+  public `types.CellType()`, `types.CellType(value)`, `cell_contents` read,
+  assignment, deletion, empty-cell `Cell is empty` errors, and the positional
+  arity text `cell expected at most 1 argument, got N`. The slice stays inside
+  pure-memory cells and keeps CPython object-layout internals, pickle identity
+  matrices, and a writable type dictionary outside this sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's

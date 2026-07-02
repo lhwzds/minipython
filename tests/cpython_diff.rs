@@ -19340,6 +19340,37 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_types_celltype_constructor_behavior_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType constructor and cell_contents subset",
+        name: "types-celltype-constructor-behavior",
+        source: r#"import types
+
+empty = types.CellType()
+full = types.CellType('x')
+print('types', type(empty).__name__, isinstance(empty, types.CellType), isinstance(full, types.CellType))
+for label, cell in [('empty', empty), ('full', full)]:
+    try:
+        print(label, 'contents', cell.cell_contents)
+    except Exception as error:
+        print(label, 'error', type(error).__name__, str(error), error.args)
+print('full-before', full.cell_contents)
+full.cell_contents = 'y'
+print('full-after-set', full.cell_contents)
+del full.cell_contents
+try:
+    print('full-after-del', full.cell_contents)
+except Exception as error:
+    print('full-after-del-error', type(error).__name__, str(error), error.args)
+for callback in [lambda: types.CellType(1, 2), lambda: types.CellType(1, 2, 3)]:
+    try:
+        callback()
+    except Exception as error:
+        print('arity-error', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

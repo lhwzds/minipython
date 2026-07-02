@@ -39309,6 +39309,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_memberdescriptortype_unacceptable_base_type_subset",
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
+            "cpython_types_celltype_constructor_behavior_subset",
             "cpython_types_celltype_module_metadata_subset",
             "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_display_metadata_subset",
@@ -39409,6 +39410,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_code_traceback_type_aliases_diff_subset",
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
+        "cpython_types_celltype_constructor_behavior_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
         "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_display_metadata_diff_subset",
@@ -39638,6 +39640,100 @@ fn types_celltype_keyword_error_subset_has_focused_diff_evidence() {
                 && document.contains("cell() takes no keyword arguments"),
             "types CellType keyword-error evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn types_celltype_constructor_behavior_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_constructor_behavior_diff_subset";
+    let subset_name = "cpython_types_celltype_constructor_behavior_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType constructor CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType constructor runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType()",
+        "types.CellType('x')",
+        "cell.cell_contents",
+        "full.cell_contents = 'y'",
+        "del full.cell_contents",
+        "types.CellType(1, 2)",
+        "types.CellType(1, 2, 3)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType constructor diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"types cell True True\"",
+        "\"empty error ValueError Cell is empty ('Cell is empty',)\"",
+        "\"full contents x\"",
+        "\"full-before x\"",
+        "\"full-after-set y\"",
+        "\"full-after-del-error ValueError Cell is empty ('Cell is empty',)\"",
+        "\"arity-error TypeError cell expected at most 1 argument, got 2 ('cell expected at most 1 argument, got 2',)\"",
+        "\"arity-error TypeError cell expected at most 1 argument, got 3 ('cell expected at most 1 argument, got 3',)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType constructor subset output must pin `{required}`"
+        );
+    }
+
+    let constructor_start = VM_SOURCE
+        .find("fn call_cell_type_constructor(")
+        .expect("CellType constructor implementation must be present");
+    let constructor_end = (constructor_start + 520).min(VM_SOURCE.len());
+    let constructor_body = &VM_SOURCE[constructor_start..constructor_end];
+    for required in [
+        "cell() takes no keyword arguments",
+        "cell expected at most 1 argument, got {}",
+        "cell_value(",
+        "args.into_iter().next()",
+    ] {
+        assert!(
+            constructor_body.contains(required),
+            "types CellType constructor implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Cell",
+        "\"cell_contents\" => cell_contents",
+        "set_cell_contents(&cell_name, &scope, value)",
+        "scope.borrow_mut().remove(&cell_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType cell_contents implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType()",
+            "types.CellType(value)",
+            "`cell_contents`",
+            "`Cell is empty`",
+            "`cell expected at most 1 argument, got N`",
+            "CPython object-layout internals",
+            "pickle identity",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType constructor docs must contain `{required}`"
+            );
+        }
     }
 }
 

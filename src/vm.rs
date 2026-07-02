@@ -4687,7 +4687,7 @@ fn call_cell_type_constructor(
     }
     if args.len() > 1 {
         return Err(format!(
-            "TypeError: CellType() expected at most 1 argument, got {}",
+            "TypeError: cell expected at most 1 argument, got {}",
             args.len()
         ));
     }
