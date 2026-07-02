@@ -19477,6 +19477,66 @@ for label, cell in [('empty', types.CellType()), ('str', types.CellType('x')), (
 }
 
 #[test]
+fn cpython_types_celltype_rich_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public cell object rich comparison subset",
+        name: "types-celltype-rich-compare",
+        source: r#"import types
+
+def show(label, callback):
+    try:
+        value = callback()
+        print(label, 'ok', value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+empty1 = types.CellType()
+empty2 = types.CellType()
+one1 = types.CellType(1)
+one2 = types.CellType(1)
+two = types.CellType(2)
+text = types.CellType('x')
+none1 = types.CellType(None)
+none2 = types.CellType(None)
+
+for label, callback in [
+    ('empty-eq-empty', lambda: empty1 == empty2),
+    ('empty-ne-empty', lambda: empty1 != empty2),
+    ('empty-lt-empty', lambda: empty1 < empty2),
+    ('empty-le-empty', lambda: empty1 <= empty2),
+    ('empty-gt-empty', lambda: empty1 > empty2),
+    ('empty-ge-empty', lambda: empty1 >= empty2),
+    ('one-eq-one', lambda: one1 == one2),
+    ('one-ne-one', lambda: one1 != one2),
+    ('one-lt-two', lambda: one1 < two),
+    ('two-gt-one', lambda: two > one1),
+    ('one-le-one', lambda: one1 <= one2),
+    ('one-ge-one', lambda: one1 >= one2),
+    ('one-lt-text', lambda: one1 < text),
+    ('empty-lt-one', lambda: empty1 < one1),
+    ('one-lt-empty', lambda: one1 < empty1),
+    ('empty-eq-one', lambda: empty1 == one1),
+    ('none-eq-none', lambda: none1 == none2),
+    ('none-lt-one', lambda: none1 < one1),
+    ('inst-eq', lambda: one1.__eq__(one2)),
+    ('inst-ne', lambda: one1.__ne__(two)),
+    ('inst-lt', lambda: one1.__lt__(two)),
+    ('inst-le', lambda: one1.__le__(one2)),
+    ('inst-gt', lambda: two.__gt__(one1)),
+    ('inst-ge', lambda: one1.__ge__(one2)),
+    ('inst-eq-int', lambda: one1.__eq__(1)),
+    ('inst-lt-int', lambda: one1.__lt__(1)),
+    ('type-eq', lambda: types.CellType.__eq__(one1, one2)),
+    ('type-lt', lambda: types.CellType.__lt__(one1, two)),
+    ('type-empty-lt', lambda: types.CellType.__lt__(empty1, one1)),
+    ('type-bad-receiver', lambda: types.CellType.__eq__(1, one1)),
+    ('type-arity', lambda: types.CellType.__eq__(one1)),
+]:
+    show(label, callback)"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __module__ metadata subset",

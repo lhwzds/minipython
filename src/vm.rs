@@ -10311,6 +10311,9 @@ impl Vm {
                 }
                 call_complex_method(&name, args)
             }
+            Value::Builtin(name) if is_cell_rich_compare_method_name(&name) => {
+                self.call_cell_rich_compare_method(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "str.join" => {
                 self.call_str_join_method(&name, args, keywords)
             }
@@ -16378,6 +16381,55 @@ impl Vm {
             "__ne__" => Ok(Value::NotImplemented),
             _ => Ok(Value::NotImplemented),
         }
+    }
+
+    fn call_cell_rich_compare_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+
+        let [receiver, other] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if !matches!(receiver, Value::Cell { .. }) {
+            return Err(format!(
+                "TypeError: descriptor '{method}' requires a 'cell' object but received a '{}'",
+                type_name(receiver)
+            ));
+        }
+        if !matches!(other, Value::Cell { .. }) {
+            return Ok(Value::NotImplemented);
+        }
+
+        let result = match method {
+            "__eq__" => self.cell_rich_equal_values(receiver, other)?,
+            "__ne__" => !self.cell_rich_equal_values(receiver, other)?,
+            "__lt__" => self
+                .cell_order_values(receiver, other, SequenceOrder::Less)?
+                .expect("cell operands were validated above"),
+            "__le__" => self
+                .cell_order_values(receiver, other, SequenceOrder::LessEqual)?
+                .expect("cell operands were validated above"),
+            "__gt__" => self
+                .cell_order_values(receiver, other, SequenceOrder::Greater)?
+                .expect("cell operands were validated above"),
+            "__ge__" => self
+                .cell_order_values(receiver, other, SequenceOrder::GreaterEqual)?
+                .expect("cell operands were validated above"),
+            _ => unreachable!("cell rich compare method is filtered by dispatch"),
+        };
+        Ok(Value::Bool(result))
     }
 
     fn call_object_repr(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -31338,8 +31390,68 @@ impl Vm {
         Ok(Some(self.rich_equal_values(&result, &Value::Number(0))?))
     }
 
+    fn cell_rich_equal_if_cells(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        if matches!(left, Value::Cell { .. }) && matches!(right, Value::Cell { .. }) {
+            return self.cell_rich_equal_values(left, right).map(Some);
+        }
+        Ok(None)
+    }
+
+    fn cell_rich_equal_values(&mut self, left: &Value, right: &Value) -> Result<bool, String> {
+        let (Some(left), Some(right)) = (cell_compare_contents(left), cell_compare_contents(right))
+        else {
+            return Ok(false);
+        };
+
+        match (left, right) {
+            (None, None) => Ok(true),
+            (None, Some(_)) | (Some(_), None) => Ok(false),
+            (Some(left), Some(right)) => self.rich_equal_values(&left, &right),
+        }
+    }
+
+    fn cell_order_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        op: SequenceOrder,
+    ) -> Result<Option<bool>, String> {
+        let (Some(left), Some(right)) = (cell_compare_contents(left), cell_compare_contents(right))
+        else {
+            return Ok(None);
+        };
+
+        match (left, right) {
+            (None, None) => Ok(Some(matches!(
+                op,
+                SequenceOrder::LessEqual | SequenceOrder::GreaterEqual
+            ))),
+            (None, Some(_)) => Ok(Some(matches!(
+                op,
+                SequenceOrder::Less | SequenceOrder::LessEqual
+            ))),
+            (Some(_), None) => Ok(Some(matches!(
+                op,
+                SequenceOrder::Greater | SequenceOrder::GreaterEqual
+            ))),
+            (Some(left), Some(right)) => Ok(Some(match op {
+                SequenceOrder::Less => self.less_values(left, right)?,
+                SequenceOrder::LessEqual => self.less_equal_values(left, right)?,
+                SequenceOrder::Greater => self.greater_values(left, right)?,
+                SequenceOrder::GreaterEqual => self.greater_equal_values(left, right)?,
+            })),
+        }
+    }
+
     fn less_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) = self.cmp_to_key_order_values(&left, &right, SequenceOrder::Less)? {
+            return Ok(result);
+        }
+        if let Some(result) = self.cell_order_values(&left, &right, SequenceOrder::Less)? {
             return Ok(result);
         }
         if let Some(result) = self.rich_sequence_order_values(&left, &right, SequenceOrder::Less)? {
@@ -31380,6 +31492,9 @@ impl Vm {
         if let Some(result) =
             self.cmp_to_key_order_values(&left, &right, SequenceOrder::LessEqual)?
         {
+            return Ok(result);
+        }
+        if let Some(result) = self.cell_order_values(&left, &right, SequenceOrder::LessEqual)? {
             return Ok(result);
         }
         if let Some(result) =
@@ -31424,6 +31539,9 @@ impl Vm {
         if let Some(result) = self.cmp_to_key_order_values(&left, &right, SequenceOrder::Greater)? {
             return Ok(result);
         }
+        if let Some(result) = self.cell_order_values(&left, &right, SequenceOrder::Greater)? {
+            return Ok(result);
+        }
         if let Some(result) =
             self.rich_sequence_order_values(&left, &right, SequenceOrder::Greater)?
         {
@@ -31466,6 +31584,9 @@ impl Vm {
         if let Some(result) =
             self.cmp_to_key_order_values(&left, &right, SequenceOrder::GreaterEqual)?
         {
+            return Ok(result);
+        }
+        if let Some(result) = self.cell_order_values(&left, &right, SequenceOrder::GreaterEqual)? {
             return Ok(result);
         }
         if let Some(result) =
@@ -31846,6 +31967,10 @@ impl Vm {
             && complex_subclass_parts(left).is_none()
         {
             return Ok(true);
+        }
+
+        if let Some(value) = self.cell_rich_equal_if_cells(left, right)? {
+            return Ok(value);
         }
 
         if let Some(value) = self.counter_equal_values(left, right)? {
@@ -56650,6 +56775,13 @@ fn cell_contents(name: &str, scope: &Scope) -> Result<Value, String> {
         .ok_or_else(|| "ValueError: Cell is empty".to_string())
 }
 
+fn cell_compare_contents(value: &Value) -> Option<Option<Value>> {
+    let Value::Cell { name, scope, .. } = value else {
+        return None;
+    };
+    Some(cell_contents(name, scope).ok())
+}
+
 fn set_cell_contents(name: &str, scope: &Scope, value: Value) {
     scope.borrow_mut().insert(name.to_string(), value);
 }
@@ -58683,10 +58815,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Cell {
             name: cell_name,
             scope,
-            ..
+            identity,
         } => match name {
             "cell_contents" => cell_contents(&cell_name, &scope),
             "__hash__" => Ok(Value::None),
+            "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("cell.{name}"))),
+                    receiver: Box::new(Value::Cell {
+                        name: cell_name,
+                        scope,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: 'cell' object has no attribute '{name}'"
             )),
@@ -61403,6 +61546,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__module__" && function_name == "CellType" => {
             Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
+            if matches!(name, "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__")
+                && function_name == "CellType" =>
+        {
+            Ok(Value::Builtin(format!("cell.{name}")))
         }
         Value::Builtin(function_name) if name == "__hash__" && function_name == "CellType" => {
             Ok(Value::None)
@@ -64742,6 +64891,18 @@ fn method_rich_compare_wrapper_name(name: &str) -> bool {
             | "method.__le__"
             | "method.__gt__"
             | "method.__ge__"
+    )
+}
+
+fn is_cell_rich_compare_method_name(name: &str) -> bool {
+    matches!(
+        name,
+        "cell.__eq__"
+            | "cell.__ne__"
+            | "cell.__lt__"
+            | "cell.__le__"
+            | "cell.__gt__"
+            | "cell.__ge__"
     )
 }
 

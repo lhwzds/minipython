@@ -40069,6 +40069,93 @@ fn types_celltype_instance_display_docs_cover_core_runtime() {
 }
 
 #[test]
+fn types_celltype_rich_compare_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_rich_compare_diff_subset";
+    let subset_name = "cpython_types_celltype_rich_compare_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType rich compare CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType rich compare runtime subset evidence must exist"
+    );
+
+    for required in [
+        "empty1 == empty2",
+        "empty1 < one1",
+        "one1 < text",
+        "none1 < one1",
+        "one1.__eq__(one2)",
+        "one1.__lt__(1)",
+        "types.CellType.__eq__(one1, one2)",
+        "types.CellType.__lt__(empty1, one1)",
+        "types.CellType.__eq__(1, one1)",
+        "types.CellType.__eq__(one1)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType rich compare diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"empty-eq-empty ok True bool\"",
+        "\"empty-lt-one ok True bool\"",
+        "\"one-lt-text TypeError '<' not supported between instances of 'int' and 'str'",
+        "\"none-lt-one TypeError '<' not supported between instances of 'NoneType' and 'int'",
+        "\"inst-eq-int ok NotImplemented NotImplementedType\"",
+        "\"inst-lt-int ok NotImplemented NotImplementedType\"",
+        "\"type-empty-lt ok True bool\"",
+        "\"type-bad-receiver TypeError descriptor '__eq__' requires a 'cell' object but received a 'int'",
+        "\"type-arity TypeError expected 1 argument, got 0",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType rich compare subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_cell_rich_compare_method(",
+        "fn cell_rich_equal_if_cells(",
+        "fn cell_rich_equal_values(",
+        "fn cell_order_values(",
+        "fn cell_compare_contents(",
+        "fn is_cell_rich_compare_method_name(",
+        "Value::Builtin(name) if is_cell_rich_compare_method_name(&name)",
+        "\"__eq__\" | \"__ne__\" | \"__lt__\" | \"__le__\" | \"__gt__\" | \"__ge__\"",
+        "descriptor '{method}' requires a 'cell' object",
+        "Value::NotImplemented",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType rich compare implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`cell == other_cell`",
+            "`cell.__eq__(other)`",
+            "`types.CellType.__lt__(cell, other)`",
+            "empty cell",
+            "cell-vs-cell",
+            "descriptor type metadata",
+            "CPython object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType rich compare docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn types_celltype_module_metadata_docs_cover_core_runtime() {
     let diff_name = "cpython_types_celltype_module_metadata_diff_subset";
     let subset_name = "cpython_types_celltype_module_metadata_subset";

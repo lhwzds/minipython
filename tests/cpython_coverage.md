@@ -811,6 +811,7 @@ Recent runtime migration notes:
   `cpython_types_celltype_dir_surface_diff_subset`,
   `cpython_types_celltype_hash_semantics_diff_subset`,
   `cpython_types_celltype_instance_display_diff_subset`,
+  `cpython_types_celltype_rich_compare_diff_subset`,
   `cpython_types_celltype_module_metadata_diff_subset`,
   `cpython_types_celltype_base_metadata_diff_subset`,
   `cpython_types_celltype_display_metadata_diff_subset`,
@@ -4066,6 +4067,15 @@ without adding general custom encoder/decoder class support.
   `object.__repr__(cell)` for empty and populated cells. This slice pins the
   CPython display shape only; exact object addresses and CPython object-layout
   internals remain outside the sandbox contract.
+- The bundled `types` module also includes
+  `cpython_types_celltype_rich_compare_subset`, backed by
+  `cpython_types_celltype_rich_compare_diff_subset`, covering CPython's public
+  cell-vs-cell content comparisons for `cell == other_cell`, ordering
+  operators, `cell.__eq__(other)`, and
+  `types.CellType.__lt__(cell, other)`. The slice preserves CPython's empty cell
+  ordering sentinel and returns `NotImplemented` for non-cell direct
+  dunder arguments while keeping descriptor type metadata and CPython
+  object-layout internals outside the sandbox contract.
 - The bundled `types` module also includes
   `cpython_types_celltype_module_metadata_subset`, backed by
   `cpython_types_celltype_module_metadata_diff_subset`, covering CPython's
