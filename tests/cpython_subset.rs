@@ -72753,6 +72753,38 @@ print('all', 'CellType' in types.__all__)"#,
     );
 }
 
+// Adapted from CPython public `types.CellType` hierarchy metadata. This covers
+// the direct object base tuple without promoting CPython implementation fields.
+#[test]
+fn cpython_types_celltype_base_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('base-is-object', types.CellType.__base__ is object)
+print('bases-eq', types.CellType.__bases__ == (object,))
+print('bases-first-is-object', types.CellType.__bases__[0] is object)
+print('object-base-is-object', object.__getattribute__(types.CellType, '__base__') is object)
+print('object-bases-eq', object.__getattribute__(types.CellType, '__bases__') == (object,))
+print('getattr-default-dict-base', '__base__' in getattr(types.CellType, '__dict__', {}))
+print('getattr-default-dict-bases', '__bases__' in getattr(types.CellType, '__dict__', {}))
+print('dir-base', '__base__' in dir(types.CellType))
+print('dir-bases', '__bases__' in dir(types.CellType))
+print('mro-names', types.CellType.__mro__[0].__name__, types.CellType.__mro__[1].__name__, len(types.CellType.__mro__))"#,
+        &[
+            "base-is-object True",
+            "bases-eq True",
+            "bases-first-is-object True",
+            "object-base-is-object True",
+            "object-bases-eq True",
+            "getattr-default-dict-base False",
+            "getattr-default-dict-bases False",
+            "dir-base False",
+            "dir-bases False",
+            "mro-names cell object 2",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.CellType` name metadata. This covers the
 // public cell type name and keeps the synthetic alias name out of type
 // dictionary and dir visibility.

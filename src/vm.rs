@@ -51118,7 +51118,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     .map(str::to_string)
     .collect::<Vec<_>>();
     if name == "CellType" {
-        names.retain(|attr| attr != "__name__");
+        names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
     }
 
     let methods: &[&str] = match name {
@@ -61344,6 +61344,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__module__" && function_name == "CellType" => {
             Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__base__" && function_name == "CellType" => {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__bases__" && function_name == "CellType" => {
+            Ok(tuple_value(vec![Value::Builtin("object".to_string())]))
         }
         Value::Builtin(function_name) if name == "__name__" && function_name == "CellType" => {
             Ok(Value::String("cell".to_string()))

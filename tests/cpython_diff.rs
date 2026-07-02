@@ -19355,6 +19355,26 @@ print('all', 'CellType' in types.__all__)"#,
 }
 
 #[test]
+fn cpython_types_celltype_base_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CellType __base__ and __bases__ metadata subset",
+        name: "types-celltype-base-metadata",
+        source: r#"import types
+
+print('base-is-object', types.CellType.__base__ is object)
+print('bases-eq', types.CellType.__bases__ == (object,))
+print('bases-first-is-object', types.CellType.__bases__[0] is object)
+print('object-base-is-object', object.__getattribute__(types.CellType, '__base__') is object)
+print('object-bases-eq', object.__getattribute__(types.CellType, '__bases__') == (object,))
+print('getattr-default-dict-base', '__base__' in getattr(types.CellType, '__dict__', {}))
+print('getattr-default-dict-bases', '__bases__' in getattr(types.CellType, '__dict__', {}))
+print('dir-base', '__base__' in dir(types.CellType))
+print('dir-bases', '__bases__' in dir(types.CellType))
+print('mro-names', types.CellType.__mro__[0].__name__, types.CellType.__mro__[1].__name__, len(types.CellType.__mro__))"#,
+    });
+}
+
+#[test]
 fn cpython_types_celltype_name_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public types.CellType __name__ metadata subset",

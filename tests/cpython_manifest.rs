@@ -39310,6 +39310,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_module_metadata_subset",
+            "cpython_types_celltype_base_metadata_subset",
             "cpython_types_celltype_name_metadata_subset",
             "cpython_types_celltype_qualname_metadata_subset",
             "cpython_types_celltype_text_signature_metadata_subset",
@@ -39408,6 +39409,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_celltype_module_metadata_diff_subset",
+        "cpython_types_celltype_base_metadata_diff_subset",
         "cpython_types_celltype_name_metadata_diff_subset",
         "cpython_types_celltype_qualname_metadata_diff_subset",
         "cpython_types_celltype_text_signature_metadata_diff_subset",
@@ -39713,6 +39715,104 @@ fn types_celltype_module_metadata_docs_cover_core_runtime() {
 }
 
 #[test]
+fn types_celltype_base_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_celltype_base_metadata_diff_subset";
+    let subset_name = "cpython_types_celltype_base_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CellType base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CellType base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CellType.__base__",
+        "types.CellType.__bases__",
+        "object.__getattribute__(types.CellType, '__base__')",
+        "object.__getattribute__(types.CellType, '__bases__')",
+        "'__base__' in getattr(types.CellType, '__dict__', {})",
+        "'__bases__' in getattr(types.CellType, '__dict__', {})",
+        "'__base__' in dir(types.CellType)",
+        "'__bases__' in dir(types.CellType)",
+        "types.CellType.__mro__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CellType base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"base-is-object True\"",
+        "\"bases-eq True\"",
+        "\"bases-first-is-object True\"",
+        "\"object-base-is-object True\"",
+        "\"object-bases-eq True\"",
+        "\"getattr-default-dict-base False\"",
+        "\"getattr-default-dict-bases False\"",
+        "\"dir-base False\"",
+        "\"dir-bases False\"",
+        "\"mro-names cell object 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CellType base subset output must pin `{required}`"
+        );
+    }
+
+    let celltype_base_start = VM_SOURCE
+        .find("name == \"__base__\" && function_name == \"CellType\"")
+        .expect("CellType __base__ implementation must be present");
+    let celltype_base_end = (celltype_base_start + 360).min(VM_SOURCE.len());
+    let celltype_base_body = &VM_SOURCE[celltype_base_start..celltype_base_end];
+    for required in [
+        "name == \"__base__\"",
+        "name == \"__bases__\"",
+        "function_name == \"CellType\"",
+        "Value::Builtin(\"object\".to_string())",
+        "tuple_value(vec![Value::Builtin(\"object\".to_string())])",
+    ] {
+        assert!(
+            celltype_base_body.contains(required),
+            "types CellType base implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "if name == \"CellType\"",
+        "matches!(attr.as_str(), \"__base__\" | \"__bases__\" | \"__name__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types CellType base visibility implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CellType.__base__",
+            "types.CellType.__bases__",
+            "`object.__getattribute__`",
+            "`dir(types.CellType)`",
+            "`__dict__`",
+            "`object`",
+            "CPython implementation fields",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CellType base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn types_celltype_name_metadata_docs_cover_core_runtime() {
     let diff_name = "cpython_types_celltype_name_metadata_diff_subset";
     let subset_name = "cpython_types_celltype_name_metadata_subset";
@@ -39775,7 +39875,7 @@ fn types_celltype_name_metadata_docs_cover_core_runtime() {
     for required in [
         "if class_name != \"CellType\"",
         "if name == \"CellType\"",
-        "names.retain(|attr| attr != \"__name__\")",
+        "matches!(attr.as_str(), \"__base__\" | \"__bases__\" | \"__name__\")",
     ] {
         assert!(
             VM_SOURCE.contains(required),
