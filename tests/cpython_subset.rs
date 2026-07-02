@@ -33152,7 +33152,36 @@ fn cpython_match_pattern_helper_rules_subset() {
 // before VM execution while keeping compact parser diagnostics.
 #[test]
 fn cpython_invalid_match_pattern_subset() {
-    assert_parse_error("match 1\n    case 1:\n        pass");
+    assert_error(
+        "match 1\n    case 1:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match x\n    case 1:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match f()\n    case 1:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1, 2\n    case 1, 2:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match [1]\n    case [1]:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match {'x': 1}\n    case {'x': 1}:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match x if y else z\n    case 1:\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error("match 1", "parse error: expected ':'");
+    assert_error("match 'x'", "parse error: expected ':'");
     assert_parse_error("match 1:\ncase 1:\n    pass");
     assert_parse_error("case 1:\n    pass");
     assert_error(

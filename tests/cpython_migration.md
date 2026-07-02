@@ -5188,6 +5188,16 @@ Completed in the invalid match-pattern supported-promotion pass:
   as-pattern targets, keyword-then-positional class patterns with and without a
   leading positional pattern, and mapping `**rest` before later mapping items.
 
+Completed in the missing match-subject colon SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so missing match-subject colons after
+  literal, name, call, tuple, list, dict, conditional, and EOF subjects now use
+  CPython's public `expected ':'` message.
+- Kept ordinary `match` identifier expressions, calls, subscripts, attributes,
+  assignments, and arithmetic expressions on their existing non-match paths
+  unless an indented `case` block makes the missing match colon unambiguous.
+
 Completed in the missing case-block colon SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

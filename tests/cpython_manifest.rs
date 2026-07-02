@@ -48722,6 +48722,34 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "match 1\\n    case 1",
+        "match x\\n    case 1",
+        "match f()\\n    case 1",
+        "match 1, 2\\n    case 1, 2",
+        "match [1]\\n    case [1]",
+        "match {'x': 1}\\n    case {'x': 1}",
+        "match x if y else z\\n    case 1",
+        "\"match 1\"",
+        "\"match 'x'\"",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing match-subject colon CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing match-subject colon subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("match-subject colons") && document.contains("expected ':'"),
+            "missing match-subject colon docs must describe the CPython message"
+        );
+    }
+
+    for required_source in [
         "case 1\\n        pass",
         "case 1 if True\\n        pass",
         "case _\\n        pass",

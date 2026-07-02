@@ -739,7 +739,7 @@ impl Parser<'_> {
     fn parse_match_statement(&mut self) -> Result<Stmt, String> {
         self.expect_soft_keyword("match")?;
         let subject = self.parse_match_subject_expression()?;
-        self.expect_colon()?;
+        self.expect_match_subject_colon()?;
         self.expect_newline()?;
         self.skip_newlines();
         self.expect_indent()?;
@@ -6099,6 +6099,7 @@ impl Parser<'_> {
         }
 
         self.has_top_level_colon_before_boundary(self.current + 1)
+            || self.starts_missing_match_subject_colon_statement()
     }
 
     fn starts_case_block(&self) -> bool {
@@ -6125,6 +6126,62 @@ impl Parser<'_> {
                 Token::Colon if depth == 0 => return true,
                 _ => {}
             }
+        }
+
+        false
+    }
+
+    fn starts_missing_match_subject_colon_statement(&self) -> bool {
+        if self.has_indented_case_block_after_boundary(self.current + 1) {
+            return !matches!(
+                self.peek_next(),
+                Some(Token::Dot | Token::Equal | Token::ColonEqual)
+            );
+        }
+
+        matches!(
+            self.peek_next(),
+            Some(
+                Token::Identifier(_)
+                    | Token::Number(_)
+                    | Token::BigInt(_)
+                    | Token::Float(_)
+                    | Token::Imaginary(_)
+                    | Token::String(_)
+                    | Token::Bytes(_)
+                    | Token::FString(_)
+                    | Token::TString(_)
+                    | Token::LeftBrace
+                    | Token::Not
+                    | Token::Lambda
+            )
+        )
+    }
+
+    fn has_indented_case_block_after_boundary(&self, start: usize) -> bool {
+        let mut depth = 0usize;
+        let mut index = start;
+
+        while let Some(token) = self.tokens.get(index) {
+            match token {
+                Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+                Token::RightParen | Token::RightBracket | Token::RightBrace if depth > 0 => {
+                    depth -= 1;
+                }
+                Token::Newline if depth == 0 => {
+                    let mut lookahead = index + 1;
+                    while matches!(self.tokens.get(lookahead), Some(Token::Newline)) {
+                        lookahead += 1;
+                    }
+                    return matches!(
+                        (self.tokens.get(lookahead), self.tokens.get(lookahead + 1)),
+                        (Some(Token::Indent), Some(Token::Identifier(name))) if name == "case"
+                    );
+                }
+                Token::Semicolon | Token::Dedent | Token::Eof if depth == 0 => return false,
+                _ => {}
+            }
+            index += 1;
         }
 
         false
@@ -6353,6 +6410,16 @@ impl Parser<'_> {
     }
 
     fn expect_match_case_colon(&mut self) -> Result<(), String> {
+        if matches!(
+            self.peek(),
+            Some(Token::Newline | Token::Dedent | Token::Eof) | None
+        ) {
+            return Err("expected ':'".to_string());
+        }
+        self.expect_colon()
+    }
+
+    fn expect_match_subject_colon(&mut self) -> Result<(), String> {
         if matches!(
             self.peek(),
             Some(Token::Newline | Token::Dedent | Token::Eof) | None
