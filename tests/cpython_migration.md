@@ -4887,6 +4887,16 @@ message pass:
   OR-pattern diagnostics such as `case _ | y`, and arrow forms such as
   `case _ -> y` remain unchanged.
 
+Completed in the invalid wildcard arrow match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so wildcard arrow match patterns
+  such as `case _ -> y`, `case (_ -> y)`, `case [_ -> y]`, and
+  `case {1: _ -> y}` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid wildcard patterns and
+  OR-pattern diagnostics such as `case _` and `case _ | y` remain unchanged.
+
 Completed in the invalid bare-name bitwise match-pattern SyntaxError message
 pass:
 

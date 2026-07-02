@@ -1060,6 +1060,7 @@ impl Parser<'_> {
                         | Token::Break
                         | Token::Continue
                         | Token::Pass
+                        | Token::Arrow
                 )
             )
         {
