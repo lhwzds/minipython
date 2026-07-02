@@ -1087,6 +1087,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_fileno_method_descriptor_diff_subset`,
   `cpython_io_bytesio_detach_method_descriptor_diff_subset`,
   `cpython_io_bytesio_close_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_enter_method_descriptor_diff_subset`,
   `cpython_io_bytesio_getstate_diff_subset`,
   `cpython_io_bytesio_setstate_diff_subset`,
   `cpython_io_bytesio_state_method_descriptor_diff_subset`,
@@ -4461,6 +4462,12 @@ without adding general custom encoder/decoder class support.
   `io.BytesIO.close` method descriptor, including descriptor type visibility,
   closing descriptor calls, idempotent closed-state behavior, wrong-receiver
   descriptor `TypeError`, and missing-receiver keyword behavior.
+  `cpython_io_bytesio_enter_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_enter_method_descriptor_subset` covers the
+  `io.BytesIO.__enter__` method descriptor, including descriptor type visibility,
+  context-enter descriptor calls returning the stream itself, `_io._IOBase`
+  wrong-receiver descriptor `TypeError`, missing-receiver keyword behavior,
+  exact extra-argument / keyword diagnostics, and closed-stream rejection.
   `cpython_io_bytesio_state_method_descriptor_diff_subset` /
   `cpython_io_bytesio_state_method_descriptor_subset` covers the
   `io.BytesIO.__getstate__` / `io.BytesIO.__setstate__` state method descriptors,

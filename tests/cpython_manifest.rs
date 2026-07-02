@@ -28586,6 +28586,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_fileno_method_descriptor_subset",
             "cpython_io_bytesio_detach_method_descriptor_subset",
             "cpython_io_bytesio_close_method_descriptor_subset",
+            "cpython_io_bytesio_enter_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28708,6 +28709,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_close_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO close method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_enter_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __enter__ method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -30275,6 +30281,76 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let enter_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_enter_method_descriptor_diff_subset",
+    );
+    let enter_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_enter_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.__enter__",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.__enter__(bio)",
+        "io.BytesIO.__enter__(object())",
+        "io.BytesIO.__enter__()",
+        "io.BytesIO.__enter__(bio, 1)",
+        "io.BytesIO.__enter__(bio=bio)",
+        "io.BytesIO.__enter__(bio, x=1)",
+        "bio.close()",
+    ] {
+        assert!(
+            enter_descriptor_diff.contains(required),
+            "io.BytesIO __enter__ method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            enter_descriptor_subset.contains(required),
+            "io.BytesIO __enter__ method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call ok (True, False) tuple",
+        "descriptor '__enter__' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase.__enter__() needs an argument",
+        "_IOBase.__enter__() takes no arguments (1 given)",
+        "_IOBase.__enter__() takes no keyword arguments",
+        "I/O operation on closed file.",
+    ] {
+        assert!(
+            enter_descriptor_subset.contains(required),
+            "io.BytesIO __enter__ method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"__enter__\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor '__enter__' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase.__enter__() needs an argument",
+        "\"BytesIO.__enter__\"",
+        "_IOBase.__enter__() takes no keyword arguments",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO __enter__ method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_enter_method_descriptor_subset",
+            "cpython_io_bytesio_enter_method_descriptor_diff_subset",
+            "`io.BytesIO.__enter__` method descriptor",
+            "context-enter descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO __enter__ method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let setstate_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_setstate_diff_subset");
     let setstate_subset =
@@ -30645,6 +30721,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_close_method_descriptor_subset",
             "cpython_io_bytesio_close_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_enter_method_descriptor_subset",
+            "cpython_io_bytesio_enter_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",

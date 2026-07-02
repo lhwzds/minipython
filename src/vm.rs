@@ -21215,13 +21215,26 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("__enter__", &keywords)?;
-        let [receiver @ Value::BytesIO(bytes_io)] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method _IOBase.__enter__() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
             return Err(format!(
-                "TypeError: _IOBase.__enter__() takes no arguments ({} given)",
-                method_arg_count(&args)
+                "TypeError: descriptor '__enter__' for '_io._IOBase' objects doesn't apply to a '{}' object",
+                type_name(receiver)
             ));
         };
+        if !keywords.is_empty() {
+            return Err("TypeError: _IOBase.__enter__() takes no keyword arguments".to_string());
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: _IOBase.__enter__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
         bytes_io_ensure_open(bytes_io)?;
         Ok(receiver.clone())
     }
@@ -61633,6 +61646,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "readlines"
                         | "write"
                         | "writelines"
+                        | "__enter__"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65248,6 +65262,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.readlines"
                 | "BytesIO.write"
                 | "BytesIO.writelines"
+                | "BytesIO.__enter__"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
@@ -65336,6 +65351,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.readlines"
                 | "BytesIO.write"
                 | "BytesIO.writelines"
+                | "BytesIO.__enter__"
                 | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"

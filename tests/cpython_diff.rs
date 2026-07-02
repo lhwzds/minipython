@@ -25851,6 +25851,37 @@ show('keyword-missing-receiver', lambda: io.BytesIO.close(bio=bio))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_enter_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO __enter__ method descriptor subset",
+        name: "io-bytesio-enter-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.__enter__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: (io.BytesIO.__enter__(bio) is bio, bio.closed))
+show('wrong-receiver', lambda: io.BytesIO.__enter__(object()))
+show('missing-receiver', lambda: io.BytesIO.__enter__())
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO.__enter__(bio, 1))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO.__enter__(bio=bio))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO.__enter__(bio, x=1))
+bio = io.BytesIO(b'abc')
+bio.close()
+show('closed', lambda: io.BytesIO.__enter__(bio))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",

@@ -24185,6 +24185,45 @@ show('keyword-missing-receiver', lambda: io.BytesIO.close(bio=bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_enter_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.__enter__
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: (io.BytesIO.__enter__(bio) is bio, bio.closed))
+show('wrong-receiver', lambda: io.BytesIO.__enter__(object()))
+show('missing-receiver', lambda: io.BytesIO.__enter__())
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO.__enter__(bio, 1))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO.__enter__(bio=bio))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO.__enter__(bio, x=1))
+bio = io.BytesIO(b'abc')
+bio.close()
+show('closed', lambda: io.BytesIO.__enter__(bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call ok (True, False) tuple",
+            "wrong-receiver TypeError descriptor '__enter__' for '_io._IOBase' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method _IOBase.__enter__() needs an argument",
+            "extra TypeError _IOBase.__enter__() takes no arguments (1 given)",
+            "keyword-missing-receiver TypeError unbound method _IOBase.__enter__() needs an argument",
+            "receiver-keyword TypeError _IOBase.__enter__() takes no keyword arguments",
+            "closed ValueError I/O operation on closed file.",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.
