@@ -302,6 +302,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use t-string expression as pattern target"
         | "cannot use expression as pattern target"
         | "cannot use conditional expression as pattern target"
+        | "cannot use yield expression as pattern target"
         | "cannot use await expression as pattern target"
         | "cannot use named expression as pattern target"
         | "patterns may only match literals and attribute lookups"
@@ -42066,6 +42067,54 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-await-tuple-target-message",
             source: "match 1:\n    case 1 as (await value, other):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-yield-expression-target-message",
+            source: "match 1:\n    case 1 as (yield value):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-yield-expression-target-message",
+            source: "match 1:\n    case 1 as ((yield value)):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-yield-from-expression-target-message",
+            source: "match 1:\n    case 1 as (yield from value):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-yield-binary-expression-target-message",
+            source: "match 1:\n    case 1 as (yield value + other):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-yield-comparison-expression-target-message",
+            source: "match 1:\n    case 1 as (yield value < other):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-yield-conditional-expression-target-message",
+            source: "match 1:\n    case 1 as (yield value if cond else other):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-bare-yield-expression-target-message",
+            source: "match 1:\n    case 1 as (yield):\n        pass\n",
+            expected_message: "cannot use yield expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-yield-tuple-target-message",
+            source: "match 1:\n    case 1 as ((yield value), other):\n        pass\n",
             expected_message: "cannot use tuple as pattern target",
         },
         ErrorMessageCase {

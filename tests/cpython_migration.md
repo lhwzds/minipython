@@ -5104,6 +5104,21 @@ SyntaxError message pass:
   expression-target diagnostics. This does not add new await-pattern execution
   forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid parenthesized yield-expression as-pattern targets
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so yield-expression targets such as
+  `case 1 as (yield value)`, `case 1 as ((yield value))`,
+  `case 1 as (yield from value)`, `case 1 as (yield value + other)`,
+  `case 1 as (yield value < other)`, `case 1 as (yield value if cond else other)`,
+  and `case 1 as (yield)` now use CPython's public
+  `cannot use yield expression as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as ((yield value), other)` still use tuple-target diagnostics, and
+  this does not add new yield-pattern execution forms or expand
+  sandbox-visible runtime capabilities.
+
 Completed in the invalid parenthesized-name as-pattern targets SyntaxError
 message pass:
 

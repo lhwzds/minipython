@@ -48613,6 +48613,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use t-string expression as pattern target",
         "cannot use expression as pattern target",
         "cannot use conditional expression as pattern target",
+        "cannot use yield expression as pattern target",
         "cannot use await expression as pattern target",
         "cannot use named expression as pattern target",
         "cannot use lambda as pattern target",
@@ -48835,6 +48836,25 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case 1 as (yield value)",
+        "case 1 as ((yield value))",
+        "case 1 as (yield from value)",
+        "case 1 as (yield value + other)",
+        "case 1 as (yield value < other)",
+        "case 1 as (yield value if cond else other)",
+        "case 1 as (yield)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized yield-expression as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized yield-expression as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case 1 as (x)"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48856,6 +48876,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "case 1 as (lambda: 1, value)",
         "case 1 as ((lambda: 1), value)",
         "case 1 as (await value, other)",
+        "case 1 as ((yield value), other)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -48995,6 +49016,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid parenthesized await-expression as-pattern targets")
                 && document.contains("cannot use await expression as pattern target"),
             "invalid parenthesized await-expression as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized yield-expression as-pattern targets")
+                && document.contains("cannot use yield expression as pattern target"),
+            "invalid parenthesized yield-expression as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 
