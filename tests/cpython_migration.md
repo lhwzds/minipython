@@ -5954,6 +5954,15 @@ Completed in the lambda missing-default body-colon diagnostic pass:
   use CPython's public `invalid syntax` message while preserving
   `expected default value expression` for missing defaults followed by `,`.
 
+Completed in the vararg default diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so vararg default values
+  such as `def f(*args=1)`, `def f(**kwargs=1)`, `lambda *args=1: None`,
+  and `lambda **kwargs=1: None` use CPython's public
+  `cannot have default value` messages.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

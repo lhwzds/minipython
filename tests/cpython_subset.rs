@@ -35735,7 +35735,7 @@ fn cpython_invalid_parameters_subset() {
     assert_parse_error("def f(*,  # type: int\n):\n    pass");
     assert_error(
         "def f(*args=1):\n    pass",
-        "parse error: var-positional parameter cannot have default value",
+        "parse error: var-positional argument cannot have default value",
     );
     assert_error(
         "def f(*args, *more):\n    pass",
@@ -35755,7 +35755,7 @@ fn cpython_invalid_parameters_subset() {
     );
     assert_error(
         "def f(**kwargs=1):\n    pass",
-        "parse error: var-keyword parameter cannot have default value",
+        "parse error: var-keyword argument cannot have default value",
     );
     assert_error(
         "def f(**kwargs, a):\n    pass",
@@ -35890,7 +35890,7 @@ fn cpython_invalid_lambda_parameters_subset() {
     );
     assert_error(
         "lambda *args=1: None",
-        "parse error: var-positional parameter cannot have default value",
+        "parse error: var-positional argument cannot have default value",
     );
     assert_error(
         "lambda *args, *more: None",
@@ -35910,7 +35910,7 @@ fn cpython_invalid_lambda_parameters_subset() {
     );
     assert_error(
         "lambda **kwargs=1: None",
-        "parse error: var-keyword parameter cannot have default value",
+        "parse error: var-keyword argument cannot have default value",
     );
     assert_error(
         "lambda **kwargs, a: None",

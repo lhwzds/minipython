@@ -48757,6 +48757,50 @@ fn cpython_missing_return_annotation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_vararg_default_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "vararg default SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function vararg default runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda vararg default runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(*args=1):\\n    pass",
+        "def f(**kwargs=1):\\n    pass",
+        "lambda *args=1: None",
+        "lambda **kwargs=1: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "vararg default CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "vararg default subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("vararg default values")
+                && document.contains("cannot have default value"),
+            "vararg default docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_lambda_missing_default_before_body_colon_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_lambda_parameters_subset";

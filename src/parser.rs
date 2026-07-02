@@ -3884,7 +3884,7 @@ impl Parser<'_> {
                     .parse_optional_parameter_annotation(allow_annotations)?
                     .map(Box::new);
                 if matches!(self.peek(), Some(Token::Equal)) {
-                    return Err("var-keyword parameter cannot have default value".to_string());
+                    return Err("var-keyword argument cannot have default value".to_string());
                 }
                 kwarg_name_for_unique_check = Some(name.clone());
                 params.kwarg = Some(name);
@@ -3921,7 +3921,7 @@ impl Parser<'_> {
                             .map(Box::new);
                         if matches!(self.peek(), Some(Token::Equal)) {
                             return Err(
-                                "var-positional parameter cannot have default value".to_string()
+                                "var-positional argument cannot have default value".to_string()
                             );
                         }
                         vararg_name_for_unique_check = Some(name.clone());

@@ -41301,6 +41301,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram var-positional parameter default rejection",
+            name: "def-var-positional-default-message",
+            source: "def f(*args=1):\n    pass",
+            expected_message: "var-positional argument cannot have default value",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram var-keyword parameter default rejection",
+            name: "def-var-keyword-default-message",
+            source: "def f(**kwargs=1):\n    pass",
+            expected_message: "var-keyword argument cannot have default value",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda var-positional parameter default rejection",
+            name: "lambda-var-positional-default-message",
+            source: "lambda *args=1: None",
+            expected_message: "var-positional argument cannot have default value",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram lambda var-keyword parameter default rejection",
+            name: "lambda-var-keyword-default-message",
+            source: "lambda **kwargs=1: None",
+            expected_message: "var-keyword argument cannot have default value",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
