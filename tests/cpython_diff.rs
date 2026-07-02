@@ -25159,6 +25159,42 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_io_bytesio_getstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO __getstate__ subset",
+        name: "io-bytesio-getstate",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+fresh = io.BytesIO()
+empty = io.BytesIO()
+initial = io.BytesIO(b'abc')
+seeked = io.BytesIO(b'abc')
+seeked.seek(2)
+custom = io.BytesIO(b'xy')
+custom.extra = 42
+closed = io.BytesIO(b'z')
+closed.close()
+show('fresh-getstate', lambda: fresh.__getstate__())
+print('__getstate__' in dir(empty), '__getstate__' in dir(io.BytesIO))
+for label, stream in [('empty', empty), ('initial', initial), ('seeked', seeked), ('custom', custom)]:
+    show(label + '-getstate', lambda stream=stream: stream.__getstate__())
+show('getattribute', lambda: object.__getattribute__(initial, '__getstate__')())
+show('custom-attrs', lambda: (custom.__getstate__()[2]['extra'], type(custom.__getstate__()[2]).__name__))
+show('dict-access', lambda: (lambda stream: (stream.__dict__, stream.__getstate__())[1])(io.BytesIO()))
+show('set-delete', lambda: (lambda stream: (setattr(stream, 'tag', 1), delattr(stream, 'tag'), stream.__getstate__())[2])(io.BytesIO()))
+show('closed', lambda: closed.__getstate__())
+show('extra', lambda: io.BytesIO(b'abc').__getstate__(1))
+show('keyword', lambda: io.BytesIO(b'abc').__getstate__(x=1))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py public helper subset",

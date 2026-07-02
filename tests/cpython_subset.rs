@@ -23280,6 +23280,55 @@ fn cpython_io_bytesio_public_subset() {
     );
 }
 
+#[test]
+fn cpython_io_bytesio_getstate_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+fresh = io.BytesIO()
+empty = io.BytesIO()
+initial = io.BytesIO(b'abc')
+seeked = io.BytesIO(b'abc')
+seeked.seek(2)
+custom = io.BytesIO(b'xy')
+custom.extra = 42
+closed = io.BytesIO(b'z')
+closed.close()
+show('fresh-getstate', lambda: fresh.__getstate__())
+print('__getstate__' in dir(empty), '__getstate__' in dir(io.BytesIO))
+for label, stream in [('empty', empty), ('initial', initial), ('seeked', seeked), ('custom', custom)]:
+    show(label + '-getstate', lambda stream=stream: stream.__getstate__())
+show('getattribute', lambda: object.__getattribute__(initial, '__getstate__')())
+show('custom-attrs', lambda: (custom.__getstate__()[2]['extra'], type(custom.__getstate__()[2]).__name__))
+show('dict-access', lambda: (lambda stream: (stream.__dict__, stream.__getstate__())[1])(io.BytesIO()))
+show('set-delete', lambda: (lambda stream: (setattr(stream, 'tag', 1), delattr(stream, 'tag'), stream.__getstate__())[2])(io.BytesIO()))
+show('closed', lambda: closed.__getstate__())
+show('extra', lambda: io.BytesIO(b'abc').__getstate__(1))
+show('keyword', lambda: io.BytesIO(b'abc').__getstate__(x=1))"#,
+        &[
+            "fresh-getstate ok (b'', 0, None) tuple",
+            "True True",
+            "empty-getstate ok (b'', 0, {}) tuple",
+            "initial-getstate ok (b'abc', 0, None) tuple",
+            "seeked-getstate ok (b'abc', 2, None) tuple",
+            "custom-getstate ok (b'xy', 0, {'extra': 42}) tuple",
+            "getattribute ok (b'abc', 0, None) tuple",
+            "custom-attrs ok (42, 'dict') tuple",
+            "dict-access ok (b'', 0, {}) tuple",
+            "set-delete ok (b'', 0, {}) tuple",
+            "closed ValueError I/O operation on closed file.",
+            "extra TypeError BytesIO.__getstate__() takes no arguments (1 given)",
+            "keyword TypeError BytesIO.__getstate__() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

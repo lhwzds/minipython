@@ -9759,6 +9759,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.getbuffer" => {
                 self.call_io_bytesio_getbuffer(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.__getstate__" => {
+                self.call_io_bytesio_getstate(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readinto" => {
                 self.call_io_bytesio_readinto(args, keywords)
             }
@@ -21207,6 +21210,39 @@ impl Vm {
             ));
         };
         bytes_io_getbuffer(bytes_io)
+    }
+
+    fn call_io_bytesio_getstate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_bytesio_method_keywords("__getstate__", &keywords)?;
+        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.__getstate__() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io_ensure_open(bytes_io)?;
+        let state = bytes_io.borrow();
+        let attrs = state.attrs.borrow();
+        let attrs_value = if attrs.is_empty() && !state.attrs_materialized {
+            Value::None
+        } else {
+            let mut entries = Vec::with_capacity(attrs.len());
+            for (key, value) in attrs.iter() {
+                entries.push((Value::String(key.clone()), value.clone()));
+            }
+            dict_value(entries)
+        };
+        let position = i64::try_from(state.position)
+            .map_err(|_| "OverflowError: position does not fit in an integer".to_string())?;
+        Ok(tuple_value(vec![
+            bytes_value(state.buffer.borrow().to_vec()),
+            Value::Number(position),
+            attrs_value,
+        ]))
     }
 
     fn call_io_bytesio_tell(
@@ -38228,6 +38264,7 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             if let Value::BytesIO(copied_io) = &copied {
                 let mut copied_state = copied_io.borrow_mut();
                 copied_state.position = state.position;
+                copied_state.attrs_materialized = state.attrs_materialized;
                 copied_state
                     .attrs
                     .borrow_mut()
@@ -38557,7 +38594,9 @@ where
             let state = bytes_io.borrow();
             let copied = bytes_io_value(state.buffer.borrow().to_vec());
             if let Value::BytesIO(copied_io) = &copied {
-                copied_io.borrow_mut().position = state.position;
+                let mut copied_state = copied_io.borrow_mut();
+                copied_state.position = state.position;
+                copied_state.attrs_materialized = state.attrs_materialized;
             }
             memo.insert(key, copied.clone());
             let attrs = state.attrs.borrow().clone();
@@ -51069,7 +51108,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names("deque"));
             names.push("maxlen".to_string());
         }
-        Value::BytesIO(_) => names.extend(builtin_type_dir_names("io.BytesIO")),
+        Value::BytesIO(bytes_io) => {
+            bytes_io.borrow_mut().attrs_materialized = true;
+            names.extend(builtin_type_dir_names("io.BytesIO"));
+        }
         Value::MemoryView(_) => names.extend(builtin_type_dir_names("memoryview")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
@@ -51657,6 +51699,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
+            "__getstate__",
             "__iter__",
             "__next__",
             "close",
@@ -59526,12 +59569,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-                "__dict__" => Ok(Value::ScopeDict(bytes_io.borrow().attrs.clone())),
+                "__dict__" => {
+                    let mut state = bytes_io.borrow_mut();
+                    state.attrs_materialized = true;
+                    Ok(Value::ScopeDict(state.attrs.clone()))
+                }
                 "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-                "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "detach"
-                | "fileno" | "flush" | "getbuffer" | "getvalue" | "isatty" | "read" | "read1"
-                | "readable" | "readinto" | "readinto1" | "readline" | "readlines" | "seek"
-                | "seekable" | "tell" | "truncate" | "write" | "writable" | "writelines" => {
+                "__enter__" | "__exit__" | "__getstate__" | "__iter__" | "__next__"
+                | "close" | "detach" | "fileno" | "flush" | "getbuffer" | "getvalue"
+                | "isatty" | "read" | "read1" | "readable" | "readinto" | "readinto1"
+                | "readline" | "readlines" | "seek" | "seekable" | "tell" | "truncate"
+                | "write" | "writable" | "writelines" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                         receiver: Box::new(Value::BytesIO(bytes_io)),
@@ -63986,11 +64034,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Property { .. } => Err(property_attribute_assignment_error(name)),
         Value::WeakProxy { target, .. } => store_attribute(*target, name, value),
         Value::BytesIO(bytes_io) => {
-            bytes_io
-                .borrow()
-                .attrs
-                .borrow_mut()
-                .insert(name.to_string(), value);
+            let mut state = bytes_io.borrow_mut();
+            state.attrs_materialized = true;
+            state.attrs.borrow_mut().insert(name.to_string(), value);
             Ok(())
         }
         Value::MagicMock {
@@ -64339,7 +64385,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::Property { .. } => Err(property_attribute_assignment_error(name)),
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),
         Value::BytesIO(bytes_io) => {
-            if bytes_io.borrow().attrs.borrow_mut().remove(name).is_some() {
+            let mut state = bytes_io.borrow_mut();
+            if state.attrs.borrow_mut().remove(name).is_some() {
+                state.attrs_materialized = true;
                 Ok(())
             } else {
                 Err(format!(

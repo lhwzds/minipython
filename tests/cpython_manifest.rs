@@ -28567,6 +28567,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
+            "cpython_io_bytesio_getstate_subset",
             "cpython_memoryview_bytesio_readinto_subset",
         ],
         &[
@@ -28591,6 +28592,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_public_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for public BytesIO behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_getstate_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __getstate__ behavior"
     );
     assert!(
         row.diff_evidence
@@ -28754,6 +28760,73 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let getstate_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_getstate_diff_subset");
+    let getstate_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_bytesio_getstate_subset");
+    for required in [
+        "io.BytesIO(b'abc')",
+        "stream.__getstate__()",
+        "object.__getattribute__(initial, '__getstate__')()",
+        "custom.__getstate__()[2]['extra']",
+        "stream.__dict__",
+        "setattr(stream, 'tag', 1)",
+        "delattr(stream, 'tag')",
+        "closed.__getstate__()",
+        "io.BytesIO(b'abc').__getstate__(1)",
+        "io.BytesIO(b'abc').__getstate__(x=1)",
+    ] {
+        assert!(
+            getstate_diff.contains(required),
+            "io.BytesIO __getstate__ CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            getstate_subset.contains(required),
+            "io.BytesIO __getstate__ runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "(b'', 0, None)",
+        "(b'', 0, {})",
+        "(b'abc', 0, None)",
+        "(b'abc', 2, None)",
+        "(b'xy', 0, {'extra': 42})",
+        "I/O operation on closed file.",
+        "BytesIO.__getstate__() takes no arguments (1 given)",
+        "BytesIO.__getstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            getstate_subset.contains(required),
+            "io.BytesIO __getstate__ subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_io_bytesio_getstate(",
+        "Value::Builtin(name) if name == \"io.BytesIO.__getstate__\"",
+        "\"__getstate__\"",
+        "bytes_io_ensure_open(bytes_io)?",
+        "attrs_materialized",
+        "dict_value(entries)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO __getstate__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_getstate_subset",
+            "cpython_io_bytesio_getstate_diff_subset",
+            "`BytesIO.__getstate__()`",
+            "closed-stream `ValueError`",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO __getstate__ docs must contain `{required}`"
+            );
+        }
+    }
+
     let readinto_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_memoryview_bytesio_readinto_diff_subset",
@@ -28897,6 +28970,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_public_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_getstate_subset",
+            "cpython_io_bytesio_getstate_diff_subset",
         ),
         (
             "cpython_memoryview_bytesio_readinto_subset",

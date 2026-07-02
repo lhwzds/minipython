@@ -113,6 +113,7 @@ pub struct BytesIOState {
     pub position: usize,
     pub closed: bool,
     pub attrs: Scope,
+    pub attrs_materialized: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +173,7 @@ impl BytesIOState {
             position: 0,
             closed: false,
             attrs: Rc::new(RefCell::new(HashMap::new())),
+            attrs_materialized: false,
         }
     }
 }
