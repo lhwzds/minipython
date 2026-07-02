@@ -869,7 +869,10 @@ impl Parser<'_> {
     }
 
     fn parse_closed_match_pattern(&mut self) -> Result<Pattern, String> {
-        if matches!(self.peek(), Some(Token::Plus | Token::Tilde | Token::Not)) {
+        if matches!(
+            self.peek(),
+            Some(Token::Plus | Token::Tilde | Token::Not | Token::Dot)
+        ) {
             return Err("invalid syntax".to_string());
         }
 

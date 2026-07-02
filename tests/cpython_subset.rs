@@ -32778,6 +32778,18 @@ fn cpython_match_value_attr_name_or_attr_helper_rules_subset() {
         "class A:\n    pass\nmatch 1:\n    case A..B:\n        pass",
         "parse error: invalid syntax",
     );
+    assert_error(
+        "match 1:\n    case .x:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (.x):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [.x]:\n        pass",
+        "parse error: invalid syntax",
+    );
 }
 
 // Adapted from CPython match helper grammar rules: `sequence_pattern`,
@@ -33774,6 +33786,18 @@ fn cpython_invalid_match_pattern_subset() {
     );
     assert_error(
         "match {1: 2}:\n    case {-x: value}:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case .x:\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match 1:\n    case (.x):\n        pass",
+        "parse error: invalid syntax",
+    );
+    assert_error(
+        "match [1]:\n    case [.x]:\n        pass",
         "parse error: invalid syntax",
     );
     assert_error(

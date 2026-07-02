@@ -48521,7 +48521,14 @@ fn cpython_match_value_attr_name_or_attr_helper_diff_covers_runtime_subset() {
         );
     }
 
-    for required_source in ["case A.B = 1", "case A.", "case A..B"] {
+    for required_source in [
+        "case A.B = 1",
+        "case A.",
+        "case A..B",
+        "case .x",
+        "case (.x)",
+        "case [.x]",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid value/name_or_attr SyntaxError CPython diff must cover `{required_source}`"
@@ -49414,7 +49421,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
-            document.contains("invalid equality/dangling-dot forms")
+            document.contains("invalid equality/dangling-dot/leading-dot forms")
                 && document.contains("invalid syntax"),
             "invalid value/name_or_attr SyntaxError docs must describe the CPython message"
         );
