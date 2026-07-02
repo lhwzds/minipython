@@ -9398,6 +9398,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json",
         &[
             "cpython_json_module_package_metadata_subset",
+            "cpython_json_module_doc_intro_metadata_subset",
             "cpython_json_module_author_metadata_subset",
             "cpython_json_module_version_metadata_subset",
             "cpython_json_function_type_params_metadata_subset",
@@ -9559,6 +9560,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_dumps_diff_subset",
         "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_module_package_metadata_diff_subset",
+        "cpython_json_module_doc_intro_metadata_diff_subset",
         "cpython_json_module_author_metadata_diff_subset",
         "cpython_json_module_version_metadata_diff_subset",
         "cpython_json_function_type_params_metadata_diff_subset",
@@ -9714,6 +9716,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_package_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_module_package_metadata_subset",
+    );
+    let json_doc_intro_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_module_doc_intro_metadata_diff_subset",
+    );
+    let json_doc_intro_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_module_doc_intro_metadata_subset",
     );
     let json_author_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10281,6 +10291,31 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             json_package_subset_body.contains(required),
             "json module package metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "json.__doc__.splitlines()",
+        "hasattr(json, '__doc__')",
+        "type(json.__doc__).__name__",
+        "bool(json.__doc__)",
+        "object.__getattribute__(json, '__doc__')",
+        "'__doc__' in dir(json)",
+        "json.__dict__['__doc__']",
+    ] {
+        assert!(
+            json_doc_intro_diff_body.contains(required)
+                && json_doc_intro_subset_body.contains(required),
+            "json module __doc__ intro metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str True True\"",
+        "\"['JSON (JavaScript Object Notation) <https://json.org> is a subset of', 'JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data']\"",
+        "\"True True\"",
+    ] {
+        assert!(
+            json_doc_intro_subset_body.contains(required),
+            "json module __doc__ intro metadata subset output must pin `{required}`"
         );
     }
     for required in [
@@ -13183,6 +13218,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "json stdlib module registry must set CPython-compatible __package__ metadata"
     );
     assert!(
+        STDLIB_SOURCE.contains("\"__doc__\"")
+            && STDLIB_SOURCE
+                .contains("JSON (JavaScript Object Notation) <https://json.org> is a subset of")
+            && STDLIB_SOURCE
+                .contains("JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data"),
+        "json stdlib module registry must set CPython-compatible __doc__ intro metadata"
+    );
+    assert!(
         STDLIB_SOURCE.contains("\"__author__\"")
             && STDLIB_SOURCE.contains("\"Bob Ippolito <bob@redivi.com>\""),
         "json stdlib module registry must set CPython-compatible __author__ metadata"
@@ -13548,6 +13591,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         for required in [
             "cpython_json_module_package_metadata_subset",
             "cpython_json_module_package_metadata_diff_subset",
+            "cpython_json_module_doc_intro_metadata_subset",
+            "cpython_json_module_doc_intro_metadata_diff_subset",
             "cpython_json_module_author_metadata_subset",
             "cpython_json_module_author_metadata_diff_subset",
             "cpython_json_module_version_metadata_subset",
@@ -13688,6 +13733,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_builtins_metadata_diff_subset",
             "json module `__package__` metadata",
             "`json.__package__`",
+            "json module `__doc__` intro metadata",
+            "`json.__doc__`",
             "json module `__author__` metadata",
             "`json.__author__`",
             "json module `__version__` metadata",
@@ -14348,6 +14395,15 @@ fn json_stdlib_registry_stays_metadata_loads_dumps_only() {
         "json registry must expose required author metadata"
     );
 
+    assert!(
+        json_registry.contains("\"__doc__\"")
+            && json_registry
+                .contains("JSON (JavaScript Object Notation) <https://json.org> is a subset of")
+            && json_registry
+                .contains("JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data"),
+        "json registry must expose required __doc__ intro metadata"
+    );
+
     for forbidden in [
         "\"load\"",
         "\"dump\"",
@@ -14370,6 +14426,7 @@ fn json_stdlib_registry_stays_metadata_loads_dumps_only() {
             && LANGUAGE_TESTS.contains("JSONEncoder")
             && LANGUAGE_TESTS.contains("__all__")
             && LANGUAGE_TESTS.contains("__author__")
+            && LANGUAGE_TESTS.contains("__doc__")
             && LANGUAGE_TESTS.contains("__version__")
             && LANGUAGE_TESTS.contains("dir(json)")
             && LANGUAGE_TESTS.contains("'load', 'dump'"),

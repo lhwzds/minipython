@@ -5754,7 +5754,7 @@ print(frame.f_lineno - frame.f_code.co_firstlineno)"#
 fn json_sandbox_subset_excludes_file_apis_and_encoder_decoder_classes() {
     assert_eq!(
         run_source(
-            "import json\nfor name in ['load', 'dump', 'JSONDecodeError', 'JSONDecoder', 'JSONEncoder', '__all__']:\n    print(name, hasattr(json, name))\nfor name in ['__author__', '__package__', '__version__']:\n    print(name, hasattr(json, name))\nprint(json.__author__, type(json.__author__).__name__)\nprint(json.__version__, type(json.__version__).__name__)\nprint(dir(json))"
+            "import json\nfor name in ['load', 'dump', 'JSONDecodeError', 'JSONDecoder', 'JSONEncoder', '__all__']:\n    print(name, hasattr(json, name))\nfor name in ['__author__', '__doc__', '__package__', '__version__']:\n    print(name, hasattr(json, name))\nprint(json.__author__, type(json.__author__).__name__)\nprint(json.__doc__.splitlines()[:2])\nprint(json.__version__, type(json.__version__).__name__)\nprint(dir(json))"
         ),
         Ok(output_lines(&[
             "load False",
@@ -5764,11 +5764,13 @@ fn json_sandbox_subset_excludes_file_apis_and_encoder_decoder_classes() {
             "JSONEncoder False",
             "__all__ False",
             "__author__ True",
+            "__doc__ True",
             "__package__ True",
             "__version__ True",
             "Bob Ippolito <bob@redivi.com> str",
+            "['JSON (JavaScript Object Notation) <https://json.org> is a subset of', 'JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data']",
             "2.0.9 str",
-            "['__author__', '__name__', '__package__', '__version__', 'dumps', 'loads']",
+            "['__author__', '__doc__', '__name__', '__package__', '__version__', 'dumps', 'loads']",
         ]))
     );
 

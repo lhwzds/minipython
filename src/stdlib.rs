@@ -693,6 +693,14 @@ pub(crate) fn create_module(
             vec![
                 ("__package__", Value::String("json".to_string())),
                 (
+                    "__doc__",
+                    Value::String(
+                        "JSON (JavaScript Object Notation) <https://json.org> is a subset of\n\
+                         JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data"
+                            .to_string(),
+                    ),
+                ),
+                (
                     "__author__",
                     Value::String("Bob Ippolito <bob@redivi.com>".to_string()),
                 ),

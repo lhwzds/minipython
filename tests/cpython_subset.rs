@@ -39471,6 +39471,26 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_module_doc_intro_metadata_subset() {
+    assert_output(
+        r#"import json
+lines = json.__doc__.splitlines()
+print(hasattr(json, '__doc__'))
+print(type(json.__doc__).__name__, bool(json.__doc__), len(lines) >= 2)
+print(lines[:2])
+print(object.__getattribute__(json, '__doc__').splitlines()[:2] == lines[:2])
+print('__doc__' in dir(json), json.__dict__['__doc__'].splitlines()[:2] == lines[:2])"#,
+        &[
+            "True",
+            "str True True",
+            "['JSON (JavaScript Object Notation) <https://json.org> is a subset of', 'JavaScript syntax (ECMA-262 3rd edition) used as a lightweight data']",
+            "True",
+            "True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_module_author_metadata_subset() {
     assert_output(
         r#"import json

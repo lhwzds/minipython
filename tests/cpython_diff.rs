@@ -721,6 +721,21 @@ print(json.loads.__module__, json.dumps.__module__)"#,
 }
 
 #[test]
+fn cpython_json_module_doc_intro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public module __doc__ intro metadata subset",
+        name: "json-module-doc-intro-metadata",
+        source: r#"import json
+lines = json.__doc__.splitlines()
+print(hasattr(json, '__doc__'))
+print(type(json.__doc__).__name__, bool(json.__doc__), len(lines) >= 2)
+print(lines[:2])
+print(object.__getattribute__(json, '__doc__').splitlines()[:2] == lines[:2])
+print('__doc__' in dir(json), json.__dict__['__doc__'].splitlines()[:2] == lines[:2])"#,
+    });
+}
+
+#[test]
 fn cpython_json_module_author_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public module __author__ metadata subset",
