@@ -72062,6 +72062,60 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.MethodWrapperType`. MiniPython recognizes the public method-wrapper
+// type object as a class-base candidate only so the final-base validator can
+// reject it with CPython's public TypeError.
+#[test]
+fn cpython_types_methodwrappertype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'method-wrapper' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.MethodWrapperType
+try:
+    class MethodWrapperClass(base):
+        pass
+except Exception as error:
+    print_error('class-method-wrapper', error)
+else:
+    print('class-method-wrapper ok')
+
+for label, call in [
+    ('type-method-wrapper', lambda: type('MethodWrapperClass', (types.MethodWrapperType,), {})),
+    ('type-new-method-wrapper', lambda: type.__new__(type, 'MethodWrapperNew', (types.MethodWrapperType,), {})),
+    ('new-class-method-wrapper', lambda: types.new_class('MethodWrapperNewClass', (types.MethodWrapperType,), {})),
+    ('class-runtime-method-wrapper', lambda: type('RuntimeMethodWrapperClass', (object().__str__.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-method-wrapper TypeError type 'method-wrapper' is not an acceptable base type (\"type 'method-wrapper' is not an acceptable base type\",) True",
+            "type-method-wrapper TypeError type 'method-wrapper' is not an acceptable base type (\"type 'method-wrapper' is not an acceptable base type\",) True",
+            "type-new-method-wrapper TypeError type 'method-wrapper' is not an acceptable base type (\"type 'method-wrapper' is not an acceptable base type\",) True",
+            "new-class-method-wrapper TypeError type 'method-wrapper' is not an acceptable base type (\"type 'method-wrapper' is not an acceptable base type\",) True",
+            "class-runtime-method-wrapper TypeError type 'method-wrapper' is not an acceptable base type (\"type 'method-wrapper' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]

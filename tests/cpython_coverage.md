@@ -795,6 +795,7 @@ Recent runtime migration notes:
   `cpython_types_methoddescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_classmethoddescriptortype_unacceptable_base_type_diff_subset`,
   `cpython_types_wrapperdescriptortype_unacceptable_base_type_diff_subset`,
+  `cpython_types_methodwrappertype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -3920,6 +3921,13 @@ without adding general custom encoder/decoder class support.
   covering CPython's `type 'wrapper_descriptor' is not an acceptable base type`
   rejection for `types.WrapperDescriptorType` class statements, `type(...)`,
   `type.__new__(...)`, `types.new_class(...)`, and runtime wrapper descriptor
+  `__class__` bases while preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_methodwrappertype_unacceptable_base_type_subset`, backed by
+  `cpython_types_methodwrappertype_unacceptable_base_type_diff_subset`,
+  covering CPython's `type 'method-wrapper' is not an acceptable base type`
+  rejection for `types.MethodWrapperType` class statements, `type(...)`,
+  `type.__new__(...)`, `types.new_class(...)`, and runtime method-wrapper
   `__class__` bases while preserving supported `ModuleType` subclass creation.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by
