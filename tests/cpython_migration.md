@@ -4934,10 +4934,14 @@ Completed in the invalid match-pattern SyntaxError message parity pass:
 Completed in the invalid as-pattern literal-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as 2` now uses CPython's
-  public `cannot use literal as pattern target` message.
-- Kept this as parser-message parity only; it does not add new as-pattern
-  execution forms or expand sandbox-visible runtime capabilities.
+  `cpython_invalid_match_pattern_subset` so literal targets such as
+  `case 1 as 2`, `case 1 as (2)`, `case 1 as ((2))`,
+  `case 1 as ('x')`, and `case 1 as (b'x')` now use CPython's public
+  `cannot use literal as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as (1, value)` still use tuple-target diagnostics, and this does not
+  add new as-pattern execution forms or expand sandbox-visible runtime
+  capabilities.
 
 Completed in the invalid as-pattern None-target SyntaxError message pass:
 

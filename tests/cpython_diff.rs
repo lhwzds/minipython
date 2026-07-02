@@ -41806,6 +41806,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-literal-target-message",
+            source: "match 1:\n    case 1 as (2):\n        pass\n",
+            expected_message: "cannot use literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-literal-target-message",
+            source: "match 1:\n    case 1 as ((2)):\n        pass\n",
+            expected_message: "cannot use literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-string-literal-target-message",
+            source: "match 1:\n    case 1 as ('x'):\n        pass\n",
+            expected_message: "cannot use literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-bytes-literal-target-message",
+            source: "match 1:\n    case 1 as (b'x'):\n        pass\n",
+            expected_message: "cannot use literal as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-none-target-message",
             source: "match 1:\n    case 1 as None:\n        pass\n",
             expected_message: "cannot use None as pattern target",
