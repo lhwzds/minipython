@@ -48595,6 +48595,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use '_' as a target",
         "cannot use literal as pattern target",
         "cannot use None as pattern target",
+        "cannot use True as pattern target",
         "cannot use function call as pattern target",
         "mapping pattern checks duplicate key ('x')",
         "mapping pattern checks duplicate key (False)",
