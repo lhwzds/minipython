@@ -6475,6 +6475,8 @@ impl Parser<'_> {
                     | Token::Pipe
                     | Token::Caret
                     | Token::Ampersand
+                    | Token::LeftShift
+                    | Token::RightShift
             )
         ) {
             return Err("invalid syntax".to_string());
