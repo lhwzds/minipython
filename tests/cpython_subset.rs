@@ -71900,6 +71900,60 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.MethodDescriptorType`. MiniPython recognizes the public method
+// descriptor type object as a class-base candidate only so the final-base
+// validator can reject it with CPython's public TypeError.
+#[test]
+fn cpython_types_methoddescriptortype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'method_descriptor' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.MethodDescriptorType
+try:
+    class MethodDescriptorClass(base):
+        pass
+except Exception as error:
+    print_error('class-method-descriptor', error)
+else:
+    print('class-method-descriptor ok')
+
+for label, call in [
+    ('type-method-descriptor', lambda: type('MethodDescriptorClass', (types.MethodDescriptorType,), {})),
+    ('type-new-method-descriptor', lambda: type.__new__(type, 'MethodDescriptorNew', (types.MethodDescriptorType,), {})),
+    ('new-class-method-descriptor', lambda: types.new_class('MethodDescriptorNewClass', (types.MethodDescriptorType,), {})),
+    ('class-runtime-method-descriptor', lambda: type('RuntimeMethodDescriptorClass', (str.join.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-method-descriptor TypeError type 'method_descriptor' is not an acceptable base type (\"type 'method_descriptor' is not an acceptable base type\",) True",
+            "type-method-descriptor TypeError type 'method_descriptor' is not an acceptable base type (\"type 'method_descriptor' is not an acceptable base type\",) True",
+            "type-new-method-descriptor TypeError type 'method_descriptor' is not an acceptable base type (\"type 'method_descriptor' is not an acceptable base type\",) True",
+            "new-class-method-descriptor TypeError type 'method_descriptor' is not an acceptable base type (\"type 'method_descriptor' is not an acceptable base type\",) True",
+            "class-runtime-method-descriptor TypeError type 'method_descriptor' is not an acceptable base type (\"type 'method_descriptor' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]

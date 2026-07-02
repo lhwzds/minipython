@@ -39004,6 +39004,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
                 | "function"
                 | "generator"
                 | "method"
+                | "method_descriptor"
                 | "traceback"
         )
 }
@@ -39156,6 +39157,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "function"
             | "generator"
             | "method"
+            | "method_descriptor"
             | "mappingproxy"
             | "memoryview"
             | "range"
