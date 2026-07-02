@@ -1020,6 +1020,21 @@ impl Parser<'_> {
                         | Token::Not
                         | Token::And
                         | Token::Or
+                        | Token::Equal
+                        | Token::ColonEqual
+                        | Token::PlusEqual
+                        | Token::MinusEqual
+                        | Token::StarEqual
+                        | Token::SlashEqual
+                        | Token::DoubleSlashEqual
+                        | Token::PercentEqual
+                        | Token::AtEqual
+                        | Token::DoubleStarEqual
+                        | Token::AmpersandEqual
+                        | Token::PipeEqual
+                        | Token::CaretEqual
+                        | Token::LeftShiftEqual
+                        | Token::RightShiftEqual
                 )
             )
         {
