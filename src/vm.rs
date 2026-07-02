@@ -38998,6 +38998,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
             name,
             "async_generator"
                 | "builtin_function_or_method"
+                | "classmethod_descriptor"
                 | "code"
                 | "coroutine"
                 | "frame"
@@ -39151,6 +39152,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "async_generator"
             | "builtin_function_or_method"
             | "CellType"
+            | "classmethod_descriptor"
             | "code"
             | "coroutine"
             | "frame"
