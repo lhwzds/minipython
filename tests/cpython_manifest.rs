@@ -28586,6 +28586,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_check_closed_method_descriptor_subset",
             "cpython_io_bytesio_check_readable_method_descriptor_subset",
             "cpython_io_bytesio_check_seekable_method_descriptor_subset",
+            "cpython_io_bytesio_check_writable_method_descriptor_subset",
             "cpython_io_bytesio_fileno_method_descriptor_subset",
             "cpython_io_bytesio_detach_method_descriptor_subset",
             "cpython_io_bytesio_close_method_descriptor_subset",
@@ -28715,6 +28716,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_check_seekable_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO _checkSeekable method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_check_writable_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO _checkWritable method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -30352,6 +30358,83 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let check_writable_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_check_writable_method_descriptor_diff_subset",
+    );
+    let check_writable_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_check_writable_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO._checkWritable",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "bio._checkWritable()",
+        "io.BytesIO._checkWritable(bio)",
+        "bio.close()",
+        "io.BytesIO._checkWritable(object())",
+        "io.BytesIO._checkWritable()",
+        "io.BytesIO._checkWritable(bio, 1)",
+        "io.BytesIO._checkWritable(bio=bio)",
+        "io.BytesIO._checkWritable(bio, x=1)",
+        "'_checkWritable' in dir(io.BytesIO)",
+        "'_checkWritable' in dir(io.BytesIO())",
+    ] {
+        assert!(
+            check_writable_descriptor_diff.contains(required),
+            "io.BytesIO _checkWritable method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            check_writable_descriptor_subset.contains(required),
+            "io.BytesIO _checkWritable method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "open-bound ok True bool",
+        "open-type ok True bool",
+        "closed-bound ValueError I/O operation on closed file.",
+        "descriptor '_checkWritable' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase._checkWritable() needs an argument",
+        "_IOBase._checkWritable() takes no arguments (1 given)",
+        "_IOBase._checkWritable() takes no keyword arguments",
+        "dir True True",
+    ] {
+        assert!(
+            check_writable_descriptor_subset.contains(required),
+            "io.BytesIO _checkWritable method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"_checkWritable\"",
+        "Value::Builtin(name) if name == \"io.BytesIO._checkWritable\"",
+        "call_io_bytesio_check_writable",
+        "descriptor '_checkWritable' for '_io._IOBase' objects doesn't apply",
+        "unbound method _IOBase._checkWritable() needs an argument",
+        "_IOBase._checkWritable() takes no keyword arguments",
+        "\"BytesIO._checkWritable\"",
+        "Ok(Value::Bool(true))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO _checkWritable method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_check_writable_method_descriptor_subset",
+            "cpython_io_bytesio_check_writable_method_descriptor_diff_subset",
+            "`io.BytesIO._checkWritable` method descriptor",
+            "writability guard descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO _checkWritable method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let fileno_descriptor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_io_bytesio_fileno_method_descriptor_diff_subset",
@@ -31209,6 +31292,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_check_seekable_method_descriptor_subset",
             "cpython_io_bytesio_check_seekable_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_check_writable_method_descriptor_subset",
+            "cpython_io_bytesio_check_writable_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_fileno_method_descriptor_subset",

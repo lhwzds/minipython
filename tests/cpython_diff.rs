@@ -25873,6 +25873,38 @@ print('dir', '_checkSeekable' in dir(io.BytesIO), '_checkSeekable' in dir(io.Byt
 }
 
 #[test]
+fn cpython_io_bytesio_check_writable_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO _checkWritable method descriptor subset",
+        name: "io-bytesio-check-writable-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+descriptor = io.BytesIO._checkWritable
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+bio = io.BytesIO(b'abc')
+show('open-bound', lambda: bio._checkWritable())
+show('open-type', lambda: io.BytesIO._checkWritable(bio))
+bio.close()
+show('closed-bound', lambda: bio._checkWritable())
+show('wrong-receiver', lambda: io.BytesIO._checkWritable(object()))
+show('missing-receiver', lambda: io.BytesIO._checkWritable())
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO._checkWritable(bio, 1))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO._checkWritable(bio=bio))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO._checkWritable(bio, x=1))
+print('dir', '_checkWritable' in dir(io.BytesIO), '_checkWritable' in dir(io.BytesIO()))"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_fileno_method_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO fileno method descriptor subset",

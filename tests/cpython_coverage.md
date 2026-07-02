@@ -1087,6 +1087,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_check_closed_method_descriptor_diff_subset`,
   `cpython_io_bytesio_check_readable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_check_seekable_method_descriptor_diff_subset`,
+  `cpython_io_bytesio_check_writable_method_descriptor_diff_subset`,
   `cpython_io_bytesio_fileno_method_descriptor_diff_subset`,
   `cpython_io_bytesio_detach_method_descriptor_diff_subset`,
   `cpython_io_bytesio_close_method_descriptor_diff_subset`,
@@ -4473,6 +4474,13 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_check_seekable_method_descriptor_subset` covers the
   `io.BytesIO._checkSeekable` method descriptor, including descriptor type
   visibility, seekability guard descriptor calls for open-stream bound and
+  type-level `True` results plus closed-stream `ValueError`, `_io._IOBase`
+  wrong-receiver descriptor `TypeError`, exact extra-argument / keyword
+  diagnostics, and `dir()` visibility.
+  `cpython_io_bytesio_check_writable_method_descriptor_diff_subset` /
+  `cpython_io_bytesio_check_writable_method_descriptor_subset` covers the
+  `io.BytesIO._checkWritable` method descriptor, including descriptor type
+  visibility, writability guard descriptor calls for open-stream bound and
   type-level `True` results plus closed-stream `ValueError`, `_io._IOBase`
   wrong-receiver descriptor `TypeError`, exact extra-argument / keyword
   diagnostics, and `dir()` visibility.
