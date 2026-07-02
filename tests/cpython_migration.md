@@ -5227,10 +5227,13 @@ Completed in the invalid parenthesized-name as-pattern targets SyntaxError
 message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
-  `cpython_invalid_match_pattern_subset` so `case 1 as (x)` now uses
-  CPython's public `cannot use name as pattern target` message.
-- Kept this as parser-message parity only; it does not add new as-pattern
-  execution forms or expand sandbox-visible runtime capabilities.
+  `cpython_invalid_match_pattern_subset` so `case 1 as (x)`,
+  `case 1 as ((x))`, and `case 1 as ((x)) if True` now use CPython's public
+  `cannot use name as pattern target` message.
+- Kept this as parser-message parity only; nested tuple-shaped forms such as
+  `case 1 as ((x, y))` remain outside this name-target pass, and this does
+  not add new as-pattern execution forms or expand sandbox-visible runtime
+  capabilities.
 
 Completed in the invalid tuple as-pattern targets SyntaxError message pass:
 
