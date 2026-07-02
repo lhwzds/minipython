@@ -742,7 +742,7 @@ impl Parser<'_> {
         self.expect_match_subject_colon()?;
         self.expect_newline()?;
         self.skip_newlines();
-        self.expect_indent()?;
+        self.expect_match_indent()?;
 
         let mut cases = Vec::new();
         self.skip_newlines();
@@ -6490,6 +6490,11 @@ impl Parser<'_> {
             }
             Some(_) | None => Err("expected an indented block".to_string()),
         }
+    }
+
+    fn expect_match_indent(&mut self) -> Result<(), String> {
+        self.expect_indent()
+            .map_err(|_| "expected an indented block after 'match' statement".to_string())
     }
 
     fn expect_dedent(&mut self) -> Result<(), String> {

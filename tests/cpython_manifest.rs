@@ -48792,6 +48792,25 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in ["match 1:\\ncase 1", "match 1:\\npass", "match 1:\\n\","] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing match-indentation CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing match-indentation subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing match indentation")
+                && document.contains("expected an indented block after 'match' statement"),
+            "missing match-indentation docs must describe the CPython message"
+        );
+    }
+
     for required_source in [
         "case 1\\n        pass",
         "case 1 if True\\n        pass",

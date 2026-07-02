@@ -41673,6 +41673,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-missing-indent-unindented-case-message",
+            source: "match 1:\ncase 1:\n    pass\n",
+            expected_message: "expected an indented block after 'match' statement",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-missing-indent-unindented-statement-message",
+            source: "match 1:\npass\n",
+            expected_message: "expected an indented block after 'match' statement",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid_match_stmt public SyntaxError subset",
+            name: "syntax-match-missing-indent-eof-message",
+            source: "match 1:\n",
+            expected_message: "expected an indented block after 'match' statement",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_invalid_line_continuation_error_position",
             name: "syntax-invalid-line-continuation-basic-message",
             source: r#"a = 3 \ 4"#,

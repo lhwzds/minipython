@@ -5218,6 +5218,16 @@ Completed in the non-case match-suite SyntaxError message pass:
   their existing parser paths; this does not add match execution forms or
   sandbox-visible runtime capabilities.
 
+Completed in the missing match-indentation SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so missing match indentation forms such
+  as `match 1:\ncase 1:\n    pass`, `match 1:\npass`, and `match 1:\n`
+  now use CPython's public `expected an indented block after 'match' statement`
+  message.
+- Kept this to the match-specific parser path; generic compound statements
+  still use MiniPython's existing compact `expected an indented block` message.
+
 Completed in the missing case-block colon SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and
