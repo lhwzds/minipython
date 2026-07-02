@@ -48920,6 +48920,23 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case _ and y",
+        "case (_ and y)",
+        "case [_ and y]",
+        "case {1: _ and y}",
+        "case _ or y",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid wildcard boolean match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid wildcard boolean match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case x & y",
         "case (x & y)",
         "case [x & y]",
@@ -49763,6 +49780,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("wildcard comparison match patterns")
                 && document.contains("invalid syntax"),
             "invalid wildcard comparison match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("wildcard boolean match patterns")
+                && document.contains("invalid syntax"),
+            "invalid wildcard boolean match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 
