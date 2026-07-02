@@ -6105,6 +6105,13 @@ Completed in the function-definition supported-promotion pass:
 - Promoted `function_def_raw` and `function_def` from `partial` to
   `supported`; `class_def` was left for the following compound-statement pass.
 
+Completed in the missing return annotation expression diagnostic pass:
+
+- Extended `cpython_invalid_function_def_raw_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so missing return annotation expressions
+  after `->` in ordinary and async function definitions use CPython's public
+  `expected ':'` message for colon, newline, EOF, and semicolon boundaries.
+
 Completed in the parser diagnostic bridge pass:
 
 - Added `ParseError` plus `source_parse_error_diagnostic()` as a bridge API for

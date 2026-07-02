@@ -3544,7 +3544,7 @@ impl Parser<'_> {
         self.expect_right_paren()?;
         let returns = if matches!(self.peek(), Some(Token::Arrow)) {
             self.advance();
-            Some(self.parse_expression()?)
+            Some(self.parse_function_return_annotation_expression()?)
         } else {
             None
         };
@@ -3661,7 +3661,7 @@ impl Parser<'_> {
         self.expect_right_paren()?;
         let returns = if matches!(self.peek(), Some(Token::Arrow)) {
             self.advance();
-            Some(self.parse_expression()?)
+            Some(self.parse_function_return_annotation_expression()?)
         } else {
             None
         };
@@ -4057,6 +4057,17 @@ impl Parser<'_> {
 
         self.advance();
         Ok(Some(self.parse_parameter_annotation_expression()?))
+    }
+
+    fn parse_function_return_annotation_expression(&mut self) -> Result<Expr, String> {
+        if matches!(
+            self.peek(),
+            Some(Token::Colon | Token::Semicolon | Token::Newline | Token::Eof) | None
+        ) {
+            return Err("expected ':'".to_string());
+        }
+
+        self.parse_expression()
     }
 
     fn parse_parameter_annotation_expression(&mut self) -> Result<Expr, String> {

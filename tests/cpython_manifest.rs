@@ -48590,6 +48590,47 @@ fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_missing_return_annotation_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_function_def_raw_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "missing return annotation-expression SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "missing return annotation-expression runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f() ->:\\n    pass",
+        "def f() ->\\n    pass",
+        "def f() ->",
+        "def f() ->; pass",
+        "async def f() ->:\\n    pass",
+        "async def f() ->\\n    pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing return annotation-expression CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing return annotation-expression subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("missing return annotation expressions")
+                && document.contains("expected ':'"),
+            "missing return annotation-expression docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_missing_parameter_annotation_expression_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_parameters_subset";

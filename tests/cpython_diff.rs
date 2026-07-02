@@ -41325,6 +41325,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation missing expression",
+            name: "missing-return-annotation-expression-colon-message",
+            source: "def f() ->:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation missing expression",
+            name: "missing-return-annotation-expression-newline-message",
+            source: "def f() ->\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation missing expression",
+            name: "missing-return-annotation-expression-eof-message",
+            source: "def f() ->",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function return annotation missing expression",
+            name: "missing-return-annotation-expression-semicolon-message",
+            source: "def f() ->; pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram async function return annotation missing expression",
+            name: "missing-async-return-annotation-expression-colon-message",
+            source: "async def f() ->:\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram async function return annotation missing expression",
+            name: "missing-async-return-annotation-expression-newline-message",
+            source: "async def f() ->\n    pass",
+            expected_message: "expected ':'",
+        },
+        ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_assign_del",
             name: "del-empty-tuple-target-message",
             source: "del (,)",
