@@ -18287,6 +18287,54 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_tracebacktype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.TracebackType base subset",
+        name: "types-tracebacktype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'traceback' is not an acceptable base type"
+
+try:
+    raise OSError('x')
+except OSError as error:
+    tb = error.__traceback__
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.TracebackType
+try:
+    class TracebackClass(base):
+        pass
+except Exception as error:
+    print_error('class-tracebacktype', error)
+else:
+    print('class-tracebacktype ok')
+
+for label, call in [
+    ('type-tracebacktype', lambda: type('TracebackTypeClass', (types.TracebackType,), {})),
+    ('type-new-tracebacktype', lambda: type.__new__(type, 'TracebackTypeNew', (types.TracebackType,), {})),
+    ('new-class-tracebacktype', lambda: types.new_class('TracebackTypeNewClass', (types.TracebackType,), {})),
+    ('class-traceback-runtime', lambda: type('RuntimeTracebackClass', (tb.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",

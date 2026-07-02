@@ -785,6 +785,7 @@ Recent runtime migration notes:
   `cpython_types_runtime_type_aliases_diff_subset`,
   `cpython_types_functiontype_unacceptable_base_type_diff_subset`,
   `cpython_types_codetype_unacceptable_base_type_diff_subset`,
+  `cpython_types_tracebacktype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -3838,6 +3839,13 @@ without adding general custom encoder/decoder class support.
   CPython's `type 'code' is not an acceptable base type` rejection for
   `types.CodeType` class statements, `type(...)`, `type.__new__(...)`,
   `types.new_class(...)`, and runtime code object `__class__` bases while
+  preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_tracebacktype_unacceptable_base_type_subset`, backed by
+  `cpython_types_tracebacktype_unacceptable_base_type_diff_subset`, covering
+  CPython's `type 'traceback' is not an acceptable base type` rejection for
+  `types.TracebackType` class statements, `type(...)`, `type.__new__(...)`,
+  `types.new_class(...)`, and runtime traceback `__class__` bases while
   preserving supported `ModuleType` subclass creation.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by

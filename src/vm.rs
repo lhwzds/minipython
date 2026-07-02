@@ -38993,7 +38993,7 @@ fn base_is_generic_alias(base: &Value) -> bool {
 }
 
 fn is_class_base_builtin_type(name: &str) -> bool {
-    is_class_like_builtin(name) || matches!(name, "code" | "function")
+    is_class_like_builtin(name) || matches!(name, "code" | "function" | "traceback")
 }
 
 fn base_needs_original_bases(base: &Value) -> bool {
@@ -39142,6 +39142,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "memoryview"
             | "range"
             | "slice"
+            | "traceback"
             | "Template"
             | "Interpolation"
             | "TemplateIter"
