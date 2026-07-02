@@ -20850,8 +20850,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("read", &keywords)?;
-        self.call_io_bytesio_read_impl(args, "read")
+        self.call_io_bytesio_read_impl(args, keywords, "read")
     }
 
     fn call_io_bytesio_read1(
@@ -20859,21 +20858,27 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_bytesio_method_keywords("read1", &keywords)?;
-        self.call_io_bytesio_read_impl(args, "read1")
+        self.call_io_bytesio_read_impl(args, keywords, "read1")
     }
 
     fn call_io_bytesio_read_impl(
         &mut self,
         args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
         method: &str,
     ) -> Result<Value, String> {
-        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+        let Some((receiver, rest)) = args.split_first() else {
             return Err(format!(
-                "TypeError: {method}() expected at most 1 argument, got {}",
-                method_arg_count(&args)
+                "TypeError: unbound method BytesIO.{method}() needs an argument"
             ));
         };
+        let Value::BytesIO(bytes_io) = receiver else {
+            return Err(format!(
+                "TypeError: descriptor '{method}' for '_io.BytesIO' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
+        reject_bytesio_method_keywords(method, &keywords)?;
         bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
@@ -61584,7 +61589,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "io.BytesIO"
                 && matches!(
                     name,
-                    "getvalue"
+                    "read"
+                        | "getvalue"
                         | "getbuffer"
                         | "tell"
                         | "readable"
@@ -65191,7 +65197,8 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "deque" => is_builtin_deque_type_method(method),
         "io" if matches!(
             method,
-            "BytesIO.getvalue"
+            "BytesIO.read"
+                | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
                 | "BytesIO.readable"
@@ -65271,7 +65278,8 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "io" => matches!(
             method,
-            "BytesIO.getvalue"
+            "BytesIO.read"
+                | "BytesIO.getvalue"
                 | "BytesIO.getbuffer"
                 | "BytesIO.tell"
                 | "BytesIO.readable"

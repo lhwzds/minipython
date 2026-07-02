@@ -23476,6 +23476,50 @@ show('setstate-keyword', lambda: io.BytesIO.__setstate__(bio=bio, state=(b'a', 0
 }
 
 #[test]
+fn cpython_io_bytesio_read_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abcdef')
+descriptor = io.BytesIO.read
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.read(bio), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-size', lambda: (io.BytesIO.read(bio, 2), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-none-size', lambda: (io.BytesIO.read(bio, None), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-negative', lambda: (io.BytesIO.read(bio, -1), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.read(object()))
+show('missing-receiver', lambda: io.BytesIO.read())
+bio = io.BytesIO(b'abcdef')
+show('extra', lambda: io.BytesIO.read(bio, 1, 2))
+bio = io.BytesIO(b'abcdef')
+show('keyword-missing-receiver', lambda: io.BytesIO.read(bio=bio))
+bio = io.BytesIO(b'abcdef')
+show('receiver-keyword', lambda: io.BytesIO.read(bio, size=1))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-none ok (b'abcdef', 6) tuple",
+            "call-size ok (b'ab', 2) tuple",
+            "call-none-size ok (b'abcdef', 6) tuple",
+            "call-negative ok (b'abcdef', 6) tuple",
+            "wrong-receiver TypeError descriptor 'read' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.read() needs an argument",
+            "extra TypeError read expected at most 1 argument, got 2",
+            "keyword-missing-receiver TypeError unbound method BytesIO.read() needs an argument",
+            "receiver-keyword TypeError BytesIO.read() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
     assert_output(
         r#"import io

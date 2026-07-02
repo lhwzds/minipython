@@ -25295,6 +25295,40 @@ show('setstate-keyword', lambda: io.BytesIO.__setstate__(bio=bio, state=(b'a', 0
 }
 
 #[test]
+fn cpython_io_bytesio_read_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO read method descriptor subset",
+        name: "io-bytesio-read-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abcdef')
+descriptor = io.BytesIO.read
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-none', lambda: (io.BytesIO.read(bio), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-size', lambda: (io.BytesIO.read(bio, 2), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-none-size', lambda: (io.BytesIO.read(bio, None), bio.tell()))
+bio = io.BytesIO(b'abcdef')
+show('call-negative', lambda: (io.BytesIO.read(bio, -1), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.read(object()))
+show('missing-receiver', lambda: io.BytesIO.read())
+bio = io.BytesIO(b'abcdef')
+show('extra', lambda: io.BytesIO.read(bio, 1, 2))
+bio = io.BytesIO(b'abcdef')
+show('keyword-missing-receiver', lambda: io.BytesIO.read(bio=bio))
+bio = io.BytesIO(b'abcdef')
+show('receiver-keyword', lambda: io.BytesIO.read(bio, size=1))"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO getvalue method descriptor subset",

@@ -28567,6 +28567,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
+            "cpython_io_bytesio_read_method_descriptor_subset",
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
@@ -28605,6 +28606,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_public_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for public BytesIO behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_read_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO read method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -28901,6 +28907,80 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO __getstate__ docs must contain `{required}`"
+            );
+        }
+    }
+
+    let read_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_read_method_descriptor_diff_subset",
+    );
+    let read_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_read_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.read",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.read(bio)",
+        "io.BytesIO.read(bio, 2)",
+        "io.BytesIO.read(bio, None)",
+        "io.BytesIO.read(bio, -1)",
+        "io.BytesIO.read(object())",
+        "io.BytesIO.read()",
+        "io.BytesIO.read(bio, 1, 2)",
+        "io.BytesIO.read(bio=bio)",
+        "io.BytesIO.read(bio, size=1)",
+    ] {
+        assert!(
+            read_descriptor_diff.contains(required),
+            "io.BytesIO read method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            read_descriptor_subset.contains(required),
+            "io.BytesIO read method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call-none ok (b'abcdef', 6) tuple",
+        "call-size ok (b'ab', 2) tuple",
+        "call-none-size ok (b'abcdef', 6) tuple",
+        "call-negative ok (b'abcdef', 6) tuple",
+        "descriptor 'read' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.read() needs an argument",
+        "read expected at most 1 argument, got 2",
+        "BytesIO.read() takes no keyword arguments",
+    ] {
+        assert!(
+            read_descriptor_subset.contains(required),
+            "io.BytesIO read method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"read\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor '{method}' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.{method}() needs an argument",
+        "\"BytesIO.read\"",
+        "reject_bytesio_method_keywords(method, &keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO read method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_read_method_descriptor_subset",
+            "cpython_io_bytesio_read_method_descriptor_diff_subset",
+            "`io.BytesIO.read` method descriptor",
+            "bytes-returning descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO read method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -29917,6 +29997,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_public_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_read_method_descriptor_subset",
+            "cpython_io_bytesio_read_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
