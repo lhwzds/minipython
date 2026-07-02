@@ -5058,6 +5058,17 @@ message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid parenthesized subscript as-pattern targets
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so parenthesized subscript targets
+  such as `case 1 as (target)[0]` and `case 1 as (target[0])` now use
+  CPython's public `cannot use subscript as pattern target` message.
+- Kept this as parser-message parity only; it does not add new as-pattern
+  execution forms, does not change bare `target[0]` invalid-syntax handling,
+  and does not expand sandbox-visible runtime capabilities.
+
 Completed in the invalid as-pattern call-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

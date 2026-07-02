@@ -48743,7 +48743,11 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as (x, y)", "case 1 as ()"] {
+    for required_source in [
+        "case 1 as (x, y)",
+        "case 1 as ()",
+        "case 1 as (target[0], y)",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid tuple as-pattern target CPython diff must cover `{required_source}`"
@@ -48773,6 +48777,17 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             CPYTHON_SUBSET.contains(required_source),
             "invalid parenthesized call as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in ["case 1 as (target)[0]", "case 1 as (target[0])"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid parenthesized subscript as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid parenthesized subscript as-pattern target subset must cover `{required_source}`"
         );
     }
 
@@ -48844,6 +48859,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid parenthesized call as-pattern targets")
                 && document.contains("cannot use function call as pattern target"),
             "invalid parenthesized call as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid parenthesized subscript as-pattern targets")
+                && document.contains("cannot use subscript as pattern target"),
+            "invalid parenthesized subscript as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 

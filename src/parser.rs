@@ -1187,6 +1187,10 @@ impl Parser<'_> {
             return Err("cannot use function call as pattern target".to_string());
         }
 
+        if self.is_parenthesized_subscript_as_pattern_target() {
+            return Err("cannot use subscript as pattern target".to_string());
+        }
+
         if matches!(
             (
                 self.peek(),
@@ -1210,6 +1214,63 @@ impl Parser<'_> {
         }
 
         self.parse_pattern_capture_target()
+    }
+
+    fn is_parenthesized_subscript_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+
+        if self.is_subscript_start_inside_parentheses(outer_end) {
+            return matches!(
+                self.tokens.get(outer_end + 1),
+                Some(Token::Colon | Token::If)
+            );
+        }
+
+        if matches!(self.tokens.get(outer_end + 1), Some(Token::LeftBracket)) {
+            let Some(subscript_end) = self.find_matching_bracket(outer_end + 1) else {
+                return false;
+            };
+            return matches!(
+                self.tokens.get(subscript_end + 1),
+                Some(Token::Colon | Token::If)
+            );
+        }
+
+        false
+    }
+
+    fn is_subscript_start_inside_parentheses(&self, outer_end: usize) -> bool {
+        let mut paren_depth = 1usize;
+        let mut bracket_depth = 0usize;
+        let mut has_top_level_subscript = false;
+
+        for index in (self.current + 1)..outer_end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 => paren_depth += 1,
+                Some(Token::RightParen) if bracket_depth == 0 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) => {
+                    if paren_depth == 1
+                        && bracket_depth == 0
+                        && matches!(
+                            self.tokens.get(index.checked_sub(1).unwrap_or(index)),
+                            Some(Token::Identifier(_) | Token::RightParen)
+                        )
+                    {
+                        has_top_level_subscript = true;
+                    }
+                    bracket_depth += 1;
+                }
+                Some(Token::RightBracket) => bracket_depth = bracket_depth.saturating_sub(1),
+                Some(Token::Comma) if paren_depth == 1 && bracket_depth == 0 => return false,
+                _ => {}
+            }
+        }
+
+        has_top_level_subscript
     }
 
     fn is_parenthesized_call_as_pattern_target(&self) -> bool {
@@ -1272,6 +1333,33 @@ impl Parser<'_> {
             match self.tokens.get(index) {
                 Some(Token::LeftParen) => depth += 1,
                 Some(Token::RightParen) => {
+                    if depth == 0 {
+                        return None;
+                    }
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(index);
+                    }
+                }
+                Some(Token::Newline | Token::Eof) if depth <= 1 => return None,
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    fn find_matching_bracket(&self, start: usize) -> Option<usize> {
+        if !matches!(self.tokens.get(start), Some(Token::LeftBracket)) {
+            return None;
+        }
+
+        let mut depth = 0usize;
+
+        for index in start..self.tokens.len() {
+            match self.tokens.get(index) {
+                Some(Token::LeftBracket) => depth += 1,
+                Some(Token::RightBracket) => {
                     if depth == 0 {
                         return None;
                     }
