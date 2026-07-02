@@ -798,7 +798,7 @@ impl Parser<'_> {
         } else {
             None
         };
-        self.expect_colon()?;
+        self.expect_match_case_colon()?;
         let body = self.parse_block_after_colon()?;
 
         Ok(MatchCase {
@@ -6350,6 +6350,16 @@ impl Parser<'_> {
             Some(token) => Err(format!("expected ':', found {token:?}")),
             None => Err("expected ':', found end of input".to_string()),
         }
+    }
+
+    fn expect_match_case_colon(&mut self) -> Result<(), String> {
+        if matches!(
+            self.peek(),
+            Some(Token::Newline | Token::Dedent | Token::Eof) | None
+        ) {
+            return Err("expected ':'".to_string());
+        }
+        self.expect_colon()
     }
 
     fn expect_colon_equal(&mut self) -> Result<(), String> {

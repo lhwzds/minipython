@@ -48722,6 +48722,34 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case 1\\n        pass",
+        "case 1 if True\\n        pass",
+        "case _\\n        pass",
+        "case x\\n        pass",
+        "case [x]\\n        pass",
+        "case {'x': x}\\n        pass",
+        "case int(x)\\n        pass",
+        "case 0 | 1\\n        pass",
+        "case 1 as x\\n        pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "missing case-block colon CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "missing case-block colon subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("case-block colons") && document.contains("expected ':'"),
+            "missing case-block colon docs must describe the CPython message"
+        );
+    }
+
+    for required_source in [
         "case {**rest, 'x': value}",
         "case {'x': x, **rest, 'y': y}",
         "case {**+x}",

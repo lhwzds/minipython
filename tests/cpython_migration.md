@@ -5188,6 +5188,15 @@ Completed in the invalid match-pattern supported-promotion pass:
   as-pattern targets, keyword-then-positional class patterns with and without a
   leading positional pattern, and mapping `**rest` before later mapping items.
 
+Completed in the missing case-block colon SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so missing case-block colons after
+  literal, guarded, wildcard, capture, sequence, mapping, class, OR, and
+  as-pattern cases now use CPython's public `expected ':'` message.
+- Kept this as parser-message parity only; valid case blocks and missing
+  `match` subject colons remain separate parser paths.
+
 Completed in the invalid match-pattern SyntaxError message parity pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

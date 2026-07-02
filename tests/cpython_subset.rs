@@ -33155,8 +33155,43 @@ fn cpython_invalid_match_pattern_subset() {
     assert_parse_error("match 1\n    case 1:\n        pass");
     assert_parse_error("match 1:\ncase 1:\n    pass");
     assert_parse_error("case 1:\n    pass");
-    assert_parse_error("match 1:\n    case 1\n        pass");
-    assert_parse_error("match 1:\n    case 1 if True\n        pass");
+    assert_error(
+        "match 1:\n    case 1\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case 1 if True\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case _\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case x\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match [1]:\n    case [x]\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match {'x': 1}:\n    case {'x': x}\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case int(x)\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case 0 | 1\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error(
+        "match 1:\n    case 1 as x\n        pass",
+        "parse error: expected ':'",
+    );
+    assert_error("match 1:\n    case 1", "parse error: expected ':'");
     assert_parse_error("match 1:\n    case 1:\n    pass");
     assert_parse_error("match 1:\n    case 1 if True:\n    pass");
     assert_parse_error("match 1:\n    pass");
