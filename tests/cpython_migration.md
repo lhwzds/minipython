@@ -5089,6 +5089,21 @@ SyntaxError message pass:
   diagnostics, and this does not add new conditional-expression pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid parenthesized await-expression as-pattern targets
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so await-expression targets such as
+  `case 1 as (await value)`, `case 1 as ((await value))`,
+  `case 1 as (await value())`, `case 1 as (await value.attr)`, and
+  `case 1 as (await value[0])` now use CPython's public
+  `cannot use await expression as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as (await value, other)` still use tuple-target diagnostics, and
+  binary forms such as `case 1 as (await value + other)` still use
+  expression-target diagnostics. This does not add new await-pattern execution
+  forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid parenthesized-name as-pattern targets SyntaxError
 message pass:
 

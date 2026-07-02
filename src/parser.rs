@@ -1192,6 +1192,10 @@ impl Parser<'_> {
             return Err("cannot use conditional expression as pattern target".to_string());
         }
 
+        if self.is_parenthesized_await_expression_as_pattern_target() {
+            return Err("cannot use await expression as pattern target".to_string());
+        }
+
         if self.is_parenthesized_named_expression_as_pattern_target() {
             return Err("cannot use named expression as pattern target".to_string());
         }
@@ -1314,6 +1318,101 @@ impl Parser<'_> {
         }
 
         body_started && has_body_token
+    }
+
+    fn is_parenthesized_await_expression_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        if !matches!(self.tokens.get(start), Some(Token::Await)) {
+            return false;
+        }
+
+        let mut paren_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 0usize;
+        let mut has_operand_token = false;
+
+        for index in (start + 1)..end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth += 1;
+                    has_operand_token = true;
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 0 => {
+                    bracket_depth += 1;
+                    has_operand_token = true;
+                }
+                Some(Token::RightBracket) if brace_depth == 0 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => {
+                    brace_depth += 1;
+                    has_operand_token = true;
+                }
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(
+                    Token::Comma
+                    | Token::If
+                    | Token::Else
+                    | Token::And
+                    | Token::Or
+                    | Token::Plus
+                    | Token::Minus
+                    | Token::Star
+                    | Token::At
+                    | Token::Slash
+                    | Token::DoubleSlash
+                    | Token::Percent
+                    | Token::DoubleStar
+                    | Token::Pipe
+                    | Token::Caret
+                    | Token::Ampersand
+                    | Token::LeftShift
+                    | Token::RightShift
+                    | Token::Less
+                    | Token::LessEqual
+                    | Token::EqualEqual
+                    | Token::BangEqual
+                    | Token::Greater
+                    | Token::GreaterEqual
+                    | Token::Is
+                    | Token::In,
+                ) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                    return false;
+                }
+                Some(Token::Not)
+                    if paren_depth == 0
+                        && bracket_depth == 0
+                        && brace_depth == 0
+                        && matches!(self.tokens.get(index + 1), Some(Token::In)) =>
+                {
+                    return false;
+                }
+                _ => has_operand_token = true,
+            }
+        }
+
+        has_operand_token
     }
 
     fn is_parenthesized_conditional_expression_as_pattern_target(&self) -> bool {
