@@ -3899,7 +3899,7 @@ impl Parser<'_> {
                         assign_parameter_type_comment(&mut params, last_parameter, comment)?;
                     }
                     if !self.at_parameter_list_end(end) {
-                        return Err("parameters cannot follow var-keyword parameter".to_string());
+                        return Err("arguments cannot follow var-keyword argument".to_string());
                     }
                 }
                 break;

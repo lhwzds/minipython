@@ -48757,6 +48757,54 @@ fn cpython_missing_return_annotation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_var_keyword_follower_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "var-keyword follower SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function var-keyword follower runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda var-keyword follower runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(**kwargs, a):\\n    pass",
+        "def f(**kwargs, *args):\\n    pass",
+        "def f(**kwargs, **more):\\n    pass",
+        "def f(**kwargs, /):\\n    pass",
+        "lambda **kwargs, a: None",
+        "lambda **kwargs, *args: None",
+        "lambda **kwargs, **more: None",
+        "lambda **kwargs, /: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "var-keyword follower CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "var-keyword follower subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("var-keyword follower forms")
+                && document.contains("arguments cannot follow var-keyword argument"),
+            "var-keyword follower docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_bare_star_parameter_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

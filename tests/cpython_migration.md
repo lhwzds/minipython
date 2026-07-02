@@ -5972,6 +5972,15 @@ Completed in the bare-star parameter diagnostic pass:
   `lambda *, **kwargs: None` use CPython's public
   `named arguments must follow bare *` message.
 
+Completed in the var-keyword follower diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so var-keyword follower forms
+  such as `def f(**kwargs, a)`, `def f(**kwargs, *args)`,
+  `lambda **kwargs, a: None`, and `lambda **kwargs, /: None` use CPython's public
+  `arguments cannot follow var-keyword argument` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

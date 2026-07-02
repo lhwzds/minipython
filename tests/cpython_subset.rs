@@ -35759,19 +35759,19 @@ fn cpython_invalid_parameters_subset() {
     );
     assert_error(
         "def f(**kwargs, a):\n    pass",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "def f(**kwargs, *args):\n    pass",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "def f(**kwargs, **more):\n    pass",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "def f(**kwargs, /):\n    pass",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
 }
 
@@ -35914,19 +35914,19 @@ fn cpython_invalid_lambda_parameters_subset() {
     );
     assert_error(
         "lambda **kwargs, a: None",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "lambda **kwargs, *args: None",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "lambda **kwargs, **more: None",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
     assert_error(
         "lambda **kwargs, /: None",
-        "parse error: parameters cannot follow var-keyword parameter",
+        "parse error: arguments cannot follow var-keyword argument",
     );
 }
 
