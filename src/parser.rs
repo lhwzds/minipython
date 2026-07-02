@@ -2527,11 +2527,13 @@ impl Parser<'_> {
             return false;
         };
 
-        if self.is_call_start_inside_parentheses(outer_end) {
-            return matches!(
+        if self.is_call_start_inside_parentheses(outer_end)
+            && matches!(
                 self.tokens.get(outer_end + 1),
                 Some(Token::Colon | Token::If)
-            );
+            )
+        {
+            return true;
         }
 
         if matches!(self.tokens.get(outer_end + 1), Some(Token::LeftParen)) {
@@ -2548,9 +2550,18 @@ impl Parser<'_> {
     }
 
     fn is_call_start_inside_parentheses(&self, outer_end: usize) -> bool {
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
         let mut depth = 1usize;
 
-        for index in (self.current + 1)..outer_end {
+        for index in start..end {
             match self.tokens.get(index) {
                 Some(Token::LeftParen) => {
                     if depth == 1

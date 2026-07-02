@@ -49113,7 +49113,13 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
-    for required_source in ["case 1 as (target)()", "case 1 as (target())"] {
+    for required_source in [
+        "case 1 as (target)()",
+        "case 1 as (target())",
+        "case 1 as ((target()))",
+        "case 1 as (target())()",
+        "case 1 as ((target()))()",
+    ] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
             "invalid parenthesized call as-pattern target CPython diff must cover `{required_source}`"

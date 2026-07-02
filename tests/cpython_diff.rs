@@ -42532,6 +42532,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-call-target-message",
+            source: "match 1:\n    case 1 as ((target())):\n        pass\n",
+            expected_message: "cannot use function call as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-call-result-target-message",
+            source: "match 1:\n    case 1 as (target())():\n        pass\n",
+            expected_message: "cannot use function call as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-call-result-target-message",
+            source: "match 1:\n    case 1 as ((target()))():\n        pass\n",
+            expected_message: "cannot use function call as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-parenthesized-subscript-target-message",
             source: "match 1:\n    case 1 as (target)[0]:\n        pass\n",
             expected_message: "cannot use subscript as pattern target",
