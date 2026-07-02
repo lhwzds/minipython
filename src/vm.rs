@@ -39007,6 +39007,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
                 | "method"
                 | "method_descriptor"
                 | "traceback"
+                | "wrapper_descriptor"
         )
 }
 
@@ -39165,6 +39166,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "range"
             | "slice"
             | "traceback"
+            | "wrapper_descriptor"
             | "Template"
             | "Interpolation"
             | "TemplateIter"

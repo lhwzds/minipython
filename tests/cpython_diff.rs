@@ -18707,6 +18707,49 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_wrapperdescriptortype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.WrapperDescriptorType base subset",
+        name: "types-wrapperdescriptortype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'wrapper_descriptor' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.WrapperDescriptorType
+try:
+    class WrapperDescriptorClass(base):
+        pass
+except Exception as error:
+    print_error('class-wrapper-descriptor', error)
+else:
+    print('class-wrapper-descriptor ok')
+
+for label, call in [
+    ('type-wrapper-descriptor', lambda: type('WrapperDescriptorClass', (types.WrapperDescriptorType,), {})),
+    ('type-new-wrapper-descriptor', lambda: type.__new__(type, 'WrapperDescriptorNew', (types.WrapperDescriptorType,), {})),
+    ('new-class-wrapper-descriptor', lambda: types.new_class('WrapperDescriptorNewClass', (types.WrapperDescriptorType,), {})),
+    ('class-runtime-wrapper-descriptor', lambda: type('RuntimeWrapperDescriptorClass', (object.__init__.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_code_traceback_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",
