@@ -4774,6 +4774,16 @@ Completed in the invalid value/name-or-attr SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid bare-name equality match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare-name equality match patterns
+  such as `case x=1`, `case (x=1)`, `case [x=1]`, `case {1: x=1}`, and
+  `case 0 | x=1` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid capture patterns and class
+  keyword patterns such as `case Point(x=1)` remain unchanged.
+
 Completed in the match OR-pattern capture promotion pass:
 
 - Expanded `cpython_match_pattern_helper_rules_subset`,

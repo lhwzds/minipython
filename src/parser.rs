@@ -1009,6 +1009,13 @@ impl Parser<'_> {
             return Ok(Pattern::Value(self.parse_value_pattern_expr()?));
         }
 
+        if matches!(
+            (self.peek(), self.peek_next()),
+            (Some(Token::Identifier(_)), Some(Token::Equal))
+        ) {
+            return Err("invalid syntax".to_string());
+        }
+
         if let Some(Token::Identifier(name)) = self.peek() {
             if !matches!(
                 self.peek_next(),
