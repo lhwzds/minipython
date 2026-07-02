@@ -1164,6 +1164,11 @@ impl Parser<'_> {
             return Err("cannot use expression as pattern target".to_string());
         }
 
+        if matches!(self.peek(), Some(Token::Star)) {
+            self.advance();
+            return Err("invalid syntax".to_string());
+        }
+
         self.parse_pattern_capture_target()
     }
 
