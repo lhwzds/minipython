@@ -39289,6 +39289,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_generatortype_unacceptable_base_type_subset",
             "cpython_types_coroutinetype_unacceptable_base_type_subset",
             "cpython_types_asyncgeneratortype_unacceptable_base_type_subset",
+            "cpython_types_builtinfunctiontype_unacceptable_base_type_subset",
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_keyword_error_subset",
@@ -39365,6 +39366,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_generatortype_unacceptable_base_type_diff_subset",
         "cpython_types_coroutinetype_unacceptable_base_type_diff_subset",
         "cpython_types_asyncgeneratortype_unacceptable_base_type_diff_subset",
+        "cpython_types_builtinfunctiontype_unacceptable_base_type_diff_subset",
         "cpython_types_code_traceback_type_aliases_diff_subset",
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
@@ -40281,6 +40283,105 @@ fn types_asyncgeneratortype_unacceptable_base_type_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types AsyncGeneratorType unacceptable-base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_builtinfunctiontype_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_builtinfunctiontype_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_types_builtinfunctiontype_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types BuiltinFunctionType unacceptable-base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types BuiltinFunctionType unacceptable-base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "base = types.BuiltinFunctionType",
+        "class BuiltinFunctionClass(base):",
+        "type('BuiltinFunctionTypeClass', (types.BuiltinFunctionType,), {})",
+        "type.__new__(type, 'BuiltinFunctionTypeNew', (types.BuiltinFunctionType,), {})",
+        "types.new_class('BuiltinFunctionTypeNewClass', (types.BuiltinFunctionType,), {})",
+        "type('RuntimeBuiltinFunctionClass', (len.__class__,), {})",
+        "class ModuleClass(types.ModuleType):",
+        "type 'builtin_function_or_method' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types BuiltinFunctionType unacceptable-base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-builtinfunctiontype TypeError type 'builtin_function_or_method' is not an acceptable base type",
+        "\"type-builtinfunctiontype TypeError type 'builtin_function_or_method' is not an acceptable base type",
+        "\"type-new-builtinfunctiontype TypeError type 'builtin_function_or_method' is not an acceptable base type",
+        "\"new-class-builtinfunctiontype TypeError type 'builtin_function_or_method' is not an acceptable base type",
+        "\"class-builtin-function-runtime TypeError type 'builtin_function_or_method' is not an acceptable base type",
+        "\"module-control ModuleClass True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types BuiltinFunctionType unacceptable-base subset output must pin `{required}`"
+        );
+    }
+
+    let class_base_body = VM_SOURCE
+        .split("fn is_class_base_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn base_needs_original_bases").next())
+        .expect("is_class_base_builtin_type implementation must be extractable");
+    assert!(
+        class_base_body.contains("\"builtin_function_or_method\""),
+        "BuiltinFunctionType must be recognized as a class-base candidate before final validation"
+    );
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"builtin_function_or_method\""),
+        "BuiltinFunctionType must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "is_class_base_builtin_type(&name)",
+        "type '{public_name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types BuiltinFunctionType unacceptable-base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.BuiltinFunctionType",
+            "type 'builtin_function_or_method' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "runtime builtin function",
+            "ModuleType",
+        ] {
+            assert!(
+                document.contains(required),
+                "types BuiltinFunctionType unacceptable-base docs must contain `{required}`"
             );
         }
     }
