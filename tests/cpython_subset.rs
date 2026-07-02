@@ -70932,6 +70932,29 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public `types.CapsuleType` metadata. MiniPython exposes
+// the public alias metadata without implementing the capsule C API or promoting
+// the alias into a full writable type dictionary surface.
+#[test]
+fn cpython_types_capsuletype_module_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('module', types.CapsuleType.__module__)
+print('object-getattribute', object.__getattribute__(types.CapsuleType, '__module__'))
+print('getattr-default-dict', '__module__' in getattr(types.CapsuleType, '__dict__', {}))
+print('dir-module', '__module__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, 'CapsuleType' in types.__all__)"#,
+        &[
+            "module builtins",
+            "object-getattribute builtins",
+            "getattr-default-dict False",
+            "dir-module False",
+            "alias PyCapsule True",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

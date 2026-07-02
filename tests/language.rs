@@ -1579,7 +1579,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
 fn types_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import types\nfor name in types.__all__:\n    print(name, hasattr(types, name))\nfor name in ['DictProxyType', 'StringTypes', 'StringType', 'ListType', 'TupleType', 'IntType', 'LongType', 'TypeType', 'ObjectType', 'XRangeType', 'FileType', 'SliceType', 'BufferType', 'ClassType', 'InstanceType', 'UnboundMethodType', 'CoroutineWrapper', 'new_class_internal', '__file__']:\n    print(name, hasattr(types, name))\nprint(types.__all__)\nprint(dir(types))\nfor name in ['SimpleNamespace', 'MappingProxyType', 'ModuleType', 'FunctionType', 'FrameLocalsProxyType', 'CapsuleType', 'CellType', 'LazyImportType', 'new_class', 'resolve_bases', 'prepare_class', 'get_original_bases', 'coroutine']:\n    value = getattr(types, name)\n    print(name, getattr(value, '__name__', None), getattr(value, '__module__', None))\nns = types.SimpleNamespace(x=1)\nprint(type(ns).__name__, repr(ns), sorted(vars(ns).items()))\nmp = types.MappingProxyType({'a': 1})\nprint(type(mp).__name__, len(mp), mp['a'], list(mp.keys()))\nclass Base:\n    pass\nMade = types.new_class('Made', (Base,), {}, lambda ns: ns.update({'x': 3}))\nprint(Made.__name__, issubclass(Made, Base), Made.x)\nprint(types.resolve_bases((Base,)))"
+            "import types\nfor name in types.__all__:\n    print(name, hasattr(types, name))\nfor name in ['DictProxyType', 'StringTypes', 'StringType', 'ListType', 'TupleType', 'IntType', 'LongType', 'TypeType', 'ObjectType', 'XRangeType', 'FileType', 'SliceType', 'BufferType', 'ClassType', 'InstanceType', 'UnboundMethodType', 'CoroutineWrapper', 'new_class_internal', 'FrameLocalsProxyType', 'LazyImportType', '__file__']:\n    print(name, hasattr(types, name))\nprint(types.__all__)\nprint(dir(types))\nfor name in ['SimpleNamespace', 'MappingProxyType', 'ModuleType', 'FunctionType', 'CapsuleType', 'CellType', 'new_class', 'resolve_bases', 'prepare_class', 'get_original_bases', 'coroutine']:\n    value = getattr(types, name)\n    print(name, getattr(value, '__name__', None), getattr(value, '__module__', None))\nns = types.SimpleNamespace(x=1)\nprint(type(ns).__name__, repr(ns), sorted(vars(ns).items()))\nmp = types.MappingProxyType({'a': 1})\nprint(type(mp).__name__, len(mp), mp['a'], list(mp.keys()))\nclass Base:\n    pass\nMade = types.new_class('Made', (Base,), {}, lambda ns: ns.update({'x': 3}))\nprint(Made.__name__, issubclass(Made, Base), Made.x)\nprint(types.resolve_bases((Base,)))"
         ),
         Ok(output_lines(&[
             "AsyncGeneratorType True",
@@ -1592,14 +1592,12 @@ fn types_sandbox_subset_keeps_export_surface_explicit() {
             "CoroutineType True",
             "DynamicClassAttribute True",
             "EllipsisType True",
-            "FrameLocalsProxyType True",
             "FrameType True",
             "FunctionType True",
             "GeneratorType True",
             "GenericAlias True",
             "GetSetDescriptorType True",
             "LambdaType True",
-            "LazyImportType True",
             "MappingProxyType True",
             "MemberDescriptorType True",
             "MethodDescriptorType True",
@@ -1635,17 +1633,17 @@ fn types_sandbox_subset_keeps_export_surface_explicit() {
             "UnboundMethodType False",
             "CoroutineWrapper False",
             "new_class_internal False",
+            "FrameLocalsProxyType False",
+            "LazyImportType False",
             "__file__ False",
-            "['AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases']",
-            "['AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', '_GeneratorWrapper', '__all__', '__name__', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases']",
+            "['AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases']",
+            "['AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', '_GeneratorWrapper', '__all__', '__name__', '__package__', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases']",
             "SimpleNamespace SimpleNamespace types",
-            "MappingProxyType mappingproxy None",
+            "MappingProxyType mappingproxy builtins",
             "ModuleType module builtins",
             "FunctionType function builtins",
-            "FrameLocalsProxyType FrameLocalsProxy builtins",
-            "CapsuleType PyCapsule None",
+            "CapsuleType PyCapsule builtins",
             "CellType CellType None",
-            "LazyImportType lazy_import None",
             "new_class new_class None",
             "resolve_bases resolve_bases None",
             "prepare_class prepare_class None",

@@ -15752,6 +15752,21 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_capsuletype_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CapsuleType __module__ metadata subset",
+        name: "types-capsuletype-module-metadata",
+        source: r#"import types
+
+print('module', types.CapsuleType.__module__)
+print('object-getattribute', object.__getattribute__(types.CapsuleType, '__module__'))
+print('getattr-default-dict', '__module__' in getattr(types.CapsuleType, '__dict__', {}))
+print('dir-module', '__module__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, 'CapsuleType' in types.__all__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",

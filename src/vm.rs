@@ -61339,6 +61339,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "module" => {
             Ok(Value::String("builtins".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "PyCapsule" => {
+            Ok(Value::String("builtins".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__module__"
                 && matches!(

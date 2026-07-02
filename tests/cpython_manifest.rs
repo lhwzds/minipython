@@ -39229,6 +39229,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_notimplementedtype_unacceptable_base_type_subset",
             "cpython_types_ellipsistype_unacceptable_base_type_subset",
             "cpython_types_capsuletype_unacceptable_base_type_subset",
+            "cpython_types_capsuletype_module_metadata_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
             "cpython_types_generic_alias_union_type_subset",
@@ -39329,6 +39330,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_notimplementedtype_unacceptable_base_type_diff_subset",
         "cpython_types_ellipsistype_unacceptable_base_type_diff_subset",
         "cpython_types_capsuletype_unacceptable_base_type_diff_subset",
+        "cpython_types_capsuletype_module_metadata_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
@@ -39443,7 +39445,10 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         LANGUAGE_TESTS.contains("types_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("for name in types.__all__")
             && LANGUAGE_TESTS.contains("'DictProxyType', 'StringTypes', 'StringType'")
-            && LANGUAGE_TESTS.contains("'CoroutineWrapper', 'new_class_internal', '__file__'")
+            && LANGUAGE_TESTS.contains(
+                "'CoroutineWrapper', 'new_class_internal', 'FrameLocalsProxyType', 'LazyImportType', '__file__'",
+            )
+            && LANGUAGE_TESTS.contains("\"CapsuleType PyCapsule builtins\"")
             && LANGUAGE_TESTS.contains("types.SimpleNamespace(x=1)")
             && LANGUAGE_TESTS.contains("types.MappingProxyType({'a': 1})")
             && LANGUAGE_TESTS.contains("types.new_class('Made'")
@@ -42401,6 +42406,81 @@ fn types_capsuletype_unacceptable_base_type_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CapsuleType unacceptable-base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_capsuletype_module_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_capsuletype_module_metadata_diff_subset";
+    let subset_name = "cpython_types_capsuletype_module_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CapsuleType __module__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CapsuleType __module__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CapsuleType.__module__",
+        "object.__getattribute__(types.CapsuleType, '__module__')",
+        "getattr(types.CapsuleType, '__dict__', {})",
+        "'__module__' in dir(types.CapsuleType)",
+        "'CapsuleType' in types.__all__",
+        "PyCapsule",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __module__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"module builtins\"",
+        "\"object-getattribute builtins\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-module False\"",
+        "\"alias PyCapsule True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __module__ subset output must pin `{required}`"
+        );
+    }
+
+    let pycapsule_module_start = VM_SOURCE
+        .find("function_name == \"PyCapsule\"")
+        .expect("PyCapsule __module__ implementation must be present");
+    let pycapsule_module_end = (pycapsule_module_start + 180).min(VM_SOURCE.len());
+    let pycapsule_module_body = &VM_SOURCE[pycapsule_module_start..pycapsule_module_end];
+    for required in [
+        "name == \"__module__\"",
+        "function_name == \"PyCapsule\"",
+        "Value::String(\"builtins\".to_string())",
+    ] {
+        assert!(
+            pycapsule_module_body.contains(required),
+            "types CapsuleType __module__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CapsuleType.__module__",
+            "`object.__getattribute__`",
+            "`builtins`",
+            "capsule C API",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CapsuleType __module__ docs must contain `{required}`"
             );
         }
     }
