@@ -6013,6 +6013,14 @@ Completed in the reserved keyword parameter-name diagnostic pass:
   such as `def f(if)`, `def f(class)`, `lambda if: None`, and
   `lambda **for: None` use CPython's public `invalid syntax` message.
 
+Completed in the literal parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so literal parameter name forms
+  such as `def f(1)`, `def f('x')`, `lambda 1: None`, and
+  `lambda **'x': None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

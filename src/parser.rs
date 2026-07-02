@@ -7618,6 +7618,16 @@ fn is_invalid_parameter_name_token(token: &Token) -> bool {
             | Token::True
             | Token::False
             | Token::None
+            | Token::Number(_)
+            | Token::BigInt(_)
+            | Token::Float(_)
+            | Token::Imaginary(_)
+            | Token::String(_)
+            | Token::Bytes(_)
+            | Token::FString(_)
+            | Token::TString(_)
+            | Token::FStringStart(_)
+            | Token::TStringStart(_)
     )
 }
 
