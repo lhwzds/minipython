@@ -39012,6 +39012,7 @@ fn is_class_base_builtin_type(name: &str) -> bool {
                 | "member_descriptor"
                 | "NoneType"
                 | "NotImplementedType"
+                | "PyCapsule"
                 | "traceback"
                 | "wrapper_descriptor"
         )
@@ -39175,6 +39176,7 @@ fn is_final_builtin_type(name: &str) -> bool {
             | "memoryview"
             | "NoneType"
             | "NotImplementedType"
+            | "PyCapsule"
             | "range"
             | "slice"
             | "traceback"

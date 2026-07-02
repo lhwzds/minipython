@@ -70879,6 +70879,59 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.CapsuleType`. MiniPython keeps capsule C-API objects out of scope, but
+// the public type alias still rejects subclassing through the same type path.
+#[test]
+fn cpython_types_capsuletype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'PyCapsule' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+print('alias', types.CapsuleType.__name__, 'CapsuleType' in types.__all__)
+base = types.CapsuleType
+try:
+    class CapsuleTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-capsuletype', error)
+else:
+    print('class-capsuletype ok')
+
+for label, call in [
+    ('type-capsuletype', lambda: type('CapsuleTypeClass', (types.CapsuleType,), {})),
+    ('type-new-capsuletype', lambda: type.__new__(type, 'CapsuleTypeNew', (types.CapsuleType,), {})),
+    ('new-class-capsuletype', lambda: types.new_class('CapsuleTypeNewClass', (types.CapsuleType,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "alias PyCapsule True",
+            "class-capsuletype TypeError type 'PyCapsule' is not an acceptable base type (\"type 'PyCapsule' is not an acceptable base type\",) True",
+            "type-capsuletype TypeError type 'PyCapsule' is not an acceptable base type (\"type 'PyCapsule' is not an acceptable base type\",) True",
+            "type-new-capsuletype TypeError type 'PyCapsule' is not an acceptable base type (\"type 'PyCapsule' is not an acceptable base type\",) True",
+            "new-class-capsuletype TypeError type 'PyCapsule' is not an acceptable base type (\"type 'PyCapsule' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

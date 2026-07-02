@@ -15709,6 +15709,49 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
 }
 
 #[test]
+fn cpython_types_capsuletype_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable types.CapsuleType base subset",
+        name: "types-capsuletype-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'PyCapsule' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+print('alias', types.CapsuleType.__name__, 'CapsuleType' in types.__all__)
+base = types.CapsuleType
+try:
+    class CapsuleTypeClass(base):
+        pass
+except Exception as error:
+    print_error('class-capsuletype', error)
+else:
+    print('class-capsuletype ok')
+
+for label, call in [
+    ('type-capsuletype', lambda: type('CapsuleTypeClass', (types.CapsuleType,), {})),
+    ('type-new-capsuletype', lambda: type.__new__(type, 'CapsuleTypeNew', (types.CapsuleType,), {})),
+    ('new-class-capsuletype', lambda: types.new_class('CapsuleTypeNewClass', (types.CapsuleType,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",
