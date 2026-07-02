@@ -28575,6 +28575,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_isatty_method_descriptor_subset",
             "cpython_io_bytesio_flush_method_descriptor_subset",
             "cpython_io_bytesio_fileno_method_descriptor_subset",
+            "cpython_io_bytesio_detach_method_descriptor_subset",
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_setstate_subset",
             "cpython_io_bytesio_state_method_descriptor_subset",
@@ -28642,6 +28643,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_fileno_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO fileno method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_detach_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO detach method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -29407,6 +29413,71 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let detach_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_detach_method_descriptor_diff_subset",
+    );
+    let detach_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_detach_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.detach",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.detach(bio)",
+        "io.BytesIO.detach(object())",
+        "io.BytesIO.detach()",
+        "io.BytesIO.detach(bio, 1)",
+        "io.BytesIO.detach(bio=bio)",
+    ] {
+        assert!(
+            detach_descriptor_diff.contains(required),
+            "io.BytesIO detach method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            detach_descriptor_subset.contains(required),
+            "io.BytesIO detach method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call UnsupportedOperation detach",
+        "descriptor 'detach' for '_io._BufferedIOBase' objects doesn't apply",
+        "unbound method _BufferedIOBase.detach() needs an argument",
+        "detach() takes no arguments",
+    ] {
+        assert!(
+            detach_descriptor_subset.contains(required),
+            "io.BytesIO detach method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"detach\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'detach' for '_io._BufferedIOBase' objects doesn't apply",
+        "unbound method _BufferedIOBase.detach() needs an argument",
+        "\"BytesIO.detach\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO detach method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_detach_method_descriptor_subset",
+            "cpython_io_bytesio_detach_method_descriptor_diff_subset",
+            "`io.BytesIO.detach` method descriptor",
+            "unsupported detach descriptor calls",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO detach method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
     let setstate_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_setstate_diff_subset");
     let setstate_subset =
@@ -29733,6 +29804,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_fileno_method_descriptor_subset",
             "cpython_io_bytesio_fileno_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_detach_method_descriptor_subset",
+            "cpython_io_bytesio_detach_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getstate_subset",

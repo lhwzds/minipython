@@ -23716,6 +23716,36 @@ show('keyword-missing-receiver', lambda: io.BytesIO.fileno(bio=bio))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_detach_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+descriptor = io.BytesIO.detach
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call', lambda: io.BytesIO.detach(bio))
+show('wrong-receiver', lambda: io.BytesIO.detach(object()))
+show('missing-receiver', lambda: io.BytesIO.detach())
+show('extra', lambda: io.BytesIO.detach(bio, 1))
+show('keyword-missing-receiver', lambda: io.BytesIO.detach(bio=bio))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call UnsupportedOperation detach",
+            "wrong-receiver TypeError descriptor 'detach' for '_io._BufferedIOBase' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method _BufferedIOBase.detach() needs an argument",
+            "extra TypeError detach() takes no arguments",
+            "keyword-missing-receiver TypeError unbound method _BufferedIOBase.detach() needs an argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.
