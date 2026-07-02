@@ -5037,6 +5037,16 @@ Completed in the invalid duplicate-star sequence pattern SyntaxError message pas
 - Kept this as parser-message parity only; it does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid f/t-string literal-pattern SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset`,
+  `cpython_grammar_match_stmt_subset`, and
+  `cpython_invalid_match_pattern_subset` so f-string and t-string match
+  patterns now use CPython's public
+  `patterns may only match literals and attribute lookups` message.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid control-flow syntax supported-promotion pass:
 
 - Expanded `cpython_invalid_control_flow_syntax_subset` and promoted

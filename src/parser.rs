@@ -942,7 +942,7 @@ impl Parser<'_> {
 
         let literal = self.parse_literal_pattern_expr()?;
         if !is_supported_literal_pattern(&literal) {
-            return Err("unsupported match pattern".to_string());
+            return Err("patterns may only match literals and attribute lookups".to_string());
         }
 
         if is_singleton_literal_pattern(&literal) {

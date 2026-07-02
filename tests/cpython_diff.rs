@@ -301,6 +301,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use f-string expression as pattern target"
         | "cannot use t-string expression as pattern target"
         | "cannot use expression as pattern target"
+        | "patterns may only match literals and attribute lookups"
         | "alternative patterns bind different names"
         | "name capture 'x' makes remaining patterns unreachable"
         | "wildcard makes remaining patterns unreachable"
@@ -41840,6 +41841,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-function-call-target-message",
             source: "match 1:\n    case 1 as target():\n        pass\n",
             expected_message: "cannot use function call as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid literal-pattern public SyntaxError subset",
+            name: "syntax-match-f-string-pattern-message",
+            source: "match \"a\":\n    case f\"a\":\n        pass\n",
+            expected_message: "patterns may only match literals and attribute lookups",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid literal-pattern public SyntaxError subset",
+            name: "syntax-match-t-string-pattern-message",
+            source: "match \"a\":\n    case t\"a\":\n        pass\n",
+            expected_message: "patterns may only match literals and attribute lookups",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",

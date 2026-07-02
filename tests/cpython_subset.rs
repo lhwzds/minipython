@@ -32355,15 +32355,15 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match \"a\":\n    case f\"a\":\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: patterns may only match literals and attribute lookups",
     );
     assert_error(
         "match \"a\":\n    case f\"{'a'}\":\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: patterns may only match literals and attribute lookups",
     );
     assert_error(
         "match \"a\":\n    case t\"a\":\n        pass",
-        "parse error: unsupported match pattern",
+        "parse error: patterns may only match literals and attribute lookups",
     );
     assert_error(
         "match {'a': 1}:\n    case {f\"a\": value}:\n        pass",
@@ -33127,6 +33127,14 @@ fn cpython_invalid_match_pattern_subset() {
     assert_error(
         "match [1, 2]:\n    case [*left, *right]:\n        pass",
         "parse error: multiple starred names in sequence pattern",
+    );
+    assert_error(
+        "match \"a\":\n    case f\"a\":\n        pass",
+        "parse error: patterns may only match literals and attribute lookups",
+    );
+    assert_error(
+        "match \"a\":\n    case t\"a\":\n        pass",
+        "parse error: patterns may only match literals and attribute lookups",
     );
     assert_error(
         "match point:\n    case Point(x=1, 2):\n        pass",
