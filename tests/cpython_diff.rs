@@ -25841,6 +25841,38 @@ print('dir', '_checkReadable' in dir(io.BytesIO), '_checkReadable' in dir(io.Byt
 }
 
 #[test]
+fn cpython_io_bytesio_check_seekable_method_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO _checkSeekable method descriptor subset",
+        name: "io-bytesio-check-seekable-method-descriptor",
+        source: r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+descriptor = io.BytesIO._checkSeekable
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+bio = io.BytesIO(b'abc')
+show('open-bound', lambda: bio._checkSeekable())
+show('open-type', lambda: io.BytesIO._checkSeekable(bio))
+bio.close()
+show('closed-bound', lambda: bio._checkSeekable())
+show('wrong-receiver', lambda: io.BytesIO._checkSeekable(object()))
+show('missing-receiver', lambda: io.BytesIO._checkSeekable())
+bio = io.BytesIO(b'abc')
+show('extra', lambda: io.BytesIO._checkSeekable(bio, 1))
+bio = io.BytesIO(b'abc')
+show('keyword-missing-receiver', lambda: io.BytesIO._checkSeekable(bio=bio))
+bio = io.BytesIO(b'abc')
+show('receiver-keyword', lambda: io.BytesIO._checkSeekable(bio, x=1))
+print('dir', '_checkSeekable' in dir(io.BytesIO), '_checkSeekable' in dir(io.BytesIO()))"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_fileno_method_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO fileno method descriptor subset",

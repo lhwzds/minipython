@@ -9753,6 +9753,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO._checkReadable" => {
                 self.call_io_bytesio_check_readable(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO._checkSeekable" => {
+                self.call_io_bytesio_check_seekable(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.fileno" => {
                 self.call_io_bytesio_unsupported(args, keywords, "fileno")
             }
@@ -21190,6 +21193,37 @@ impl Vm {
         if !rest.is_empty() {
             return Err(format!(
                 "TypeError: _IOBase._checkReadable() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+        bytes_io_ensure_open(bytes_io)?;
+        Ok(Value::Bool(true))
+    }
+
+    fn call_io_bytesio_check_seekable(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method _IOBase._checkSeekable() needs an argument".to_string(),
+            );
+        };
+        let Value::BytesIO(bytes_io) = receiver else {
+            return Err(format!(
+                "TypeError: descriptor '_checkSeekable' for '_io._IOBase' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: _IOBase._checkSeekable() takes no keyword arguments".to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: _IOBase._checkSeekable() takes no arguments ({} given)",
                 rest.len()
             ));
         }
@@ -52061,6 +52095,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__next__",
             "_checkClosed",
             "_checkReadable",
+            "_checkSeekable",
             "close",
             "closed",
             "detach",
@@ -59935,9 +59970,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }
                 "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
                 "__enter__" | "__exit__" | "__getstate__" | "__setstate__" | "__iter__"
-                | "__next__" | "_checkClosed" | "_checkReadable" | "close" | "detach"
-                | "fileno" | "flush" | "getbuffer" | "getvalue" | "isatty" | "read"
-                | "read1" | "readable" | "readinto" | "readinto1" | "readline"
+                | "__next__" | "_checkClosed" | "_checkReadable" | "_checkSeekable" | "close"
+                | "detach" | "fileno" | "flush" | "getbuffer" | "getvalue" | "isatty"
+                | "read" | "read1" | "readable" | "readinto" | "readinto1" | "readline"
                 | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write"
                 | "writable" | "writelines" => {
                     Ok(Value::BoundMethod {
@@ -61756,6 +61791,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__next__"
                         | "_checkClosed"
                         | "_checkReadable"
+                        | "_checkSeekable"
                         | "getvalue"
                         | "getbuffer"
                         | "tell"
@@ -65385,6 +65421,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
                 | "BytesIO.flush"
                 | "BytesIO._checkClosed"
                 | "BytesIO._checkReadable"
+                | "BytesIO._checkSeekable"
                 | "BytesIO.fileno"
                 | "BytesIO.detach"
                 | "BytesIO.close"
@@ -65477,6 +65514,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
                 | "BytesIO.flush"
                 | "BytesIO._checkClosed"
                 | "BytesIO._checkReadable"
+                | "BytesIO._checkSeekable"
                 | "BytesIO.fileno"
                 | "BytesIO.detach"
                 | "BytesIO.close"
