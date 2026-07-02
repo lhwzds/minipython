@@ -869,6 +869,10 @@ impl Parser<'_> {
     }
 
     fn parse_closed_match_pattern(&mut self) -> Result<Pattern, String> {
+        if matches!(self.peek(), Some(Token::Plus | Token::Tilde | Token::Not)) {
+            return Err("invalid syntax".to_string());
+        }
+
         if matches!(self.peek(), Some(Token::LeftBracket)) {
             self.advance();
             let patterns = self.parse_sequence_match_patterns(Token::RightBracket)?;

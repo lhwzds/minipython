@@ -48648,6 +48648,25 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     }
 
     for required_source in [
+        "case +1",
+        "case +x",
+        "case ~x",
+        "case not x",
+        "case (+x)",
+        "case (~x)",
+        "case (not x)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid unary match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid unary match-pattern subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
         "case {**rest, 'x': value}",
         "case {'x': x, **rest, 'y': y}",
         "case {**+x}",

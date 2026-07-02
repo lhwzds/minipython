@@ -42663,6 +42663,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "patterns may only match literals and attribute lookups",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-unary-plus-literal-pattern-message",
+            source: "match 1:\n    case +1:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-unary-plus-name-pattern-message",
+            source: "match 1:\n    case +x:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-unary-invert-pattern-message",
+            source: "match 1:\n    case ~x:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-not-pattern-message",
+            source: "match 1:\n    case not x:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-parenthesized-unary-plus-pattern-message",
+            source: "match 1:\n    case (+x):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-parenthesized-unary-invert-pattern-message",
+            source: "match 1:\n    case (~x):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
+            name: "syntax-match-parenthesized-not-pattern-message",
+            source: "match 1:\n    case (not x):\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid mapping-pattern public SyntaxError subset",
             name: "syntax-match-mapping-f-string-key-message",
             source: "match {'a': 1}:\n    case {f\"a\": value}:\n        pass\n",
