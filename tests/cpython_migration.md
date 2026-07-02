@@ -4856,6 +4856,22 @@ SyntaxError message pass:
 - Kept this as parser-message parity only; valid capture patterns and class
   keyword patterns such as `case Point(x=1)` remain unchanged.
 
+Completed in the invalid bare-name reserved-keyword match-pattern SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare-name reserved-keyword match patterns
+  such as `case x lambda y`, `case (x lambda y)`, `case [x lambda y]`,
+  `case {1: x lambda y}`, `case x for y`, `case x while y`, `case x elif y`,
+  `case x else y`, `case x def y`, `case x class y`, `case x return y`,
+  `case x yield y`, `case x raise y`, `case x del y`, `case x global y`,
+  `case x nonlocal y`, `case x assert y`, `case x try y`, `case x except y`,
+  `case x with y`, `case x finally y`, `case x from y`, `case x import y`,
+  `case x break y`, `case x continue y`, `case x pass y`, `case x async y`,
+  and `case x await y` now use CPython's public `invalid syntax` message.
+- Kept this as parser-message parity only; valid capture, guard, and as-pattern
+  forms such as `case x`, `case x if x`, and `case 1 as x` remain unchanged.
+
 Completed in the match OR-pattern capture promotion pass:
 
 - Expanded `cpython_match_pattern_helper_rules_subset`,

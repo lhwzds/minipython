@@ -48942,6 +48942,46 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         );
     }
 
+    for required_source in [
+        "case x lambda y",
+        "case (x lambda y)",
+        "case [x lambda y]",
+        "case {1: x lambda y}",
+        "case x for y",
+        "case x while y",
+        "case x elif y",
+        "case x else y",
+        "case x def y",
+        "case x class y",
+        "case x return y",
+        "case x yield y",
+        "case x raise y",
+        "case x del y",
+        "case x global y",
+        "case x nonlocal y",
+        "case x assert y",
+        "case x try y",
+        "case x except y",
+        "case x with y",
+        "case x finally y",
+        "case x from y",
+        "case x import y",
+        "case x break y",
+        "case x continue y",
+        "case x pass y",
+        "case x async y",
+        "case x await y",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid bare-name reserved-keyword match-pattern SyntaxError CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid bare-name reserved-keyword match-pattern subset must cover `{required_source}`"
+        );
+    }
+
     for required_source in ["case ...", "case (...)", "case [...]", "case {1: ...}"] {
         assert!(
             CPYTHON_DIFF.contains(required_source),
@@ -49648,6 +49688,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("bare-name assignment-operator match patterns")
                 && document.contains("invalid syntax"),
             "invalid bare-name assignment-operator match-pattern SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("bare-name reserved-keyword match patterns")
+                && document.contains("invalid syntax"),
+            "invalid bare-name reserved-keyword match-pattern SyntaxError docs must describe the CPython message"
         );
     }
 

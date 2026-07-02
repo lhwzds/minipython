@@ -1051,6 +1051,31 @@ impl Parser<'_> {
                         | Token::Not
                         | Token::And
                         | Token::Or
+                        | Token::Lambda
+                        | Token::For
+                        | Token::While
+                        | Token::Elif
+                        | Token::Else
+                        | Token::Def
+                        | Token::Class
+                        | Token::Return
+                        | Token::Yield
+                        | Token::Raise
+                        | Token::Del
+                        | Token::Global
+                        | Token::Nonlocal
+                        | Token::Assert
+                        | Token::Try
+                        | Token::Except
+                        | Token::With
+                        | Token::Finally
+                        | Token::From
+                        | Token::Import
+                        | Token::Break
+                        | Token::Continue
+                        | Token::Pass
+                        | Token::Async
+                        | Token::Await
                         | Token::ColonEqual
                         | Token::PlusEqual
                         | Token::MinusEqual
