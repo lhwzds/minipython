@@ -33185,6 +33185,14 @@ fn cpython_invalid_match_pattern_subset() {
         "parse error: cannot use attribute as pattern target",
     );
     assert_error(
+        "match 1:\n    case 1 as (target)():\n        pass",
+        "parse error: cannot use function call as pattern target",
+    );
+    assert_error(
+        "match 1:\n    case 1 as (target()):\n        pass",
+        "parse error: cannot use function call as pattern target",
+    );
+    assert_error(
         "match 1:\n    case 1 as target.attr:\n        pass",
         "parse error: cannot use attribute as pattern target",
     );
