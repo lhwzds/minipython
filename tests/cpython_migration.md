@@ -5012,6 +5012,14 @@ Completed in the invalid list as-pattern targets SyntaxError message pass:
 - Kept this as parser-message parity only; it does not add new as-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid dict as-pattern targets SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so `case 1 as {x: y}` now uses
+  CPython's public `cannot use dict literal as pattern target` message.
+- Kept this as parser-message parity only; it does not add new as-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid as-pattern call-target SyntaxError message pass:
 
 - Extended `cpython_syntax_error_message_parity_diff_subset` and

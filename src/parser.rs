@@ -1174,6 +1174,11 @@ impl Parser<'_> {
             return Err("cannot use list as pattern target".to_string());
         }
 
+        if matches!(self.peek(), Some(Token::LeftBrace)) {
+            self.advance();
+            return Err("cannot use dict literal as pattern target".to_string());
+        }
+
         self.parse_pattern_capture_target()
     }
 
