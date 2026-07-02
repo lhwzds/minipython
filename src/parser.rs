@@ -878,9 +878,13 @@ impl Parser<'_> {
                     | Token::Dot
                     | Token::Pipe
                     | Token::Colon
+                    | Token::If
                     | Token::RightBracket
                     | Token::RightParen
                     | Token::Comma
+                    | Token::Newline
+                    | Token::Dedent
+                    | Token::Eof
             )
         ) {
             return Err("invalid syntax".to_string());

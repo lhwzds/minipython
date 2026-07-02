@@ -42729,6 +42729,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "patterns may only match literals and attribute lookups",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram invalid case-block public SyntaxError subset",
+            name: "syntax-match-case-missing-pattern-guard-message",
+            source: "match 1:\n    case if True:\n        pass\n",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid case-block public SyntaxError subset",
+            name: "syntax-match-case-missing-pattern-eof-message",
+            source: "match 1:\n    case",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram invalid match-pattern public SyntaxError subset",
             name: "syntax-match-unary-plus-literal-pattern-message",
             source: "match 1:\n    case +1:\n        pass\n",
