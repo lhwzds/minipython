@@ -35630,6 +35630,10 @@ fn cpython_invalid_parameter_syntax_subset() {
 #[test]
 fn cpython_invalid_parameters_subset() {
     assert_error(
+        "def f(a, a):\n    pass",
+        "parse error: duplicate argument 'a' in function definition",
+    );
+    assert_error(
         "def f(/, a):\n    pass",
         "parse error: at least one argument must precede /",
     );
@@ -35824,6 +35828,10 @@ fn cpython_invalid_lambda_parameter_syntax_subset() {
 // parser and preserves the lambda-specific parenthesized-parameter diagnostic.
 #[test]
 fn cpython_invalid_lambda_parameters_subset() {
+    assert_error(
+        "lambda a, a: None",
+        "parse error: duplicate argument 'a' in function definition",
+    );
     assert_error(
         "lambda /, a: None",
         "parse error: at least one argument must precede /",

@@ -5989,6 +5989,14 @@ Completed in the empty positional-only marker diagnostic pass:
   `def f(/, a)` and `lambda /, a: None` use CPython's public
   `at least one argument must precede /` message.
 
+Completed in the duplicate parameter diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so duplicate parameter name forms
+  `def f(a, a)` and `lambda a, a: None` use CPython's public
+  `duplicate argument 'a' in function definition` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

@@ -9345,7 +9345,9 @@ fn target_deletes_starred(target: &Target) -> bool {
 
 fn ensure_unique_parameter_name(name: &str, seen_names: &mut Vec<String>) -> Result<(), String> {
     if seen_names.iter().any(|seen| seen == name) {
-        Err(format!("duplicate parameter name: {name}"))
+        Err(format!(
+            "duplicate argument '{name}' in function definition"
+        ))
     } else {
         seen_names.push(name.to_string());
         Ok(())

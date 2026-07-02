@@ -41421,6 +41421,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "at least one argument must precede /",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram duplicate function parameter rejection",
+            name: "def-duplicate-parameter-name-message",
+            source: "def f(a, a):\n    pass",
+            expected_message: "duplicate argument 'a' in function definition",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram duplicate lambda parameter rejection",
+            name: "lambda-duplicate-parameter-name-message",
+            source: "lambda a, a: None",
+            expected_message: "duplicate argument 'a' in function definition",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
