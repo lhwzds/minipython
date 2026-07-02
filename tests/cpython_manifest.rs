@@ -28572,6 +28572,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_readline_method_descriptor_subset",
             "cpython_io_bytesio_readlines_method_descriptor_subset",
             "cpython_io_bytesio_write_method_descriptor_subset",
+            "cpython_io_bytesio_writelines_method_descriptor_subset",
             "cpython_io_bytesio_getvalue_method_descriptor_subset",
             "cpython_io_bytesio_getbuffer_method_descriptor_subset",
             "cpython_io_bytesio_tell_method_descriptor_subset",
@@ -28637,6 +28638,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_write_method_descriptor_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO write method descriptor behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_writelines_method_descriptor_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO writelines method descriptor behavior"
     );
     assert!(
         row.diff_evidence
@@ -29317,6 +29323,82 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "io.BytesIO write method descriptor docs must contain `{required}`"
+            );
+        }
+    }
+
+    let writelines_descriptor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_io_bytesio_writelines_method_descriptor_diff_subset",
+    );
+    let writelines_descriptor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_io_bytesio_writelines_method_descriptor_subset",
+    );
+    for required in [
+        "descriptor = io.BytesIO.writelines",
+        "type(descriptor).__name__",
+        "callable(descriptor)",
+        "io.BytesIO.writelines(bio, [b'ab', bytearray(b'cd'), memoryview(b'ef')])",
+        "io.BytesIO.writelines(bio, (b'x', b'y'))",
+        "io.BytesIO.writelines(object(), [b'x'])",
+        "io.BytesIO.writelines()",
+        "io.BytesIO.writelines(bio)",
+        "io.BytesIO.writelines(bio, [], [])",
+        "io.BytesIO.writelines(bio, 1)",
+        "io.BytesIO.writelines(bio, ['x'])",
+        "io.BytesIO.writelines(lines=[b'x'])",
+        "io.BytesIO.writelines(bio, lines=[b'x'])",
+    ] {
+        assert!(
+            writelines_descriptor_diff.contains(required),
+            "io.BytesIO writelines method descriptor CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            writelines_descriptor_subset.contains(required),
+            "io.BytesIO writelines method descriptor runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "descriptor method_descriptor True",
+        "call-list ok (None, b'abcdef', 6) tuple",
+        "call-tuple ok (None, b'xy', 2) tuple",
+        "descriptor 'writelines' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.writelines() needs an argument",
+        "BytesIO.writelines() takes exactly one argument (0 given)",
+        "BytesIO.writelines() takes exactly one argument (2 given)",
+        "'int' object is not iterable",
+        "a bytes-like object is required, not 'str'",
+        "BytesIO.writelines() takes no keyword arguments",
+    ] {
+        assert!(
+            writelines_descriptor_subset.contains(required),
+            "io.BytesIO writelines method descriptor subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "| \"writelines\"",
+        "format!(\"io.BytesIO.{name}\")",
+        "descriptor 'writelines' for '_io.BytesIO' objects doesn't apply",
+        "unbound method BytesIO.writelines() needs an argument",
+        "\"BytesIO.writelines\"",
+        "reject_bytesio_method_keywords(\"writelines\", &keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO writelines method descriptor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_writelines_method_descriptor_subset",
+            "cpython_io_bytesio_writelines_method_descriptor_diff_subset",
+            "`io.BytesIO.writelines` method descriptor",
+            "multi-line bytes-like descriptor writes",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO writelines method descriptor docs must contain `{required}`"
             );
         }
     }
@@ -30507,6 +30589,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_write_method_descriptor_subset",
             "cpython_io_bytesio_write_method_descriptor_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_writelines_method_descriptor_subset",
+            "cpython_io_bytesio_writelines_method_descriptor_diff_subset",
         ),
         (
             "cpython_io_bytesio_getvalue_method_descriptor_subset",

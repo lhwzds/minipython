@@ -23700,6 +23700,53 @@ show('receiver-keyword', lambda: io.BytesIO.write(bio, b=b'x'))"#,
 }
 
 #[test]
+fn cpython_io_bytesio_writelines_method_descriptor_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO()
+descriptor = io.BytesIO.writelines
+print('descriptor', type(descriptor).__name__, callable(descriptor))
+show('call-list', lambda: (io.BytesIO.writelines(bio, [b'ab', bytearray(b'cd'), memoryview(b'ef')]), bio.getvalue(), bio.tell()))
+bio = io.BytesIO()
+show('call-tuple', lambda: (io.BytesIO.writelines(bio, (b'x', b'y')), bio.getvalue(), bio.tell()))
+show('wrong-receiver', lambda: io.BytesIO.writelines(object(), [b'x']))
+show('missing-receiver', lambda: io.BytesIO.writelines())
+bio = io.BytesIO()
+show('missing-lines', lambda: io.BytesIO.writelines(bio))
+bio = io.BytesIO()
+show('extra', lambda: io.BytesIO.writelines(bio, [], []))
+bio = io.BytesIO()
+show('noniter', lambda: io.BytesIO.writelines(bio, 1))
+bio = io.BytesIO()
+show('bad-item', lambda: io.BytesIO.writelines(bio, ['x']))
+bio = io.BytesIO()
+show('keyword-missing-receiver', lambda: io.BytesIO.writelines(lines=[b'x']))
+bio = io.BytesIO()
+show('receiver-keyword', lambda: io.BytesIO.writelines(bio, lines=[b'x']))"#,
+        &[
+            "descriptor method_descriptor True",
+            "call-list ok (None, b'abcdef', 6) tuple",
+            "call-tuple ok (None, b'xy', 2) tuple",
+            "wrong-receiver TypeError descriptor 'writelines' for '_io.BytesIO' objects doesn't apply to a 'object' object",
+            "missing-receiver TypeError unbound method BytesIO.writelines() needs an argument",
+            "missing-lines TypeError BytesIO.writelines() takes exactly one argument (0 given)",
+            "extra TypeError BytesIO.writelines() takes exactly one argument (2 given)",
+            "noniter TypeError 'int' object is not iterable",
+            "bad-item TypeError a bytes-like object is required, not 'str'",
+            "keyword-missing-receiver TypeError unbound method BytesIO.writelines() needs an argument",
+            "receiver-keyword TypeError BytesIO.writelines() takes no keyword arguments",
+        ],
+    );
+}
+
+#[test]
 fn cpython_io_bytesio_getvalue_method_descriptor_subset() {
     assert_output(
         r#"import io
