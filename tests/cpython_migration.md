@@ -4794,6 +4794,18 @@ pass:
 - Kept this as parser-message parity only; valid capture patterns remain
   unchanged.
 
+Completed in the invalid bare-name arithmetic match-pattern SyntaxError message
+pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so bare-name arithmetic match patterns
+  such as `case x + y`, `case (x + y)`, `case [x + y]`, `case {1: x + y}`,
+  `case x - y`, `case x * y`, `case x / y`, `case x // y`, `case x % y`,
+  `case x @ y`, and `case x ** y` now use CPython's public `invalid syntax`
+  message.
+- Kept this as parser-message parity only; valid capture patterns and
+  OR-pattern diagnostics such as `case x | y` remain unchanged.
+
 Completed in the match OR-pattern capture promotion pass:
 
 - Expanded `cpython_match_pattern_helper_rules_subset`,
