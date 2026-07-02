@@ -39231,6 +39231,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_capsuletype_unacceptable_base_type_subset",
             "cpython_types_capsuletype_module_metadata_subset",
             "cpython_types_capsuletype_qualname_metadata_subset",
+            "cpython_types_capsuletype_text_signature_metadata_subset",
             "cpython_types_module_type_subset",
             "cpython_types_runtime_type_aliases_subset",
             "cpython_types_generic_alias_union_type_subset",
@@ -39333,6 +39334,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_capsuletype_unacceptable_base_type_diff_subset",
         "cpython_types_capsuletype_module_metadata_diff_subset",
         "cpython_types_capsuletype_qualname_metadata_diff_subset",
+        "cpython_types_capsuletype_text_signature_metadata_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
@@ -42455,7 +42457,7 @@ fn types_capsuletype_module_metadata_docs_cover_core_runtime() {
     }
 
     let pycapsule_module_start = VM_SOURCE
-        .find("function_name == \"PyCapsule\"")
+        .find("name == \"__module__\" && function_name == \"PyCapsule\"")
         .expect("PyCapsule __module__ implementation must be present");
     let pycapsule_module_end = (pycapsule_module_start + 180).min(VM_SOURCE.len());
     let pycapsule_module_body = &VM_SOURCE[pycapsule_module_start..pycapsule_module_end];
@@ -42559,6 +42561,84 @@ fn types_capsuletype_qualname_metadata_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types CapsuleType __qualname__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_capsuletype_text_signature_metadata_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_capsuletype_text_signature_metadata_diff_subset";
+    let subset_name = "cpython_types_capsuletype_text_signature_metadata_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types CapsuleType __text_signature__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types CapsuleType __text_signature__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "types.CapsuleType.__text_signature__",
+        "object.__getattribute__(types.CapsuleType, '__text_signature__')",
+        "getattr(types.CapsuleType, '__dict__', {})",
+        "'__text_signature__' in dir(types.CapsuleType)",
+        "types.CapsuleType.__name__",
+        "types.CapsuleType.__module__",
+        "types.CapsuleType.__qualname__",
+        "PyCapsule",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __text_signature__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"text-signature None\"",
+        "\"object-getattribute None\"",
+        "\"getattr-default-dict False\"",
+        "\"dir-text-signature False\"",
+        "\"alias PyCapsule builtins PyCapsule\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types CapsuleType __text_signature__ subset output must pin `{required}`"
+        );
+    }
+
+    let pycapsule_text_signature_start = VM_SOURCE
+        .find("name == \"__text_signature__\" && function_name == \"PyCapsule\"")
+        .expect("PyCapsule __text_signature__ implementation must be present");
+    let pycapsule_text_signature_end = (pycapsule_text_signature_start + 180).min(VM_SOURCE.len());
+    let pycapsule_text_signature_body =
+        &VM_SOURCE[pycapsule_text_signature_start..pycapsule_text_signature_end];
+    for required in [
+        "name == \"__text_signature__\"",
+        "function_name == \"PyCapsule\"",
+        "Value::None",
+    ] {
+        assert!(
+            pycapsule_text_signature_body.contains(required),
+            "types CapsuleType __text_signature__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.CapsuleType.__text_signature__",
+            "`object.__getattribute__`",
+            "`None`",
+            "capsule C API",
+            "writable type dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "types CapsuleType __text_signature__ docs must contain `{required}`"
             );
         }
     }

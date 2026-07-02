@@ -70978,6 +70978,29 @@ print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__)"#,
     );
 }
 
+// Adapted from CPython public `types.CapsuleType` text-signature metadata.
+// CPython exposes a `None` signature sentinel here; MiniPython keeps that
+// public lookup without implementing capsule construction or C API behavior.
+#[test]
+fn cpython_types_capsuletype_text_signature_metadata_subset() {
+    assert_output(
+        r#"import types
+
+print('text-signature', types.CapsuleType.__text_signature__)
+print('object-getattribute', object.__getattribute__(types.CapsuleType, '__text_signature__'))
+print('getattr-default-dict', '__text_signature__' in getattr(types.CapsuleType, '__dict__', {}))
+print('dir-text-signature', '__text_signature__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__, types.CapsuleType.__qualname__)"#,
+        &[
+            "text-signature None",
+            "object-getattribute None",
+            "getattr-default-dict False",
+            "dir-text-signature False",
+            "alias PyCapsule builtins PyCapsule",
+        ],
+    );
+}
+
 // Adapted from CPython public `types.ModuleType` behavior and
 // Lib/test/test_types.py::TypesTests::test_names. This covers the public module
 // type alias, construction defaults, keyword construction, and module attribute

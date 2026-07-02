@@ -15782,6 +15782,21 @@ print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__)"#,
 }
 
 #[test]
+fn cpython_types_capsuletype_text_signature_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public types.CapsuleType __text_signature__ metadata subset",
+        name: "types-capsuletype-text-signature-metadata",
+        source: r#"import types
+
+print('text-signature', types.CapsuleType.__text_signature__)
+print('object-getattribute', object.__getattribute__(types.CapsuleType, '__text_signature__'))
+print('getattr-default-dict', '__text_signature__' in getattr(types.CapsuleType, '__dict__', {}))
+print('dir-text-signature', '__text_signature__' in dir(types.CapsuleType))
+print('alias', types.CapsuleType.__name__, types.CapsuleType.__module__, types.CapsuleType.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py types module __package__ metadata subset",

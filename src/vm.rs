@@ -61343,6 +61343,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("builtins".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "PyCapsule" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__module__"
                 && matches!(
                     function_name.as_str(),
