@@ -787,6 +787,7 @@ Recent runtime migration notes:
   `cpython_types_codetype_unacceptable_base_type_diff_subset`,
   `cpython_types_tracebacktype_unacceptable_base_type_diff_subset`,
   `cpython_types_frametype_unacceptable_base_type_diff_subset`,
+  `cpython_types_generatortype_unacceptable_base_type_diff_subset`,
   `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_celltype_unacceptable_base_type_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
@@ -3855,6 +3856,13 @@ without adding general custom encoder/decoder class support.
   `types.FrameType` class statements, `type(...)`, `type.__new__(...)`,
   `types.new_class(...)`, and `sys._getframe()` runtime frame `__class__`
   bases while preserving supported `ModuleType` subclass creation.
+- The bundled `types` module also includes
+  `cpython_types_generatortype_unacceptable_base_type_subset`, backed by
+  `cpython_types_generatortype_unacceptable_base_type_diff_subset`, covering
+  CPython's `type 'generator' is not an acceptable base type` rejection for
+  `types.GeneratorType` class statements, `type(...)`, `type.__new__(...)`,
+  `types.new_class(...)`, and runtime generator `__class__` bases while
+  preserving supported `ModuleType` subclass creation.
 - The bundled `types` module also includes
   `cpython_types_celltype_keyword_error_subset`, backed by
   `cpython_types_celltype_keyword_error_diff_subset`, covering

@@ -39286,6 +39286,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_codetype_unacceptable_base_type_subset",
             "cpython_types_tracebacktype_unacceptable_base_type_subset",
             "cpython_types_frametype_unacceptable_base_type_subset",
+            "cpython_types_generatortype_unacceptable_base_type_subset",
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
             "cpython_types_celltype_keyword_error_subset",
@@ -39359,6 +39360,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_codetype_unacceptable_base_type_diff_subset",
         "cpython_types_tracebacktype_unacceptable_base_type_diff_subset",
         "cpython_types_frametype_unacceptable_base_type_diff_subset",
+        "cpython_types_generatortype_unacceptable_base_type_diff_subset",
         "cpython_types_code_traceback_type_aliases_diff_subset",
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
@@ -39977,6 +39979,105 @@ fn types_frametype_unacceptable_base_type_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "types FrameType unacceptable-base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn types_generatortype_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_types_generatortype_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_types_generatortype_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types GeneratorType unacceptable-base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types GeneratorType unacceptable-base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "base = types.GeneratorType",
+        "class GeneratorClass(base):",
+        "type('GeneratorTypeClass', (types.GeneratorType,), {})",
+        "type.__new__(type, 'GeneratorTypeNew', (types.GeneratorType,), {})",
+        "types.new_class('GeneratorTypeNewClass', (types.GeneratorType,), {})",
+        "type('RuntimeGeneratorClass', (generator.__class__,), {})",
+        "class ModuleClass(types.ModuleType):",
+        "type 'generator' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types GeneratorType unacceptable-base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-generatortype TypeError type 'generator' is not an acceptable base type",
+        "\"type-generatortype TypeError type 'generator' is not an acceptable base type",
+        "\"type-new-generatortype TypeError type 'generator' is not an acceptable base type",
+        "\"new-class-generatortype TypeError type 'generator' is not an acceptable base type",
+        "\"class-generator-runtime TypeError type 'generator' is not an acceptable base type",
+        "\"module-control ModuleClass True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types GeneratorType unacceptable-base subset output must pin `{required}`"
+        );
+    }
+
+    let class_base_body = VM_SOURCE
+        .split("fn is_class_base_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn base_needs_original_bases").next())
+        .expect("is_class_base_builtin_type implementation must be extractable");
+    assert!(
+        class_base_body.contains("\"generator\""),
+        "GeneratorType must be recognized as a class-base candidate before final validation"
+    );
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"generator\""),
+        "GeneratorType must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "is_class_base_builtin_type(&name)",
+        "type '{public_name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types GeneratorType unacceptable-base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "types.GeneratorType",
+            "type 'generator' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "runtime generator",
+            "ModuleType",
+        ] {
+            assert!(
+                document.contains(required),
+                "types GeneratorType unacceptable-base docs must contain `{required}`"
             );
         }
     }

@@ -71607,6 +71607,65 @@ print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.
     );
 }
 
+// Adapted from CPython public class-construction behavior for
+// `types.GeneratorType`. MiniPython recognizes the public generator type object
+// as a class-base candidate only so the final-base validator can reject it with
+// CPython's public TypeError.
+#[test]
+fn cpython_types_generatortype_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'generator' is not an acceptable base type"
+
+def gen():
+    yield 1
+
+generator = gen()
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+base = types.GeneratorType
+try:
+    class GeneratorClass(base):
+        pass
+except Exception as error:
+    print_error('class-generatortype', error)
+else:
+    print('class-generatortype ok')
+
+for label, call in [
+    ('type-generatortype', lambda: type('GeneratorTypeClass', (types.GeneratorType,), {})),
+    ('type-new-generatortype', lambda: type.__new__(type, 'GeneratorTypeNew', (types.GeneratorType,), {})),
+    ('new-class-generatortype', lambda: types.new_class('GeneratorTypeNewClass', (types.GeneratorType,), {})),
+    ('class-generator-runtime', lambda: type('RuntimeGeneratorClass', (generator.__class__,), {})),
+]:
+    show(label, call)
+
+class ModuleClass(types.ModuleType):
+    pass
+print('module-control', ModuleClass.__name__, ModuleClass.__bases__[0] is types.ModuleType)"#,
+        &[
+            "class-generatortype TypeError type 'generator' is not an acceptable base type (\"type 'generator' is not an acceptable base type\",) True",
+            "type-generatortype TypeError type 'generator' is not an acceptable base type (\"type 'generator' is not an acceptable base type\",) True",
+            "type-new-generatortype TypeError type 'generator' is not an acceptable base type (\"type 'generator' is not an acceptable base type\",) True",
+            "new-class-generatortype TypeError type 'generator' is not an acceptable base type (\"type 'generator' is not an acceptable base type\",) True",
+            "class-generator-runtime TypeError type 'generator' is not an acceptable base type (\"type 'generator' is not an acceptable base type\",) True",
+            "module-control ModuleClass True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
 // public aliases backed by existing MiniPython runtime objects.
 #[test]
