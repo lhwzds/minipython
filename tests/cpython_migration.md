@@ -6150,6 +6150,15 @@ Completed in the arrow parameter-name diagnostic pass:
   such as `def f(a -> int)`, `def f(**a -> int)`, `lambda a -> int: None`, and
   `lambda *a -> int: None` use CPython's public `invalid syntax` message.
 
+Completed in the for-clause parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so for-clause parameter name forms
+  such as `def f(a for b in c)`, `def f(**a async for b in c)`,
+  `lambda a for b in c: None`, and `lambda *a async for b in c: None`
+  use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

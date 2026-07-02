@@ -6460,6 +6460,7 @@ impl Parser<'_> {
                     | Token::Minus
                     | Token::Star
                     | Token::DoubleStar
+                    | Token::Async
                     | Token::At
                     | Token::Arrow
                     | Token::Slash
@@ -6471,6 +6472,7 @@ impl Parser<'_> {
                     | Token::LessEqual
                     | Token::Greater
                     | Token::GreaterEqual
+                    | Token::For
                     | Token::If
                     | Token::ColonEqual
                     | Token::Is
