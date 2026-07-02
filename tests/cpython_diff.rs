@@ -301,6 +301,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use f-string expression as pattern target"
         | "cannot use t-string expression as pattern target"
         | "cannot use expression as pattern target"
+        | "cannot use conditional expression as pattern target"
         | "cannot use named expression as pattern target"
         | "patterns may only match literals and attribute lookups"
         | "mapping pattern keys may only match literals and attribute lookups"
@@ -41950,6 +41951,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-named-expression-tuple-target-message",
             source: "match 1:\n    case 1 as (target := other, value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-conditional-expression-target-message",
+            source: "match 1:\n    case 1 as (target if cond else other):\n        pass\n",
+            expected_message: "cannot use conditional expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-conditional-expression-target-message",
+            source: "match 1:\n    case 1 as ((target if cond else other)):\n        pass\n",
+            expected_message: "cannot use conditional expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-conditional-with-comparison-target-message",
+            source: "match 1:\n    case 1 as (target if left < right else other):\n        pass\n",
+            expected_message: "cannot use conditional expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-conditional-with-expression-else-target-message",
+            source: "match 1:\n    case 1 as (target if cond else other + value):\n        pass\n",
+            expected_message: "cannot use conditional expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-conditional-expression-tuple-target-message",
+            source: "match 1:\n    case 1 as (target if cond else other, value):\n        pass\n",
+            expected_message: "cannot use tuple as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-conditional-expression-tuple-target-message",
+            source: "match 1:\n    case 1 as ((target if cond else other), value):\n        pass\n",
             expected_message: "cannot use tuple as pattern target",
         },
         ErrorMessageCase {

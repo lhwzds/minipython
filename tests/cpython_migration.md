@@ -5070,6 +5070,21 @@ SyntaxError message pass:
   this does not add new named-expression pattern execution forms or expand
   sandbox-visible runtime capabilities.
 
+Completed in the invalid parenthesized conditional-expression as-pattern targets
+SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so conditional-expression targets such
+  as `case 1 as (target if cond else other)`,
+  `case 1 as ((target if cond else other))`,
+  `case 1 as (target if left < right else other)`, and
+  `case 1 as (target if cond else other + value)` now use CPython's public
+  `cannot use conditional expression as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as (target if cond else other, value)` still use tuple-target
+  diagnostics, and this does not add new conditional-expression pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid parenthesized-name as-pattern targets SyntaxError
 message pass:
 
