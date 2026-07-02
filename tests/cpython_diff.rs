@@ -41908,6 +41908,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-parenthesized-f-string-target-message",
+            source: "match 1:\n    case 1 as (f\"x\"):\n        pass\n",
+            expected_message: "cannot use f-string expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-parenthesized-f-string-target-message",
+            source: "match 1:\n    case 1 as ((f\"x\")):\n        pass\n",
+            expected_message: "cannot use f-string expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
             name: "syntax-match-as-t-string-target-message",
             source: "match 1:\n    case 1 as t\"x\":\n        pass\n",
             expected_message: "cannot use t-string expression as pattern target",
