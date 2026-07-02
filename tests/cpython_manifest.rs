@@ -48590,6 +48590,48 @@ fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_double_starred_parameter_annotation_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "double-starred parameter annotation SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "double-starred parameter annotation runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(x: **Ts):\\n    pass",
+        "def f(x: **):\\n    pass",
+        "def f(x: **Ts, y):\\n    pass",
+        "def f(x: **Ts = 1):\\n    pass",
+        "def f(*x: **Ts):\\n    pass",
+        "def f(**x: **Ts):\\n    pass",
+        "def f(*, x: **Ts):\\n    pass",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "double-starred parameter annotation CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "double-starred parameter annotation subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("double-starred parameter annotation expressions")
+                && document.contains("invalid syntax"),
+            "double-starred parameter annotation docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_bare_starred_parameter_annotation_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_parameters_subset";

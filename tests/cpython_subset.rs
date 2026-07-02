@@ -35681,6 +35681,17 @@ fn cpython_invalid_parameters_subset() {
     ] {
         assert_error(source, "parse error: invalid syntax");
     }
+    for source in [
+        "def f(x: **Ts):\n    pass",
+        "def f(x: **):\n    pass",
+        "def f(x: **Ts, y):\n    pass",
+        "def f(x: **Ts = 1):\n    pass",
+        "def f(*x: **Ts):\n    pass",
+        "def f(**x: **Ts):\n    pass",
+        "def f(*, x: **Ts):\n    pass",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "def f(*):\n    pass",
         "parse error: named parameters must follow bare *",

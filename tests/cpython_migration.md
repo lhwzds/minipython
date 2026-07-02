@@ -5983,6 +5983,14 @@ Completed in the bare starred parameter annotation diagnostic pass:
   `invalid syntax` message while leaving non-bare starred annotation handling
   unchanged.
 
+Completed in the double-starred parameter annotation diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so double-starred parameter annotation expressions
+  such as `x: **T`, `*args: **T`, and `**kwargs: **T` use CPython's public
+  `invalid syntax` message without changing ordinary expression dict-unpacking
+  diagnostics.
+
 Completed in the invalid expression helper supported-promotion pass:
 
 - Expanded `cpython_invalid_expression_rules_subset` and promoted

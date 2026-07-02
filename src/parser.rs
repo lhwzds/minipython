@@ -4096,9 +4096,7 @@ impl Parser<'_> {
         }
 
         if matches!(self.peek(), Some(Token::DoubleStar)) {
-            self.advance();
-            self.parse_bitwise_or()?;
-            return Err("cannot use dict unpacking here".to_string());
+            return Err("invalid syntax".to_string());
         }
 
         self.parse_expression()

@@ -41367,6 +41367,48 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-positional-parameter-annotation-message",
+            source: "def f(x: **Ts):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "bare-double-starred-positional-parameter-annotation-message",
+            source: "def f(x: **):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-positional-parameter-annotation-comma-message",
+            source: "def f(x: **Ts, y):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-positional-parameter-annotation-default-message",
+            source: "def f(x: **Ts = 1):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-vararg-parameter-annotation-message",
+            source: "def f(*x: **Ts):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-kwarg-parameter-annotation-message",
+            source: "def f(**x: **Ts):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram function parameter double-starred annotation expression",
+            name: "double-starred-keyword-only-parameter-annotation-message",
+            source: "def f(*, x: **Ts):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function return annotation missing expression",
             name: "missing-return-annotation-expression-colon-message",
             source: "def f() ->:\n    pass",
