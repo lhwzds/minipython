@@ -48587,6 +48587,8 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
 
     for required in [
         "alternative patterns bind different names",
+        "name capture 'x' makes remaining patterns unreachable",
+        "wildcard makes remaining patterns unreachable",
         "multiple assignments to name",
         "cannot use '_' as a target",
         "mapping pattern checks duplicate key ('x')",

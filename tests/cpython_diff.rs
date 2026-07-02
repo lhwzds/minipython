@@ -293,6 +293,8 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         "cannot use except statement with attribute"
         | "cannot use attribute as pattern target"
         | "alternative patterns bind different names"
+        | "name capture 'x' makes remaining patterns unreachable"
+        | "wildcard makes remaining patterns unreachable"
         | "cannot use '_' as a target"
         | "expected expression before 'if', but statement is given" => {
             stderr.contains("invalid syntax")
@@ -41779,6 +41781,18 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-or-pattern-different-captures-message",
             source: "match 1:\n    case 0 | value:\n        pass\n",
             expected_message: "alternative patterns bind different names",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-or-pattern-name-capture-unreachable-message",
+            source: "match [1]:\n    case x | [x]:\n        pass\n",
+            expected_message: "name capture 'x' makes remaining patterns unreachable",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",
+            name: "syntax-match-or-pattern-wildcard-unreachable-message",
+            source: "match 1:\n    case _ | 1:\n        pass\n",
+            expected_message: "wildcard makes remaining patterns unreachable",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid match pattern public SyntaxError subset",

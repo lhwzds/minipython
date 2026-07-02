@@ -8274,7 +8274,9 @@ matching scope-backed namespace `__format__` lookup.
 Invalid match-pattern SyntaxError message parity is covered by
 `cpython_invalid_match_pattern_subset` plus
 `cpython_syntax_error_message_parity_diff_subset`, including
-`alternative patterns bind different names`, `multiple assignments to name`,
+`alternative patterns bind different names`,
+`name capture 'x' makes remaining patterns unreachable`,
+`wildcard makes remaining patterns unreachable`, `multiple assignments to name`,
 `cannot use '_' as a target`, `mapping pattern checks duplicate key ('x')`,
 `mapping pattern checks duplicate key (False)`,
 `mapping pattern checks duplicate key (0.0)`, and

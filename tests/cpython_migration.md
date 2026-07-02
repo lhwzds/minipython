@@ -4919,6 +4919,16 @@ Completed in the invalid match-pattern SyntaxError message parity pass:
 - Kept this as parser-message parity only; it does not add new match-pattern
   execution forms or expand sandbox-visible runtime capabilities.
 
+Completed in the invalid OR-pattern unreachable SyntaxError message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_match_pattern_helper_rules_subset` so non-final irrefutable OR
+  alternatives now use CPython's public
+  `name capture 'x' makes remaining patterns unreachable` and
+  `wildcard makes remaining patterns unreachable` messages.
+- Kept this as parser-message parity only; it does not add new match-pattern
+  execution forms or expand sandbox-visible runtime capabilities.
+
 Completed in the invalid control-flow syntax supported-promotion pass:
 
 - Expanded `cpython_invalid_control_flow_syntax_subset` and promoted

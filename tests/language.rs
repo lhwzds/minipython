@@ -3009,6 +3009,14 @@ fn reports_unsupported_match_patterns() {
         Err("parse error: alternative patterns bind different names".to_string())
     );
     assert_eq!(
+        run_source("match [1]:\n    case x | [x]:\n        print(x)"),
+        Err("parse error: name capture 'x' makes remaining patterns unreachable".to_string())
+    );
+    assert_eq!(
+        run_source("match 1:\n    case _ | 1:\n        print(\"bad\")"),
+        Err("parse error: wildcard makes remaining patterns unreachable".to_string())
+    );
+    assert_eq!(
         run_source("match [1, 2]:\n    case [*a, *b]:\n        print(a, b)"),
         Err("parse error: unsupported match pattern".to_string())
     );

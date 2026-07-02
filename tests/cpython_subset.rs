@@ -33003,7 +33003,22 @@ fn cpython_match_pattern_helper_rules_subset() {
         "match [1]:\n    case [x] | [y]:\n        pass",
         "parse error: alternative patterns bind different names",
     );
-    assert_parse_error("match [1]:\n    case x | [x]:\n        pass");
+    assert_error(
+        "match [1]:\n    case x | [x]:\n        pass",
+        "parse error: name capture 'x' makes remaining patterns unreachable",
+    );
+    assert_error(
+        "match 1:\n    case _ | 1:\n        pass",
+        "parse error: wildcard makes remaining patterns unreachable",
+    );
+    assert_error(
+        "match 1:\n    case (x as y) | 1:\n        pass",
+        "parse error: name capture 'x' makes remaining patterns unreachable",
+    );
+    assert_error(
+        "match 1:\n    case (_ as y) | 1:\n        pass",
+        "parse error: wildcard makes remaining patterns unreachable",
+    );
     assert_error(
         "match [1, 2]:\n    case [x] | [x, y]:\n        pass",
         "parse error: alternative patterns bind different names",

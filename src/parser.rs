@@ -856,12 +856,12 @@ impl Parser<'_> {
             alternatives.push(self.parse_closed_match_pattern()?);
         }
 
-        if alternatives
+        if let Some(message) = alternatives
             .iter()
             .take(alternatives.len().saturating_sub(1))
-            .any(pattern_is_irrefutable)
+            .find_map(irrefutable_or_pattern_unreachable_message)
         {
-            return Err("unsupported match pattern".to_string());
+            return Err(message);
         }
         ensure_or_pattern_capture_compatibility(&alternatives)?;
 
@@ -4831,6 +4831,20 @@ fn pattern_is_irrefutable(pattern: &Pattern) -> bool {
         | Pattern::Class { .. }
         | Pattern::Mapping { .. }
         | Pattern::Star(_) => false,
+    }
+}
+
+fn irrefutable_or_pattern_unreachable_message(pattern: &Pattern) -> Option<String> {
+    match pattern {
+        Pattern::Capture(name) => Some(format!(
+            "name capture '{name}' makes remaining patterns unreachable"
+        )),
+        Pattern::Wildcard => Some("wildcard makes remaining patterns unreachable".to_string()),
+        Pattern::As { pattern, .. } => irrefutable_or_pattern_unreachable_message(pattern),
+        Pattern::Or(alternatives) => alternatives
+            .iter()
+            .find_map(irrefutable_or_pattern_unreachable_message),
+        _ => None,
     }
 }
 
