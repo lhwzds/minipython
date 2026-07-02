@@ -9762,6 +9762,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.__getstate__" => {
                 self.call_io_bytesio_getstate(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.__setstate__" => {
+                self.call_io_bytesio_setstate(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readinto" => {
                 self.call_io_bytesio_readinto(args, keywords)
             }
@@ -21243,6 +21246,93 @@ impl Vm {
             Value::Number(position),
             attrs_value,
         ]))
+    }
+
+    fn call_io_bytesio_setstate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_bytesio_method_keywords("__setstate__", &keywords)?;
+        let [Value::BytesIO(bytes_io), state] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.__setstate__() takes exactly one argument ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io_ensure_open(bytes_io)?;
+        bytes_io_ensure_resizable(bytes_io)?;
+        let Value::Tuple(items) = state else {
+            return Err(format!(
+                "TypeError: _io.BytesIO.__setstate__ argument should be 3-tuple, got {}",
+                type_name(state)
+            ));
+        };
+        if items.len() < 3 {
+            return Err(
+                "TypeError: _io.BytesIO.__setstate__ argument should be 3-tuple, got tuple"
+                    .to_string(),
+            );
+        }
+
+        let buffer = bytesio_initial_bytes(items[0].clone())?;
+        let position = match &items[1] {
+            Value::Bool(value) => usize::from(*value),
+            Value::Number(value) => {
+                if *value < 0 {
+                    return Err("ValueError: position value cannot be negative".to_string());
+                }
+                usize::try_from(*value).map_err(|_| {
+                    "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
+                })?
+            }
+            Value::BigInt(value) => {
+                if value.is_negative() {
+                    return Err("ValueError: position value cannot be negative".to_string());
+                }
+                value.to_usize().ok_or_else(|| {
+                    "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
+                })?
+            }
+            value => {
+                return Err(format!(
+                    "TypeError: second item of state must be an integer, not {}",
+                    type_name(value)
+                ));
+            }
+        };
+
+        let attrs = match &items[2] {
+            Value::None => None,
+            Value::Dict(entries) => Some(entries.borrow().entries.clone()),
+            value => {
+                return Err(format!(
+                    "TypeError: third item of state should be a dict, got a {}",
+                    type_name(value)
+                ));
+            }
+        };
+
+        {
+            let mut io_state = bytes_io.borrow_mut();
+            {
+                let mut stream_buffer = io_state.buffer.borrow_mut();
+                stream_buffer.clear();
+                stream_buffer.extend_from_slice(&buffer);
+            }
+            io_state.position = position;
+            if let Some(attrs) = attrs {
+                io_state.attrs_materialized = true;
+                let mut io_attrs = io_state.attrs.borrow_mut();
+                for (key, value) in attrs {
+                    if let Value::String(name) = key {
+                        io_attrs.insert(name, value);
+                    }
+                }
+            }
+        }
+
+        Ok(Value::None)
     }
 
     fn call_io_bytesio_tell(
@@ -51700,6 +51790,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__enter__",
             "__exit__",
             "__getstate__",
+            "__setstate__",
             "__iter__",
             "__next__",
             "close",
@@ -59575,11 +59666,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Ok(Value::ScopeDict(state.attrs.clone()))
                 }
                 "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-                "__enter__" | "__exit__" | "__getstate__" | "__iter__" | "__next__"
-                | "close" | "detach" | "fileno" | "flush" | "getbuffer" | "getvalue"
-                | "isatty" | "read" | "read1" | "readable" | "readinto" | "readinto1"
-                | "readline" | "readlines" | "seek" | "seekable" | "tell" | "truncate"
-                | "write" | "writable" | "writelines" => {
+                "__enter__" | "__exit__" | "__getstate__" | "__setstate__" | "__iter__"
+                | "__next__" | "close" | "detach" | "fileno" | "flush" | "getbuffer"
+                | "getvalue" | "isatty" | "read" | "read1" | "readable" | "readinto"
+                | "readinto1" | "readline" | "readlines" | "seek" | "seekable" | "tell"
+                | "truncate" | "write" | "writable" | "writelines" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                         receiver: Box::new(Value::BytesIO(bytes_io)),

@@ -1069,6 +1069,7 @@ Recent runtime migration notes:
   `cpython_io_module_package_metadata_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_io_bytesio_getstate_diff_subset`,
+  `cpython_io_bytesio_setstate_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_operator_index_normalization_diff_subset`,
@@ -4338,7 +4339,12 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_getstate_subset` covers `BytesIO.__getstate__()` state
   tuples for untouched empty, materialized-empty, seeked, and custom-attribute
   streams, object-level `__getattribute__` access, closed-stream `ValueError`,
-  and exact no-argument / no-keyword diagnostics. Real files,
+  and exact no-argument / no-keyword diagnostics. `cpython_io_bytesio_setstate_diff_subset` /
+  `cpython_io_bytesio_setstate_subset` covers `BytesIO.__setstate__()` buffer,
+  position, and attribute merge behavior for open streams, bytes-like state
+  inputs, materialized empty attrs, active-export `BufferError`, closed-stream
+  `ValueError`, and exact state-shape, item-type, arity, and keyword
+  diagnostics. Real files,
   buffering layers, text I/O, file descriptors, and OS-backed stream semantics
   remain outside the sandbox `io.BytesIO` subset.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,

@@ -23329,6 +23329,106 @@ show('keyword', lambda: io.BytesIO(b'abc').__getstate__(x=1))"#,
     );
 }
 
+#[test]
+fn cpython_io_bytesio_setstate_subset() {
+    assert_output(
+        r#"import io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, 'ok', repr(value), type(value).__name__)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+def fresh_state_after(payload):
+    bio = io.BytesIO()
+    bio.__setstate__(payload)
+    return bio.__getstate__()
+
+bio = io.BytesIO(b'abc')
+print(hasattr(bio, '__setstate__'), '__setstate__' in dir(bio), '__setstate__' in dir(io.BytesIO))
+show('set-basic', lambda: bio.__setstate__((b'xyz', 1, None)))
+print('after-basic', bio.getvalue(), bio.tell(), bio.__getstate__())
+show('set-attrs', lambda: bio.__setstate__((b'pq', 2, {'tag': 7})))
+print('after-attrs', bio.getvalue(), bio.tell(), bio.__dict__, bio.__getstate__())
+show('getattribute', lambda: object.__getattribute__(bio, '__setstate__')((b'a', 0, {})))
+print('after-getattribute', bio.getvalue(), bio.tell(), bio.__dict__, bio.__getstate__())
+for label, payload in [
+    ('none-fresh', (b'a', 0, None)),
+    ('emptydict-fresh', (b'a', 0, {})),
+    ('attrs-fresh', (b'a', 0, {'x': 1})),
+    ('long-five', (b'a', 0, {'x': 1}, 'ignored', 'ignored2')),
+    ('bytearray', (bytearray(b'ab'), 1, None)),
+    ('memoryview', (memoryview(b'ab'), 1, None)),
+    ('bool-pos', (b'ab', True, None)),
+    ('big-pos', (b'ab', 10, None)),
+]:
+    show(label, lambda payload=payload: fresh_state_after(payload))
+merge = io.BytesIO()
+merge.x = 1
+for label, payload in [('merge-none', (b'a', 0, None)), ('merge-emptydict', (b'b', 0, {})), ('merge-dict', (b'c', 0, {'y': 2}))]:
+    merge.__setstate__(payload)
+    state = merge.__getstate__()[2]
+    print(label, merge.__dict__.get('x'), merge.__dict__.get('y'), state.get('x'), state.get('y'), len(state))
+exported = io.BytesIO(b'ab')
+view = exported.getbuffer()
+show('exported', lambda: exported.__setstate__((b'abc', 0, None)))
+view.release()
+closed = io.BytesIO(b'a')
+closed.close()
+show('closed', lambda: closed.__setstate__((b'b', 0, None)))
+for label, payload in [
+    ('list3', [b'a', 0, None]),
+    ('tuple0', ()),
+    ('short', (b'a', 0)),
+    ('none-state', None),
+    ('dict-state', {}),
+    ('bad-bytes', ('a', 0, None)),
+    ('bad-pos-float', (b'a', 1.2, None)),
+    ('bad-pos-neg', (b'a', -1, None)),
+    ('bad-dict-list', (b'a', 0, [])),
+    ('bad-dict-int', (b'a', 0, 1)),
+]:
+    show(label, lambda payload=payload: io.BytesIO().__setstate__(payload))
+show('extra', lambda: io.BytesIO().__setstate__((b'a', 0, None), 1))
+show('keyword', lambda: io.BytesIO().__setstate__(state=(b'a', 0, None)))"#,
+        &[
+            "True True True",
+            "set-basic ok None NoneType",
+            "after-basic b'xyz' 1 (b'xyz', 1, {})",
+            "set-attrs ok None NoneType",
+            "after-attrs b'pq' 2 {'tag': 7} (b'pq', 2, {'tag': 7})",
+            "getattribute ok None NoneType",
+            "after-getattribute b'a' 0 {'tag': 7} (b'a', 0, {'tag': 7})",
+            "none-fresh ok (b'a', 0, None) tuple",
+            "emptydict-fresh ok (b'a', 0, {}) tuple",
+            "attrs-fresh ok (b'a', 0, {'x': 1}) tuple",
+            "long-five ok (b'a', 0, {'x': 1}) tuple",
+            "bytearray ok (b'ab', 1, None) tuple",
+            "memoryview ok (b'ab', 1, None) tuple",
+            "bool-pos ok (b'ab', 1, None) tuple",
+            "big-pos ok (b'ab', 10, None) tuple",
+            "merge-none 1 None 1 None 1",
+            "merge-emptydict 1 None 1 None 1",
+            "merge-dict 1 2 1 2 2",
+            "exported BufferError Existing exports of data: object cannot be re-sized",
+            "closed ValueError I/O operation on closed file.",
+            "list3 TypeError _io.BytesIO.__setstate__ argument should be 3-tuple, got list",
+            "tuple0 TypeError _io.BytesIO.__setstate__ argument should be 3-tuple, got tuple",
+            "short TypeError _io.BytesIO.__setstate__ argument should be 3-tuple, got tuple",
+            "none-state TypeError _io.BytesIO.__setstate__ argument should be 3-tuple, got NoneType",
+            "dict-state TypeError _io.BytesIO.__setstate__ argument should be 3-tuple, got dict",
+            "bad-bytes TypeError a bytes-like object is required, not 'str'",
+            "bad-pos-float TypeError second item of state must be an integer, not float",
+            "bad-pos-neg ValueError position value cannot be negative",
+            "bad-dict-list TypeError third item of state should be a dict, got a list",
+            "bad-dict-int TypeError third item of state should be a dict, got a int",
+            "extra TypeError BytesIO.__setstate__() takes exactly one argument (2 given)",
+            "keyword TypeError BytesIO.__setstate__() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.

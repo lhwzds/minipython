@@ -28568,6 +28568,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_module_package_metadata_subset",
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_getstate_subset",
+            "cpython_io_bytesio_setstate_subset",
             "cpython_memoryview_bytesio_readinto_subset",
         ],
         &[
@@ -28597,6 +28598,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_bytesio_getstate_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __getstate__ behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_setstate_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for BytesIO __setstate__ behavior"
     );
     assert!(
         row.diff_evidence
@@ -28827,6 +28833,84 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let setstate_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_setstate_diff_subset");
+    let setstate_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_bytesio_setstate_subset");
+    for required in [
+        "bio.__setstate__((b'xyz', 1, None))",
+        "object.__getattribute__(bio, '__setstate__')",
+        "fresh_state_after(payload)",
+        "(bytearray(b'ab'), 1, None)",
+        "(memoryview(b'ab'), 1, None)",
+        "(b'ab', True, None)",
+        "(b'ab', 10, None)",
+        "merge.__setstate__(payload)",
+        "exported.getbuffer()",
+        "closed.__setstate__((b'b', 0, None))",
+        "io.BytesIO().__setstate__(payload)",
+        "io.BytesIO().__setstate__((b'a', 0, None), 1)",
+        "io.BytesIO().__setstate__(state=(b'a', 0, None))",
+    ] {
+        assert!(
+            setstate_diff.contains(required),
+            "io.BytesIO __setstate__ CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            setstate_subset.contains(required),
+            "io.BytesIO __setstate__ runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "after-attrs b'pq' 2 {'tag': 7} (b'pq', 2, {'tag': 7})",
+        "after-getattribute b'a' 0 {'tag': 7} (b'a', 0, {'tag': 7})",
+        "emptydict-fresh ok (b'a', 0, {}) tuple",
+        "long-five ok (b'a', 0, {'x': 1}) tuple",
+        "after-basic b'xyz' 1 (b'xyz', 1, {})",
+        "merge-none 1 None 1 None 1",
+        "merge-emptydict 1 None 1 None 1",
+        "merge-dict 1 2 1 2 2",
+        "exported BufferError Existing exports of data: object cannot be re-sized",
+        "closed ValueError I/O operation on closed file.",
+        "_io.BytesIO.__setstate__ argument should be 3-tuple, got list",
+        "second item of state must be an integer, not float",
+        "position value cannot be negative",
+        "third item of state should be a dict, got a list",
+        "BytesIO.__setstate__() takes exactly one argument (2 given)",
+        "BytesIO.__setstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            setstate_subset.contains(required),
+            "io.BytesIO __setstate__ subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn call_io_bytesio_setstate(",
+        "Value::Builtin(name) if name == \"io.BytesIO.__setstate__\"",
+        "bytes_io_ensure_resizable(bytes_io)?",
+        "bytesio_initial_bytes(items[0].clone())?",
+        "io_state.position = position",
+        "io_attrs.insert(name, value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "io.BytesIO __setstate__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_bytesio_setstate_subset",
+            "cpython_io_bytesio_setstate_diff_subset",
+            "`BytesIO.__setstate__()`",
+            "active-export `BufferError`",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO __setstate__ docs must contain `{required}`"
+            );
+        }
+    }
+
     let readinto_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_memoryview_bytesio_readinto_diff_subset",
@@ -28974,6 +29058,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_bytesio_getstate_subset",
             "cpython_io_bytesio_getstate_diff_subset",
+        ),
+        (
+            "cpython_io_bytesio_setstate_subset",
+            "cpython_io_bytesio_setstate_diff_subset",
         ),
         (
             "cpython_memoryview_bytesio_readinto_subset",
