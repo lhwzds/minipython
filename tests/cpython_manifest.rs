@@ -48615,6 +48615,7 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         "cannot use dict comprehension as pattern target",
         "cannot use set comprehension as pattern target",
         "cannot use set display as pattern target",
+        "cannot use generator expression as pattern target",
         "cannot use expression as pattern target",
         "cannot use conditional expression as pattern target",
         "cannot use yield expression as pattern target",
@@ -48828,6 +48829,23 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
         assert!(
             CPYTHON_SUBSET.contains(required_source),
             "invalid lambda as-pattern target subset must cover `{required_source}`"
+        );
+    }
+
+    for required_source in [
+        "case 1 as (x for x in xs)",
+        "case 1 as ((x for x in xs))",
+        "case 1 as (x + 1 for x in xs)",
+        "case 1 as (x for x in xs if x)",
+        "case 1 as (x for x in xs), value",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "invalid generator-expression as-pattern target CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "invalid generator-expression as-pattern target subset must cover `{required_source}`"
         );
     }
 
@@ -49086,6 +49104,14 @@ fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
             document.contains("invalid lambda as-pattern targets")
                 && document.contains("cannot use lambda as pattern target"),
             "invalid lambda as-pattern target SyntaxError docs must describe the CPython message"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("invalid generator-expression as-pattern targets")
+                && document.contains("cannot use generator expression as pattern target"),
+            "invalid generator-expression as-pattern target SyntaxError docs must describe the CPython message"
         );
     }
 

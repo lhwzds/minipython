@@ -5088,6 +5088,20 @@ Completed in the invalid lambda as-pattern targets SyntaxError message pass:
   `case 1 as (lambda: 1, value)` still use tuple-target diagnostics, and this
   does not expand sandbox-visible runtime capabilities.
 
+Completed in the invalid generator-expression as-pattern targets SyntaxError
+message pass:
+
+- Extended `cpython_syntax_error_message_parity_diff_subset` and
+  `cpython_invalid_match_pattern_subset` so generator-expression targets such
+  as `case 1 as (x for x in xs)`, `case 1 as ((x for x in xs))`,
+  `case 1 as (x + 1 for x in xs)`, `case 1 as (x for x in xs if x)`, and
+  `case 1 as (x for x in xs), value` now use CPython's public
+  `cannot use generator expression as pattern target` message.
+- Kept this as parser-message parity only; tuple-shaped forms such as
+  `case 1 as ((x for x in xs), value)` still use tuple-target diagnostics, and
+  this does not add new generator execution forms or expand sandbox-visible
+  runtime capabilities.
+
 Completed in the invalid parenthesized expression as-pattern targets
 SyntaxError message pass:
 

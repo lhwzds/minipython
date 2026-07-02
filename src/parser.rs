@@ -1208,6 +1208,10 @@ impl Parser<'_> {
             return Err("cannot use lambda as pattern target".to_string());
         }
 
+        if self.is_parenthesized_generator_expression_as_pattern_target() {
+            return Err("cannot use generator expression as pattern target".to_string());
+        }
+
         if self.is_parenthesized_yield_expression_as_pattern_target() {
             return Err("cannot use yield expression as pattern target".to_string());
         }
@@ -1811,6 +1815,64 @@ impl Parser<'_> {
         }
 
         body_started && has_body_token
+    }
+
+    fn is_parenthesized_generator_expression_as_pattern_target(&self) -> bool {
+        let Some(outer_end) = self.find_matching_paren(self.current) else {
+            return false;
+        };
+        if !matches!(
+            self.tokens.get(outer_end + 1),
+            Some(Token::Colon | Token::If | Token::Comma)
+        ) {
+            return false;
+        }
+
+        let mut start = self.current + 1;
+        let mut end = outer_end;
+        while matches!(self.tokens.get(start), Some(Token::LeftParen))
+            && self.find_matching_paren(start) == Some(end.saturating_sub(1))
+        {
+            start += 1;
+            end = end.saturating_sub(1);
+        }
+
+        let mut paren_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut brace_depth = 0usize;
+
+        for index in start..end {
+            match self.tokens.get(index) {
+                Some(Token::LeftParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth += 1
+                }
+                Some(Token::RightParen) if bracket_depth == 0 && brace_depth == 0 => {
+                    paren_depth = paren_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBracket) if brace_depth == 0 => bracket_depth += 1,
+                Some(Token::RightBracket) if brace_depth == 0 => {
+                    bracket_depth = bracket_depth.saturating_sub(1)
+                }
+                Some(Token::LeftBrace) => brace_depth += 1,
+                Some(Token::RightBrace) => brace_depth = brace_depth.saturating_sub(1),
+                Some(Token::Comma)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+                {
+                    return false;
+                }
+                Some(Token::Colon)
+                    if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+                {
+                    return false;
+                }
+                Some(Token::For) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        false
     }
 
     fn is_parenthesized_yield_expression_as_pattern_target(&self) -> bool {

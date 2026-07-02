@@ -304,6 +304,7 @@ fn cpython_legacy_error_message_matches(stderr: &str, expected: &str) -> bool {
         | "cannot use dict comprehension as pattern target"
         | "cannot use set comprehension as pattern target"
         | "cannot use set display as pattern target"
+        | "cannot use generator expression as pattern target"
         | "cannot use expression as pattern target"
         | "cannot use conditional expression as pattern target"
         | "cannot use yield expression as pattern target"
@@ -42024,6 +42025,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             name: "syntax-match-as-parenthesized-lambda-target-message",
             source: "match 1:\n    case 1 as (lambda: 1):\n        pass\n",
             expected_message: "cannot use lambda as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-generator-expression-target-message",
+            source: "match 1:\n    case 1 as (x for x in xs):\n        pass\n",
+            expected_message: "cannot use generator expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-nested-generator-expression-target-message",
+            source: "match 1:\n    case 1 as ((x for x in xs)):\n        pass\n",
+            expected_message: "cannot use generator expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-generator-expression-expression-target-message",
+            source: "match 1:\n    case 1 as (x + 1 for x in xs):\n        pass\n",
+            expected_message: "cannot use generator expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-generator-expression-filter-target-message",
+            source: "match 1:\n    case 1 as (x for x in xs if x):\n        pass\n",
+            expected_message: "cannot use generator expression as pattern target",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
+            name: "syntax-match-as-generator-expression-comma-target-message",
+            source: "match 1:\n    case 1 as (x for x in xs), value:\n        pass\n",
+            expected_message: "cannot use generator expression as pattern target",
         },
         ErrorMessageCase {
             origin: "Grammar/python.gram invalid as-pattern public SyntaxError subset",
