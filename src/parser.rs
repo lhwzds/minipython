@@ -6471,6 +6471,7 @@ impl Parser<'_> {
                     | Token::Greater
                     | Token::GreaterEqual
                     | Token::If
+                    | Token::ColonEqual
                     | Token::Is
                     | Token::In
                     | Token::Not
