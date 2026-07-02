@@ -209,6 +209,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_memoryview_instance_doc_attribute_diff_subset` for memoryview instance `__doc__`
   lookup on bytes, bytearray, and empty views, matching `memoryview.__doc__`
   and `dir(value)` without adding writable instance dictionaries.
+- Added `cpython_memoryview_unacceptable_base_type_subset` and
+  `cpython_memoryview_unacceptable_base_type_diff_subset` for CPython's
+  `type 'memoryview' is not an acceptable base type` rejection through class
+  statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
+  while keeping supported `list` subclass creation working and without adding a
+  broader non-subclassable builtin matrix.
 - Added `cpython_memoryview_attribute_assignment_errors_subset` and
   `cpython_memoryview_attribute_assignment_errors_diff_subset` for memoryview attribute assignment errors
   on missing attributes, read-only memoryview data attributes (`format` /

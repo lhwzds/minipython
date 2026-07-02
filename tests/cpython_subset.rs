@@ -27156,6 +27156,69 @@ fn cpython_memoryview_instance_doc_attribute_subset() {
     );
 }
 
+// Adapted from CPython's public class-construction behavior. MiniPython rejects
+// `memoryview` as a base type across direct class statements and public class
+// construction helpers while keeping ordinary supported builtin bases intact.
+#[test]
+fn cpython_memoryview_unacceptable_base_type_subset() {
+    assert_output_with_stack(
+        r#"import types
+
+EXPECTED_MESSAGE = "type 'memoryview' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+try:
+    class MemoryViewClass(memoryview):
+        pass
+except Exception as error:
+    print_error('class-memoryview', error)
+else:
+    print('class-memoryview ok')
+
+base = memoryview
+try:
+    class VariableMemoryView(base):
+        pass
+except Exception as error:
+    print_error('variable-memoryview', error)
+else:
+    print('variable-memoryview ok')
+
+for label, call in [
+    ('type-memoryview', lambda: type('MemoryViewType', (memoryview,), {})),
+    ('type-new-memoryview', lambda: type.__new__(type, 'MemoryViewNew', (memoryview,), {})),
+    ('new-class-memoryview', lambda: types.new_class('MemoryViewNewClass', (memoryview,), {})),
+]:
+    show(label, call)
+
+class ListClass(list):
+    pass
+print('class-list', ListClass.__name__, ListClass.__bases__[0] is list, isinstance(ListClass(), list))
+TypeList = type('TypeList', (list,), {})
+print('type-list', TypeList.__name__, TypeList.__bases__[0] is list, isinstance(TypeList(), list))"#,
+        &[
+            "class-memoryview TypeError type 'memoryview' is not an acceptable base type (\"type 'memoryview' is not an acceptable base type\",) True",
+            "variable-memoryview TypeError type 'memoryview' is not an acceptable base type (\"type 'memoryview' is not an acceptable base type\",) True",
+            "type-memoryview TypeError type 'memoryview' is not an acceptable base type (\"type 'memoryview' is not an acceptable base type\",) True",
+            "type-new-memoryview TypeError type 'memoryview' is not an acceptable base type (\"type 'memoryview' is not an acceptable base type\",) True",
+            "new-class-memoryview TypeError type 'memoryview' is not an acceptable base type (\"type 'memoryview' is not an acceptable base type\",) True",
+            "class-list ListClass True True",
+            "type-list TypeList True True",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython's public `memoryview` instance attribute assignment
 // errors. MiniPython keeps memoryview views pure-memory and does not add a
 // writable instance `__dict__`.

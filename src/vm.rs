@@ -39122,7 +39122,14 @@ fn contains_unlisted_type_param(value: &Value, type_params: &[Value]) -> bool {
 fn is_final_builtin_type(name: &str) -> bool {
     matches!(
         name,
-        "bool" | "mappingproxy" | "range" | "slice" | "Template" | "Interpolation" | "TemplateIter"
+        "bool"
+            | "mappingproxy"
+            | "memoryview"
+            | "range"
+            | "slice"
+            | "Template"
+            | "Interpolation"
+            | "TemplateIter"
     )
 }
 

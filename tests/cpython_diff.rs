@@ -13471,6 +13471,58 @@ fn cpython_memoryview_instance_doc_attribute_diff_subset() {
 }
 
 #[test]
+fn cpython_memoryview_unacceptable_base_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public class-construction non-subclassable memoryview base subset",
+        name: "memoryview-unacceptable-base-type",
+        source: r#"import types
+
+EXPECTED_MESSAGE = "type 'memoryview' is not an acceptable base type"
+
+def print_error(label, error):
+    print(label, error.__class__.__name__, str(error), error.args, str(error) == EXPECTED_MESSAGE)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print_error(label, error)
+    else:
+        print(label, 'ok')
+
+try:
+    class MemoryViewClass(memoryview):
+        pass
+except Exception as error:
+    print_error('class-memoryview', error)
+else:
+    print('class-memoryview ok')
+
+base = memoryview
+try:
+    class VariableMemoryView(base):
+        pass
+except Exception as error:
+    print_error('variable-memoryview', error)
+else:
+    print('variable-memoryview ok')
+
+for label, call in [
+    ('type-memoryview', lambda: type('MemoryViewType', (memoryview,), {})),
+    ('type-new-memoryview', lambda: type.__new__(type, 'MemoryViewNew', (memoryview,), {})),
+    ('new-class-memoryview', lambda: types.new_class('MemoryViewNewClass', (memoryview,), {})),
+]:
+    show(label, call)
+
+class ListClass(list):
+    pass
+print('class-list', ListClass.__name__, ListClass.__bases__[0] is list, isinstance(ListClass(), list))
+TypeList = type('TypeList', (list,), {})
+print('type-list', TypeList.__name__, TypeList.__bases__[0] is list, isinstance(TypeList(), list))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py public memoryview instance attribute assignment errors subset",

@@ -38183,6 +38183,93 @@ fn memoryview_instance_doc_attribute_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn memoryview_unacceptable_base_type_docs_cover_core_runtime() {
+    let diff_name = "cpython_memoryview_unacceptable_base_type_diff_subset";
+    let subset_name = "cpython_memoryview_unacceptable_base_type_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview unacceptable base CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview unacceptable base runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class MemoryViewClass(memoryview):",
+        "base = memoryview",
+        "class VariableMemoryView(base):",
+        "type('MemoryViewType', (memoryview,), {})",
+        "type.__new__(type, 'MemoryViewNew', (memoryview,), {})",
+        "types.new_class('MemoryViewNewClass', (memoryview,), {})",
+        "class ListClass(list):",
+        "type 'memoryview' is not an acceptable base type",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "memoryview unacceptable base diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"class-memoryview TypeError type 'memoryview' is not an acceptable base type",
+        "\"variable-memoryview TypeError type 'memoryview' is not an acceptable base type",
+        "\"type-memoryview TypeError type 'memoryview' is not an acceptable base type",
+        "\"type-new-memoryview TypeError type 'memoryview' is not an acceptable base type",
+        "\"new-class-memoryview TypeError type 'memoryview' is not an acceptable base type",
+        "\"class-list ListClass True True\"",
+        "\"type-list TypeList True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "memoryview unacceptable base subset output must pin `{required}`"
+        );
+    }
+
+    let final_type_body = VM_SOURCE
+        .split("fn is_final_builtin_type(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn builtin_has_instance_layout").next())
+        .expect("is_final_builtin_type implementation must be extractable");
+    assert!(
+        final_type_body.contains("\"memoryview\""),
+        "memoryview must be classified as a non-subclassable builtin type"
+    );
+
+    for required in [
+        "fn validate_type_constructor_bases(",
+        "type '{name}' is not an acceptable base type",
+        "validate_type_constructor_bases(&normalized_bases)?",
+        "validate_type_constructor_bases(&bases)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "memoryview unacceptable base implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "type 'memoryview' is not an acceptable base type",
+            "class statements",
+            "`type(...)`",
+            "`type.__new__(...)`",
+            "`types.new_class(...)`",
+            "broader non-subclassable builtin matrix",
+        ] {
+            assert!(
+                document.contains(required),
+                "memoryview unacceptable base docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn memoryview_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_memoryview_attribute_assignment_errors_subset(",

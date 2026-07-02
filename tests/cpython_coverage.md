@@ -199,6 +199,12 @@ Recent runtime migration notes:
   `cpython_memoryview_instance_doc_attribute_diff_subset`, now pins memoryview instance `__doc__`
   lookup for bytes, bytearray, and empty views, matching `memoryview.__doc__`
   and `dir(value)` without adding writable instance dictionaries.
+- `cpython_memoryview_unacceptable_base_type_subset`, backed by
+  `cpython_memoryview_unacceptable_base_type_diff_subset`, now pins CPython's
+  `type 'memoryview' is not an acceptable base type` rejection for class
+  statements, `type(...)`, `type.__new__(...)`, and `types.new_class(...)`,
+  while preserving supported `list` subclass creation and without adding a
+  broader non-subclassable builtin matrix.
 - `cpython_memoryview_attribute_assignment_errors_subset`, backed by
   `cpython_memoryview_attribute_assignment_errors_diff_subset`, now pins memoryview attribute assignment errors
   for missing attributes, read-only memoryview data attributes (`format` /
