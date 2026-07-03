@@ -49924,6 +49924,56 @@ fn cpython_identifier_follower_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_statement_keyword_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "statement keyword parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function statement keyword parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda statement keyword parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a return b):\\n    pass",
+        "def f(*a raise b):\\n    pass",
+        "def f(**a pass):\\n    pass",
+        "def f(a break):\\n    pass",
+        "def f(a continue):\\n    pass",
+        "lambda a return b: None",
+        "lambda *a raise b: None",
+        "lambda **a pass: None",
+        "lambda a break: None",
+        "lambda a continue: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "statement keyword parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "statement keyword parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("statement keyword parameter name forms")
+                && document.contains("invalid syntax"),
+            "statement keyword parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
