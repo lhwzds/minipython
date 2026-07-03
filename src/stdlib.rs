@@ -24,6 +24,8 @@ pub(crate) const FUNCTOOLS_WRAPPER_ASSIGNMENTS: &[&str] = &[
     "__type_params__",
 ];
 pub(crate) const FUNCTOOLS_WRAPPER_UPDATES: &[&str] = &["__dict__"];
+const FUNCTOOLS_DOC: &str =
+    "functools.py - Tools for working with functions and callable objects\n";
 const FUNCTOOLS_ALL: &[&str] = &[
     "update_wrapper",
     "wraps",
@@ -786,6 +788,7 @@ pub(crate) fn create_module(
             "functools",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__doc__", Value::String(FUNCTOOLS_DOC.to_string())),
                 ("__all__", string_list_value(FUNCTOOLS_ALL)),
                 (
                     "WRAPPER_ASSIGNMENTS",

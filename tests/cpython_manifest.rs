@@ -8245,6 +8245,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "functools",
         &[
             "cpython_functools_public_helpers_subset",
+            "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
             "cpython_functools_placeholder_partial_subset",
@@ -8278,6 +8279,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include functools");
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
+        "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
         "cpython_functools_placeholder_partial_diff_subset",
@@ -8355,12 +8357,57 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             );
         }
     }
+    let doc_metadata_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_module_doc_metadata_diff_subset",
+    );
+    let doc_metadata_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_module_doc_metadata_subset",
+    );
+    for required in [
+        "doc = functools.__doc__",
+        "doc.splitlines()[0]",
+        "'__doc__' in dir(functools)",
+        "functools.__dict__['__doc__'] == doc",
+        "object.__getattribute__(functools, '__doc__')",
+    ] {
+        assert!(
+            doc_metadata_diff.contains(required) && doc_metadata_subset.contains(required),
+            "functools module __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "const FUNCTOOLS_DOC",
+        "functools.py - Tools for working with functions and callable objects",
+        "\"__doc__\"",
+        "FUNCTOOLS_DOC.to_string()",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required),
+            "functools module __doc__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_functools_module_doc_metadata_subset",
+            "cpython_functools_module_doc_metadata_diff_subset",
+            "functools module `__doc__` metadata",
+            "`functools.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "functools module __doc__ docs must contain `{required}`"
+            );
+        }
+    }
 
     assert!(
         LANGUAGE_TESTS.contains("functools_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains(
-                "'__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial'"
+                "'__doc__', '__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial'"
             )
+            && LANGUAGE_TESTS.contains("functools.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'Placeholder'")
             && LANGUAGE_TESTS.contains("dir(functools)"),
         "functools sandbox export test must guard module __all__ and CPython cache internals"

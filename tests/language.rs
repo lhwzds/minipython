@@ -1260,7 +1260,7 @@ fn itertools_sandbox_subset_keeps_export_surface_explicit() {
 fn functools_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import functools\nfor name in ['WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'Placeholder', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']:\n    print(name, hasattr(functools, name))\nfor name in ['__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial']:\n    print(name, hasattr(functools, name))\nprint(dir(functools))"
+            "import functools\nfor name in ['WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'Placeholder', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']:\n    print(name, hasattr(functools, name))\nfor name in ['__doc__', '__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial']:\n    print(name, hasattr(functools, name))\nprint(type(functools.__doc__).__name__, bool(functools.__doc__), functools.__doc__.splitlines()[0])\nprint(dir(functools))"
         ),
         Ok(output_lines(&[
             "WRAPPER_ASSIGNMENTS True",
@@ -1278,12 +1278,14 @@ fn functools_sandbox_subset_keeps_export_surface_explicit() {
             "total_ordering True",
             "update_wrapper True",
             "wraps True",
+            "__doc__ True",
             "__all__ True",
             "_CacheInfo False",
             "_lru_cache_wrapper False",
             "_make_key False",
             "_unwrap_partial False",
-            "['Placeholder', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', '__all__', '__name__', '__package__', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']",
+            "str True functools.py - Tools for working with functions and callable objects",
+            "['Placeholder', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', '__all__', '__doc__', '__name__', '__package__', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']",
         ]))
     );
 }

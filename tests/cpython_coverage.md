@@ -1122,6 +1122,7 @@ Recent runtime migration notes:
   `cpython_operator_signature_helper_diff_subset`,
   `cpython_operator_helper_repr_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
+  `cpython_functools_module_doc_metadata_diff_subset`,
   `cpython_functools_all_exports_diff_subset`,
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_placeholder_partial_diff_subset`,
@@ -3505,6 +3506,10 @@ without adding general custom encoder/decoder class support.
   (`functools.__package__` is `''`), representative public `reduce`,
   `partial`, `wraps`, and `cmp_to_key` helper behavior plus basic TypeError
   classification.
+- `cpython_functools_module_doc_metadata_subset`, backed by
+  `cpython_functools_module_doc_metadata_diff_subset`, covers
+  functools module `__doc__` metadata through `functools.__doc__`, `dir()`,
+  `__dict__`, and `object.__getattribute__`.
 - `cpython_functools_all_exports_subset`, backed by
   `cpython_functools_all_exports_diff_subset`, covers the supported
   `functools.__all__` public export list, including `Placeholder`, while

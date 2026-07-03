@@ -56320,6 +56320,23 @@ fn cpython_functools_public_helpers_subset() {
     );
 }
 
+// Adapted from CPython Lib/functools.py public module __doc__ metadata.
+#[test]
+fn cpython_functools_module_doc_metadata_subset() {
+    assert_output(
+        r#"import functools
+doc = functools.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(functools), functools.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(functools, '__doc__')))"#,
+        &[
+            "str True functools.py - Tools for working with functions and callable objects 69",
+            "True True",
+            "'functools.py - Tools for working with functions and callable objects\\n'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/functools.py public __all__ export surface.
 #[test]
 fn cpython_functools_all_exports_subset() {

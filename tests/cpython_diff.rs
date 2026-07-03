@@ -26271,6 +26271,19 @@ for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.par
 }
 
 #[test]
+fn cpython_functools_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public module __doc__ metadata subset",
+        name: "functools-module-doc-metadata",
+        source: r#"import functools
+doc = functools.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(functools), functools.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(functools, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_all_exports_diff_subset() {
     let probe = run_cpython("import functools; print(hasattr(functools, 'Placeholder'))")
         .expect("failed to probe CPython functools.Placeholder support");
