@@ -103,6 +103,8 @@ product(p, q, ... [repeat=1]) --> cartesian product\n\
 permutations(p[, r])\n\
 combinations(p, r)\n\
 combinations_with_replacement(p, r)\n";
+const TYPES_DOC: &str =
+    "\nDefine names for built-in types that aren't directly accessible as a builtin.\n";
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
     "BuiltinFunctionType",
@@ -2738,6 +2740,7 @@ fn stdlib_exception_class(name: &str, module: &str) -> Value {
 fn types_module() -> Value {
     let mut attrs = Vec::from([
         ("__package__", Value::String(String::new())),
+        ("__doc__", Value::String(TYPES_DOC.to_string())),
         ("__all__", string_list_value(TYPES_ALL)),
         ("_GeneratorWrapper", builtin_type_value("_GeneratorWrapper")),
         ("coroutine", Value::Builtin("types.coroutine".to_string())),

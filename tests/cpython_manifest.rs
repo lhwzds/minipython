@@ -26736,7 +26736,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("import collections.abc as abc")
             && LANGUAGE_TESTS.contains("print('abc __all__', hasattr(abc, '__all__'))")
             && LANGUAGE_TESTS.contains("\"abc __all__ True\"")
-            && LANGUAGE_TESTS.contains("'__all__', '__name__'")
+            && LANGUAGE_TESTS.contains("'__all__', '__doc__', '__name__'")
             && LANGUAGE_TESTS.contains("dir(collections)")
             && LANGUAGE_TESTS.contains("dir(abc)"),
         "collections sandbox export test must guard collections __doc__, collections __all__, and collections.abc module surfaces"
@@ -42791,6 +42791,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "types",
         &[
             "cpython_types_module_package_metadata_subset",
+            "cpython_types_module_doc_metadata_subset",
             "cpython_types_accelerator_module_package_metadata_subset",
             "cpython_types_names_public_surface_subset",
             "cpython_types_singleton_type_aliases_subset",
@@ -42908,6 +42909,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include types");
     for evidence in [
         "cpython_types_module_package_metadata_diff_subset",
+        "cpython_types_module_doc_metadata_diff_subset",
         "cpython_types_accelerator_module_package_metadata_diff_subset",
         "cpython_types_names_public_surface_diff_subset",
         "cpython_types_singleton_type_aliases_diff_subset",
@@ -43050,6 +43052,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
                 "'CoroutineWrapper', 'new_class_internal', 'FrameLocalsProxyType', 'LazyImportType', '__file__'",
             )
             && LANGUAGE_TESTS.contains("\"CapsuleType PyCapsule builtins\"")
+            && LANGUAGE_TESTS.contains("types.__doc__.splitlines()[-1]")
             && LANGUAGE_TESTS.contains("types.SimpleNamespace(x=1)")
             && LANGUAGE_TESTS.contains("types.MappingProxyType({'a': 1})")
             && LANGUAGE_TESTS.contains("types.new_class('Made'")
@@ -43101,6 +43104,58 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "types module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let doc_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_module_doc_metadata_diff_subset",
+    );
+    let doc_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_types_module_doc_metadata_subset");
+    for required in [
+        "types.__doc__",
+        "object.__getattribute__(types, '__doc__')",
+        "'__doc__' in dir(types)",
+        "types.__dict__['__doc__'] == doc",
+        "doc.splitlines()[-1]",
+        "len(doc)",
+    ] {
+        assert!(
+            doc_diff.contains(required) && doc_subset.contains(required),
+            "types module __doc__ metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str True 79 '' Define names for built-in types that aren't directly accessible as a builtin.\"",
+        "\"True True\"",
+        "\"Define names for built-in types that aren't directly accessible as a builtin.\"",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "types module __doc__ metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "const TYPES_DOC",
+        "Define names for built-in types that aren't directly accessible as a builtin.",
+        "(\"__doc__\", Value::String(TYPES_DOC.to_string()))",
+    ] {
+        assert!(
+            types_module_source.contains(required) || STDLIB_SOURCE.contains(required),
+            "types module builder must set CPython-compatible __doc__ metadata `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_types_module_doc_metadata_subset",
+            "cpython_types_module_doc_metadata_diff_subset",
+            "types module `__doc__` metadata",
+            "`types.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "types module __doc__ metadata docs must contain `{required}`"
             );
         }
     }

@@ -749,6 +749,7 @@ Recent runtime migration notes:
   `cpython_float_hash_and_sys_info_diff_subset`,
   `cpython_types_frame_locals_proxy_type_diff_subset`,
   `cpython_types_module_package_metadata_diff_subset`,
+  `cpython_types_module_doc_metadata_diff_subset`,
   `cpython_types_accelerator_module_package_metadata_diff_subset`,
   `cpython_types_names_public_surface_diff_subset`,
   `cpython_types_singleton_type_aliases_diff_subset`,
@@ -3840,6 +3841,10 @@ without adding general custom encoder/decoder class support.
   `cpython_types_module_package_metadata_subset`, backed by
   `cpython_types_module_package_metadata_diff_subset`, covering types module `__package__` metadata
   (`types.__package__` is `''`).
+- The bundled `types` module also includes
+  `cpython_types_module_doc_metadata_subset`, backed by
+  `cpython_types_module_doc_metadata_diff_subset`, covering types module `__doc__` metadata
+  through `types.__doc__`, `object.__getattribute__`, `dir()`, and `__dict__`.
 - The bundled `types` module also includes
   `cpython_types_accelerator_module_package_metadata_subset`, backed by
   `cpython_types_accelerator_module_package_metadata_diff_subset`, covering

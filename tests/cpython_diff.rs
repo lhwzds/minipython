@@ -16044,6 +16044,19 @@ print('__package__' in dir(types), repr(types.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_types_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py types module __doc__ metadata subset",
+        name: "types-module-doc-metadata",
+        source: r#"import types
+doc = types.__doc__
+print(type(doc).__name__, bool(doc), len(doc), repr(doc.splitlines()[0]), doc.splitlines()[-1])
+print('__doc__' in dir(types), types.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(types, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_types_accelerator_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py _types module __package__ metadata subset",

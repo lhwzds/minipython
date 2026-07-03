@@ -75972,6 +75972,25 @@ print('__package__' in dir(types), repr(types.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_types_module_doc_metadata_subset() {
+    assert_output(
+        r#"import types
+doc = types.__doc__
+doc2 = object.__getattribute__(types, '__doc__')
+print(type(doc).__name__, bool(doc), len(doc), repr(doc.splitlines()[0]), doc.splitlines()[-1])
+print('__doc__' in dir(types), types.__dict__['__doc__'] == doc)
+print(repr(doc2.splitlines()[0]))
+print(doc2.splitlines()[-1])"#,
+        &[
+            "str True 79 '' Define names for built-in types that aren't directly accessible as a builtin.",
+            "True True",
+            "''",
+            "Define names for built-in types that aren't directly accessible as a builtin.",
+        ],
+    );
+}
+
+#[test]
 fn cpython_types_accelerator_module_package_metadata_subset() {
     assert_output(
         r#"import _types
