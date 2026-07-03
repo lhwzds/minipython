@@ -6528,6 +6528,7 @@ impl Parser<'_> {
                     | Token::RightShift
                     | Token::RightShiftEqual
                     | Token::Float(_)
+                    | Token::Imaginary(_)
                     | Token::Number(_)
                     | Token::String(_)
             )
