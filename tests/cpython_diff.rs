@@ -26400,6 +26400,39 @@ for label, expr, expected in [
 }
 
 #[test]
+fn cpython_functools_placeholder_type_constructor_diff_subset() {
+    let probe = run_cpython("import functools; print(hasattr(functools, 'Placeholder'))")
+        .expect("failed to probe CPython functools.Placeholder support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping functools.Placeholder type constructor diff: CPython oracle lacks Placeholder"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython 3.14 functools.Placeholder public type constructor subset",
+        name: "functools-placeholder-type-constructor",
+        source: r#"import functools
+P = functools.Placeholder
+T = type(P)
+print(T(), T() is P, isinstance(P, T), T.__name__, T.__module__)
+for label, expr, expected in [
+    ("pos", lambda: T(1), "PlaceholderType takes no arguments"),
+    ("keyword", lambda: T(x=1), "PlaceholderType takes no arguments"),
+    ("both", lambda: T(1, x=2), "PlaceholderType takes no arguments"),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        message = str(error)
+        if message != expected:
+            raise AssertionError((label, message))
+        print(label, type(error).__name__, message)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_partial_instance_module_metadata_diff_subset() {
     let probe =
         run_cpython("from functools import partial\nprint(hasattr(partial(int), '__module__'))")

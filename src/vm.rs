@@ -353,6 +353,17 @@ fn reject_functools_placeholder_keywords(keywords: &[(String, Value)]) -> Result
     }
 }
 
+fn call_functools_placeholder_type(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !args.is_empty() || !keywords.is_empty() {
+        Err("TypeError: PlaceholderType takes no arguments".to_string())
+    } else {
+        Ok(Value::FunctoolsPlaceholder)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SourceModule {
     pub source: String,
@@ -9213,6 +9224,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "functools.partialmethod" => {
                 self.call_functools_partialmethod(args, keywords)
+            }
+            Value::Builtin(name) if name == "functools._PlaceholderType" => {
+                call_functools_placeholder_type(args, keywords)
             }
             Value::Builtin(name) if name == "functools.cached_property" => {
                 self.call_functools_cached_property(args, keywords)
@@ -86548,6 +86562,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "weakref.CallableProxyType" | "CallableProxyType" => {
             matches!(subject, Value::WeakProxy { callable: true, .. })
         }
+        "functools._PlaceholderType" => matches!(subject, Value::FunctoolsPlaceholder),
         "function" => {
             matches!(
                 subject,

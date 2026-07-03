@@ -8247,6 +8247,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_public_helpers_subset",
             "cpython_functools_partial_subset",
             "cpython_functools_placeholder_partial_subset",
+            "cpython_functools_placeholder_type_constructor_subset",
             "cpython_functools_partial_instance_module_metadata_subset",
             "cpython_functools_partialmethod_subset",
             "cpython_functools_placeholder_partialmethod_subset",
@@ -8278,6 +8279,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_public_helpers_diff_subset",
         "cpython_functools_partial_diff_subset",
         "cpython_functools_placeholder_partial_diff_subset",
+        "cpython_functools_placeholder_type_constructor_diff_subset",
         "cpython_functools_partial_instance_module_metadata_diff_subset",
         "cpython_functools_partialmethod_diff_subset",
         "cpython_functools_placeholder_partialmethod_diff_subset",
@@ -8469,6 +8471,60 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
                 && document.contains("cpython_functools_placeholder_partial_diff_subset")
                 && document.contains("functools.Placeholder"),
             "functools Placeholder evidence must be documented in coverage and migration notes"
+        );
+    }
+
+    let placeholder_type_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_placeholder_type_constructor_diff_subset",
+    );
+    let placeholder_type_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_placeholder_type_constructor_subset",
+    );
+    for required in [
+        "hasattr(functools, 'Placeholder')",
+        "skipping functools.Placeholder type constructor diff",
+    ] {
+        assert!(
+            placeholder_type_diff.contains(required),
+            "functools Placeholder type constructor diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "T = type(P)",
+        "T() is P",
+        "isinstance(P, T)",
+        "T.__name__",
+        "T.__module__",
+        "PlaceholderType takes no arguments",
+    ] {
+        assert!(
+            placeholder_type_diff.contains(required),
+            "functools Placeholder type constructor diff evidence must cover `{required}`"
+        );
+        assert!(
+            placeholder_type_subset.contains(required),
+            "functools Placeholder type constructor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "fn call_functools_placeholder_type(",
+        "Ok(Value::FunctoolsPlaceholder)",
+        "\"TypeError: PlaceholderType takes no arguments\"",
+        "name == \"functools._PlaceholderType\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "functools Placeholder type constructor implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_functools_placeholder_type_constructor_subset")
+                && document.contains("cpython_functools_placeholder_type_constructor_diff_subset")
+                && document.contains("Placeholder type constructor"),
+            "functools Placeholder type constructor evidence must be documented in coverage and migration notes"
         );
     }
 

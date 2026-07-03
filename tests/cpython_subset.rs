@@ -56511,6 +56511,34 @@ for label, expr in [("bare-call", lambda: P()), ("partial-no-fill", lambda: p())
     );
 }
 
+// Adapted from CPython 3.14 functools.Placeholder public singleton behavior.
+// This covers calling the public placeholder type without extending into
+// pickling or weakref internals.
+#[test]
+fn cpython_functools_placeholder_type_constructor_subset() {
+    assert_output(
+        r#"import functools
+P = functools.Placeholder
+T = type(P)
+print(T(), T() is P, isinstance(P, T), T.__name__, T.__module__)
+for label, expr in [
+    ("pos", lambda: T(1)),
+    ("keyword", lambda: T(x=1)),
+    ("both", lambda: T(1, x=2)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "Placeholder True True _PlaceholderType functools",
+            "pos TypeError PlaceholderType takes no arguments",
+            "keyword TypeError PlaceholderType takes no arguments",
+            "both TypeError PlaceholderType takes no arguments",
+        ],
+    );
+}
+
 // Adapted from newer CPython functools.partial instance module metadata. This
 // pins the pure-memory metadata surface without expanding into weakref/pickle
 // behavior.

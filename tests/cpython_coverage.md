@@ -1122,6 +1122,7 @@ Recent runtime migration notes:
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_placeholder_partial_diff_subset`,
+  `cpython_functools_placeholder_type_constructor_diff_subset`,
   `cpython_functools_partial_instance_module_metadata_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_reduce_initial_keyword_diff_subset`,
@@ -3519,6 +3520,11 @@ without adding general custom encoder/decoder class support.
   placeholder filling, including nested partial construction, missing-fill
   `TypeError` diagnostics, and keyword Placeholder rejection, without adding
   pickle or weakref behavior.
+  `cpython_functools_placeholder_type_constructor_subset`, backed by
+  `cpython_functools_placeholder_type_constructor_diff_subset`, covers the
+  Placeholder type constructor returning the singleton on zero-argument calls
+  and rejecting positional or keyword arguments with CPython's public
+  `PlaceholderType takes no arguments` diagnostic.
   The newer CPython partial instance `__module__` surface is also pinned by
   `cpython_functools_partial_instance_module_metadata_subset` and gated
   `cpython_functools_partial_instance_module_metadata_diff_subset`.
