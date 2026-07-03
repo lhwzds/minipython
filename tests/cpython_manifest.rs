@@ -51214,6 +51214,47 @@ fn cpython_operator_follower_starred_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_bare_starred_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_expression_rules_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bare starred expression SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bare starred expression runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "*x",
+        "x = *y",
+        "def f():\\n    return *x",
+        "def f():\\n    yield *x",
+        "def f():\\n    *x",
+        "class C:\\n    *x",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "bare starred expression CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "bare starred expression subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("bare starred expression forms")
+                && document.contains("can't use starred expression here"),
+            "bare starred expression docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

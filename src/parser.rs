@@ -368,7 +368,14 @@ impl Parser<'_> {
                     return Ok(Stmt::AugAssign { target, op, value });
                 }
             }
-            Err(error) if is_assignment_target_syntax_error(&error) => return Err(error),
+            Err(error) if is_assignment_target_syntax_error(&error) => {
+                if error == "starred assignment target must be in a list or tuple"
+                    && is_statement_boundary(self.peek())
+                {
+                    return Err("can't use starred expression here".to_string());
+                }
+                return Err(error);
+            }
             Err(_) => {}
         }
         self.current = statement_start;
@@ -4908,7 +4915,7 @@ impl Parser<'_> {
 
         if !matches!(self.peek(), Some(Token::Comma)) {
             if matches!(first, Expr::Starred(_)) {
-                return Err("cannot use starred expression here".to_string());
+                return Err("can't use starred expression here".to_string());
             }
             return Ok(first);
         }

@@ -43923,6 +43923,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "bare-starred-expression-statement-message",
+            source: "*x",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "assignment-value-bare-starred-expression-message",
+            source: "x = *y",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "return-bare-starred-expression-message",
+            source: "def f():\n    return *x",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "yield-bare-starred-expression-message",
+            source: "def f():\n    yield *x",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "function-body-bare-starred-expression-message",
+            source: "def f():\n    *x",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram bare starred expression rejection",
+            name: "class-body-bare-starred-expression-message",
+            source: "class C:\n    *x",
+            expected_message: "can't use starred expression here",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

@@ -10639,6 +10639,16 @@ fn cpython_invalid_expression_rules_subset() {
         assert_error(source, "parse error: invalid syntax");
     }
     for source in [
+        "*x",
+        "x = *y",
+        "def f():\n    return *x",
+        "def f():\n    yield *x",
+        "def f():\n    *x",
+        "class C:\n    *x",
+    ] {
+        assert_error(source, "parse error: can't use starred expression here");
+    }
+    for source in [
         "+=x", "-=x", "*=x", "/=x", "//=x", "%=x", "@=x", "&=x", "|=x", "^=x", "<<=x", ">>=x",
         "**=x",
     ] {
@@ -36979,7 +36989,7 @@ fn cpython_ast_return_stmt_subset() {
     );
     assert_error(
         "def f():\n    return *[1, 2]",
-        "parse error: cannot use starred expression here",
+        "parse error: can't use starred expression here",
     );
     assert_error("return 1", "compile error: return outside function");
     assert_rejected("class foo:return 1");
