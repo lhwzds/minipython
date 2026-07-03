@@ -50422,6 +50422,52 @@ fn cpython_string_literal_follower_parameter_name_messages_have_diff_evidence() 
 }
 
 #[test]
+fn cpython_integer_literal_follower_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "integer literal follower parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function integer literal follower parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda integer literal follower parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a 1 b):\\n    pass",
+        "def f(*a 1 b):\\n    pass",
+        "def f(**a 1 b):\\n    pass",
+        "lambda a 1 b: None",
+        "lambda *a 1 b: None",
+        "lambda **a 1 b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "integer literal follower parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "integer literal follower parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("integer literal follower parameter name forms")
+                && document.contains("invalid syntax"),
+            "integer literal follower parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
