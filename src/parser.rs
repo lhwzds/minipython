@@ -5790,7 +5790,13 @@ impl Parser<'_> {
                 | Token::Pipe
                 | Token::Caret
                 | Token::LeftShift
-                | Token::RightShift,
+                | Token::RightShift
+                | Token::Less
+                | Token::LessEqual
+                | Token::Greater
+                | Token::GreaterEqual
+                | Token::EqualEqual
+                | Token::BangEqual,
             ) => Err("invalid syntax".to_string()),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),

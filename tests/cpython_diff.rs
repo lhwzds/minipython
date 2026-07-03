@@ -43707,6 +43707,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-less-expression-message",
+            source: "<x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-less-equal-expression-message",
+            source: "<=x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-greater-expression-message",
+            source: ">x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-greater-equal-expression-message",
+            source: ">=x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-equal-equal-expression-message",
+            source: "==x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix comparison operator expression rejection",
+            name: "prefix-bang-equal-expression-message",
+            source: "!=x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
