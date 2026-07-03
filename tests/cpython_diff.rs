@@ -38530,6 +38530,42 @@ except OverflowError as error:
 }
 
 #[test]
+fn cpython_numeric_from_number_classmethod_metadata_diff_subset() {
+    let oracle_probe =
+        run_cpython("print(hasattr(float, 'from_number') and hasattr(complex, 'from_number'))")
+            .expect("failed to run CPython numeric from_number capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython numeric from_number probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        eprintln!("skipping numeric from_number metadata diff: CPython oracle lacks from_number");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython float.from_number and complex.from_number classmethod metadata subset",
+        name: "numeric-from-number-classmethod-metadata",
+        source: r#"class F(float):
+    pass
+class C(complex):
+    pass
+for label, method, owner in [('float-type', float.from_number, float), ('float-inst', (1.0).from_number, float), ('float-subclass-type', F.from_number, F), ('float-subclass-inst', F(1).from_number, F), ('complex-type', complex.from_number, complex), ('complex-inst', (1+1j).from_number, complex), ('complex-subclass-type', C.from_number, C), ('complex-subclass-inst', C(1).from_number, C)]:
+    print(label, type(method).__name__, method.__name__, method.__qualname__, method.__self__ is owner, method.__module__, method.__text_signature__, hasattr(method, '__func__'), '__func__' in dir(method))
+    try:
+        method.__func__
+    except AttributeError as error:
+        print(label, '__func__', type(error).__name__, str(error))
+NAN = float('nan')
+cNAN = complex(NAN, NAN)
+print('identity', float.from_number(NAN) is NAN, complex.from_number(cNAN) is cNAN)
+for source in ['float.from_number()', 'float.from_number(1, 2)', 'float.from_number(x=1)', 'F.from_number()', 'F.from_number(1, 2)', 'F.from_number(x=1)', 'complex.from_number()', 'complex.from_number(1, 2)', 'complex.from_number(x=1)', 'C.from_number()', 'C.from_number(1, 2)', 'C.from_number(x=1)', '(1+1j).from_number(x=1)']:
+    try:
+        eval(source)
+    except TypeError as error:
+        print(source, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_complex_subclass_constructor_and_from_number_diff_subset() {
     let oracle_probe = run_cpython("print(hasattr(complex, 'from_number'))")
         .expect("failed to run CPython complex.from_number capability probe");

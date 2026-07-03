@@ -6888,6 +6888,64 @@ except OverflowError as error:
     );
 }
 
+// Covers the public metadata of the class-bound numeric `from_number`
+// builtins without adding new numeric conversion behavior.
+#[test]
+fn cpython_numeric_from_number_classmethod_metadata_subset() {
+    assert_output(
+        r#"class F(float):
+    pass
+class C(complex):
+    pass
+for label, method, owner in [('float-type', float.from_number, float), ('float-inst', (1.0).from_number, float), ('float-subclass-type', F.from_number, F), ('float-subclass-inst', F(1).from_number, F), ('complex-type', complex.from_number, complex), ('complex-inst', (1+1j).from_number, complex), ('complex-subclass-type', C.from_number, C), ('complex-subclass-inst', C(1).from_number, C)]:
+    print(label, type(method).__name__, method.__name__, method.__qualname__, method.__self__ is owner, method.__module__, method.__text_signature__, hasattr(method, '__func__'), '__func__' in dir(method))
+    try:
+        method.__func__
+    except AttributeError as error:
+        print(label, '__func__', type(error).__name__, str(error))
+NAN = float('nan')
+cNAN = complex(NAN, NAN)
+print('identity', float.from_number(NAN) is NAN, complex.from_number(cNAN) is cNAN)
+for source in ['float.from_number()', 'float.from_number(1, 2)', 'float.from_number(x=1)', 'F.from_number()', 'F.from_number(1, 2)', 'F.from_number(x=1)', 'complex.from_number()', 'complex.from_number(1, 2)', 'complex.from_number(x=1)', 'C.from_number()', 'C.from_number(1, 2)', 'C.from_number(x=1)', '(1+1j).from_number(x=1)']:
+    try:
+        eval(source)
+    except TypeError as error:
+        print(source, type(error).__name__, str(error), error.args)"#,
+        &[
+            "float-type builtin_function_or_method from_number float.from_number True None ($type, number, /) False False",
+            "float-type __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "float-inst builtin_function_or_method from_number float.from_number True None ($type, number, /) False False",
+            "float-inst __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "float-subclass-type builtin_function_or_method from_number F.from_number True None ($type, number, /) False False",
+            "float-subclass-type __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "float-subclass-inst builtin_function_or_method from_number F.from_number True None ($type, number, /) False False",
+            "float-subclass-inst __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "complex-type builtin_function_or_method from_number complex.from_number True None ($type, number, /) False False",
+            "complex-type __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "complex-inst builtin_function_or_method from_number complex.from_number True None ($type, number, /) False False",
+            "complex-inst __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "complex-subclass-type builtin_function_or_method from_number C.from_number True None ($type, number, /) False False",
+            "complex-subclass-type __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "complex-subclass-inst builtin_function_or_method from_number C.from_number True None ($type, number, /) False False",
+            "complex-subclass-inst __func__ AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+            "identity True True",
+            "float.from_number() TypeError float.from_number() takes exactly one argument (0 given) ('float.from_number() takes exactly one argument (0 given)',)",
+            "float.from_number(1, 2) TypeError float.from_number() takes exactly one argument (2 given) ('float.from_number() takes exactly one argument (2 given)',)",
+            "float.from_number(x=1) TypeError float.from_number() takes no keyword arguments ('float.from_number() takes no keyword arguments',)",
+            "F.from_number() TypeError F.from_number() takes exactly one argument (0 given) ('F.from_number() takes exactly one argument (0 given)',)",
+            "F.from_number(1, 2) TypeError F.from_number() takes exactly one argument (2 given) ('F.from_number() takes exactly one argument (2 given)',)",
+            "F.from_number(x=1) TypeError F.from_number() takes no keyword arguments ('F.from_number() takes no keyword arguments',)",
+            "complex.from_number() TypeError complex.from_number() takes exactly one argument (0 given) ('complex.from_number() takes exactly one argument (0 given)',)",
+            "complex.from_number(1, 2) TypeError complex.from_number() takes exactly one argument (2 given) ('complex.from_number() takes exactly one argument (2 given)',)",
+            "complex.from_number(x=1) TypeError complex.from_number() takes no keyword arguments ('complex.from_number() takes no keyword arguments',)",
+            "C.from_number() TypeError C.from_number() takes exactly one argument (0 given) ('C.from_number() takes exactly one argument (0 given)',)",
+            "C.from_number(1, 2) TypeError C.from_number() takes exactly one argument (2 given) ('C.from_number() takes exactly one argument (2 given)',)",
+            "C.from_number(x=1) TypeError C.from_number() takes no keyword arguments ('C.from_number() takes no keyword arguments',)",
+            "(1+1j).from_number(x=1) TypeError complex.from_number() takes no keyword arguments ('complex.from_number() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
 // test_keywords_in_subclass. This covers float subclass construction,
 // keyword forwarding to user `__init__` / `__new__`, and inherited

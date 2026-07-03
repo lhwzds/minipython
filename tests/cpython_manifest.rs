@@ -10575,9 +10575,21 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     assert!(
-        VM_SOURCE.contains(
-            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__eq__\",\n                \"__format__\",\n                \"__ge__\",\n                \"__get__\",\n                \"__getattribute__\",\n                \"__gt__\",\n                \"__hash__\",\n                \"__le__\",\n                \"__lt__\",\n                \"__ne__\","
-        ),
+        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+            && VM_SOURCE.contains("\"__doc__\"")
+            && VM_SOURCE.contains("\"__call__\"")
+            && VM_SOURCE.contains("\"__dir__\"")
+            && VM_SOURCE.contains("\"__eq__\"")
+            && VM_SOURCE.contains("\"__format__\"")
+            && VM_SOURCE.contains("\"__ge__\"")
+            && VM_SOURCE.contains("\"__get__\"")
+            && VM_SOURCE.contains("\"__getattribute__\"")
+            && VM_SOURCE.contains("\"__gt__\"")
+            && VM_SOURCE.contains("\"__hash__\"")
+            && VM_SOURCE.contains("\"__le__\"")
+            && VM_SOURCE.contains("\"__lt__\"")
+            && VM_SOURCE.contains("\"__ne__\"")
+            && VM_SOURCE.contains("names.push(\"__func__\".to_string())"),
         "VM bound method dir() names must keep __name__ hidden while preserving bound.__name__ lookup"
     );
     for required in [
@@ -10603,9 +10615,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     assert!(
-        VM_SOURCE.contains(
-            "\"__repr__\",\n                \"__self__\",\n                \"__str__\",\n                \"__class__\","
-        ),
+        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+            && VM_SOURCE.contains("\"__repr__\"")
+            && VM_SOURCE.contains("\"__self__\"")
+            && VM_SOURCE.contains("\"__str__\"")
+            && VM_SOURCE.contains("\"__class__\""),
         "VM bound method dir() names must expose CPython-visible __class__ metadata"
     );
     for required in [
@@ -13491,12 +13505,19 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible bound method __call__ / __get__ / rich-compare / __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
-        VM_SOURCE.contains(
-            "Value::BoundMethod { .. } => names.extend(\n            [\n                \"__doc__\",\n                \"__func__\",\n                \"__call__\",\n                \"__dir__\",\n                \"__eq__\",\n                \"__format__\",\n                \"__ge__\",\n                \"__get__\",\n                \"__getattribute__\","
-        ) && VM_SOURCE.contains("\"__ge__\"")
+        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+            && VM_SOURCE.contains("\"__doc__\"")
+            && VM_SOURCE.contains("\"__call__\"")
+            && VM_SOURCE.contains("\"__dir__\"")
+            && VM_SOURCE.contains("\"__eq__\"")
+            && VM_SOURCE.contains("\"__format__\"")
+            && VM_SOURCE.contains("\"__ge__\"")
+            && VM_SOURCE.contains("\"__get__\"")
+            && VM_SOURCE.contains("\"__getattribute__\"")
             && VM_SOURCE.contains("\"__gt__\"")
             && VM_SOURCE.contains("\"__le__\"")
-            && VM_SOURCE.contains("\"__lt__\""),
+            && VM_SOURCE.contains("\"__lt__\"")
+            && VM_SOURCE.contains("names.push(\"__func__\".to_string())"),
         "VM bound method dir() names must include CPython-visible __call__, __dir__, rich-compare wrappers, __format__, __get__, and __doc__ metadata"
     );
     assert!(
@@ -22921,6 +22942,13 @@ fn runtime_newer_oracle_diff_evidence_stays_capability_gated() {
             ],
         ),
         (
+            "fn cpython_numeric_from_number_classmethod_metadata_diff_subset()",
+            &[
+                "hasattr(float, 'from_number') and hasattr(complex, 'from_number')",
+                "skipping numeric from_number metadata diff",
+            ],
+        ),
+        (
             "fn cpython_types_simple_namespace_new_and_invalid_replace_diff_subset()",
             &[
                 "hasattr(copy, 'replace')",
@@ -22942,6 +22970,89 @@ fn runtime_newer_oracle_diff_evidence_stays_capability_gated() {
                 "runtime gated diff evidence `{function}` must contain `{text}`"
             );
         }
+    }
+}
+
+#[test]
+fn numeric_from_number_classmethod_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_numeric_from_number_classmethod_metadata_subset(",
+        "class F(float):",
+        "class C(complex):",
+        "float.from_number, float",
+        "(1.0).from_number, float",
+        "F.from_number, F",
+        "complex.from_number, complex",
+        "(1+1j).from_number, complex",
+        "C.from_number, C",
+        "method.__self__ is owner",
+        "method.__text_signature__",
+        "hasattr(method, '__func__')",
+        "'__func__' in dir(method)",
+        "method.__func__",
+        "identity",
+        "float.from_number(x=1)",
+        "C.from_number(1, 2)",
+        "(1+1j).from_number(x=1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused numeric from_number metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_numeric_from_number_classmethod_metadata_diff_subset",
+    );
+    for required in [
+        "CPython float.from_number and complex.from_number classmethod metadata subset",
+        "name: \"numeric-from-number-classmethod-metadata\"",
+        "hasattr(float, 'from_number') and hasattr(complex, 'from_number')",
+        "class F(float):",
+        "class C(complex):",
+        "method.__self__ is owner",
+        "method.__text_signature__",
+        "hasattr(method, '__func__')",
+        "'__func__' in dir(method)",
+        "method.__func__",
+        "complex.from_number(cNAN) is cNAN",
+        "C.from_number(x=1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused numeric from_number metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn numeric_from_number_classmethod_value(",
+        "fn numeric_from_number_builtin_owner(",
+        "fn is_numeric_from_number_classmethod(",
+        "fn numeric_from_number_owner_name(",
+        "numeric_from_number_classmethod_value(\"float\")",
+        "numeric_from_number_classmethod_value(\"complex\")",
+        "'builtin_function_or_method' object has no attribute '__func__'",
+        "is_numeric_from_number_classmethod(name)",
+        "float.from_number() takes exactly one argument",
+        "complex.from_number() takes exactly one argument",
+        "matches!(class, Value::Builtin(name) if name == \"complex\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "numeric from_number metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_numeric_from_number_classmethod_metadata_subset")
+                && document
+                    .contains("cpython_numeric_from_number_classmethod_metadata_diff_subset")
+                && document.contains("from_number` classmethod metadata")
+                && document.contains("absence of `__func__`"),
+            "focused numeric from_number metadata evidence must be documented in coverage and migration notes"
+        );
     }
 }
 

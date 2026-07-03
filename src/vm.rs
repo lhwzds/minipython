@@ -10317,6 +10317,12 @@ impl Vm {
                 call_float_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("complex.") => {
+                if name == "complex.from_number" {
+                    return self.call_complex_from_number(args, keywords);
+                }
+                if name == "complex.from_number.classmethod" {
+                    return self.call_complex_from_number_classmethod(args, keywords);
+                }
                 if !keywords.is_empty() {
                     return Err(format!(
                         "{}() does not accept keyword arguments",
@@ -10324,12 +10330,6 @@ impl Vm {
                     ));
                 }
 
-                if name == "complex.from_number" {
-                    return self.call_complex_from_number(args);
-                }
-                if name == "complex.from_number.classmethod" {
-                    return self.call_complex_from_number_classmethod(args);
-                }
                 call_complex_method(&name, args)
             }
             Value::Builtin(name) if is_cell_rich_compare_method_name(&name) => {
@@ -23507,10 +23507,17 @@ impl Vm {
         }
     }
 
-    fn call_complex_from_number(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_complex_from_number(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: complex.from_number() takes no keyword arguments".to_string());
+        }
         let [number] = args.as_slice() else {
             return Err(format!(
-                "TypeError: from_number() expected 1 argument, got {}",
+                "TypeError: complex.from_number() takes exactly one argument ({} given)",
                 args.len()
             ));
         };
@@ -23521,13 +23528,31 @@ impl Vm {
         Ok(complex_value(parts.real, parts.imag))
     }
 
-    fn call_complex_from_number_classmethod(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_complex_from_number_classmethod(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let owner = args
+            .first()
+            .map(numeric_from_number_owner_name)
+            .unwrap_or_else(|| "complex".to_string());
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {owner}.from_number() takes no keyword arguments"
+            ));
+        }
         let [class, number] = args.as_slice() else {
             return Err(format!(
-                "TypeError: from_number() expected 1 argument, got {}",
+                "TypeError: {owner}.from_number() takes exactly one argument ({} given)",
                 args.len().saturating_sub(1)
             ));
         };
+        if matches!(class, Value::Builtin(name) if name == "complex")
+            && matches!(number, Value::Complex { .. })
+        {
+            return Ok(number.clone());
+        }
         let parts = self.complex_parts_from_number(number.clone())?;
         self.call_value(class.clone(), vec![complex_value(parts.real, parts.imag)])
     }
@@ -51562,30 +51587,35 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .into_iter()
                 .map(str::to_string),
         ),
-        Value::BoundMethod { .. } => names.extend(
-            [
-                "__doc__",
-                "__func__",
-                "__call__",
-                "__dir__",
-                "__eq__",
-                "__format__",
-                "__ge__",
-                "__get__",
-                "__getattribute__",
-                "__gt__",
-                "__hash__",
-                "__le__",
-                "__lt__",
-                "__ne__",
-                "__repr__",
-                "__self__",
-                "__str__",
-                "__class__",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        ),
+        Value::BoundMethod { function, .. } => {
+            names.extend(
+                [
+                    "__doc__",
+                    "__call__",
+                    "__dir__",
+                    "__eq__",
+                    "__format__",
+                    "__ge__",
+                    "__get__",
+                    "__getattribute__",
+                    "__gt__",
+                    "__hash__",
+                    "__le__",
+                    "__lt__",
+                    "__ne__",
+                    "__repr__",
+                    "__self__",
+                    "__str__",
+                    "__class__",
+                ]
+                .into_iter()
+                .map(str::to_string),
+            );
+            if !matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name))
+            {
+                names.push("__func__".to_string());
+            }
+        }
         Value::Exception { attrs, .. } => {
             names.extend(
                 attrs
@@ -59892,7 +59922,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 unreachable!("guard matched complex object");
             };
             match name {
-                "from_number" => Ok(Value::Builtin("complex.from_number".to_string())),
+                "from_number" => Ok(numeric_from_number_classmethod_value("complex")),
                 name if is_builtin_complex_type_method(name) => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("complex.{name}"))),
                     receiver: Box::new(object),
@@ -61080,6 +61110,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }
                 .to_string(),
             )),
+            "__func__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            {
+                Err("AttributeError: 'builtin_function_or_method' object has no attribute '__func__'"
+                    .to_string())
+            }
             "__func__" => Ok(*function),
             "__self__" => Ok(*receiver),
             "__dir__" => Ok(Value::BoundMethod {
@@ -61161,6 +61197,29 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__name__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            {
+                Ok(Value::String("from_number".to_string()))
+            }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            {
+                Ok(Value::String(format!(
+                    "{}.from_number",
+                    numeric_from_number_owner_name(&receiver)
+                )))
+            }
+            "__module__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            {
+                Ok(Value::None)
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            {
+                Ok(Value::String("($type, number, /)".to_string()))
+            }
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
@@ -61722,7 +61781,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin("float.fromhex".to_string()))
         }
         Value::Builtin(function_name) if function_name == "float" && name == "from_number" => {
-            Ok(Value::Builtin("float.from_number".to_string()))
+            Ok(numeric_from_number_classmethod_value("float"))
         }
         Value::Builtin(function_name) if function_name == "float" && name == "hex" => {
             Ok(Value::Builtin("float.hex".to_string()))
@@ -61867,7 +61926,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("ChainMap.{name}")))
         }
         Value::Builtin(function_name) if function_name == "complex" && name == "from_number" => {
-            Ok(Value::Builtin("complex.from_number".to_string()))
+            Ok(numeric_from_number_classmethod_value("complex"))
         }
         Value::Builtin(function_name) if function_name == "complex" && name == "__new__" => {
             Ok(Value::Builtin("complex.__new__".to_string()))
@@ -63402,6 +63461,28 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__get__" => {
             Ok(Value::String("Return an attribute of instance, which is of type owner.".to_string()))
         }
+        Value::Builtin(function_name)
+            if name == "__name__" && numeric_from_number_builtin_owner(&function_name).is_some() =>
+        {
+            Ok(Value::String("from_number".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && numeric_from_number_builtin_owner(&function_name).is_some() =>
+        {
+            let owner = numeric_from_number_builtin_owner(&function_name)
+                .expect("guard checked numeric from_number builtin owner");
+            Ok(Value::String(format!("{owner}.from_number")))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && numeric_from_number_builtin_owner(&function_name).is_some() =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && numeric_from_number_builtin_owner(&function_name).is_some() =>
+        {
+            Ok(Value::String("($type, number, /)".to_string()))
+        }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_name_value(&function_name))
         }
@@ -63509,6 +63590,40 @@ fn builtin_public_name(name: &str) -> String {
         return "Union".to_string();
     }
     name.rsplit('.').next().unwrap_or(name).to_string()
+}
+
+fn numeric_from_number_classmethod_value(owner: &str) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin(format!("{owner}.from_number.classmethod"))),
+        receiver: Box::new(Value::Builtin(owner.to_string())),
+        identity: Rc::new(()),
+    }
+}
+
+fn numeric_from_number_builtin_owner(name: &str) -> Option<&'static str> {
+    match name {
+        "float.from_number" | "float.from_number.classmethod" => Some("float"),
+        "complex.from_number" | "complex.from_number.classmethod" => Some("complex"),
+        _ => None,
+    }
+}
+
+fn is_numeric_from_number_classmethod(name: &str) -> bool {
+    matches!(
+        name,
+        "float.from_number.classmethod" | "complex.from_number.classmethod"
+    )
+}
+
+fn numeric_from_number_owner_name(owner: &Value) -> String {
+    match owner {
+        Value::Builtin(name) => builtin_public_name(name),
+        Value::Class { name, attrs, .. } => match class_qualname_value(name, attrs) {
+            Value::String(qualname) => qualname,
+            _ => name.clone(),
+        },
+        value => type_name(value).to_string(),
+    }
 }
 
 fn operator_builtin_doc(name: &str) -> &'static str {
@@ -77726,27 +77841,29 @@ fn call_float_method(
         }
         "float.from_number" => {
             if !keywords.is_empty() {
-                return Err(
-                    "TypeError: from_number() does not accept keyword arguments".to_string()
-                );
+                return Err("TypeError: float.from_number() takes no keyword arguments".to_string());
             }
             let [number] = args.as_slice() else {
                 return Err(format!(
-                    "TypeError: from_number() expected 1 argument, got {}",
+                    "TypeError: float.from_number() takes exactly one argument ({} given)",
                     args.len()
                 ));
             };
             vm.float_number_value(number.clone())
         }
         "float.from_number.classmethod" => {
+            let owner = args
+                .first()
+                .map(numeric_from_number_owner_name)
+                .unwrap_or_else(|| "float".to_string());
             if !keywords.is_empty() {
-                return Err(
-                    "TypeError: from_number() does not accept keyword arguments".to_string()
-                );
+                return Err(format!(
+                    "TypeError: {owner}.from_number() takes no keyword arguments"
+                ));
             }
             let [class, number] = args.as_slice() else {
                 return Err(format!(
-                    "TypeError: from_number() expected 1 argument, got {}",
+                    "TypeError: {owner}.from_number() takes exactly one argument ({} given)",
                     args.len().saturating_sub(1)
                 ));
             };
