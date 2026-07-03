@@ -1123,6 +1123,7 @@ Recent runtime migration notes:
   `cpython_operator_call_helper_diff_subset`,
   `cpython_operator_inplace_helper_diff_subset`,
   `cpython_operator_module_metadata_diff_subset`,
+  `cpython_operator_module_doc_intro_metadata_diff_subset`,
   `cpython_operator_helper_instance_module_metadata_diff_subset`,
   `cpython_operator_signature_helper_diff_subset`,
   `cpython_operator_helper_repr_diff_subset`,
@@ -4727,6 +4728,13 @@ without adding general custom encoder/decoder class support.
   metadata is covered locally by
   `cpython_operator_helper_instance_module_metadata_subset` and has gated direct CPython evidence in
   `cpython_operator_helper_instance_module_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_module_doc_intro_metadata_subset`, covering operator module
+  `__doc__` intro metadata (`operator.__doc__` is a non-empty `str`, starts
+  with CPython's public "Operator interface." summary, is visible through
+  `object.__getattribute__`, `operator.__dict__`, and `dir(operator)`). This is
+  the operator module `__doc__` intro metadata surface. Direct CPython diff evidence is in
+  `cpython_operator_module_doc_intro_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_signature_helper_subset`, covering CPython
   `test_operator.py` signature assertions for `operator.attrgetter`,

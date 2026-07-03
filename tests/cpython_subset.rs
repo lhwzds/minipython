@@ -55886,6 +55886,33 @@ fn cpython_operator_module_metadata_subset() {
     );
 }
 
+// Adapted from CPython's public `operator.__doc__` module metadata. This keeps
+// the sandbox surface to the stable module docstring rather than implementation
+// details from the `_operator` accelerator.
+#[test]
+fn cpython_operator_module_doc_intro_metadata_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "doc = operator.__doc__\n",
+            "via_object = object.__getattribute__(operator, '__doc__')\n",
+            "lines = doc.splitlines()\n",
+            "print(type(doc).__name__, bool(doc), len(doc), lines[0])\n",
+            "print(lines[2])\n",
+            "print(lines[-1])\n",
+            "print('__doc__' in dir(operator), operator.__dict__['__doc__'] == doc)\n",
+            "print(via_object == doc, via_object.splitlines()[0])\n",
+        ),
+        &[
+            "str True 332 Operator interface.",
+            "This module exports a set of functions implemented in C corresponding",
+            "'__' are also provided for convenience.",
+            "True True",
+            "True Operator interface.",
+        ],
+    );
+}
+
 // Adapted from newer CPython operator helper instance metadata. This keeps
 // helper type names, `__doc__`, and gated `__module__` support covered without
 // promoting pickle or vectorcall internals.

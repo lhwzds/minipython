@@ -112,6 +112,13 @@ product(p, q, ... [repeat=1]) --> cartesian product\n\
 permutations(p[, r])\n\
 combinations(p, r)\n\
 combinations_with_replacement(p, r)\n";
+const OPERATOR_DOC: &str = "Operator interface.\n\
+\n\
+This module exports a set of functions implemented in C corresponding\n\
+to the intrinsic operators of Python.  For example, operator.add(x, y)\n\
+is equivalent to the expression x+y.  The function names are those\n\
+used for special methods; variants without leading and trailing\n\
+'__' are also provided for convenience.";
 const TYPES_DOC: &str =
     "\nDefine names for built-in types that aren't directly accessible as a builtin.\n";
 pub(crate) const TYPES_ALL: &[&str] = &[
@@ -2976,8 +2983,9 @@ fn operator_builtin(name: &str) -> Value {
 }
 
 fn operator_module_value() -> Value {
-    let mut attrs = Vec::with_capacity(OPERATOR_ALL.len() + OPERATOR_DUNDER_ALIASES.len() + 2);
+    let mut attrs = Vec::with_capacity(OPERATOR_ALL.len() + OPERATOR_DUNDER_ALIASES.len() + 3);
     attrs.push(("__package__", Value::String(String::new())));
+    attrs.push(("__doc__", Value::String(OPERATOR_DOC.to_string())));
     for name in OPERATOR_ALL {
         attrs.push((*name, operator_builtin(name)));
     }

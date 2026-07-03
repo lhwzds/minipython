@@ -1358,7 +1358,7 @@ fn collections_sandbox_subset_keeps_export_surface_explicit() {
 fn operator_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import operator\nfor name in operator.__all__:\n    print(name, hasattr(operator, name))\nfor name in ['__file__', '__loader__', '__spec__', '__cached__', '_operator']:\n    print(name, hasattr(operator, name))\nprint(operator.__all__)\nprint(dir(operator))\nfor name in ['add', 'not_', 'iconcat', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:\n    value = getattr(operator, name)\n    print(name, getattr(value, '__name__', None), getattr(value, '__qualname__', None), getattr(value, '__module__', None))\nfor helper in [operator.attrgetter('x'), operator.itemgetter(0), operator.methodcaller('strip')]:\n    print(type(helper).__name__, hasattr(helper, '__dict__'), hasattr(helper, '__reduce__'), getattr(helper, '__module__', None))"
+            "import operator\nfor name in operator.__all__:\n    print(name, hasattr(operator, name))\nfor name in ['__package__', '__doc__', '__all__']:\n    print(name, hasattr(operator, name))\nprint(type(operator.__doc__).__name__, bool(operator.__doc__), len(operator.__doc__), operator.__doc__.splitlines()[0])\nfor name in ['__file__', '__loader__', '__spec__', '__cached__', '_operator']:\n    print(name, hasattr(operator, name))\nprint(operator.__all__)\nprint(dir(operator))\nfor name in ['add', 'not_', 'iconcat', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:\n    value = getattr(operator, name)\n    print(name, getattr(value, '__name__', None), getattr(value, '__qualname__', None), getattr(value, '__module__', None))\nfor helper in [operator.attrgetter('x'), operator.itemgetter(0), operator.methodcaller('strip')]:\n    print(type(helper).__name__, hasattr(helper, '__dict__'), hasattr(helper, '__reduce__'), getattr(helper, '__module__', None))"
         ),
         Ok(output_lines(&[
             "abs True",
@@ -1418,13 +1418,17 @@ fn operator_sandbox_subset_keeps_export_surface_explicit() {
             "truediv True",
             "truth True",
             "xor True",
+            "__package__ True",
+            "__doc__ True",
+            "__all__ True",
+            "str True 332 Operator interface.",
             "__file__ False",
             "__loader__ False",
             "__spec__ False",
             "__cached__ False",
             "_operator False",
             "['abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']",
-            "['__abs__', '__add__', '__all__', '__and__', '__call__', '__concat__', '__contains__', '__delitem__', '__eq__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__iadd__', '__iand__', '__iconcat__', '__ifloordiv__', '__ilshift__', '__imatmul__', '__imod__', '__imul__', '__index__', '__inv__', '__invert__', '__ior__', '__ipow__', '__irshift__', '__isub__', '__itruediv__', '__ixor__', '__le__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__name__', '__ne__', '__neg__', '__not__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']",
+            "['__abs__', '__add__', '__all__', '__and__', '__call__', '__concat__', '__contains__', '__delitem__', '__doc__', '__eq__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__iadd__', '__iand__', '__iconcat__', '__ifloordiv__', '__ilshift__', '__imatmul__', '__imod__', '__imul__', '__index__', '__inv__', '__invert__', '__ior__', '__ipow__', '__irshift__', '__isub__', '__itruediv__', '__ixor__', '__le__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__name__', '__ne__', '__neg__', '__not__', '__or__', '__package__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']",
             "add add add operator",
             "not_ not_ not_ operator",
             "iconcat iconcat iconcat operator",

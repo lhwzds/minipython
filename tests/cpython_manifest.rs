@@ -21053,6 +21053,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
+            "cpython_operator_module_doc_intro_metadata_subset",
             "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
@@ -21084,6 +21085,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
                 .contains("'__file__', '__loader__', '__spec__', '__cached__', '_operator'")
             && LANGUAGE_TESTS.contains("operator.attrgetter('x')")
             && LANGUAGE_TESTS.contains("hasattr(helper, '__reduce__')")
+            && LANGUAGE_TESTS.contains("operator.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("print(dir(operator))"),
         "operator sandbox export test must guard public helpers, module metadata, and pickle helper stop lines"
     );
@@ -21141,6 +21143,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_module_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython module metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_module_doc_intro_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython module doc intro metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -22395,6 +22402,122 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION
                 .contains("newer `operator.call` entry has gated direct CPython evidence"),
         "migration notes must describe operator module metadata public behavior and gated direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_module_doc_intro_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_module_doc_intro_metadata_subset(",
+        "public `operator.__doc__` module metadata",
+        "doc = operator.__doc__",
+        "object.__getattribute__(operator, '__doc__')",
+        "doc.splitlines()",
+        "len(doc)",
+        "'__doc__' in dir(operator)",
+        "operator.__dict__['__doc__'] == doc",
+        "via_object == doc",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator module doc intro subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str True 332 Operator interface.\"",
+        "\"This module exports a set of functions implemented in C corresponding\"",
+        "\"'__' are also provided for convenience.\"",
+        "\"True True\"",
+        "\"True Operator interface.\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator module doc intro subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_module_doc_intro_metadata_diff_subset",
+    );
+    for required in [
+        "Public operator.__doc__ module metadata stable on CPython 3.14.6",
+        "operator-module-doc-intro-metadata",
+        "doc = operator.__doc__",
+        "object.__getattribute__(operator, '__doc__')",
+        "doc.splitlines()",
+        "len(doc)",
+        "'__doc__' in dir(operator)",
+        "operator.__dict__['__doc__'] == doc",
+        "via_object == doc",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator module doc intro CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let operator_start = STDLIB_SOURCE
+        .find("const OPERATOR_DOC: &str")
+        .expect("stdlib.rs must define OPERATOR_DOC");
+    let operator_end = STDLIB_SOURCE[operator_start..]
+        .find("const TYPES_DOC: &str")
+        .map(|offset| operator_start + offset)
+        .expect("OPERATOR_DOC must precede TYPES_DOC");
+    let operator_doc = &STDLIB_SOURCE[operator_start..operator_end];
+    for required in [
+        "Operator interface.",
+        "This module exports a set of functions implemented in C corresponding",
+        "'__' are also provided for convenience.",
+    ] {
+        assert!(
+            operator_doc.contains(required),
+            "operator stdlib doc constant must include `{required}`"
+        );
+    }
+
+    let operator_module_start = STDLIB_SOURCE
+        .find("fn operator_module_value()")
+        .expect("stdlib.rs must define operator_module_value()");
+    let operator_module_end = operator_module_start
+        + STDLIB_SOURCE[operator_module_start..]
+            .find("\nfn builtin_type_value")
+            .expect("operator_module_value() must precede builtin_type_value()");
+    let operator_registry = &STDLIB_SOURCE[operator_module_start..operator_module_end];
+    assert!(
+        operator_registry.contains("(\"__doc__\", Value::String(OPERATOR_DOC.to_string()))"),
+        "operator stdlib module registry must expose CPython-compatible __doc__ metadata"
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "operator")
+        .expect("sandbox stdlib manifest must include operator");
+    assert!(
+        row.supported_surface
+            .contains("operator.__doc__ intro metadata"),
+        "operator sandbox manifest must list operator.__doc__ intro metadata in supported surface"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_module_doc_intro_metadata_subset")
+            && row
+                .diff_evidence
+                .contains("cpython_operator_module_doc_intro_metadata_diff_subset"),
+        "operator sandbox manifest must cite doc intro subset and diff evidence"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_module_doc_intro_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_module_doc_intro_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("operator module `__doc__` intro metadata")
+            && CPYTHON_COVERAGE.contains("`operator.__doc__`"),
+        "coverage notes must describe operator module __doc__ intro metadata"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_module_doc_intro_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_module_doc_intro_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.__doc__ intro metadata")
+            && CPYTHON_MIGRATION.contains("`operator.__doc__`"),
+        "migration notes must describe operator module __doc__ intro metadata"
     );
 }
 

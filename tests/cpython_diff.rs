@@ -24569,6 +24569,23 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_module_doc_intro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Public operator.__doc__ module metadata stable on CPython 3.14.6",
+        name: "operator-module-doc-intro-metadata",
+        source: r#"import operator
+doc = operator.__doc__
+via_object = object.__getattribute__(operator, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[2])
+print(lines[-1])
+print('__doc__' in dir(operator), operator.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])"#,
+    });
+}
+
+#[test]
 fn cpython_operator_helper_instance_module_metadata_diff_subset() {
     let probe =
         run_cpython("import operator\nprint(hasattr(operator.attrgetter('x'), '__module__'))")
