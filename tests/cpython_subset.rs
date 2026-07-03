@@ -50191,6 +50191,26 @@ fn cpython_type_mro_readonly_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type metadata
+// behavior. __dict__ is readonly on type objects; this slice only pins the
+// public readonly errors and guards against int/None shadow values.
+#[test]
+fn cpython_type_dict_readonly_subset() {
+    assert_output(
+        "class A:\n    pass\nprint('initial-shadow', A.__dict__.get('__dict__', 'missing') in (1, None))\nfor label, action in [\n    ('set-int', lambda: setattr(A, '__dict__', 1)),\n    ('set-none', lambda: setattr(A, '__dict__', None)),\n    ('delete', lambda: delattr(A, '__dict__')),\n]:\n    try:\n        action()\n    except AttributeError as error:\n        print(label, error.__class__.__name__, str(error), error.args == (str(error),))\n    print('state', label, A.__dict__.get('__dict__', 'missing') in (1, None))\nprint('final-shadow', A.__dict__.get('__dict__', 'missing') in (1, None))",
+        &[
+            "initial-shadow False",
+            "set-int AttributeError attribute '__dict__' of 'type' objects is not writable True",
+            "state set-int False",
+            "set-none AttributeError attribute '__dict__' of 'type' objects is not writable True",
+            "state set-none False",
+            "delete AttributeError attribute '__dict__' of 'type' objects is not writable True",
+            "state delete False",
+            "final-shadow False",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.

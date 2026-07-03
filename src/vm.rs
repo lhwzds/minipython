@@ -64651,6 +64651,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             if let Some(error) = class_mro_readonly_error(name) {
                 return Err(error);
             }
+            if let Some(error) = class_dict_readonly_error(name) {
+                return Err(error);
+            }
             if matches!(name, "__name__" | "__qualname__") {
                 return store_class_metadata_attribute(&class_name, &attrs, name, value);
             }
@@ -64995,6 +64998,14 @@ fn class_mro_readonly_error(name: &str) -> Option<String> {
     }
 }
 
+fn class_dict_readonly_error(name: &str) -> Option<String> {
+    if name == "__dict__" {
+        Some("AttributeError: attribute '__dict__' of 'type' objects is not writable".to_string())
+    } else {
+        None
+    }
+}
+
 fn class_public_name(class_name: &str, attrs: &Scope) -> String {
     match class_name_value(class_name, attrs) {
         Value::String(name) => name,
@@ -65072,6 +65083,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 return Err(error);
             }
             if let Some(error) = class_mro_readonly_error(name) {
+                return Err(error);
+            }
+            if let Some(error) = class_dict_readonly_error(name) {
                 return Err(error);
             }
             if matches!(name, "__name__" | "__qualname__" | "__module__" | "__doc__") {

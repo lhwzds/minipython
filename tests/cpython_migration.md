@@ -9850,6 +9850,9 @@ Completed in the type builtin pass:
 - Added `cpython_type_mro_readonly_subset`, backed by
   `cpython_type_mro_readonly_diff_subset`, covering type `__mro__` readonly AttributeError
   behavior for assignment and deletion and proving it does not shadow the class dictionary.
+- Added `cpython_type_dict_readonly_subset`, backed by
+  `cpython_type_dict_readonly_diff_subset`, covering type `__dict__` readonly AttributeError
+  behavior for assignment and deletion and proving it guards against int/None shadow values.
 - Added `cpython_type_doc_and_firstlineno_subset`, adapted from
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus
