@@ -9834,6 +9834,11 @@ Completed in the type builtin pass:
   `cpython_type_repr_module_qualname_diff_subset`, covering type `repr()` /
   `str()` module-qualified class names, `__mro__` tuple repr, nested class
   `__qualname__`, and the `builtins` and non-string `__module__` boundaries.
+- Added `cpython_type_metadata_delete_errors_subset`, backed by
+  `cpython_type_metadata_delete_errors_diff_subset`, covering class metadata deletion TypeError
+  behavior for `__name__`, `__qualname__`, `__module__`, and `__doc__`,
+  including the case where a reassigned `__name__` controls the immutable-type
+  name in the error and preserves reassigned metadata values.
 - Added `cpython_type_doc_and_firstlineno_subset`, adapted from
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus
@@ -9872,6 +9877,7 @@ Completed in the type builtin pass:
   order.
 - Added direct `cpython_type_name_qualname_diff_subset`,
   `cpython_type_repr_module_qualname_diff_subset`, and
+  `cpython_type_metadata_delete_errors_diff_subset`, plus
   `cpython_type_doc_and_firstlineno_diff_subset` evidence for the supported
   public `TestType::test_type_name`, `::test_type_qualname`,
   `::test_type_doc`, and `::test_type_firstlineno` slices.

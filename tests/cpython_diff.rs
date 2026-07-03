@@ -15905,6 +15905,33 @@ print('empty-module', repr(D), D.__module__, D.__qualname__)"#,
 }
 
 #[test]
+fn cpython_type_metadata_delete_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public metadata delete errors subset",
+        name: "type-metadata-delete-errors",
+        source: r#"class A:
+    'doc'
+A.__name__ = 'Renamed'
+A.__qualname__ = 'Qualified'
+A.__module__ = 42
+for name in ['__name__', '__qualname__', '__module__', '__doc__']:
+    try:
+        delattr(A, name)
+    except TypeError as error:
+        print('custom', name, error.__class__.__name__, str(error), error.args == (str(error),))
+print('custom-values', A.__name__, A.__qualname__, A.__module__, A.__doc__)
+class B:
+    pass
+for name in ['__name__', '__qualname__', '__module__', '__doc__']:
+    try:
+        delattr(B, name)
+    except TypeError as error:
+        print('default', name, error.__class__.__name__, str(error), error.args == (str(error),))
+print('default-values', B.__name__, B.__qualname__, B.__module__, B.__doc__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_doc_and_firstlineno_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType::test_type_doc / ::test_type_firstlineno public subset",

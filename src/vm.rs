@@ -64964,6 +64964,14 @@ fn store_class_module_attribute(attrs: &Scope, value: Value) -> Result<(), Strin
     Ok(())
 }
 
+fn class_metadata_delete_error(class_name: &str, attrs: &Scope, name: &str) -> String {
+    let public_name = match class_name_value(class_name, attrs) {
+        Value::String(name) => name,
+        _ => class_name.to_string(),
+    };
+    format!("TypeError: cannot delete '{name}' attribute of immutable type '{public_name}'")
+}
+
 fn type_name_for_type_assignment_error<'a>(value: &'a Value, _field: &str) -> &'a str {
     type_name(value)
 }
@@ -65020,7 +65028,14 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 ))
             }
         }
-        Value::Class { attrs, .. } => {
+        Value::Class {
+            name: class_name,
+            attrs,
+            ..
+        } => {
+            if matches!(name, "__name__" | "__qualname__" | "__module__" | "__doc__") {
+                return Err(class_metadata_delete_error(&class_name, &attrs, name));
+            }
             if name == "__type_params__" {
                 return Err(
                     "TypeError: cannot delete '__type_params__' attribute of immutable type"

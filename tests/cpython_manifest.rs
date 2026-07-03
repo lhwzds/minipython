@@ -7236,6 +7236,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "B.__module__ = 'pkg'",
         ),
         (
+            "cpython_type_metadata_delete_errors_diff_subset",
+            "cpython_type_metadata_delete_errors_subset",
+            "delattr(A, name)",
+        ),
+        (
             "cpython_type_doc_and_firstlineno_diff_subset",
             "cpython_type_doc_and_firstlineno_subset",
             "A.__firstlineno__ = 43",
@@ -7262,6 +7267,76 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_metadata_delete_errors_has_cpython_evidence() {
+    let subset_name = "cpython_type_metadata_delete_errors_subset";
+    let diff_name = "cpython_type_metadata_delete_errors_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "A.__name__ = 'Renamed'",
+        "A.__qualname__ = 'Qualified'",
+        "A.__module__ = 42",
+        "['__name__', '__qualname__', '__module__', '__doc__']",
+        "delattr(A, name)",
+        "error.args == (str(error),)",
+        "custom-values",
+        "default-values",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type metadata delete subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"custom __name__ TypeError cannot delete '__name__' attribute of immutable type 'Renamed' True\"",
+        "\"custom __qualname__ TypeError cannot delete '__qualname__' attribute of immutable type 'Renamed' True\"",
+        "\"custom __module__ TypeError cannot delete '__module__' attribute of immutable type 'Renamed' True\"",
+        "\"custom __doc__ TypeError cannot delete '__doc__' attribute of immutable type 'Renamed' True\"",
+        "\"custom-values Renamed Qualified 42 doc\"",
+        "\"default __name__ TypeError cannot delete '__name__' attribute of immutable type 'B' True\"",
+        "\"default __qualname__ TypeError cannot delete '__qualname__' attribute of immutable type 'B' True\"",
+        "\"default __module__ TypeError cannot delete '__module__' attribute of immutable type 'B' True\"",
+        "\"default __doc__ TypeError cannot delete '__doc__' attribute of immutable type 'B' True\"",
+        "\"default-values B B __main__ None\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type metadata delete subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_metadata_delete_error(",
+        "class_name_value(class_name, attrs)",
+        "cannot delete '{name}' attribute of immutable type '{public_name}'",
+        "matches!(name, \"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\")",
+        "return Err(class_metadata_delete_error(&class_name, &attrs, name));",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM class metadata delete implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "class metadata deletion TypeError",
+            "`__name__`, `__qualname__`, `__module__`, and `__doc__`",
+            "preserves reassigned metadata values",
+        ] {
+            assert!(
+                document.contains(required),
+                "type metadata delete docs must contain `{required}`"
             );
         }
     }

@@ -50153,6 +50153,28 @@ fn cpython_type_repr_module_qualname_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public metadata
+// deletion behavior. Core type metadata can be reassigned in supported cases,
+// but deletion is rejected with class-name-qualified TypeError text.
+#[test]
+fn cpython_type_metadata_delete_errors_subset() {
+    assert_output(
+        "class A:\n    'doc'\nA.__name__ = 'Renamed'\nA.__qualname__ = 'Qualified'\nA.__module__ = 42\nfor name in ['__name__', '__qualname__', '__module__', '__doc__']:\n    try:\n        delattr(A, name)\n    except TypeError as error:\n        print('custom', name, error.__class__.__name__, str(error), error.args == (str(error),))\nprint('custom-values', A.__name__, A.__qualname__, A.__module__, A.__doc__)\nclass B:\n    pass\nfor name in ['__name__', '__qualname__', '__module__', '__doc__']:\n    try:\n        delattr(B, name)\n    except TypeError as error:\n        print('default', name, error.__class__.__name__, str(error), error.args == (str(error),))\nprint('default-values', B.__name__, B.__qualname__, B.__module__, B.__doc__)",
+        &[
+            "custom __name__ TypeError cannot delete '__name__' attribute of immutable type 'Renamed' True",
+            "custom __qualname__ TypeError cannot delete '__qualname__' attribute of immutable type 'Renamed' True",
+            "custom __module__ TypeError cannot delete '__module__' attribute of immutable type 'Renamed' True",
+            "custom __doc__ TypeError cannot delete '__doc__' attribute of immutable type 'Renamed' True",
+            "custom-values Renamed Qualified 42 doc",
+            "default __name__ TypeError cannot delete '__name__' attribute of immutable type 'B' True",
+            "default __qualname__ TypeError cannot delete '__qualname__' attribute of immutable type 'B' True",
+            "default __module__ TypeError cannot delete '__module__' attribute of immutable type 'B' True",
+            "default __doc__ TypeError cannot delete '__doc__' attribute of immutable type 'B' True",
+            "default-values B B __main__ None",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_type_doc and
 // ::test_type_firstlineno. The surrogate UnicodeEncodeError case is left for a
 // later Unicode-runtime slice because MiniPython strings currently use Rust
