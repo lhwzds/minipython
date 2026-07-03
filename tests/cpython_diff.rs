@@ -21301,6 +21301,19 @@ print(repr(collections.abc.__package__))"#,
 }
 
 #[test]
+fn cpython_collections_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py collections module __doc__ metadata subset",
+        name: "collections-module-doc-metadata",
+        source: r#"import collections
+doc = collections.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(collections), collections.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(collections, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_module_all_exports_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/collections/__init__.py public __all__ export subset",

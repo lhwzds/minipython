@@ -55,6 +55,20 @@ const COLLECTIONS_ALL: &[&str] = &[
     "deque",
     "namedtuple",
 ];
+const COLLECTIONS_DOC: &str = "This module implements specialized container datatypes providing\n\
+alternatives to Python's general purpose built-in containers, dict,\n\
+list, set, and tuple.\n\
+\n\
+* namedtuple   factory function for creating tuple subclasses with named fields\n\
+* deque        list-like container with fast appends and pops on either end\n\
+* ChainMap     dict-like class for creating a single view of multiple mappings\n\
+* Counter      dict subclass for counting hashable objects\n\
+* OrderedDict  dict subclass that remembers the order entries were added\n\
+* defaultdict  dict subclass that calls a factory function to supply missing values\n\
+* UserDict     wrapper around dictionary objects for easier dict subclassing\n\
+* UserList     wrapper around list objects for easier list subclassing\n\
+* UserString   wrapper around string objects for easier string subclassing\n\
+\n";
 const MATH_DOC: &str =
     "This module provides access to the mathematical functions\ndefined by the C standard.";
 const ITERTOOLS_DOC: &str = "Functional tools for creating and using iterators.\n\
@@ -1037,6 +1051,7 @@ pub(crate) fn create_module(
             "collections",
             vec![
                 ("__package__", Value::String("collections".to_string())),
+                ("__doc__", Value::String(COLLECTIONS_DOC.to_string())),
                 ("__all__", string_list_value(COLLECTIONS_ALL)),
                 ("ChainMap", Value::Builtin("ChainMap".to_string())),
                 ("Counter", Value::Builtin("Counter".to_string())),

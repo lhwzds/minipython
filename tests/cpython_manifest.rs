@@ -23460,6 +23460,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "collections / collections.abc",
         &[
             "cpython_collections_module_package_metadata_subset",
+            "cpython_collections_module_doc_metadata_subset",
             "cpython_collections_module_all_exports_subset",
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
@@ -23617,6 +23618,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_module_doc_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for collections module __doc__ metadata"
+    );
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_module_all_exports_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for collections module __all__ exports"
     );
@@ -23666,6 +23672,52 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "collections module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let collections_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_module_doc_metadata_diff_subset",
+    );
+    let collections_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_module_doc_metadata_subset",
+    );
+    for required in [
+        "doc = collections.__doc__",
+        "doc.splitlines()[0]",
+        "len(doc)",
+        "'__doc__' in dir(collections)",
+        "collections.__dict__['__doc__'] == doc",
+        "object.__getattribute__(collections, '__doc__')",
+    ] {
+        assert!(
+            collections_doc_diff_body.contains(required)
+                && collections_doc_subset_body.contains(required),
+            "collections module __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        collections_doc_diff_body.contains("repr(object.__getattribute__(collections, '__doc__'))"),
+        "collections module __doc__ diff evidence must compare full CPython repr"
+    );
+    assert!(
+        STDLIB_SOURCE.contains("(\"__doc__\", Value::String(COLLECTIONS_DOC.to_string()))")
+            && STDLIB_SOURCE.contains("const COLLECTIONS_DOC")
+            && STDLIB_SOURCE
+                .contains("This module implements specialized container datatypes providing"),
+        "collections stdlib module registry must set CPython-compatible __doc__ metadata"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_module_doc_metadata_subset",
+            "cpython_collections_module_doc_metadata_diff_subset",
+            "collections module `__doc__` metadata",
+            "`collections.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "collections module __doc__ docs must contain `{required}`"
             );
         }
     }
@@ -26629,6 +26681,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     assert!(
         LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'deque', 'defaultdict', 'namedtuple'")
+            && LANGUAGE_TESTS.contains("collections.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'__all__', '_tuplegetter', '_Link'")
             && LANGUAGE_TESTS.contains("collections.__all__")
             && LANGUAGE_TESTS.contains("'_count_elements' in collections.__all__")
@@ -26640,7 +26693,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'__all__', '__name__'")
             && LANGUAGE_TESTS.contains("dir(collections)")
             && LANGUAGE_TESTS.contains("dir(abc)"),
-        "collections sandbox export test must guard collections and collections.abc module surfaces"
+        "collections sandbox export test must guard collections __doc__, collections __all__, and collections.abc module surfaces"
     );
     assert!(
         row.diff_evidence

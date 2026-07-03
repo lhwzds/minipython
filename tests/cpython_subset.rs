@@ -67141,6 +67141,26 @@ print(repr(collections.abc.__package__))"#,
     );
 }
 
+// Mirrors CPython's public `collections` module `__doc__` metadata.
+#[test]
+fn cpython_collections_module_doc_metadata_subset() {
+    assert_output(
+        r#"import collections
+doc = collections.__doc__
+doc2 = object.__getattribute__(collections, '__doc__')
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(collections), collections.__dict__['__doc__'] == doc)
+print(doc2.splitlines()[2])
+print(doc2.splitlines()[-2])"#,
+        &[
+            "str True This module implements specialized container datatypes providing 831",
+            "True True",
+            "list, set, and tuple.",
+            "* UserString   wrapper around string objects for easier string subclassing",
+        ],
+    );
+}
+
 // Mirrors CPython's public `collections.__all__` export list while keeping
 // helper and submodule bindings outside the exported surface.
 #[test]
