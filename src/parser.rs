@@ -6536,6 +6536,7 @@ impl Parser<'_> {
                     | Token::Imaginary(_)
                     | Token::Number(_)
                     | Token::FString(_)
+                    | Token::TString(_)
                     | Token::String(_)
             )
         ) {
