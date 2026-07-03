@@ -23366,6 +23366,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "collections / collections.abc",
         &[
             "cpython_collections_module_package_metadata_subset",
+            "cpython_collections_module_all_exports_subset",
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
             "cpython_collections_counter_instance_doc_attribute_subset",
@@ -23520,6 +23521,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_module_package_metadata_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for collections module package metadata"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_module_all_exports_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for collections module __all__ exports"
+    );
     let collections_package_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_collections_module_package_metadata_diff_subset",
@@ -23566,6 +23572,52 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "collections module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let collections_all_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_module_all_exports_diff_subset",
+    );
+    let collections_all_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_module_all_exports_subset",
+    );
+    for required in [
+        "collections.__all__ == expected",
+        "collections.__dict__['__all__'] == expected",
+        "'__all__' in dir(collections)",
+        "all(hasattr(collections, name) for name in collections.__all__)",
+        "['_count_elements', 'abc']",
+    ] {
+        assert!(
+            collections_all_diff_body.contains(required)
+                && collections_all_subset_body.contains(required),
+            "collections module __all__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "const COLLECTIONS_ALL",
+        "\"ChainMap\"",
+        "\"namedtuple\"",
+        "\"__all__\"",
+        "string_list_value(COLLECTIONS_ALL)",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required),
+            "collections module __all__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_module_all_exports_subset",
+            "cpython_collections_module_all_exports_diff_subset",
+            "collections module `__all__` public export list",
+            "`collections.__all__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "collections module __all__ docs must contain `{required}`"
             );
         }
     }
@@ -26484,6 +26536,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'deque', 'defaultdict', 'namedtuple'")
             && LANGUAGE_TESTS.contains("'__all__', '_tuplegetter', '_Link'")
+            && LANGUAGE_TESTS.contains("collections.__all__")
+            && LANGUAGE_TESTS.contains("'_count_elements' in collections.__all__")
+            && LANGUAGE_TESTS.contains("'abc' in collections.__all__")
             && LANGUAGE_TESTS.contains("\"defaultdict True\"")
             && LANGUAGE_TESTS.contains("import collections.abc as abc")
             && LANGUAGE_TESTS.contains("print('abc __all__', hasattr(abc, '__all__'))")

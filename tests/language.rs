@@ -1292,7 +1292,7 @@ fn functools_sandbox_subset_keeps_export_surface_explicit() {
 fn collections_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import collections\nfor name in ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '_count_elements', 'abc', 'deque', 'defaultdict', 'namedtuple']:\n    print(name, hasattr(collections, name))\nfor name in ['__all__', '_tuplegetter', '_Link']:\n    print(name, hasattr(collections, name))\nprint(dir(collections))\nimport collections.abc as abc\nfor name in ['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView']:\n    print('abc', name, hasattr(abc, name))\nprint('abc __all__', hasattr(abc, '__all__'))\nprint(dir(abc))"
+            "import collections\nfor name in ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '_count_elements', 'abc', 'deque', 'defaultdict', 'namedtuple']:\n    print(name, hasattr(collections, name))\nfor name in ['__all__', '_tuplegetter', '_Link']:\n    print(name, hasattr(collections, name))\nprint(collections.__all__)\nprint('_count_elements' in collections.__all__, 'abc' in collections.__all__)\nprint(dir(collections))\nimport collections.abc as abc\nfor name in ['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView']:\n    print('abc', name, hasattr(abc, name))\nprint('abc __all__', hasattr(abc, '__all__'))\nprint(dir(abc))"
         ),
         Ok(output_lines(&[
             "ChainMap True",
@@ -1306,10 +1306,12 @@ fn collections_sandbox_subset_keeps_export_surface_explicit() {
             "deque True",
             "defaultdict True",
             "namedtuple True",
-            "__all__ False",
+            "__all__ True",
             "_tuplegetter False",
             "_Link False",
-            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '__name__', '_count_elements', 'abc', 'defaultdict', 'deque', 'namedtuple']",
+            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', 'defaultdict', 'deque', 'namedtuple']",
+            "False False",
+            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '__all__', '__name__', '__package__', '_count_elements', 'abc', 'defaultdict', 'deque', 'namedtuple']",
             "abc AsyncGenerator True",
             "abc AsyncIterable True",
             "abc AsyncIterator True",

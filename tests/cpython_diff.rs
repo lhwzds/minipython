@@ -21288,6 +21288,20 @@ print(repr(collections.abc.__package__))"#,
 }
 
 #[test]
+fn cpython_collections_module_all_exports_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/collections/__init__.py public __all__ export subset",
+        name: "collections-module-all-exports",
+        source: r#"import collections
+expected = ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', 'defaultdict', 'deque', 'namedtuple']
+print(collections.__all__ == expected)
+print(collections.__dict__['__all__'] == expected)
+print('__all__' in dir(collections), all(hasattr(collections, name) for name in collections.__all__))
+print([name for name in ['_count_elements', 'abc'] if name in collections.__all__])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Counter public direct base metadata subset",

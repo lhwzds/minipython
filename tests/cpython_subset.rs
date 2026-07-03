@@ -67087,6 +67087,21 @@ print(repr(collections.abc.__package__))"#,
     );
 }
 
+// Mirrors CPython's public `collections.__all__` export list while keeping
+// helper and submodule bindings outside the exported surface.
+#[test]
+fn cpython_collections_module_all_exports_subset() {
+    assert_output(
+        r#"import collections
+expected = ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', 'defaultdict', 'deque', 'namedtuple']
+print(collections.__all__ == expected)
+print(collections.__dict__['__all__'] == expected)
+print('__all__' in dir(collections), all(hasattr(collections, name) for name in collections.__all__))
+print([name for name in ['_count_elements', 'abc'] if name in collections.__all__])"#,
+        &["True", "True", "True True", "[]"],
+    );
+}
+
 // Mirrors CPython's public `Counter` direct base metadata.
 #[test]
 fn cpython_collections_counter_type_base_metadata_subset() {

@@ -42,6 +42,17 @@ const FUNCTOOLS_ALL: &[&str] = &[
     "Placeholder",
 ];
 const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
+const COLLECTIONS_ALL: &[&str] = &[
+    "ChainMap",
+    "Counter",
+    "OrderedDict",
+    "UserDict",
+    "UserList",
+    "UserString",
+    "defaultdict",
+    "deque",
+    "namedtuple",
+];
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
     "BuiltinFunctionType",
@@ -991,6 +1002,7 @@ pub(crate) fn create_module(
             "collections",
             vec![
                 ("__package__", Value::String("collections".to_string())),
+                ("__all__", string_list_value(COLLECTIONS_ALL)),
                 ("ChainMap", Value::Builtin("ChainMap".to_string())),
                 ("Counter", Value::Builtin("Counter".to_string())),
                 (

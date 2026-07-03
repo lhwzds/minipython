@@ -446,6 +446,7 @@ Recent runtime migration notes:
   behavior, object.__getattribute__ Set ABC type-object __text_signature__ metadata
   behavior, object.__getattribute__ MutableSet ABC type-object __doc__ metadata
   behavior, object.__getattribute__ MutableSet ABC type-object __text_signature__ metadata
+  behavior, collections module __all__ public export list
   behavior, collections.abc module __all__ public export list
   behavior, collections.abc module __package__ metadata
   behavior, collections.abc module __doc__ metadata
@@ -961,6 +962,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_order_preservation_diff_subset`,
   `cpython_collections_chainmap_union_operators_diff_subset`,
   `cpython_collections_module_package_metadata_diff_subset`,
+  `cpython_collections_module_all_exports_diff_subset`,
   `cpython_collections_abc_core_runtime_diff_subset`,
   `cpython_collections_abc_type_hierarchy_metadata_diff_subset`,
   `cpython_collections_abc_iterable_iterator_diff_subset`,
@@ -6603,6 +6605,12 @@ without adding general custom encoder/decoder class support.
   collections module `__package__` metadata through `collections.__package__`,
   `object.__getattribute__`, `dir()`, and `__dict__` while preserving
   `collections.abc.__package__` as CPython's empty string.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_module_all_exports_subset`, backed by
+  `cpython_collections_module_all_exports_diff_subset`, covering the
+  collections module `__all__` public export list through
+  `collections.__all__`, `dir()`, and `__dict__` while keeping
+  `_count_elements` and `abc` outside the public export list.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_public_methods_diff_subset` and
   `cpython_collections_userdict_public_methods_subset`, covering CPython
