@@ -4375,6 +4375,15 @@ Completed in the invalid dict display promotion pass:
   double-starred dictionary keys/values, and unparenthesized conditional dict
   unpacking.
 
+Completed in the conditional dict unpacking diagnostic pass:
+
+- Extended `cpython_invalid_dict_display_syntax_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so unparenthesized conditional dict unpacking forms
+  such as `{**x if x else y}`, `{**x if flag else y}`, `{**x if x else y, 1: 2}`,
+  and `{**x if x else y for x in z}` use CPython's public `invalid syntax` message,
+  while parenthesized conditional dict unpacking such as `{**(x if flag else y)}`
+  remains a separate valid dict-unpack expression.
+
 Completed in the dict-unpack comprehension diagnostic pass:
 
 - Extended `cpython_invalid_dict_display_syntax_subset` and

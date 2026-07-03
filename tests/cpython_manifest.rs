@@ -51451,6 +51451,45 @@ fn cpython_dict_unpacking_comprehension_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_conditional_dict_unpacking_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_dict_display_syntax_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "conditional dict unpacking SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "conditional dict unpacking runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "{**x if x else y}",
+        "{**x if flag else y}",
+        "{**x if x else y, 1: 2}",
+        "{**x if x else y for x in z}",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "conditional dict unpacking CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "conditional dict unpacking subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("unparenthesized conditional dict unpacking forms")
+                && document.contains("invalid syntax"),
+            "conditional dict unpacking docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

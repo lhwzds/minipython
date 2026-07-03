@@ -44103,6 +44103,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "dict unpacking cannot be used in dict comprehension",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized conditional dict unpacking rejection",
+            name: "dict-unpacking-conditional-expression-message",
+            source: "{**x if x else y}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized conditional dict unpacking rejection",
+            name: "dict-unpacking-conditional-name-message",
+            source: "{**x if flag else y}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized conditional dict unpacking rejection",
+            name: "dict-unpacking-conditional-before-entry-message",
+            source: "{**x if x else y, 1: 2}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized conditional dict unpacking rejection",
+            name: "dict-unpacking-conditional-before-comprehension-message",
+            source: "{**x if x else y for x in z}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

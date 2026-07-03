@@ -37535,10 +37535,14 @@ fn cpython_dict_kvpair_helper_rules_subset() {
 // Lib/test/test_syntax.py and Lib/test/test_unpack_ex.py diagnostics.
 #[test]
 fn cpython_invalid_dict_display_syntax_subset() {
-    assert_error(
+    for source in [
         "{**x if x else y}",
-        "parse error: invalid double starred expression. Did you forget to wrap the conditional expression in parentheses?",
-    );
+        "{**x if flag else y}",
+        "{**x if x else y, 1: 2}",
+        "{**x if x else y for x in z}",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "{*a: b for a, b in {1: 2}.items()}",
         "parse error: cannot use a starred expression in a dictionary key",

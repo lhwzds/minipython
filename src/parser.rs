@@ -5970,10 +5970,7 @@ impl Parser<'_> {
         self.expect_double_star()?;
         let value = self.parse_bitwise_or()?;
         if matches!(self.peek(), Some(Token::If)) {
-            return Err(
-                "invalid double starred expression. Did you forget to wrap the conditional expression in parentheses?"
-                    .to_string(),
-            );
+            return Err("invalid syntax".to_string());
         }
         if matches!(self.peek(), Some(Token::Colon)) {
             return Err("cannot use dict unpacking in a dictionary key".to_string());
