@@ -6280,6 +6280,14 @@ Completed in the integer literal follower parameter-name diagnostic pass:
   such as `def f(a 1 b)`, `def f(**a 1 b)`, `lambda *a 1 b: None`, and
   `lambda **a 1 b: None` use CPython's public `invalid syntax` message.
 
+Completed in the large integer literal follower parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so large integer literal follower parameter name forms
+  such as `def f(a 100000000000000000000 b)`, `def f(**a 100000000000000000000 b)`, `lambda *a 100000000000000000000 b: None`, and
+  `lambda **a 100000000000000000000 b: None` use CPython's public `invalid syntax` message.
+
 Completed in the float literal follower parameter-name diagnostic pass:
 
 - Extended `cpython_invalid_parameters_subset`,

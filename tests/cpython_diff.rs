@@ -43305,6 +43305,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower function parameter rejection",
+            name: "def-large-integer-literal-follower-parameter-name-message",
+            source: "def f(a 100000000000000000000 b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower function parameter rejection",
+            name: "def-large-integer-literal-follower-vararg-parameter-name-message",
+            source: "def f(*a 100000000000000000000 b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower function parameter rejection",
+            name: "def-large-integer-literal-follower-kwarg-parameter-name-message",
+            source: "def f(**a 100000000000000000000 b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower lambda parameter rejection",
+            name: "lambda-large-integer-literal-follower-parameter-name-message",
+            source: "lambda a 100000000000000000000 b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower lambda parameter rejection",
+            name: "lambda-large-integer-literal-follower-vararg-parameter-name-message",
+            source: "lambda *a 100000000000000000000 b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram large integer literal follower lambda parameter rejection",
+            name: "lambda-large-integer-literal-follower-kwarg-parameter-name-message",
+            source: "lambda **a 100000000000000000000 b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram float literal follower function parameter rejection",
             name: "def-float-literal-follower-parameter-name-message",
             source: "def f(a 1.5 b):\n    pass",
