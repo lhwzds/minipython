@@ -25119,6 +25119,23 @@ print('__package__' in dir(io), repr(io.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_io_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/io public module __doc__ metadata subset stable on CPython 3.14.6",
+        name: "io-module-doc-metadata",
+        source: r#"import io
+doc = io.__doc__
+via_object = object.__getattribute__(io, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[1])
+print(lines[-1])
+print('__doc__' in dir(io), io.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])"#,
+    });
+}
+
+#[test]
 fn cpython_io_bytesio_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryio.py public BytesIO pure-memory subset",

@@ -1080,6 +1080,7 @@ Recent runtime migration notes:
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_io_module_package_metadata_diff_subset`,
+  `cpython_io_module_doc_metadata_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_io_bytesio_read_method_descriptor_diff_subset`,
   `cpython_io_bytesio_read1_method_descriptor_diff_subset`,
@@ -4449,6 +4450,10 @@ without adding general custom encoder/decoder class support.
   `cpython_io_module_package_metadata_diff_subset` /
   `cpython_io_module_package_metadata_subset`, covering io module `__package__` metadata
   (`io.__package__` is `''`), plus
+  `cpython_io_module_doc_metadata_diff_subset` /
+  `cpython_io_module_doc_metadata_subset`, covering io module `__doc__` metadata
+  (`io.__doc__` is CPython's public module doc string and is visible through
+  `object.__getattribute__`, `io.__dict__`, and `dir(io)`), plus
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `read1()`, `readline()`,

@@ -1125,15 +1125,17 @@ fn sandbox_policy_allows_required_sandbox_stdlib_surface() {
 fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
     assert_eq!(
         run_source(
-            "import io\nfor name in ['BytesIO', 'UnsupportedOperation', '__package__', 'SEEK_SET', 'SEEK_CUR', 'SEEK_END']:\n    print(name, hasattr(io, name))\nfor name in ['open', 'FileIO', 'TextIOWrapper', 'StringIO', 'BufferedReader', 'BufferedWriter', 'RawIOBase', 'IOBase', '__all__']:\n    print(name, hasattr(io, name))\nprint(dir(io))"
+            "import io\nfor name in ['BytesIO', 'UnsupportedOperation', '__package__', '__doc__', 'SEEK_SET', 'SEEK_CUR', 'SEEK_END']:\n    print(name, hasattr(io, name))\nprint(type(io.__doc__).__name__, bool(io.__doc__), len(io.__doc__), io.__doc__.splitlines()[0])\nfor name in ['open', 'FileIO', 'TextIOWrapper', 'StringIO', 'BufferedReader', 'BufferedWriter', 'RawIOBase', 'IOBase', '__all__']:\n    print(name, hasattr(io, name))\nprint(dir(io))"
         ),
         Ok(output_lines(&[
             "BytesIO True",
             "UnsupportedOperation True",
             "__package__ True",
+            "__doc__ True",
             "SEEK_SET True",
             "SEEK_CUR True",
             "SEEK_END True",
+            "str True 1473 The io module provides the Python interfaces to stream handling. The",
             "open False",
             "FileIO False",
             "TextIOWrapper False",
@@ -1143,7 +1145,7 @@ fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
             "RawIOBase False",
             "IOBase False",
             "__all__ False",
-            "['BytesIO', 'SEEK_CUR', 'SEEK_END', 'SEEK_SET', 'UnsupportedOperation', '__name__', '__package__']",
+            "['BytesIO', 'SEEK_CUR', 'SEEK_END', 'SEEK_SET', 'UnsupportedOperation', '__doc__', '__name__', '__package__']",
         ]))
     );
 }

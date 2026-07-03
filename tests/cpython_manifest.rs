@@ -29516,6 +29516,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         "io.BytesIO",
         &[
             "cpython_io_module_package_metadata_subset",
+            "cpython_io_module_doc_metadata_subset",
             "cpython_io_bytesio_public_subset",
             "cpython_io_bytesio_read_method_descriptor_subset",
             "cpython_io_bytesio_read1_method_descriptor_subset",
@@ -29566,6 +29567,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_io_module_package_metadata_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for io module package metadata"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_module_doc_metadata_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for io module doc metadata"
     );
     assert!(
         row.diff_evidence
@@ -29768,6 +29774,77 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
                 "io module package metadata docs must contain `{required}`"
             );
         }
+    }
+
+    let doc_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_io_module_doc_metadata_diff_subset");
+    let doc_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_module_doc_metadata_subset");
+    for required in [
+        "io.__doc__",
+        "object.__getattribute__(io, '__doc__')",
+        "'__doc__' in dir(io)",
+        "io.__dict__['__doc__'] == doc",
+        "len(doc)",
+    ] {
+        assert!(
+            doc_diff.contains(required) && doc_subset.contains(required),
+            "io module doc metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "hasattr(io, 'open')",
+        "hasattr(io, 'FileIO')",
+        "hasattr(io, 'TextIOWrapper')",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "io module doc metadata local subset evidence must keep host I/O API `{required}` outside the sandbox surface"
+        );
+    }
+    for required in [
+        "\"str True 1473 The io module provides the Python interfaces to stream handling. The\"",
+        "\"builtin open function is defined in this module.\"",
+        "\"   possible.\"",
+        "\"True True\"",
+        "\"False False False\"",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "io module doc metadata subset output must pin `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_io_module_doc_metadata_subset",
+            "cpython_io_module_doc_metadata_diff_subset",
+            "io module `__doc__` metadata",
+            "`io.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "io module doc metadata docs must contain `{required}`"
+            );
+        }
+    }
+
+    let io_doc_start = STDLIB_SOURCE
+        .find("const IO_DOC: &str")
+        .expect("stdlib.rs must define IO_DOC");
+    let io_doc_end = STDLIB_SOURCE[io_doc_start..]
+        .find("const ARRAY_DOC: &str")
+        .map(|offset| io_doc_start + offset)
+        .expect("IO_DOC must precede ARRAY_DOC");
+    let io_doc = &STDLIB_SOURCE[io_doc_start..io_doc_end];
+    for required in [
+        "The io module provides the Python interfaces to stream handling. The",
+        "builtin open function is defined in this module.",
+        "   possible.",
+    ] {
+        assert!(
+            io_doc.contains(required),
+            "io stdlib doc constant must include `{required}`"
+        );
     }
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_public_diff_subset");
@@ -32115,6 +32192,7 @@ fn io_stdlib_registry_stays_bytesio_only() {
     for required in [
         "\"io\"",
         "(\"__package__\", Value::String(String::new()))",
+        "(\"__doc__\", Value::String(IO_DOC.to_string()))",
         "(\"BytesIO\", Value::Builtin(\"io.BytesIO\".to_string()))",
         "\"UnsupportedOperation\"",
         "Value::Builtin(\"io.UnsupportedOperation\".to_string())",
@@ -32148,11 +32226,12 @@ fn io_stdlib_registry_stays_bytesio_only() {
     assert!(
         LANGUAGE_TESTS.contains("io_bytesio_sandbox_subset_excludes_host_io_apis")
             && LANGUAGE_TESTS.contains("'__package__'")
+            && LANGUAGE_TESTS.contains("'__doc__'")
             && LANGUAGE_TESTS.contains("'open', 'FileIO', 'TextIOWrapper'")
             && LANGUAGE_TESTS.contains("'StringIO', 'BufferedReader', 'BufferedWriter'")
             && LANGUAGE_TESTS.contains("'RawIOBase', 'IOBase', '__all__'")
             && LANGUAGE_TESTS.contains("dir(io)"),
-        "language tests must keep host io APIs unavailable and io module __package__ explicit at runtime"
+        "language tests must keep host io APIs unavailable and io module metadata explicit at runtime"
     );
 }
 
@@ -32162,6 +32241,10 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         (
             "cpython_io_module_package_metadata_subset",
             "cpython_io_module_package_metadata_diff_subset",
+        ),
+        (
+            "cpython_io_module_doc_metadata_subset",
+            "cpython_io_module_doc_metadata_diff_subset",
         ),
         (
             "cpython_io_bytesio_public_subset",

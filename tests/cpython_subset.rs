@@ -23046,6 +23046,32 @@ print('__package__' in dir(io), repr(io.__dict__['__package__']))"#,
     );
 }
 
+// Pins CPython's public module doc metadata for the sandbox `io` module while
+// keeping host file APIs outside the supported surface.
+#[test]
+fn cpython_io_module_doc_metadata_subset() {
+    assert_output(
+        r#"import io
+doc = io.__doc__
+via_object = object.__getattribute__(io, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[1])
+print(lines[-1])
+print('__doc__' in dir(io), io.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])
+print(hasattr(io, 'open'), hasattr(io, 'FileIO'), hasattr(io, 'TextIOWrapper'))"#,
+        &[
+            "str True 1473 The io module provides the Python interfaces to stream handling. The",
+            "builtin open function is defined in this module.",
+            "   possible.",
+            "True True",
+            "True The io module provides the Python interfaces to stream handling. The",
+            "False False False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]

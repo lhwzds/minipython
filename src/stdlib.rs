@@ -53,6 +53,36 @@ Interface summary:\n\
         x = copy.copy(y)                # make a shallow copy of y\n\
         x = copy.deepcopy(y)            # make a deep copy of y\n\
         x = copy.replace(y, a=1, b=2)   # new object with fields replaced, as defined by `__replace__`\n";
+const IO_DOC: &str = "The io module provides the Python interfaces to stream handling. The\n\
+builtin open function is defined in this module.\n\
+\n\
+At the top of the I/O hierarchy is the abstract base class IOBase. It\n\
+defines the basic interface to a stream. Note, however, that there is no\n\
+separation between reading and writing to streams; implementations are\n\
+allowed to raise an OSError if they do not support a given operation.\n\
+\n\
+Extending IOBase is RawIOBase which deals simply with the reading and\n\
+writing of raw bytes to a stream. FileIO subclasses RawIOBase to provide\n\
+an interface to OS files.\n\
+\n\
+BufferedIOBase deals with buffering on a raw byte stream (RawIOBase). Its\n\
+subclasses, BufferedWriter, BufferedReader, and BufferedRWPair buffer\n\
+streams that are readable, writable, and both respectively.\n\
+BufferedRandom provides a buffered interface to random access\n\
+streams. BytesIO is a simple stream of in-memory bytes.\n\
+\n\
+Another IOBase subclass, TextIOBase, deals with the encoding and decoding\n\
+of streams into text. TextIOWrapper, which extends it, is a buffered text\n\
+interface to a buffered raw stream (`BufferedIOBase`). Finally, StringIO\n\
+is an in-memory stream for text.\n\
+\n\
+Argument names are not part of the specification, and only the arguments\n\
+of open() are intended to be used as keyword arguments.\n\
+\n\
+data:\n\
+\n\
+DEFAULT_BUFFER_SIZE\n\
+\n   An int containing the default buffer size used by the module's buffered\n   I/O classes. open() uses the file's blksize (as obtained by os.stat) if\n   possible.\n";
 const ARRAY_DOC: &str = "This module defines an object type which can efficiently represent\n\
 an array of basic values: characters, integers, floating-point\n\
 numbers.  Arrays are sequence types and behave very much like lists,\n\
@@ -669,6 +699,7 @@ pub(crate) fn create_module(
             "io",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__doc__", Value::String(IO_DOC.to_string())),
                 ("BytesIO", Value::Builtin("io.BytesIO".to_string())),
                 (
                     "UnsupportedOperation",
