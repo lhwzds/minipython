@@ -36983,6 +36983,19 @@ print('__package__' in dir(array), repr(array.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_array_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/array public module __doc__ metadata subset",
+        name: "array-module-doc-metadata",
+        source: r#"import array
+doc = array.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(array), array.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(array, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     // CPython oracle text: array() argument 1 must be a unicode character, not a string of length 0;
     // array() argument 1 must be a unicode character, not a string of length 2

@@ -22920,6 +22920,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_float_public_sequence_and_mutation_subset",
             "cpython_array_unicode_public_sequence_and_mutation_subset",
             "cpython_array_module_package_metadata_subset",
+            "cpython_array_module_doc_metadata_subset",
             "cpython_array_one_byte_public_mutation_methods_subset",
             "cpython_array_one_byte_public_clear_subset",
             "cpython_array_one_byte_public_subscript_mutation_subset",
@@ -22939,6 +22940,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include array");
     for evidence in [
         "cpython_array_module_package_metadata_diff_subset",
+        "cpython_array_module_doc_metadata_diff_subset",
         "cpython_array_module_and_constructor_public_surface_diff_subset",
         "cpython_array_subclass_public_construction_diff_subset",
         "cpython_array_one_byte_public_sequence_diff_subset",
@@ -22999,9 +23001,10 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
 
     assert!(
         LANGUAGE_TESTS.contains("array_sandbox_subset_excludes_pickle_module_internals")
+            && LANGUAGE_TESTS.contains("array.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'ArrayType', '_array_reconstructor', '__all__'")
             && LANGUAGE_TESTS.contains("dir(array)"),
-        "array sandbox export test must guard pickle module internals and module __all__"
+        "array sandbox export test must guard module __doc__, pickle module internals, and module __all__"
     );
 
     let package_diff = extract_rust_test_body(
@@ -23041,6 +23044,36 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         array_registry.contains("(\"__package__\", Value::String(String::new()))"),
         "array stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
+    let array_doc_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_array_module_doc_metadata_diff_subset",
+    );
+    let array_doc_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_array_module_doc_metadata_subset");
+    for required in [
+        "doc = array.__doc__",
+        "doc.splitlines()[0]",
+        "len(doc)",
+        "'__doc__' in dir(array)",
+        "array.__dict__['__doc__'] == doc",
+        "object.__getattribute__(array, '__doc__')",
+    ] {
+        assert!(
+            array_doc_diff.contains(required) && array_doc_subset.contains(required),
+            "array module __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        array_doc_diff.contains("repr(object.__getattribute__(array, '__doc__'))"),
+        "array module __doc__ diff evidence must compare full CPython repr"
+    );
+    assert!(
+        array_registry.contains("(\"__doc__\", Value::String(ARRAY_DOC.to_string()))")
+            && STDLIB_SOURCE.contains("const ARRAY_DOC")
+            && STDLIB_SOURCE
+                .contains("This module defines an object type which can efficiently represent"),
+        "array stdlib module registry must set CPython-compatible __doc__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_array_module_package_metadata_subset",
@@ -23051,6 +23084,19 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "array module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_array_module_doc_metadata_subset",
+            "cpython_array_module_doc_metadata_diff_subset",
+            "array module `__doc__` metadata",
+            "`array.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "array module __doc__ docs must contain `{required}`"
             );
         }
     }

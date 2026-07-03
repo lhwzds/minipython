@@ -1175,15 +1175,16 @@ fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
 fn array_sandbox_subset_excludes_pickle_module_internals() {
     assert_eq!(
         run_source(
-            "import array\nfor name in ['array', 'typecodes']:\n    print(name, hasattr(array, name))\nfor name in ['ArrayType', '_array_reconstructor', '__all__']:\n    print(name, hasattr(array, name))\nprint(dir(array))"
+            "import array\nfor name in ['array', 'typecodes']:\n    print(name, hasattr(array, name))\nprint(type(array.__doc__).__name__, bool(array.__doc__), array.__doc__.splitlines()[0])\nfor name in ['ArrayType', '_array_reconstructor', '__all__']:\n    print(name, hasattr(array, name))\nprint(dir(array))"
         ),
         Ok(output_lines(&[
             "array True",
             "typecodes True",
+            "str True This module defines an object type which can efficiently represent",
             "ArrayType False",
             "_array_reconstructor False",
             "__all__ False",
-            "['__name__', 'array', 'typecodes']",
+            "['__doc__', '__name__', '__package__', 'array', 'typecodes']",
         ]))
     );
 }

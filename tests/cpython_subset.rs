@@ -21194,6 +21194,27 @@ print('__package__' in dir(array), repr(array.__dict__['__package__']))"#,
     );
 }
 
+// Mirrors CPython's public `array` module `__doc__` metadata while keeping the
+// supported sandbox surface pure-memory.
+#[test]
+fn cpython_array_module_doc_metadata_subset() {
+    assert_output(
+        r#"import array
+doc = array.__doc__
+doc2 = object.__getattribute__(array, '__doc__')
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(array), array.__dict__['__doc__'] == doc)
+print(doc2.splitlines()[1])
+print(doc2.splitlines()[-1])"#,
+        &[
+            "str True This module defines an object type which can efficiently represent 262",
+            "True True",
+            "an array of basic values: characters, integers, floating-point",
+            "except that the type of objects stored in them is constrained.",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public array module and
 // constructor behavior.
 #[test]

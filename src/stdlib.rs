@@ -44,6 +44,10 @@ const FUNCTOOLS_ALL: &[&str] = &[
     "Placeholder",
 ];
 const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
+const ARRAY_DOC: &str = "This module defines an object type which can efficiently represent\n\
+an array of basic values: characters, integers, floating-point\n\
+numbers.  Arrays are sequence types and behave very much like lists,\n\
+except that the type of objects stored in them is constrained.\n";
 const COLLECTIONS_ALL: &[&str] = &[
     "ChainMap",
     "Counter",
@@ -1076,6 +1080,7 @@ pub(crate) fn create_module(
             "array",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__doc__", Value::String(ARRAY_DOC.to_string())),
                 ("array", Value::Builtin("array.array".to_string())),
                 ("typecodes", Value::String("bBuwhHiIlLqQfd".to_string())),
             ],
