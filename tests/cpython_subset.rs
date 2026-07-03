@@ -50151,6 +50151,26 @@ fn cpython_type_metadata_assignment_error_names_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type metadata
+// behavior. __base__ is computed from the class layout and cannot be assigned
+// or deleted as a shadowing dictionary entry.
+#[test]
+fn cpython_type_base_readonly_subset() {
+    assert_output(
+        "class Root:\n    pass\nclass A(Root):\n    pass\nprint('initial', A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)\nfor label, action in [\n    ('set-int', lambda: setattr(A, '__base__', 1)),\n    ('set-none', lambda: setattr(A, '__base__', None)),\n    ('delete', lambda: delattr(A, '__base__')),\n]:\n    try:\n        action()\n    except AttributeError as error:\n        print(label, error.__class__.__name__, str(error), error.args == (str(error),))\n    print('state', label, A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)\nprint('final', A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)",
+        &[
+            "initial Root Root False",
+            "set-int AttributeError readonly attribute True",
+            "state set-int Root Root False",
+            "set-none AttributeError readonly attribute True",
+            "state set-none Root Root False",
+            "delete AttributeError readonly attribute True",
+            "state delete Root Root False",
+            "final Root Root False",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.

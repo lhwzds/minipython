@@ -9844,6 +9844,9 @@ Completed in the type builtin pass:
   behavior for `__name__` and `__qualname__`, including reassigned class names
   where the error uses the current public class name and preserving the
   NUL-name ValueError boundary.
+- Added `cpython_type_base_readonly_subset`, backed by
+  `cpython_type_base_readonly_diff_subset`, covering type `__base__` readonly AttributeError
+  behavior for assignment and deletion and proving it does not shadow the class dictionary.
 - Added `cpython_type_doc_and_firstlineno_subset`, adapted from
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus

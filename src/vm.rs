@@ -64645,6 +64645,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             attrs,
             ..
         } => {
+            if let Some(error) = class_base_readonly_error(name) {
+                return Err(error);
+            }
             if matches!(name, "__name__" | "__qualname__") {
                 return store_class_metadata_attribute(&class_name, &attrs, name, value);
             }
@@ -64973,6 +64976,14 @@ fn store_class_module_attribute(attrs: &Scope, value: Value) -> Result<(), Strin
     Ok(())
 }
 
+fn class_base_readonly_error(name: &str) -> Option<String> {
+    if name == "__base__" {
+        Some("AttributeError: readonly attribute".to_string())
+    } else {
+        None
+    }
+}
+
 fn class_public_name(class_name: &str, attrs: &Scope) -> String {
     match class_name_value(class_name, attrs) {
         Value::String(name) => name,
@@ -65046,6 +65057,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             attrs,
             ..
         } => {
+            if let Some(error) = class_base_readonly_error(name) {
+                return Err(error);
+            }
             if matches!(name, "__name__" | "__qualname__" | "__module__" | "__doc__") {
                 return Err(class_metadata_delete_error(&class_name, &attrs, name));
             }

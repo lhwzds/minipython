@@ -15902,6 +15902,30 @@ print(B.__name__, B.__qualname__)"#,
 }
 
 #[test]
+fn cpython_type_base_readonly_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public __base__ readonly subset",
+        name: "type-base-readonly",
+        source: r#"class Root:
+    pass
+class A(Root):
+    pass
+print('initial', A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)
+for label, action in [
+    ('set-int', lambda: setattr(A, '__base__', 1)),
+    ('set-none', lambda: setattr(A, '__base__', None)),
+    ('delete', lambda: delattr(A, '__base__')),
+]:
+    try:
+        action()
+    except AttributeError as error:
+        print(label, error.__class__.__name__, str(error), error.args == (str(error),))
+    print('state', label, A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)
+print('final', A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_repr_module_qualname_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType public type.__repr__ module/qualname subset",
