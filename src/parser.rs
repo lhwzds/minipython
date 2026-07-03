@@ -6456,6 +6456,7 @@ impl Parser<'_> {
                 Token::Dot
                     | Token::LeftParen
                     | Token::LeftBracket
+                    | Token::LeftBrace
                     | Token::Plus
                     | Token::PlusEqual
                     | Token::Minus
