@@ -6457,11 +6457,16 @@ impl Parser<'_> {
                     | Token::LeftParen
                     | Token::LeftBracket
                     | Token::Plus
+                    | Token::PlusEqual
                     | Token::Minus
+                    | Token::MinusEqual
                     | Token::Star
+                    | Token::StarEqual
                     | Token::DoubleStar
+                    | Token::DoubleStarEqual
                     | Token::Async
                     | Token::At
+                    | Token::AtEqual
                     | Token::Await
                     | Token::Arrow
                     | Token::Class
@@ -6479,8 +6484,11 @@ impl Parser<'_> {
                     | Token::As
                     | Token::Finally
                     | Token::Slash
+                    | Token::SlashEqual
                     | Token::DoubleSlash
+                    | Token::DoubleSlashEqual
                     | Token::Percent
+                    | Token::PercentEqual
                     | Token::EqualEqual
                     | Token::BangEqual
                     | Token::Less
@@ -6506,10 +6514,15 @@ impl Parser<'_> {
                     | Token::And
                     | Token::Or
                     | Token::Pipe
+                    | Token::PipeEqual
                     | Token::Caret
+                    | Token::CaretEqual
                     | Token::Ampersand
+                    | Token::AmpersandEqual
                     | Token::LeftShift
+                    | Token::LeftShiftEqual
                     | Token::RightShift
+                    | Token::RightShiftEqual
             )
         ) {
             return Err("invalid syntax".to_string());
