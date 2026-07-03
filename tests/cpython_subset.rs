@@ -26161,7 +26161,7 @@ fn cpython_invalid_assignment_target_subset() {
     assert_parse_error("del (*x,)");
     assert_parse_error("del [*x,]");
     assert_parse_error("del x, *y");
-    assert_parse_error("a[b:=0:] = 1");
+    assert_error("a[b:=0:] = 1", "parse error: invalid syntax");
     assert_parse_error("a[:b:=0] = 1");
     assert_parse_error("a[::b:=0] = 1");
     assert_parse_error("del a[b:=0:]");
@@ -26562,14 +26562,8 @@ fn cpython_invalid_simple_statement_subset() {
         "assert True, x = y",
         "parse error: cannot assign to name here. Maybe you meant '==' instead of '='?",
     );
-    assert_error(
-        "assert x := y",
-        "parse error: cannot use named expression without parentheses here",
-    );
-    assert_error(
-        "assert True, x := y",
-        "parse error: cannot use named expression without parentheses here",
-    );
+    assert_error("assert x := y", "parse error: invalid syntax");
+    assert_error("assert True, x := y", "parse error: invalid syntax");
 }
 
 // Adapted from CPython grammar `raise_stmt` and `try_stmt` coverage.

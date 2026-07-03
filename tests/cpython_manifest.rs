@@ -51947,6 +51947,45 @@ fn cpython_missing_annotation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_unparenthesized_named_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let assert_subset_name = "cpython_invalid_simple_statement_subset";
+    let assignment_subset_name = "cpython_invalid_assignment_target_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "unparenthesized named-expression SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {assert_subset_name}(")),
+        "unparenthesized assert named-expression runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {assignment_subset_name}(")),
+        "unparenthesized slice named-expression runtime subset evidence must exist"
+    );
+
+    for required_source in ["assert x := y", "assert True, x := y", "a[b:=0:] = 1"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "unparenthesized named-expression CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "unparenthesized named-expression subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("unparenthesized named-expression syntax messages")
+                && document.contains("invalid syntax"),
+            "unparenthesized named-expression docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_invalid_match_pattern_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let subset_name = "cpython_invalid_match_pattern_subset";

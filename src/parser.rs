@@ -4250,7 +4250,7 @@ impl Parser<'_> {
             return Err(invalid_assert_assignment_message(&condition));
         }
         if matches!(self.peek(), Some(Token::ColonEqual)) {
-            return Err("cannot use named expression without parentheses here".to_string());
+            return Err("invalid syntax".to_string());
         }
 
         let message = if matches!(self.peek(), Some(Token::Comma)) {
@@ -4260,7 +4260,7 @@ impl Parser<'_> {
                 return Err(invalid_assert_assignment_message(&message));
             }
             if matches!(self.peek(), Some(Token::ColonEqual)) {
-                return Err("cannot use named expression without parentheses here".to_string());
+                return Err("invalid syntax".to_string());
             }
             Some(message)
         } else {
@@ -5332,7 +5332,7 @@ impl Parser<'_> {
 
         if matches!(self.peek(), Some(Token::Colon)) {
             if matches!(start_or_index, Expr::NamedExpr { .. }) && !starts_with_parenthesis {
-                return Err("cannot use named expression without parentheses here".to_string());
+                return Err("invalid syntax".to_string());
             }
             self.advance();
             let (stop, step) = self.parse_subscript_slice_stop_and_step()?;

@@ -41277,6 +41277,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized named-expression rejection",
+            name: "assert-condition-unparenthesized-named-expression-message",
+            source: "assert x := y",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized named-expression rejection",
+            name: "assert-message-unparenthesized-named-expression-message",
+            source: "assert True, x := y",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unparenthesized named-expression rejection",
+            name: "slice-start-unparenthesized-named-expression-message",
+            source: "a[b:=0:] = 1",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram lambda parameter missing default before body colon",
             name: "missing-lambda-positional-default-before-body-colon-message",
             source: "lambda a=: None",

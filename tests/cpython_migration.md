@@ -15914,3 +15914,12 @@ Completed in the collections ABC issue26915 oracle-alignment pass:
   so the direct CPython oracle covers the same always-false object across
   `Sequence`, `ItemsView`, and `ValuesView`, while retaining distinct-NaN
   `KeysView` coverage.
+
+Completed in the unparenthesized named-expression syntax message alignment
+pass:
+
+- Aligned unparenthesized named-expression syntax messages with CPython's
+  generic `invalid syntax` result for assert conditions, assert messages, and
+  slice-start named expressions before a colon. This keeps parenthesized
+  named-expression support unchanged and only updates the parser-facing public
+  error shape.
