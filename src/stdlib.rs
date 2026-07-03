@@ -43,6 +43,16 @@ const FUNCTOOLS_ALL: &[&str] = &[
     "cached_property",
     "Placeholder",
 ];
+const BUILTINS_DOC: &str = "Built-in functions, types, exceptions, and other objects.\n\
+\n\
+This module provides direct access to all 'built-in'\n\
+identifiers of Python; for example, builtins.len is\n\
+the full name for the built-in function len().\n\
+\n\
+This module is not normally accessed explicitly by most\n\
+applications, but can be useful in modules that provide\n\
+objects with the same name as a built-in value, but in\n\
+which the built-in of that name is also needed.";
 const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
 const COPY_DOC: &str = "Generic (shallow and deep) copying operations.\n\
 \n\
@@ -3183,7 +3193,10 @@ fn push_unique_union_arg(args: &mut Vec<Value>, value: Value) {
 }
 
 fn builtins_module() -> Value {
-    let mut entries = vec![("__package__", Value::String(String::new()))];
+    let mut entries = vec![
+        ("__package__", Value::String(String::new())),
+        ("__doc__", Value::String(BUILTINS_DOC.to_string())),
+    ];
     entries.extend(
         DEFAULT_BUILTIN_ENTRY_NAMES
             .iter()

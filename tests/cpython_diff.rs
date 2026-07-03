@@ -13908,6 +13908,23 @@ print('__package__' in dir(builtins), repr(builtins.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_builtins_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib builtins public module __doc__ metadata subset stable on CPython 3.14.6",
+        name: "builtins-module-doc-metadata",
+        source: r#"import builtins
+doc = builtins.__doc__
+via_object = object.__getattribute__(builtins, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[2])
+print(lines[-1])
+print('__doc__' in dir(builtins), builtins.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",

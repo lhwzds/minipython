@@ -50404,6 +50404,32 @@ print('__package__' in dir(builtins), repr(builtins.__dict__['__package__']))"#,
     );
 }
 
+// Pins CPython's public builtins module doc metadata without promoting host
+// input/open helpers or interactive shell exits into the sandbox.
+#[test]
+fn cpython_builtins_module_doc_metadata_subset() {
+    assert_output(
+        r#"import builtins
+doc = builtins.__doc__
+via_object = object.__getattribute__(builtins, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[2])
+print(lines[-1])
+print('__doc__' in dir(builtins), builtins.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])
+print(hasattr(builtins, 'open'), hasattr(builtins, 'input'), hasattr(builtins, 'help'))"#,
+        &[
+            "str True 426 Built-in functions, types, exceptions, and other objects.",
+            "This module provides direct access to all 'built-in'",
+            "which the built-in of that name is also needed.",
+            "True True",
+            "True Built-in functions, types, exceptions, and other objects.",
+            "False False False",
+        ],
+    );
+}
+
 // Adapted from CPython's builtin namespace behavior around `globals()` and
 // `locals()`. MiniPython covers module-level live mappings and a function-local
 // snapshot for the supported scope model.

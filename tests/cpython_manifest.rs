@@ -34581,6 +34581,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "builtins",
         &[
             "cpython_builtins_module_package_metadata_subset",
+            "cpython_builtins_module_doc_metadata_subset",
             "cpython_eval_builtin_subset",
             "cpython_exec_builtin_subset",
             "cpython_exec_closure_subset",
@@ -34690,6 +34691,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include builtins");
     for evidence in [
         "cpython_builtins_module_package_metadata_diff_subset",
+        "cpython_builtins_module_doc_metadata_diff_subset",
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_vars_dir_builtin_diff_subset",
         "cpython_eval_builtin_diff_subset",
@@ -34803,6 +34805,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'open', 'input', 'help', 'license'")
             && LANGUAGE_TESTS.contains("print('__import__', hasattr(builtins, '__import__'))")
             && LANGUAGE_TESTS.contains("print('__package__', hasattr(builtins, '__package__'))")
+            && LANGUAGE_TESTS.contains("print('__doc__', hasattr(builtins, '__doc__'))")
+            && LANGUAGE_TESTS.contains("builtins.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("print(dir(builtins))"),
         "builtins sandbox export test must guard public builtins, exceptions, and host IO stop lines"
     );
@@ -34833,9 +34837,12 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     assert!(
-        STDLIB_SOURCE.contains("entries.push((\"__package__\", Value::String(String::new())))")
-            || STDLIB_SOURCE.contains("vec![(\"__package__\", Value::String(String::new()))]"),
+        STDLIB_SOURCE.contains("(\"__package__\", Value::String(String::new()))"),
         "builtins module builder must set CPython-compatible empty __package__ metadata"
+    );
+    assert!(
+        STDLIB_SOURCE.contains("(\"__doc__\", Value::String(BUILTINS_DOC.to_string()))"),
+        "builtins module builder must expose CPython-compatible __doc__ metadata"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -34847,6 +34854,79 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "builtins module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let doc_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_builtins_module_doc_metadata_diff_subset",
+    );
+    let doc_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_builtins_module_doc_metadata_subset",
+    );
+    for required in [
+        "builtins.__doc__",
+        "object.__getattribute__(builtins, '__doc__')",
+        "'__doc__' in dir(builtins)",
+        "builtins.__dict__['__doc__'] == doc",
+        "len(doc)",
+    ] {
+        assert!(
+            doc_diff.contains(required) && doc_subset.contains(required),
+            "builtins module doc metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "hasattr(builtins, 'open')",
+        "hasattr(builtins, 'input')",
+        "hasattr(builtins, 'help')",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "builtins module doc metadata local subset evidence must keep host/interactive API `{required}` outside the sandbox surface"
+        );
+    }
+    for required in [
+        "\"str True 426 Built-in functions, types, exceptions, and other objects.\"",
+        "\"This module provides direct access to all 'built-in'\"",
+        "\"which the built-in of that name is also needed.\"",
+        "\"True True\"",
+        "\"False False False\"",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "builtins module doc metadata subset output must pin `{required}`"
+        );
+    }
+    let builtins_doc_start = STDLIB_SOURCE
+        .find("const BUILTINS_DOC: &str")
+        .expect("stdlib.rs must define BUILTINS_DOC");
+    let builtins_doc_end = STDLIB_SOURCE[builtins_doc_start..]
+        .find("const COPY_ALL: &[&str]")
+        .map(|offset| builtins_doc_start + offset)
+        .expect("BUILTINS_DOC must precede COPY_ALL");
+    let builtins_doc = &STDLIB_SOURCE[builtins_doc_start..builtins_doc_end];
+    for required in [
+        "Built-in functions, types, exceptions, and other objects.",
+        "This module provides direct access to all 'built-in'",
+        "which the built-in of that name is also needed.",
+    ] {
+        assert!(
+            builtins_doc.contains(required),
+            "builtins stdlib doc constant must include `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_builtins_module_doc_metadata_subset",
+            "cpython_builtins_module_doc_metadata_diff_subset",
+            "builtins module `__doc__` metadata",
+            "`builtins.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "builtins module doc metadata docs must contain `{required}`"
             );
         }
     }
