@@ -52836,13 +52836,8 @@ fn reject_disallowed_slot_attribute(
         return Ok(());
     }
 
-    let no_dict_suffix = if is_exact_builtin_object_instance(class_name, class_attrs, class_bases) {
-        " and no __dict__ for setting new attributes"
-    } else {
-        ""
-    };
     Err(format!(
-        "AttributeError: '{class_name}' object has no attribute '{name}'{no_dict_suffix}"
+        "AttributeError: '{class_name}' object has no attribute '{name}' and no __dict__ for setting new attributes"
     ))
 }
 

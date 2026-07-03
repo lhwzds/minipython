@@ -12988,6 +12988,48 @@ check('deque.set.missing', '__set__ expected 2 arguments, got 0', lambda: deque_
 }
 
 #[test]
+fn cpython_slots_no_dict_attribute_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py __slots__ public attribute restrictions",
+        name: "slots-no-dict-attribute-errors",
+        source: r#"class EmptySlots:
+    __slots__ = ()
+class NamedSlots:
+    __slots__ = ('x',)
+class BaseSlots:
+    __slots__ = ('base',)
+class ChildSlots(BaseSlots):
+    __slots__ = ('child',)
+class WithDict:
+    __slots__ = ('x', '__dict__')
+class PlainBase:
+    pass
+class SlottedPlainChild(PlainBase):
+    __slots__ = ('slot',)
+
+def show(label, obj):
+    for op in ['set', 'del']:
+        try:
+            if op == 'set':
+                setattr(obj, 'extra', 1)
+            else:
+                delattr(obj, 'extra')
+        except AttributeError as error:
+            print(label + '-' + op, error.__class__.__name__, error)
+
+show('empty', EmptySlots())
+show('named', NamedSlots())
+show('child', ChildSlots())
+w = WithDict()
+w.extra = 2
+print('with-dict', w.extra)
+sp = SlottedPlainChild()
+sp.extra = 3
+print('plain-child', sp.extra)"#,
+    });
+}
+
+#[test]
 fn cpython_super_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_super.py public super attribute assignment errors",

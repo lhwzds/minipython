@@ -36770,6 +36770,62 @@ fn descriptor_get_method_wrapper_arity_errors_have_modern_diff_evidence() {
 }
 
 #[test]
+fn slots_no_dict_attribute_errors_have_cpython_evidence() {
+    let subset_name = "cpython_slots_no_dict_attribute_errors_subset";
+    let diff_name = "cpython_slots_no_dict_attribute_errors_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class EmptySlots:",
+        "__slots__ = ()",
+        "class NamedSlots:",
+        "__slots__ = ('x',)",
+        "class ChildSlots(BaseSlots):",
+        "class WithDict:",
+        "__slots__ = ('x', '__dict__')",
+        "class SlottedPlainChild(PlainBase):",
+        "setattr(obj, 'extra', 1)",
+        "delattr(obj, 'extra')",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "slot no-__dict__ subset and diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"empty-set AttributeError 'EmptySlots' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"empty-del AttributeError 'EmptySlots' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"named-set AttributeError 'NamedSlots' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"child-del AttributeError 'ChildSlots' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"with-dict 2\"",
+        "\"plain-child 3\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "slot no-__dict__ subset output must pin `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains("fn reject_disallowed_slot_attribute(")
+            && VM_SOURCE.contains(
+                "AttributeError: '{class_name}' object has no attribute '{name}' and no __dict__ for setting new attributes"
+            ),
+        "VM slot rejection path must emit CPython no-__dict__ mutation suffix"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name)
+                && document.contains(diff_name)
+                && document.contains("slot-only user instances")
+                && document.contains("new-attribute set/delete")
+                && document.contains("no __dict__ for setting new attributes"),
+            "slot no-__dict__ attribute errors must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn super_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_super_attribute_assignment_errors_subset(",

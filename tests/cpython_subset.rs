@@ -50168,6 +50168,26 @@ fn cpython_type_bad_slots_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_descr.py __slots__ public attribute
+// restrictions. This pins no-__dict__ mutation diagnostics without copying
+// CPython's object-layout internals.
+#[test]
+fn cpython_slots_no_dict_attribute_errors_subset() {
+    assert_output(
+        "class EmptySlots:\n    __slots__ = ()\nclass NamedSlots:\n    __slots__ = ('x',)\nclass BaseSlots:\n    __slots__ = ('base',)\nclass ChildSlots(BaseSlots):\n    __slots__ = ('child',)\nclass WithDict:\n    __slots__ = ('x', '__dict__')\nclass PlainBase:\n    pass\nclass SlottedPlainChild(PlainBase):\n    __slots__ = ('slot',)\n\ndef show(label, obj):\n    for op in ['set', 'del']:\n        try:\n            if op == 'set':\n                setattr(obj, 'extra', 1)\n            else:\n                delattr(obj, 'extra')\n        except AttributeError as error:\n            print(label + '-' + op, error.__class__.__name__, error)\n\nshow('empty', EmptySlots())\nshow('named', NamedSlots())\nshow('child', ChildSlots())\nw = WithDict()\nw.extra = 2\nprint('with-dict', w.extra)\nsp = SlottedPlainChild()\nsp.extra = 3\nprint('plain-child', sp.extra)",
+        &[
+            "empty-set AttributeError 'EmptySlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "empty-del AttributeError 'EmptySlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "named-set AttributeError 'NamedSlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "named-del AttributeError 'NamedSlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "child-set AttributeError 'ChildSlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "child-del AttributeError 'ChildSlots' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "with-dict 2",
+            "plain-child 3",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_type_nokwargs.
 #[test]
 fn cpython_type_nokwargs_subset() {

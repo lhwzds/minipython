@@ -8306,6 +8306,12 @@ matching scope-backed namespace `__format__` lookup.
 
 ## Compound Statements
 
+- `cpython_slots_no_dict_attribute_errors_subset`, backed by
+  `cpython_slots_no_dict_attribute_errors_diff_subset`, covers slot-only user instances
+  whose new-attribute set/delete operations raise CPython's public
+  `no __dict__ for setting new attributes` `AttributeError` suffix while keeping
+  `__dict__` slots and plain-base subclasses dictionary-backed.
+
 | CPython rule | Status | Rust evidence |
 | --- | --- | --- |
 | `compound_stmt` | supported | `cpython_ast_snippets_parse_inventory_subset`, function, class, if, with, for, try, while, and match compound statements are covered by `cpython_compound_stmt_rule_alternatives_subset`, `cpython_function_def_decorated_rule_subset`, `cpython_class_def_decorated_rule_subset`, `runs_if_then_branch`, `runs_while_loop`, `runs_for_loop_over_range`, `cpython_invalid_block_subset`, `cpython_invalid_control_flow_syntax_subset`, `cpython_invalid_control_flow_context_subset`, `cpython_compile_control_flow_edge_subset`, `cpython_compile_stack_size_stability_control_flow_subset`, `cpython_control_flow_in_finally_override_subset`, `cpython_control_flow_inside_except_and_with_subset`, `cpython_grammar_with_stmt_subset`, `cpython_grammar_async_with_subset`, `cpython_grammar_try_star_subset`, and `cpython_grammar_match_stmt_subset` |

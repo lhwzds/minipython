@@ -3971,6 +3971,12 @@ Completed in the differential parity harness pass:
   `__dict__` and `__weakref__` descriptor/layout details, the remaining method
   object metadata surface, and exact Argument Clinic wording remain future
   object-model work.
+- Added `cpython_slots_no_dict_attribute_errors_subset`, backed by
+  `cpython_slots_no_dict_attribute_errors_diff_subset`, for slot-only user instances
+  whose new-attribute set/delete operations raise CPython's public
+  `no __dict__ for setting new attributes` `AttributeError` suffix. Classes
+  with an explicit `__dict__` slot and slotted subclasses of plain bases remain
+  dictionary-backed.
 - Migrated and expanded `abs()`, `min()`, `max()`, and `sum()` coverage from
   `Lib/test/test_builtin.py`. The VM now supports numeric and complex absolute
   values, instance-level `__abs__`, multi-argument and single-iterable
