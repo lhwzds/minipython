@@ -10620,6 +10620,9 @@ fn cpython_invalid_expression_rules_subset() {
     for source in ["<x", "<=x", ">x", ">=x", "==x", "!=x"] {
         assert_error(source, "parse error: invalid syntax");
     }
+    for source in ["/x", "//x", "%x"] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "print(f'{lambda x: x}')",
         "parse error: f-string: lambda expressions are not allowed without parentheses",

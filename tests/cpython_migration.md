@@ -6374,6 +6374,12 @@ Completed in the prefix comparison operator expression diagnostic pass:
   such as `<x`, `<=x`, `>x`, `>=x`, `==x`, and `!=x` use CPython's public
   `invalid syntax` message.
 
+Completed in the prefix division/modulo operator expression diagnostic pass:
+
+- Extended `cpython_invalid_expression_rules_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so prefix division/modulo operator expression forms
+  such as `/x`, `//x`, and `%x` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

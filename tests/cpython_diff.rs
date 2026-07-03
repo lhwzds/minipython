@@ -43743,6 +43743,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix division modulo operator expression rejection",
+            name: "prefix-slash-expression-message",
+            source: "/x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix division modulo operator expression rejection",
+            name: "prefix-double-slash-expression-message",
+            source: "//x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix division modulo operator expression rejection",
+            name: "prefix-percent-expression-message",
+            source: "%x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

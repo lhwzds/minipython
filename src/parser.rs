@@ -5796,7 +5796,10 @@ impl Parser<'_> {
                 | Token::Greater
                 | Token::GreaterEqual
                 | Token::EqualEqual
-                | Token::BangEqual,
+                | Token::BangEqual
+                | Token::Slash
+                | Token::DoubleSlash
+                | Token::Percent,
             ) => Err("invalid syntax".to_string()),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
