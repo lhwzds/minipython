@@ -5973,7 +5973,7 @@ impl Parser<'_> {
             return Err("invalid syntax".to_string());
         }
         if matches!(self.peek(), Some(Token::Colon)) {
-            return Err("cannot use dict unpacking in a dictionary key".to_string());
+            return Err("invalid syntax".to_string());
         }
         Ok(DictItem::Unpack(value))
     }

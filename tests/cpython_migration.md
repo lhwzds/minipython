@@ -4401,6 +4401,14 @@ Completed in the starred dictionary key diagnostic pass:
   `{**base, *a: b}` use CPython's public `invalid syntax` message, while starred
   dictionary values such as `{1: *x}` keep CPython's dedicated value message.
 
+Completed in the double-starred dictionary key diagnostic pass:
+
+- Extended `cpython_invalid_dict_display_syntax_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so double-starred dictionary key forms
+  such as `{**a: b}`, `{**a: b, 1: 2}`, `{**a: b for a, b in items}`, and
+  `{**base, **a: b}` use CPython's public `invalid syntax` message, while ordinary
+  dict unpacking entries such as `{**base, 1: 2}` remain valid.
+
 Completed in the dict-unpack comprehension diagnostic pass:
 
 - Extended `cpython_invalid_dict_display_syntax_subset` and
