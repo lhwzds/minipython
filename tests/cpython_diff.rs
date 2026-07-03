@@ -15873,6 +15873,38 @@ for expr in [lambda: setattr(A, '__name__', b'A'), lambda: setattr(A, '__name__'
 }
 
 #[test]
+fn cpython_type_repr_module_qualname_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public type.__repr__ module/qualname subset",
+        name: "type-repr-module-qualname",
+        source: r#"class Outer:
+    class Inner:
+        pass
+for label, setup in [
+    ('default', lambda cls: None),
+    ('custom-module', lambda cls: setattr(cls, '__module__', 'pkg.mod')),
+    ('builtins-module', lambda cls: setattr(cls, '__module__', 'builtins')),
+    ('none-module', lambda cls: setattr(cls, '__module__', None)),
+    ('int-module', lambda cls: setattr(cls, '__module__', 42)),
+    ('custom-qualname', lambda cls: setattr(cls, '__qualname__', 'Renamed.Nested')),
+]:
+    class A:
+        pass
+    setup(A)
+    print(label, repr(A), str(A), A.__module__, A.__qualname__)
+print('nested', repr(Outer.Inner), Outer.Inner.__qualname__)
+class B:
+    pass
+print('mro', repr(B.__mro__), B.__mro__[0] is B, B.__mro__[-1] is object)
+B.__module__ = 'pkg'
+B.__qualname__ = 'Q.R'
+print('mro-mutated', B.__mro__)
+D = type('D', (), {'__module__': '', '__qualname__': 'Q'})
+print('empty-module', repr(D), D.__module__, D.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_doc_and_firstlineno_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType::test_type_doc / ::test_type_firstlineno public subset",

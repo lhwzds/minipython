@@ -9830,6 +9830,10 @@ Completed in the type builtin pass:
   class `__name__` and `__qualname__`, namespace `__qualname__`, namespace
   `__name__` staying a regular `__dict__` entry, and supported invalid
   assignment/type-constructor paths.
+- Added `cpython_type_repr_module_qualname_subset`, backed by
+  `cpython_type_repr_module_qualname_diff_subset`, covering type `repr()` /
+  `str()` module-qualified class names, `__mro__` tuple repr, nested class
+  `__qualname__`, and the `builtins` and non-string `__module__` boundaries.
 - Added `cpython_type_doc_and_firstlineno_subset`, adapted from
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus
@@ -9866,7 +9870,8 @@ Completed in the type builtin pass:
 - Added CPython/MiniPython differential parity cases for the supported
   `type()` subset, including keyword rejection and dynamic-class namespace
   order.
-- Added direct `cpython_type_name_qualname_diff_subset` and
+- Added direct `cpython_type_name_qualname_diff_subset`,
+  `cpython_type_repr_module_qualname_diff_subset`, and
   `cpython_type_doc_and_firstlineno_diff_subset` evidence for the supported
   public `TestType::test_type_name`, `::test_type_qualname`,
   `::test_type_doc`, and `::test_type_firstlineno` slices.

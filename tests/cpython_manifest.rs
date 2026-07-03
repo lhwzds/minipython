@@ -7231,6 +7231,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "setattr(A, '__name__', 'A\\0B')",
         ),
         (
+            "cpython_type_repr_module_qualname_diff_subset",
+            "cpython_type_repr_module_qualname_subset",
+            "B.__module__ = 'pkg'",
+        ),
+        (
             "cpython_type_doc_and_firstlineno_diff_subset",
             "cpython_type_doc_and_firstlineno_subset",
             "A.__firstlineno__ = 43",
@@ -7257,6 +7262,83 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_repr_module_qualname_has_cpython_evidence() {
+    let subset_name = "cpython_type_repr_module_qualname_subset";
+    let diff_name = "cpython_type_repr_module_qualname_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "repr(A)",
+        "str(A)",
+        "setattr(cls, '__module__', 'pkg.mod')",
+        "setattr(cls, '__module__', 'builtins')",
+        "setattr(cls, '__module__', None)",
+        "setattr(cls, '__module__', 42)",
+        "setattr(cls, '__qualname__', 'Renamed.Nested')",
+        "repr(Outer.Inner)",
+        "repr(B.__mro__)",
+        "B.__module__ = 'pkg'",
+        "B.__qualname__ = 'Q.R'",
+        "'__module__': ''",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type repr module/qualname subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"default <class '__main__.A'> <class '__main__.A'> __main__ A\"",
+        "\"custom-module <class 'pkg.mod.A'> <class 'pkg.mod.A'> pkg.mod A\"",
+        "\"builtins-module <class 'A'> <class 'A'> builtins A\"",
+        "\"none-module <class 'A'> <class 'A'> None A\"",
+        "\"int-module <class 'A'> <class 'A'> 42 A\"",
+        "\"custom-qualname <class '__main__.Renamed.Nested'> <class '__main__.Renamed.Nested'> __main__ Renamed.Nested\"",
+        "\"nested <class '__main__.Outer.Inner'> Outer.Inner\"",
+        "\"mro (<class '__main__.B'>, <class 'object'>) True True\"",
+        "\"mro-mutated (<class 'pkg.Q.R'>, <class 'object'>)\"",
+        "\"empty-module <class '.Q'>  Q\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type repr module/qualname subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const CLASS_QUALNAME_ATTR",
+        "fn format_class_repr(",
+        "attrs.get(CLASS_QUALNAME_ATTR)",
+        "attrs.get(\"__module__\")",
+        "module != \"builtins\"",
+        "\"<class '__main__.{qualname}'>\"",
+        "Value::Class { name, attrs, .. } => format_class_repr(name, attrs)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "Value class repr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "type `repr()`",
+            "`str()` module-qualified class names",
+            "`__mro__` tuple repr",
+            "`builtins` and non-string `__module__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "type repr module/qualname docs must contain `{required}`"
             );
         }
     }

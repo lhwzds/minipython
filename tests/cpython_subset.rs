@@ -50131,6 +50131,28 @@ fn cpython_type_name_qualname_subset() {
     );
 }
 
+// Adapted from CPython's public type.__repr__ behavior covered by
+// Lib/test/test_builtin.py::TestType metadata tests. This pins how class
+// repr/str and tuple repr for __mro__ use __module__ and __qualname__.
+#[test]
+fn cpython_type_repr_module_qualname_subset() {
+    assert_output(
+        "class Outer:\n    class Inner:\n        pass\nfor label, setup in [\n    ('default', lambda cls: None),\n    ('custom-module', lambda cls: setattr(cls, '__module__', 'pkg.mod')),\n    ('builtins-module', lambda cls: setattr(cls, '__module__', 'builtins')),\n    ('none-module', lambda cls: setattr(cls, '__module__', None)),\n    ('int-module', lambda cls: setattr(cls, '__module__', 42)),\n    ('custom-qualname', lambda cls: setattr(cls, '__qualname__', 'Renamed.Nested')),\n]:\n    class A:\n        pass\n    setup(A)\n    print(label, repr(A), str(A), A.__module__, A.__qualname__)\nprint('nested', repr(Outer.Inner), Outer.Inner.__qualname__)\nclass B:\n    pass\nprint('mro', repr(B.__mro__), B.__mro__[0] is B, B.__mro__[-1] is object)\nB.__module__ = 'pkg'\nB.__qualname__ = 'Q.R'\nprint('mro-mutated', B.__mro__)\nD = type('D', (), {'__module__': '', '__qualname__': 'Q'})\nprint('empty-module', repr(D), D.__module__, D.__qualname__)",
+        &[
+            "default <class '__main__.A'> <class '__main__.A'> __main__ A",
+            "custom-module <class 'pkg.mod.A'> <class 'pkg.mod.A'> pkg.mod A",
+            "builtins-module <class 'A'> <class 'A'> builtins A",
+            "none-module <class 'A'> <class 'A'> None A",
+            "int-module <class 'A'> <class 'A'> 42 A",
+            "custom-qualname <class '__main__.Renamed.Nested'> <class '__main__.Renamed.Nested'> __main__ Renamed.Nested",
+            "nested <class '__main__.Outer.Inner'> Outer.Inner",
+            "mro (<class '__main__.B'>, <class 'object'>) True True",
+            "mro-mutated (<class 'pkg.Q.R'>, <class 'object'>)",
+            "empty-module <class '.Q'>  Q",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_type_doc and
 // ::test_type_firstlineno. The surrogate UnicodeEncodeError case is left for a
 // later Unicode-runtime slice because MiniPython strings currently use Rust

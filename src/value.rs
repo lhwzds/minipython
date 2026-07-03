@@ -40,6 +40,7 @@ pub const TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_tuple_storage";
 pub const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
 pub const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
 pub const GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_genericalias_storage";
+const CLASS_QUALNAME_ATTR: &str = "\0class_qualname";
 
 pub fn identity_string_value(value: String) -> Value {
     Value::IdentityString {
@@ -1374,7 +1375,7 @@ impl fmt::Display for Value {
                 write!(f, "<coroutine object AsyncGenerator.aclose>")
             }
             Value::AnextDefault { .. } => write!(f, "<anext_awaitable object>"),
-            Value::Class { name, .. } => write!(f, "<class {name}>"),
+            Value::Class { name, attrs, .. } => write!(f, "{}", format_class_repr(name, attrs)),
             Value::TypeParam { kind, name, .. } if kind == "TypeVar" || kind == "ParamSpec" => {
                 write!(f, "~{name}")
             }
@@ -1932,6 +1933,21 @@ fn json_builtin_function_repr(name: &str) -> Option<String> {
     json_builtin_bound_method_display_name(name).map(|name| format!("<function {name} at 0x0>"))
 }
 
+fn format_class_repr(name: &str, attrs: &Scope) -> String {
+    let attrs = attrs.borrow();
+    let qualname = match attrs.get(CLASS_QUALNAME_ATTR) {
+        Some(Value::String(qualname)) => qualname.as_str(),
+        _ => name,
+    };
+    match attrs.get("__module__") {
+        Some(Value::String(module)) if module != "builtins" => {
+            format!("<class '{module}.{qualname}'>")
+        }
+        None => format!("<class '__main__.{qualname}'>"),
+        _ => format!("<class '{qualname}'>"),
+    }
+}
+
 fn format_value_repr(value: &Value) -> String {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
@@ -2041,7 +2057,7 @@ fn format_value_repr(value: &Value) -> String {
             "<coroutine object AsyncGenerator.aclose>".to_string()
         }
         Value::AnextDefault { .. } => "<anext_awaitable object>".to_string(),
-        Value::Class { name, .. } => format!("<class {name}>"),
+        Value::Class { name, attrs, .. } => format_class_repr(name, attrs),
         Value::TypeParam { name, .. } => name.clone(),
         Value::ParamSpecAccess { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => format!("<type alias {name}>"),

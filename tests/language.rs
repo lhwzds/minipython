@@ -1674,7 +1674,7 @@ fn types_sandbox_subset_keeps_export_surface_explicit() {
             "SimpleNamespace namespace(x=1) [('x', 1)]",
             "mappingproxy 1 1 ['a']",
             "Made True 3",
-            "(<class Base>,)",
+            "(<class '__main__.Base'>,)",
         ]))
     );
 }
