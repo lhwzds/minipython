@@ -44145,6 +44145,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram starred dictionary key rejection",
+            name: "dict-starred-key-message",
+            source: "{*a: b}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram starred dictionary key rejection",
+            name: "dict-starred-key-before-entry-message",
+            source: "{*a: b, 1: 2}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram starred dictionary key rejection",
+            name: "dict-comprehension-starred-key-message",
+            source: "{*a: b for a, b in items}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram starred dictionary key rejection",
+            name: "dict-starred-key-after-unpack-message",
+            source: "{**base, *a: b}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

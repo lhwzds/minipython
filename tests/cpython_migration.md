@@ -4393,6 +4393,14 @@ Completed in the double-starred dictionary value diagnostic pass:
   `{1: *x}` keep CPython's dedicated `cannot use a starred expression in a dictionary value`
   message.
 
+Completed in the starred dictionary key diagnostic pass:
+
+- Extended `cpython_invalid_dict_display_syntax_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so starred dictionary key forms
+  such as `{*a: b}`, `{*a: b, 1: 2}`, `{*a: b for a, b in items}`, and
+  `{**base, *a: b}` use CPython's public `invalid syntax` message, while starred
+  dictionary values such as `{1: *x}` keep CPython's dedicated value message.
+
 Completed in the dict-unpack comprehension diagnostic pass:
 
 - Extended `cpython_invalid_dict_display_syntax_subset` and

@@ -5980,7 +5980,7 @@ impl Parser<'_> {
 
     fn reject_invalid_dict_key(&self, key: &Expr) -> Result<(), String> {
         if matches!(key, Expr::Starred(_)) {
-            return Err("cannot use a starred expression in a dictionary key".to_string());
+            return Err("invalid syntax".to_string());
         }
         Ok(())
     }
@@ -6053,7 +6053,7 @@ impl Parser<'_> {
             }
 
             if matches!(self.peek(), Some(Token::Star)) {
-                return Err("cannot use a starred expression in a dictionary key".to_string());
+                return Err("invalid syntax".to_string());
             }
 
             let key = self.parse_expression()?;

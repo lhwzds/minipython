@@ -37543,10 +37543,14 @@ fn cpython_invalid_dict_display_syntax_subset() {
     ] {
         assert_error(source, "parse error: invalid syntax");
     }
-    assert_error(
-        "{*a: b for a, b in {1: 2}.items()}",
-        "parse error: cannot use a starred expression in a dictionary key",
-    );
+    for source in [
+        "{*a: b}",
+        "{*a: b, 1: 2}",
+        "{*a: b for a, b in items}",
+        "{**base, *a: b}",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "{**a: b for a, b in {1: 2}.items()}",
         "parse error: cannot use dict unpacking in a dictionary key",
@@ -37597,10 +37601,6 @@ fn cpython_invalid_dict_display_syntax_subset() {
     assert_error(
         "{**base, 5:}",
         "parse error: expression expected after dictionary key and ':'",
-    );
-    assert_error(
-        "{**base, *a: b}",
-        "parse error: cannot use a starred expression in a dictionary key",
     );
     assert_error(
         "{**base, **a: b}",
