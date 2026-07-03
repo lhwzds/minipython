@@ -6208,6 +6208,14 @@ Completed in the definition keyword parameter-name diagnostic pass:
   such as `def f(a class b)`, `def f(*a def b)`, `lambda a class b: None`, and
   `lambda **a lambda b: b: None` use CPython's public `invalid syntax` message.
 
+Completed in the declaration/import keyword parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so declaration/import keyword parameter name forms
+  such as `def f(a import b)`, `def f(**a global b)`, `lambda *a from b: None`,
+  and `lambda a del b: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

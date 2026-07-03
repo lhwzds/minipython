@@ -6467,6 +6467,12 @@ impl Parser<'_> {
                     | Token::Class
                     | Token::Def
                     | Token::Lambda
+                    | Token::Del
+                    | Token::Global
+                    | Token::Nonlocal
+                    | Token::Assert
+                    | Token::From
+                    | Token::Import
                     | Token::Slash
                     | Token::DoubleSlash
                     | Token::Percent

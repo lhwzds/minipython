@@ -50020,6 +50020,58 @@ fn cpython_definition_keyword_parameter_name_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_declaration_import_keyword_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "declaration/import keyword parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function declaration/import keyword parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda declaration/import keyword parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a import b):\\n    pass",
+        "def f(*a from b):\\n    pass",
+        "def f(**a global b):\\n    pass",
+        "def f(a nonlocal b):\\n    pass",
+        "def f(a del b):\\n    pass",
+        "def f(*a assert b):\\n    pass",
+        "lambda a import b: None",
+        "lambda *a from b: None",
+        "lambda **a global b: None",
+        "lambda a nonlocal b: None",
+        "lambda a del b: None",
+        "lambda *a assert b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "declaration/import keyword parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "declaration/import keyword parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("declaration/import keyword parameter name forms")
+                && document.contains("invalid syntax"),
+            "declaration/import keyword parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
