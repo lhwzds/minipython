@@ -6000,9 +6000,7 @@ impl Parser<'_> {
             Some(Token::Star) => {
                 Err("cannot use a starred expression in a dictionary value".to_string())
             }
-            Some(Token::DoubleStar) => {
-                Err("cannot use dict unpacking in a dictionary value".to_string())
-            }
+            Some(Token::DoubleStar) => Err("invalid syntax".to_string()),
             _ => self.parse_expression(),
         }
     }

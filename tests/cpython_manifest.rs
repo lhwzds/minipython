@@ -51490,6 +51490,40 @@ fn cpython_conditional_dict_unpacking_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_double_starred_dict_value_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_dict_display_syntax_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "double-starred dict value SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "double-starred dict value runtime subset evidence must exist"
+    );
+
+    for required_source in ["{1: **x}", "{1: **x, 2: 3}", "{a: **b for a, b in items}"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "double-starred dict value CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "double-starred dict value subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("double-starred dictionary value forms")
+                && document.contains("invalid syntax"),
+            "double-starred dict value docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

@@ -4384,6 +4384,15 @@ Completed in the conditional dict unpacking diagnostic pass:
   while parenthesized conditional dict unpacking such as `{**(x if flag else y)}`
   remains a separate valid dict-unpack expression.
 
+Completed in the double-starred dictionary value diagnostic pass:
+
+- Extended `cpython_invalid_dict_display_syntax_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so double-starred dictionary value forms
+  such as `{1: **x}`, `{1: **x, 2: 3}`, and `{a: **b for a, b in items}` use
+  CPython's public `invalid syntax` message, while starred dictionary values such as
+  `{1: *x}` keep CPython's dedicated `cannot use a starred expression in a dictionary value`
+  message.
+
 Completed in the dict-unpack comprehension diagnostic pass:
 
 - Extended `cpython_invalid_dict_display_syntax_subset` and
