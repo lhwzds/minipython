@@ -50936,6 +50936,40 @@ fn cpython_standalone_bang_syntax_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_prefix_bitwise_operator_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_expression_rules_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "prefix bitwise operator SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "prefix bitwise operator runtime subset evidence must exist"
+    );
+
+    for required_source in ["&x", "|x", "^x", "<<x", ">>x"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "prefix bitwise operator CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "prefix bitwise operator subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("prefix bitwise operator expression forms")
+                && document.contains("invalid syntax"),
+            "prefix bitwise operator docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

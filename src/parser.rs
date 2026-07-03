@@ -5784,7 +5784,14 @@ impl Parser<'_> {
                 self.expect_right_brace()?;
                 Ok(expr)
             }
-            Some(Token::Exclamation) => Err("invalid syntax".to_string()),
+            Some(
+                Token::Exclamation
+                | Token::Ampersand
+                | Token::Pipe
+                | Token::Caret
+                | Token::LeftShift
+                | Token::RightShift,
+            ) => Err("invalid syntax".to_string()),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
         }

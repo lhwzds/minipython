@@ -43677,6 +43677,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix bitwise operator expression rejection",
+            name: "prefix-ampersand-expression-message",
+            source: "&x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix bitwise operator expression rejection",
+            name: "prefix-pipe-expression-message",
+            source: "|x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix bitwise operator expression rejection",
+            name: "prefix-caret-expression-message",
+            source: "^x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix bitwise operator expression rejection",
+            name: "prefix-left-shift-expression-message",
+            source: "<<x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix bitwise operator expression rejection",
+            name: "prefix-right-shift-expression-message",
+            source: ">>x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
