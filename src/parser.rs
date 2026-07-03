@@ -5914,19 +5914,7 @@ impl Parser<'_> {
         if matches!(self.peek(), Some(Token::DoubleStar)) {
             let first = self.parse_dict_unpack_item()?;
             if self.starts_comprehension_clause() {
-                let DictItem::Unpack(value) = first else {
-                    unreachable!("dict unpack item is always an unpack entry");
-                };
-                let clauses = self.parse_comprehension_clauses()?;
-                validate_comprehension_named_expression_rebindings(
-                    &[&value],
-                    &clauses,
-                    self.class_body_depth > 0,
-                )?;
-                return Ok(Expr::DictUnpackComp {
-                    value: Box::new(value),
-                    clauses,
-                });
+                return Err("dict unpacking cannot be used in dict comprehension".to_string());
             }
             let entries = self.parse_dict_tail(first)?;
             return Ok(Expr::Dict(entries));

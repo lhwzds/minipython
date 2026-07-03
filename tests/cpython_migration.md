@@ -3273,7 +3273,7 @@ Completed in the AST snippets public-`to_tuple()` PEP 695 pass:
 | Invalid assignment targets | `Lib/test/test_syntax.py` top-level invalid target doctests; `Lib/test/test_compile.py::test_argument_handling` | `assignment`, `star_targets`, `single_target`, `del_target`, `invalid_assignment` | Completed | Rust tests reject invalid assignment, augmented assignment, delete, `for`, `with`, and comprehension targets with parse errors, and cover every CPython `assignment` alternative. |
 | Parameter syntax errors | `Lib/test/test_syntax.py` parameter block; `Lib/test/test_positional_only_arg.py`; `Lib/test/test_compile.py::test_argument_handling` | `parameters`, `slash_no_default`, `slash_with_default`, `star_etc`, `kwds`, `lambda_parameters` | Completed | Rust tests cover duplicate names, default ordering, `/`, `*`, `*args`, `**kwargs`, `__debug__`, and lambda equivalents. |
 | Call argument ordering | `Lib/test/test_syntax.py` argument invalid forms; `Lib/test/test_grammar.py`; `Lib/test/test_call.py` subset | `arguments`, `args`, `kwargs`, `kwarg_or_starred`, `kwarg_or_double_starred` | Completed | Rust tests cover trailing commas, repeated `*` and `**` unpacking, keyword-after-star forms, invalid keyword slots, missing keyword values, unpack assignment forms, positional-after-keyword, iterable unpack after keyword unpack, duplicate keywords, and generator expression parenthesization. |
-| Comprehension legality | `Lib/test/test_syntax.py` comprehension target errors; `Lib/test/test_grammar.py::test_comprehension_specials` | `for_if_clause`, `listcomp`, `setcomp`, `dictcomp`, `genexp` | Completed | Rust tests cover missing `in`, invalid targets, invalid unpacking elements, nested clauses, outer iterable binding, comprehension-internal `yield`, await-driven async-comprehension boundaries, starred list/set elements, generator element alternatives, async generator expressions, and dict-unpack comprehensions. |
+| Comprehension legality | `Lib/test/test_syntax.py` comprehension target errors; `Lib/test/test_grammar.py::test_comprehension_specials` | `for_if_clause`, `listcomp`, `setcomp`, `dictcomp`, `genexp` | Completed | Rust tests cover missing `in`, invalid targets, invalid unpacking elements, nested clauses, outer iterable binding, comprehension-internal `yield`, await-driven async-comprehension boundaries, starred list/set elements, generator element alternatives, async generator expressions, and source-level dict-unpack comprehension rejection. |
 | Scope declaration errors | `Lib/test/test_syntax.py` global/nonlocal doctests; `Lib/test/test_scope.py`; `Lib/test/test_global.py` | `global_stmt`, `nonlocal_stmt`, `function_def`, `class_def` | Completed | Rust tests reject use-before-global, assign-before-global, missing nonlocal binding, module-level nonlocal, global/nonlocal conflicts, and cover global/nonlocal writes across supported name-binding forms. |
 | Match pattern edge cases | `Lib/test/test_syntax.py`; `Lib/test/test_patma.py`; `Lib/test/test_ast/test_ast.py` pattern cases | `match_stmt`, `patterns`, `mapping_pattern`, `class_pattern`, `or_pattern`, `as_pattern` | Completed | Rust tests cover valid match suites, invalid empty suites, inline and indented case bodies, invalid capture placement, duplicate mapping keys/rest, OR-pattern binding consistency, guards, and irrefutable-case ordering. |
 | f-string and t-string grammar | `Lib/test/test_fstring.py`; `Lib/test/test_tstring.py`; `Lib/test/test_tokenize.py` | `fstring`, `fstring_replacement_field`, `tstring`, token trio rules | Partial | Rust tests cover nested expressions/specs, conversions, debug syntax, raw prefixes, invalid braces, and tokenizer split behavior. |
@@ -4374,6 +4374,16 @@ Completed in the invalid dict display promotion pass:
   dictionary key colons, missing dictionary values, invalid starred or
   double-starred dictionary keys/values, and unparenthesized conditional dict
   unpacking.
+
+Completed in the dict-unpack comprehension diagnostic pass:
+
+- Extended `cpython_invalid_dict_display_syntax_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so dict-unpack comprehension forms
+  such as `{**items for items in seq}`, `{**items async for items in seq}`,
+  `{**items for items in seq if items}`, and `{**items for items in seq for other in more}`
+  use CPython's public `dict unpacking cannot be used in dict comprehension` message,
+  while ordinary dict unpacking forms such as `{**items}` and key/value dict
+  comprehensions remain separate.
 
 Completed in the invalid starred expression promotion pass:
 
@@ -6847,8 +6857,8 @@ Completed in the comprehension expression supported-promotion pass:
 - Added `cpython_comprehension_expression_rules_subset` for CPython's
   `listcomp`, `setcomp`, `genexp`, and `dictcomp` rules, covering star-named
   list/set elements, ordinary generator elements, assignment-expression
-  generator elements, starred generator elements, key/value dict
-  comprehensions, and `**expr` dict-unpack comprehensions.
+  generator elements, starred generator elements, and key/value dict
+  comprehensions.
 - Reused existing `for_if_clauses`, `for_if_clause`,
   `invalid_comprehension`, async-comprehension, named-expression scoping,
   yield-boundary, and unpacking tests for the shared clause and error

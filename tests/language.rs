@@ -4123,18 +4123,18 @@ fn rejects_invalid_set_dunder_method_calls() {
 fn runs_comprehension_unpacking() {
     assert_eq!(
         run_source(
-            "print([*x for x in [[1, 2], (3, 4), {5: None}]])\nprint({*x for x in [[1, 2], [2, 3]]})\nprint({**d for d in [{\"a\": 1}, {\"b\": 2}, {\"a\": 3}]})\ng = (*(0, 1) for i in range(2))\nfor x in g:\n    print(x)"
+            "print([*x for x in [[1, 2], (3, 4), {5: None}]])\nprint({*x for x in [[1, 2], [2, 3]]})\ng = (*(0, 1) for i in range(2))\nfor x in g:\n    print(x)"
         ),
         Ok(vec![
             "[1, 2, 3, 4, 5]".to_string(),
             "{1, 2, 3}".to_string(),
-            "{'a': 3, 'b': 2}".to_string(),
             "0".to_string(),
             "1".to_string(),
             "0".to_string(),
             "1".to_string(),
         ])
     );
+    assert!(run_source("print({**d for d in [{\"a\": 1}]})").is_err());
 }
 
 #[test]

@@ -51412,6 +51412,45 @@ fn cpython_tuple_double_star_unpacking_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_dict_unpacking_comprehension_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_dict_display_syntax_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict-unpack comprehension SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict-unpack comprehension runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "{**items for items in seq}",
+        "{**items async for items in seq}",
+        "{**items for items in seq if items}",
+        "{**items for items in seq for other in more}",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "dict-unpack comprehension CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "dict-unpack comprehension subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("dict-unpack comprehension forms")
+                && document.contains("dict unpacking cannot be used in dict comprehension"),
+            "dict-unpack comprehension docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

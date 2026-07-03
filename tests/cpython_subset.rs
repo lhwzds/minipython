@@ -37547,6 +37547,17 @@ fn cpython_invalid_dict_display_syntax_subset() {
         "{**a: b for a, b in {1: 2}.items()}",
         "parse error: cannot use dict unpacking in a dictionary key",
     );
+    for source in [
+        "{**items for items in seq}",
+        "{**items async for items in seq}",
+        "{**items for items in seq if items}",
+        "{**items for items in seq for other in more}",
+    ] {
+        assert_error(
+            source,
+            "parse error: dict unpacking cannot be used in dict comprehension",
+        );
+    }
     assert_error(
         "{a: *b for a, b in {1: 2}.items()}",
         "parse error: cannot use a starred expression in a dictionary value",
@@ -38154,8 +38165,7 @@ fn cpython_grammar_set_comprehension_subset() {
 
 // Adapted from CPython's `listcomp`, `setcomp`, `genexp`, and `dictcomp`
 // grammar rules. MiniPython covers star-named list/set elements, ordinary,
-// assignment, and starred generator elements, key/value dict comprehensions,
-// and `**expr` dict-unpack comprehensions.
+// assignment, and starred generator elements plus key/value dict comprehensions.
 #[test]
 fn cpython_comprehension_expression_rules_subset() {
     assert_output("print([x + 1 for x in range(3)])", &["[1, 2, 3]"]);
@@ -38172,10 +38182,6 @@ fn cpython_comprehension_expression_rules_subset() {
     assert_output(
         "print({x: x + 1 for x in range(3)})",
         &["{0: 1, 1: 2, 2: 3}"],
-    );
-    assert_output(
-        "print({**d for d in [{'a': 1}, {'b': 2}, {'a': 3}]})",
-        &["{'a': 3, 'b': 2}"],
     );
 }
 
@@ -38545,12 +38551,6 @@ fn cpython_comprehension_unpacking_subset() {
         &["[1, 2, 3, 1, 2, 3, 'c', 'a', 't', 'c', 'a', 't']"],
     );
     assert_output("print({*x for x in [[1, 2], [2, 3]]})", &["{1, 2, 3}"]);
-    assert_output("print({**{} for a in [1]})", &["{}"]);
-    assert_output("print({**{7: i} for i in range(10)})", &["{7: 9}"]);
-    assert_output(
-        "dicts = [{1: 2}, {3: 4}, {5: 6, 7: 8}, {}, {9: 10}, {1: 0}]\nprint({**d for d in dicts})",
-        &["{1: 0, 3: 4, 5: 6, 7: 8, 9: 10}"],
-    );
     assert_output(
         "g = (*(0, 1) for i in range(5))\nprint(next(g))\nprint(list(g))",
         &["0", "[1, 0, 1, 0, 1, 0, 1, 0, 1]"],
@@ -38566,10 +38566,6 @@ fn cpython_comprehension_unpacking_subset() {
     assert_output(
         "print([*y for x in [[[0], [1, 2, 3], [], [4, 5]], [[6, 7]]] for y in x if y and y[0] > 0])",
         &["[1, 2, 3, 4, 5, 6, 7]"],
-    );
-    assert_output(
-        "dicts = [{1: 2}, {3: 4}, {5: 6, 7: 8}, {}, {9: 10}, {1: 0}]\nprint({**d for d in dicts if len(d) != 2})",
-        &["{1: 0, 3: 4, 9: 10}"],
     );
 }
 
@@ -38953,7 +38949,6 @@ fn cpython_dict_display_unpacking_subset() {
         "print({**[]})",
         "runtime error: dict update source must be a dict, got []",
     );
-    assert_output("print({**d for d in [{'x': 1}]})", &["{'x': 1}"]);
 }
 
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_selectors.

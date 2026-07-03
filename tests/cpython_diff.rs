@@ -44079,6 +44079,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram dict unpacking comprehension rejection",
+            name: "dict-unpacking-comprehension-message",
+            source: "{**items for items in seq}",
+            expected_message: "dict unpacking cannot be used in dict comprehension",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram dict unpacking comprehension rejection",
+            name: "dict-unpacking-async-comprehension-message",
+            source: "{**items async for items in seq}",
+            expected_message: "dict unpacking cannot be used in dict comprehension",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram dict unpacking comprehension rejection",
+            name: "dict-unpacking-comprehension-filter-message",
+            source: "{**items for items in seq if items}",
+            expected_message: "dict unpacking cannot be used in dict comprehension",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram dict unpacking comprehension rejection",
+            name: "dict-unpacking-nested-comprehension-message",
+            source: "{**items for items in seq for other in more}",
+            expected_message: "dict unpacking cannot be used in dict comprehension",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",
