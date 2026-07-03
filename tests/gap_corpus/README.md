@@ -14,6 +14,10 @@ reports. Differences found here should be triaged into:
 - `nice_to_have`: metadata, exact wording, or low-impact introspection.
 - `wont_fix`: intentional sandbox exclusions or full-CPython surfaces.
 
+Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
+and `expected = "unsupported_out_of_scope"` for public CPython behavior that is
+outside MiniPython's sandbox target.
+
 Once a difference is promoted for implementation, add focused `cpython_subset`,
 `cpython_diff`, manifest, coverage, and migration evidence before considering it
 part of the supported surface.

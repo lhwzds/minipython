@@ -91,3 +91,17 @@ except Exception as error:
 else:
     print("imported")
 '''
+
+[[case]]
+name = "sandbox-subprocess-out-of-scope"
+scope = "intentional-sandbox"
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+try:
+    import subprocess
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''

@@ -55005,8 +55005,11 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "--require-version",
         "--minipython",
         "--fail-on-diff",
+        "EXPECTED_STATUS_BY_MARKER",
         "INTENTIONAL_SANDBOX_BLOCK",
         "UNSUPPORTED_OUT_OF_SCOPE",
+        "unsupported_out_of_scope",
+        "unknown expected marker",
         "write_reports",
         "render_markdown",
     ] {
@@ -55024,6 +55027,8 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "gap.classify",
         "gap.load_cases",
         "gap.write_reports",
+        "test_unsupported_out_of_scope_expected_overrides_nonmatching_results",
+        "test_load_cases_rejects_unknown_expected_marker",
         "if __name__ == \"__main__\"",
     ] {
         assert!(
@@ -55067,7 +55072,9 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "stdlib-json-basic",
         "stdlib-collections-abc-iterable-doc",
         "sandbox-socket-import-block",
+        "sandbox-subprocess-out-of-scope",
         "expected = \"intentional_sandbox_block\"",
+        "expected = \"unsupported_out_of_scope\"",
     ] {
         assert!(
             GAP_SWEEP_SMOKE_CORPUS.contains(required),
@@ -55084,6 +55091,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "cpython_diff",
         "tools/run_cpython_gap_sweep.sh",
         "uv run --python",
+        "expected = \"unsupported_out_of_scope\"",
     ] {
         assert!(
             GAP_SWEEP_CORPUS_README.contains(required),

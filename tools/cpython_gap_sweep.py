@@ -33,6 +33,11 @@ STATUSES = [
     "CRASH",
 ]
 
+EXPECTED_STATUS_BY_MARKER = {
+    "intentional_sandbox_block": "INTENTIONAL_SANDBOX_BLOCK",
+    "unsupported_out_of_scope": "UNSUPPORTED_OUT_OF_SCOPE",
+}
+
 
 @dataclass
 class RunResult:
@@ -171,8 +176,8 @@ def classify(cpython: RunResult, minipython: RunResult, expected: str | None) ->
     same_stderr = cpython.stderr == minipython.stderr
     if same_exit and same_stdout and same_stderr:
         return "MATCH"
-    if expected == "intentional_sandbox_block":
-        return "INTENTIONAL_SANDBOX_BLOCK"
+    if expected in EXPECTED_STATUS_BY_MARKER:
+        return EXPECTED_STATUS_BY_MARKER[expected]
     cpython_ok = cpython.exit_code == 0
     minipython_ok = minipython.exit_code == 0
     if cpython_ok and not minipython_ok:
@@ -205,6 +210,13 @@ def load_cases(corpus: Path) -> list[dict[str, Any]]:
             case["_path"] = str(path)
             if "name" not in case or "source" not in case:
                 raise ValueError(f"{path}: every case needs name and source")
+            if (
+                "expected" in case
+                and case["expected"] not in EXPECTED_STATUS_BY_MARKER
+            ):
+                raise ValueError(
+                    f"{path}: unknown expected marker `{case['expected']}`"
+                )
             cases.append(case)
     return cases
 

@@ -78,6 +78,14 @@ class ClassifyTests(unittest.TestCase):
             "INTENTIONAL_SANDBOX_BLOCK",
         )
 
+    def test_unsupported_out_of_scope_expected_overrides_nonmatching_results(self):
+        cpython = run_result(stdout="imported\n")
+        mini = run_result(exit_code=1, stderr="ModuleNotFoundError: subprocess\n")
+        self.assertEqual(
+            gap.classify(cpython, mini, "unsupported_out_of_scope"),
+            "UNSUPPORTED_OUT_OF_SCOPE",
+        )
+
     def test_exception_class_and_message_diffs_are_separate(self):
         cpython = run_result(
             exit_code=1,
@@ -157,6 +165,20 @@ name = "missing-source"
 """.lstrip()
             )
             with self.assertRaisesRegex(ValueError, "every case needs name and source"):
+                gap.load_cases(corpus)
+
+    def test_load_cases_rejects_unknown_expected_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp) / "cases.toml"
+            corpus.write_text(
+                """
+[[case]]
+name = "bad-expected"
+source = "print(1)"
+expected = "typo"
+""".lstrip()
+            )
+            with self.assertRaisesRegex(ValueError, "unknown expected marker"):
                 gap.load_cases(corpus)
 
 
