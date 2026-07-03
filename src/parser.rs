@@ -6030,7 +6030,6 @@ impl Parser<'_> {
                     "did you forget parentheses around the comprehension target?".to_string(),
                 );
             }
-
             elements.push(self.parse_star_named_expression()?);
             if self.starts_comprehension_clause() {
                 return Err(
@@ -6117,6 +6116,11 @@ impl Parser<'_> {
                 return Err(
                     "did you forget parentheses around the comprehension target?".to_string(),
                 );
+            }
+            if matches!(self.peek(), Some(Token::DoubleStar)) {
+                self.advance();
+                self.parse_bitwise_or()?;
+                return Err("invalid syntax".to_string());
             }
 
             elements.push(self.parse_star_named_expression()?);

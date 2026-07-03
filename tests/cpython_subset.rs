@@ -37420,6 +37420,15 @@ fn cpython_invalid_starred_expression_subset() {
     for source in ["[**items]", "[**items,]", "[**items for items in seq]"] {
         assert_error(source, "parse error: invalid syntax");
     }
+    for source in [
+        "[1, **items]",
+        "[1, **items,]",
+        "[*items, **extra]",
+        "[1, *items, **extra]",
+        "[1, **items for items in seq]",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "(*items, **extra)",
         "parse error: cannot use dict unpacking here",
