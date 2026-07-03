@@ -1152,7 +1152,7 @@ fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
 fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
     assert_eq!(
         run_source(
-            "import copy\nfor name in ['Error', 'error', 'copy', 'deepcopy', 'replace', 'dispatch_table']:\n    print(name, hasattr(copy, name))\nfor name in ['_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct', '__all__']:\n    print(name, hasattr(copy, name))\nprint(dir(copy))"
+            "import copy\nfor name in ['Error', 'error', 'copy', 'deepcopy', 'replace', 'dispatch_table', '__package__', '__doc__', '__all__']:\n    print(name, hasattr(copy, name))\nprint(type(copy.__doc__).__name__, bool(copy.__doc__), copy.__doc__.splitlines()[0])\nprint(copy.__all__)\nfor name in ['_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct']:\n    print(name, hasattr(copy, name))\nprint(dir(copy))"
         ),
         Ok(output_lines(&[
             "Error True",
@@ -1161,12 +1161,16 @@ fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
             "deepcopy True",
             "replace True",
             "dispatch_table True",
+            "__package__ True",
+            "__doc__ True",
+            "__all__ True",
+            "str True Generic (shallow and deep) copying operations.",
+            "['Error', 'copy', 'deepcopy', 'replace']",
             "_copy_dispatch False",
             "_deepcopy_dispatch False",
             "_keep_alive False",
             "_reconstruct False",
-            "__all__ False",
-            "['Error', '__name__', 'copy', 'deepcopy', 'dispatch_table', 'error', 'replace']",
+            "['Error', '__all__', '__doc__', '__name__', '__package__', 'copy', 'deepcopy', 'dispatch_table', 'error', 'replace']",
         ]))
     );
 }

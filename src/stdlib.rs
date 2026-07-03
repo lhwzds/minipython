@@ -44,6 +44,15 @@ const FUNCTOOLS_ALL: &[&str] = &[
     "Placeholder",
 ];
 const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
+const COPY_DOC: &str = "Generic (shallow and deep) copying operations.\n\
+\n\
+Interface summary:\n\
+\n\
+        import copy\n\
+\n\
+        x = copy.copy(y)                # make a shallow copy of y\n\
+        x = copy.deepcopy(y)            # make a deep copy of y\n\
+        x = copy.replace(y, a=1, b=2)   # new object with fields replaced, as defined by `__replace__`\n";
 const ARRAY_DOC: &str = "This module defines an object type which can efficiently represent\n\
 an array of basic values: characters, integers, floating-point\n\
 numbers.  Arrays are sequence types and behave very much like lists,\n\
@@ -2710,6 +2719,7 @@ fn copy_module_value() -> Value {
         "copy",
         vec![
             ("__package__", Value::String(String::new())),
+            ("__doc__", Value::String(COPY_DOC.to_string())),
             ("__all__", string_list_value(COPY_ALL)),
             ("Error", error.clone()),
             ("error", error),

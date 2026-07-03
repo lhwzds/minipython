@@ -22470,6 +22470,27 @@ print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
     );
 }
 
+// Adapted from CPython Lib/copy.py public module docstring metadata.
+#[test]
+fn cpython_copy_module_doc_intro_metadata_subset() {
+    assert_output(
+        r#"import copy
+doc = copy.__doc__
+doc2 = object.__getattribute__(copy, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), lines[0])
+print(lines[2], lines[4].strip(), lines[6].strip())
+print('__doc__' in dir(copy), copy.__dict__['__doc__'] == doc)
+print(doc2.splitlines()[0])"#,
+        &[
+            "str True Generic (shallow and deep) copying operations.",
+            "Interface summary: import copy x = copy.copy(y)                # make a shallow copy of y",
+            "True True",
+            "Generic (shallow and deep) copying operations.",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/copy.py public pure-memory behavior.
 #[test]
 fn cpython_copy_module_all_exports_subset() {

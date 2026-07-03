@@ -28282,6 +28282,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "copy",
         &[
             "cpython_copy_module_package_metadata_subset",
+            "cpython_copy_module_doc_intro_metadata_subset",
             "cpython_copy_module_all_exports_subset",
             "cpython_copy_function_module_metadata_subset",
             "cpython_copy_function_qualname_metadata_subset",
@@ -28311,6 +28312,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include copy");
     for evidence in [
         "cpython_copy_module_package_metadata_diff_subset",
+        "cpython_copy_module_doc_intro_metadata_diff_subset",
         "cpython_copy_module_all_exports_diff_subset",
         "cpython_copy_function_module_metadata_diff_subset",
         "cpython_copy_function_qualname_metadata_diff_subset",
@@ -28340,11 +28342,12 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
 
     assert!(
         LANGUAGE_TESTS.contains("copy_sandbox_subset_excludes_pickle_dispatch_internals")
-            && LANGUAGE_TESTS.contains(
-                "'_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct', '__all__'"
-            )
+            && LANGUAGE_TESTS
+                .contains("'_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct'")
+            && LANGUAGE_TESTS.contains("copy.__doc__.splitlines()[0]")
+            && LANGUAGE_TESTS.contains("copy.__all__")
             && LANGUAGE_TESTS.contains("dir(copy)"),
-        "copy sandbox export test must guard pickle dispatch internals and module __all__"
+        "copy sandbox export test must guard pickle dispatch internals and module metadata"
     );
 
     let package_diff = extract_rust_test_body(
@@ -28354,6 +28357,14 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     let package_subset = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_copy_module_package_metadata_subset",
+    );
+    let doc_intro_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_module_doc_intro_metadata_diff_subset",
+    );
+    let doc_intro_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_module_doc_intro_metadata_subset",
     );
     let all_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_module_all_exports_diff_subset");
@@ -28460,6 +28471,28 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             package_subset.contains(required),
             "copy module package metadata subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "copy.__doc__",
+        "object.__getattribute__(copy, '__doc__')",
+        "'__doc__' in dir(copy)",
+        "copy.__dict__['__doc__'] == doc",
+        "doc.splitlines()",
+    ] {
+        assert!(
+            doc_intro_diff.contains(required) && doc_intro_subset.contains(required),
+            "copy module __doc__ intro diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str True Generic (shallow and deep) copying operations.\"",
+        "\"Interface summary: import copy x = copy.copy(y)                # make a shallow copy of y\"",
+        "\"True True\"",
+    ] {
+        assert!(
+            doc_intro_subset.contains(required),
+            "copy module __doc__ intro subset output must pin `{required}`"
         );
     }
     for required in [
@@ -28744,6 +28777,12 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "copy stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
     assert!(
+        STDLIB_SOURCE.contains("const COPY_DOC: &str")
+            && STDLIB_SOURCE.contains("Generic (shallow and deep) copying operations.")
+            && copy_registry.contains("(\"__doc__\", Value::String(COPY_DOC.to_string()))"),
+        "copy stdlib module registry must expose CPython-compatible module __doc__ intro metadata"
+    );
+    assert!(
         STDLIB_SOURCE.contains(
             "const COPY_ALL: &[&str] = &[\"Error\", \"copy\", \"deepcopy\", \"replace\"];"
         ) && copy_registry.contains("(\"__all__\", string_list_value(COPY_ALL))"),
@@ -28781,6 +28820,8 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         for required in [
             "cpython_copy_module_package_metadata_subset",
             "cpython_copy_module_package_metadata_diff_subset",
+            "cpython_copy_module_doc_intro_metadata_subset",
+            "cpython_copy_module_doc_intro_metadata_diff_subset",
             "cpython_copy_module_all_exports_subset",
             "cpython_copy_module_all_exports_diff_subset",
             "cpython_copy_function_module_metadata_subset",
@@ -28807,6 +28848,9 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_function_kwdefaults_metadata_diff_subset",
             "copy module `__package__` metadata",
             "`copy.__package__`",
+            "copy module `__doc__` intro metadata",
+            "`copy.__doc__`",
+            "full copy module docstring body",
             "copy module `__all__` exports",
             "`copy.__all__`",
             "copy public function `__module__` metadata",

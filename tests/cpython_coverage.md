@@ -1060,6 +1060,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_unicode_method_rejection_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
   `cpython_copy_module_package_metadata_diff_subset`,
+  `cpython_copy_module_doc_intro_metadata_diff_subset`,
   `cpython_copy_module_all_exports_diff_subset`,
   `cpython_copy_function_module_metadata_diff_subset`,
   `cpython_copy_function_qualname_metadata_diff_subset`,
@@ -4360,6 +4361,7 @@ without adding general custom encoder/decoder class support.
   promoted with direct public-behavior evidence.
 - The bundled `copy` module includes
   `cpython_copy_module_package_metadata_diff_subset`,
+  `cpython_copy_module_doc_intro_metadata_diff_subset`,
   `cpython_copy_module_all_exports_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
@@ -4368,6 +4370,7 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
   `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_copy_module_package_metadata_subset`,
+  `cpython_copy_module_doc_intro_metadata_subset`,
   `cpython_copy_module_all_exports_subset`,
   `cpython_copy_function_module_metadata_subset`,
   `cpython_copy_function_qualname_metadata_subset`,
@@ -4387,6 +4390,9 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_replace_classmethod_hook_arity_error_subset`, and
   `cpython_copy_replace_staticmethod_hook_arity_error_subset`,
   covering copy module `__package__` metadata (`copy.__package__` is `''`),
+  copy module `__doc__` intro metadata (`copy.__doc__` starts with
+  `Generic (shallow and deep) copying operations.`) while leaving the
+  full copy module docstring body outside this sandbox subset,
   copy module `__all__` exports (`copy.__all__` is
   `['Error', 'copy', 'deepcopy', 'replace']`),
   copy public function `__module__` metadata (`copy.copy.__module__`,

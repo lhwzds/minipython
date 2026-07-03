@@ -24767,6 +24767,22 @@ print('__package__' in dir(copy), repr(copy.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_copy_module_doc_intro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public module __doc__ intro metadata subset",
+        name: "copy-module-doc-intro-metadata",
+        source: r#"import copy
+doc = copy.__doc__
+doc2 = object.__getattribute__(copy, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), lines[0])
+print(lines[2], lines[4].strip(), lines[6].strip())
+print('__doc__' in dir(copy), copy.__dict__['__doc__'] == doc)
+print(doc2.splitlines()[0])"#,
+    });
+}
+
+#[test]
 fn cpython_copy_module_all_exports_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public __all__ exports subset",
