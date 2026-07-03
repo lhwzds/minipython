@@ -6392,6 +6392,13 @@ Completed in the prefix punctuation expression diagnostic pass:
   `cpython_syntax_error_message_parity_diff_subset` so prefix punctuation expression forms
   such as `,x`, `:x`, `;x`, and `.x` use CPython's public `invalid syntax` message.
 
+Completed in the prefix at operator expression diagnostic pass:
+
+- Extended `cpython_invalid_expression_rules_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so prefix at operator expression forms
+  such as `a + @x`, `(@x)`, `[@x]`, `{@x}`, and `a @ @x` use CPython's public
+  `invalid syntax` message.
+
 Completed in the prefix augmented assignment operator expression diagnostic pass:
 
 - Extended `cpython_invalid_expression_rules_subset` and

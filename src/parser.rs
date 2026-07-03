@@ -5804,6 +5804,7 @@ impl Parser<'_> {
                 | Token::Colon
                 | Token::Semicolon
                 | Token::Dot
+                | Token::At
                 | Token::Slash
                 | Token::DoubleSlash
                 | Token::Percent

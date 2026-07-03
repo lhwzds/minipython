@@ -43803,6 +43803,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix at operator expression rejection",
+            name: "binary-plus-prefix-at-expression-message",
+            source: "a + @x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix at operator expression rejection",
+            name: "grouped-prefix-at-expression-message",
+            source: "(@x)",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix at operator expression rejection",
+            name: "list-prefix-at-expression-message",
+            source: "[@x]",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix at operator expression rejection",
+            name: "set-prefix-at-expression-message",
+            source: "{@x}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix at operator expression rejection",
+            name: "matrix-multiply-prefix-at-expression-message",
+            source: "a @ @x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

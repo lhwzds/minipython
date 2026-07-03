@@ -51143,6 +51143,40 @@ fn cpython_prefix_punctuation_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_prefix_at_operator_expression_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_expression_rules_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "prefix at operator SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "prefix at operator runtime subset evidence must exist"
+    );
+
+    for required_source in ["a + @x", "(@x)", "[@x]", "{@x}", "a @ @x"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "prefix at operator CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "prefix at operator subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("prefix at operator expression forms")
+                && document.contains("invalid syntax"),
+            "prefix at operator docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";
