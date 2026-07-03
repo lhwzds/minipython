@@ -24,6 +24,23 @@ pub(crate) const FUNCTOOLS_WRAPPER_ASSIGNMENTS: &[&str] = &[
     "__type_params__",
 ];
 pub(crate) const FUNCTOOLS_WRAPPER_UPDATES: &[&str] = &["__dict__"];
+const FUNCTOOLS_ALL: &[&str] = &[
+    "update_wrapper",
+    "wraps",
+    "WRAPPER_ASSIGNMENTS",
+    "WRAPPER_UPDATES",
+    "total_ordering",
+    "cache",
+    "cmp_to_key",
+    "lru_cache",
+    "reduce",
+    "partial",
+    "partialmethod",
+    "singledispatch",
+    "singledispatchmethod",
+    "cached_property",
+    "Placeholder",
+];
 const COPY_ALL: &[&str] = &["Error", "copy", "deepcopy", "replace"];
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
@@ -758,6 +775,7 @@ pub(crate) fn create_module(
             "functools",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__all__", string_list_value(FUNCTOOLS_ALL)),
                 (
                     "WRAPPER_ASSIGNMENTS",
                     string_tuple_value(FUNCTOOLS_WRAPPER_ASSIGNMENTS),

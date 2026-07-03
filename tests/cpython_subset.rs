@@ -56320,6 +56320,20 @@ fn cpython_functools_public_helpers_subset() {
     );
 }
 
+// Adapted from CPython Lib/functools.py public __all__ export surface.
+#[test]
+fn cpython_functools_all_exports_subset() {
+    assert_output(
+        r#"import functools
+expected = ['update_wrapper', 'wraps', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', 'total_ordering', 'cache', 'cmp_to_key', 'lru_cache', 'reduce', 'partial', 'partialmethod', 'singledispatch', 'singledispatchmethod', 'cached_property', 'Placeholder']
+print(functools.__all__ == expected)
+print(functools.__dict__['__all__'] == expected)
+print('__all__' in dir(functools), 'Placeholder' in functools.__all__, functools.__all__[-1])
+print([name for name in functools.__all__ if not hasattr(functools, name)])"#,
+        &["True", "True", "True True Placeholder", "[]"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_functools.py::TestPartial public call,
 // attribute, and side-effect behavior. Placeholder behavior is covered by the
 // focused subset below; pickling and weakref checks remain outside this runtime

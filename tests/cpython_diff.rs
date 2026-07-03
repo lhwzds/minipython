@@ -26257,6 +26257,27 @@ for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.par
 }
 
 #[test]
+fn cpython_functools_all_exports_diff_subset() {
+    let probe = run_cpython("import functools; print(hasattr(functools, 'Placeholder'))")
+        .expect("failed to probe CPython functools.Placeholder support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping functools.__all__ diff: CPython oracle lacks Placeholder export");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public __all__ export subset",
+        name: "functools-all-exports",
+        source: r#"import functools
+expected = ['update_wrapper', 'wraps', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', 'total_ordering', 'cache', 'cmp_to_key', 'lru_cache', 'reduce', 'partial', 'partialmethod', 'singledispatch', 'singledispatchmethod', 'cached_property', 'Placeholder']
+print(functools.__all__ == expected)
+print(functools.__dict__['__all__'] == expected)
+print('__all__' in dir(functools), 'Placeholder' in functools.__all__, functools.__all__[-1])
+print([name for name in functools.__all__ if not hasattr(functools, name)])"#,
+    });
+}
+
+#[test]
 fn cpython_functools_partial_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestPartial public subset",

@@ -8245,6 +8245,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "functools",
         &[
             "cpython_functools_public_helpers_subset",
+            "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
             "cpython_functools_placeholder_partial_subset",
             "cpython_functools_placeholder_type_constructor_subset",
@@ -8277,6 +8278,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include functools");
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
+        "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
         "cpython_functools_placeholder_partial_diff_subset",
         "cpython_functools_placeholder_type_constructor_diff_subset",
@@ -8359,9 +8361,60 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains(
                 "'__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial'"
             )
+            && LANGUAGE_TESTS.contains("'Placeholder'")
             && LANGUAGE_TESTS.contains("dir(functools)"),
         "functools sandbox export test must guard module __all__ and CPython cache internals"
     );
+
+    let all_exports_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_all_exports_diff_subset");
+    let all_exports_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_all_exports_subset");
+    for required in [
+        "hasattr(functools, 'Placeholder')",
+        "skipping functools.__all__ diff",
+    ] {
+        assert!(
+            all_exports_diff.contains(required),
+            "functools __all__ diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "functools.__all__ == expected",
+        "functools.__dict__['__all__'] == expected",
+        "'__all__' in dir(functools)",
+        "'Placeholder' in functools.__all__",
+        "functools.__all__[-1]",
+        "if not hasattr(functools, name)",
+    ] {
+        assert!(
+            all_exports_diff.contains(required),
+            "functools __all__ diff evidence must cover `{required}`"
+        );
+        assert!(
+            all_exports_subset.contains(required),
+            "functools __all__ subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "const FUNCTOOLS_ALL",
+        "\"Placeholder\"",
+        "\"__all__\"",
+        "string_list_value(FUNCTOOLS_ALL)",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required),
+            "functools __all__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_functools_all_exports_subset")
+                && document.contains("cpython_functools_all_exports_diff_subset")
+                && document.contains("functools.__all__"),
+            "functools __all__ evidence must be documented in coverage and migration notes"
+        );
+    }
 
     let partial_module_diff = CPYTHON_DIFF
         .split("fn cpython_functools_partial_instance_module_metadata_diff_subset()")
