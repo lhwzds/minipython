@@ -5797,6 +5797,9 @@ impl Parser<'_> {
                 | Token::GreaterEqual
                 | Token::EqualEqual
                 | Token::BangEqual
+                | Token::Equal
+                | Token::ColonEqual
+                | Token::Arrow
                 | Token::Slash
                 | Token::DoubleSlash
                 | Token::Percent

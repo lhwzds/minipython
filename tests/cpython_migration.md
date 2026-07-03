@@ -6380,6 +6380,12 @@ Completed in the prefix division/modulo operator expression diagnostic pass:
   `cpython_syntax_error_message_parity_diff_subset` so prefix division/modulo operator expression forms
   such as `/x`, `//x`, and `%x` use CPython's public `invalid syntax` message.
 
+Completed in the prefix assignment/annotation marker expression diagnostic pass:
+
+- Extended `cpython_invalid_expression_rules_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so prefix assignment/annotation marker expression forms
+  such as `=x`, `:=x`, and `->x` use CPython's public `invalid syntax` message.
+
 Completed in the prefix augmented assignment operator expression diagnostic pass:
 
 - Extended `cpython_invalid_expression_rules_subset` and

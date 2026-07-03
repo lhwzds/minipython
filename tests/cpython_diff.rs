@@ -43761,6 +43761,24 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix assignment annotation marker expression rejection",
+            name: "prefix-equal-expression-message",
+            source: "=x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix assignment annotation marker expression rejection",
+            name: "prefix-colon-equal-expression-message",
+            source: ":=x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix assignment annotation marker expression rejection",
+            name: "prefix-arrow-expression-message",
+            source: "->x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",
