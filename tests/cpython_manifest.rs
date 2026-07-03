@@ -42507,6 +42507,7 @@ fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
         "setattr(Box, 'label', 'box')",
         "delattr(box, 'value')",
         "delattr(Box, 'label')",
+        "delattr(Box(), 'missing')",
         "lambda: setattr(1, 2, 3)",
         "lambda: delattr(1, 2)",
     ] {
@@ -42528,6 +42529,7 @@ fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
         "setattr(Box, 'label', 'box')",
         "delattr(box, 'value')",
         "delattr(Box, 'label')",
+        "delattr(Box(), 'missing')",
         "lambda: setattr(1, 2, 3)",
         "lambda: delattr(1, 2)",
     ] {
@@ -42537,11 +42539,28 @@ fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
         );
     }
 
+    assert!(
+        CPYTHON_SUBSET.contains("\"AttributeError 'Box' object has no attribute 'missing'\"")
+            && VM_SOURCE.contains("Value::Instance {")
+            && VM_SOURCE.contains("class_name, fields, ..")
+            && VM_SOURCE
+                .contains("AttributeError: '{class_name}' object has no attribute '{name}'"),
+        "focused setattr/delattr subset and VM must pin class-qualified missing instance delete errors"
+    );
+
     for document in [CPYTHON_COVERAGE, MANIFEST] {
         assert!(
             document.contains("cpython_builtin_setattr_delattr_public_subset")
                 && document.contains("cpython_builtin_setattr_delattr_public_diff_subset"),
             "focused setattr/delattr evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("class-qualified missing instance `delattr()` errors")
+                && document.contains("cpython_builtin_setattr_delattr_public_subset")
+                && document.contains("cpython_builtin_setattr_delattr_public_diff_subset"),
+            "focused setattr/delattr class-qualified missing delete errors must be documented in coverage and migration"
         );
     }
 }

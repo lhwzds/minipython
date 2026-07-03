@@ -64969,11 +64969,15 @@ fn type_name_for_type_assignment_error<'a>(value: &'a Value, _field: &str) -> &'
 
 fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
     match object {
-        Value::Instance { fields, .. } => {
+        Value::Instance {
+            class_name, fields, ..
+        } => {
             if fields.borrow_mut().remove(name).is_some() {
                 Ok(())
             } else {
-                Err(format!("AttributeError: object has no attribute '{name}'"))
+                Err(format!(
+                    "AttributeError: '{class_name}' object has no attribute '{name}'"
+                ))
             }
         }
         Value::SimpleNamespace { fields } => {

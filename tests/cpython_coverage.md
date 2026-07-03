@@ -7326,8 +7326,8 @@ without adding general custom encoder/decoder class support.
   parity in `cpython_builtin_setattr_delattr_public_diff_subset`, covering the
   supported `BuiltinTest::test_setattr` / `::test_delattr` slice for module
   attributes, instance attributes, class attributes seen through instances,
-  class-attribute deletion, immutable-scalar write failure, and public
-  TypeError name/arity validation.
+  class-attribute deletion, class-qualified missing instance `delattr()` errors,
+  immutable-scalar write failure, and public TypeError name/arity validation.
 - `RUNTIME_BUILTINS` also includes the focused
   `cpython_builtin_hasattr_public_subset` with direct CPython output parity in
   `cpython_builtin_hasattr_public_diff_subset`, covering the supported

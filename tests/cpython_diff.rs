@@ -10377,6 +10377,10 @@ delattr(box, 'value')
 print(hasattr(box, 'value'), getattr(box, 'value', 'missing'))
 delattr(Box, 'label')
 print(hasattr(Box, 'label'), getattr(box, 'label', 'missing'))
+try:
+    delattr(Box(), 'missing')
+except AttributeError as error:
+    print(error.__class__.__name__, error)
 for expr in [lambda: setattr(), lambda: setattr(1, 'x'), lambda: setattr(1, 2, 3), lambda: setattr(1, 'x', 2), lambda: delattr(), lambda: delattr(1), lambda: delattr(1, 2)]:
     try:
         expr()
