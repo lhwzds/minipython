@@ -26906,6 +26906,54 @@ print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)"#
 }
 
 #[test]
+fn cpython_functools_placeholder_partialmethod_diff_subset() {
+    let probe = run_cpython("import functools; print(hasattr(functools, 'Placeholder'))")
+        .expect("failed to probe CPython functools.Placeholder support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping functools.Placeholder partialmethod diff: CPython oracle lacks Placeholder"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestPartialMethod Placeholder public subset",
+        name: "functools-placeholder-partialmethod",
+        source: r#"import functools
+P = functools.Placeholder
+class C:
+    def f(self, a, b, c=0):
+        return (self.__class__.__name__, a, b, c)
+    pm = functools.partialmethod(f, P, 2)
+    qm = functools.partialmethod(f, P, P, 3)
+    base = functools.partialmethod(f, P, P, 3)
+    nested = functools.partialmethod(base, 1)
+    nested2 = functools.partialmethod(base, 1, 2)
+    plain = functools.partialmethod(functools.partial(f, P, 2), 5)
+
+c = C()
+print(c.pm(1), c.pm(1, 3), C.pm(c, 1))
+print(c.qm(1, 2), c.plain())
+print(C.__dict__["pm"].args, C.__dict__["pm"].keywords)
+print(C.__dict__["nested"].args, c.nested(9))
+print(C.__dict__["nested2"].args, c.nested2())
+for label, expr, expected in [
+    ("pm-missing", lambda: c.pm(), "missing positional arguments in 'partial' call; expected at least 1, got 0"),
+    ("qm-one-missing", lambda: c.qm(1), "missing positional arguments in 'partial' call; expected at least 2, got 1"),
+    ("base-one-missing", lambda: c.base(1), "missing positional arguments in 'partial' call; expected at least 2, got 1"),
+    ("kw-placeholder", lambda: functools.partialmethod(C.f, a=P), "Placeholder cannot be passed as a keyword argument"),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        message = str(error)
+        if message != expected:
+            raise AssertionError((label, message))
+        print(label, type(error).__name__, message)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cached_property_diff_subset() {
     // CPython oracle text: cached_property.__init__() missing 1 required positional argument: 'func'
     assert_cpython_output_parity(&DiffCase {

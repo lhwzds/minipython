@@ -7485,9 +7485,10 @@ impl Vm {
         } else if expects_self_arg && !args.is_empty() {
             call_args.push(args.remove(0));
         }
-        call_args.extend(bound_args);
-        call_args.extend(args);
-        self.call_partial(function, call_args, bound_keywords, Vec::new(), keywords)
+        call_args.extend(partial_call_args(bound_args, args)?);
+        let mut bound_keywords = bound_keywords;
+        Self::merge_partial_keywords(&mut bound_keywords, keywords);
+        self.call_value_with_keywords(function, call_args, bound_keywords)
     }
 
     fn call_functools_partial(
@@ -7539,16 +7540,17 @@ impl Vm {
                 "TypeError: type 'functools.partialmethod' takes at least one argument".to_string(),
             );
         }
+        reject_functools_placeholder_keywords(&keywords)?;
 
         let function = args.remove(0);
         let (function, args, keywords) = match function {
             Value::PartialMethod {
                 function,
-                args: mut inner_args,
+                args: inner_args,
                 keywords: mut inner_keywords,
                 ..
             } => {
-                inner_args.extend(args);
+                let inner_args = partial_constructor_args(inner_args, args);
                 merge_keyword_bindings(&mut inner_keywords, keywords);
                 (*function, inner_args, inner_keywords)
             }

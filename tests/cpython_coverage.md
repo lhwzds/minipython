@@ -1129,6 +1129,7 @@ Recent runtime migration notes:
   `cpython_functools_update_wrapper_wraps_diff_subset`,
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
+  `cpython_functools_placeholder_partialmethod_diff_subset`,
   `cpython_functools_cached_property_diff_subset`,
   `cpython_functools_cached_property_module_metadata_diff_subset`,
   `cpython_functools_cache_diff_subset`,
@@ -3517,7 +3518,7 @@ without adding general custom encoder/decoder class support.
   `functools.Placeholder` singleton surface and `partial()` positional
   placeholder filling, including nested partial construction, missing-fill
   `TypeError` diagnostics, and keyword Placeholder rejection, without adding
-  pickle, weakref, or `partialmethod` Placeholder behavior.
+  pickle or weakref behavior.
   The newer CPython partial instance `__module__` surface is also pinned by
   `cpython_functools_partial_instance_module_metadata_subset` and gated
   `cpython_functools_partial_instance_module_metadata_diff_subset`.
@@ -3535,6 +3536,12 @@ without adding general custom encoder/decoder class support.
   descriptors plus instance-bound partialmethod calls, qualified
   `partialmethod.__get__` public TypeError text, invalid constructor forms, and
   raw descriptor non-callability/type reporting.
+  `cpython_functools_placeholder_partialmethod_subset`, backed by
+  `cpython_functools_placeholder_partialmethod_diff_subset`, covers
+  `partialmethod()` positional placeholder filling for bound and class access,
+  nested `partialmethod` construction, partial-over-partial descriptors,
+  missing-fill `TypeError` diagnostics, and keyword Placeholder rejection,
+  without adding pickle, weakref, or C accelerator internals.
 - The bundled `functools` module also includes
   `cpython_functools_cmp_to_key_diff_subset` and
   `cpython_functools_cmp_to_key_subset`, covering CPython

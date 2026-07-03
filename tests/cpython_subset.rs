@@ -56709,6 +56709,54 @@ fn cpython_functools_partialmethod_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestPartialMethod
+// Placeholder rows. This covers partialmethod() positional placeholder filling
+// without extending into pickle, weakref, or C accelerator internals.
+#[test]
+fn cpython_functools_placeholder_partialmethod_subset() {
+    assert_output(
+        r#"import functools
+P = functools.Placeholder
+class C:
+    def f(self, a, b, c=0):
+        return (self.__class__.__name__, a, b, c)
+    pm = functools.partialmethod(f, P, 2)
+    qm = functools.partialmethod(f, P, P, 3)
+    base = functools.partialmethod(f, P, P, 3)
+    nested = functools.partialmethod(base, 1)
+    nested2 = functools.partialmethod(base, 1, 2)
+    plain = functools.partialmethod(functools.partial(f, P, 2), 5)
+
+c = C()
+print(c.pm(1), c.pm(1, 3), C.pm(c, 1))
+print(c.qm(1, 2), c.plain())
+print(C.__dict__["pm"].args, C.__dict__["pm"].keywords)
+print(C.__dict__["nested"].args, c.nested(9))
+print(C.__dict__["nested2"].args, c.nested2())
+for label, expr in [
+    ("pm-missing", lambda: c.pm()),
+    ("qm-one-missing", lambda: c.qm(1)),
+    ("base-one-missing", lambda: c.base(1)),
+    ("kw-placeholder", lambda: functools.partialmethod(C.f, a=P)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "('C', 1, 2, 0) ('C', 1, 2, 3) ('C', 1, 2, 0)",
+            "('C', 1, 2, 3) ('C', 2, 5, 0)",
+            "(Placeholder, 2) {}",
+            "(1, Placeholder, 3) ('C', 1, 9, 3)",
+            "(1, 2, 3) ('C', 1, 2, 3)",
+            "pm-missing TypeError missing positional arguments in 'partial' call; expected at least 1, got 0",
+            "qm-one-missing TypeError missing positional arguments in 'partial' call; expected at least 2, got 1",
+            "base-one-missing TypeError missing positional arguments in 'partial' call; expected at least 2, got 1",
+            "kw-placeholder TypeError Placeholder cannot be passed as a keyword argument",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_functools.py::TestCmpToKey public
 // behavior. The slice covers the key wrapper comparison contract and public
 // repr shape without relying on C accelerator internals.
