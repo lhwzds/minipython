@@ -30056,6 +30056,27 @@ fn cpython_base_exception_args_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_exceptions.py::testAttributes`.
+// This covers the public `NameError.name` attribute for constructor keywords
+// and runtime missing-name errors without expanding exception note handling.
+#[test]
+fn cpython_name_error_name_attribute_subset() {
+    assert_output(
+        "try:\n    missing_name\nexcept NameError as error:\n    print('runtime', error.args, error.name, str(error), repr(error))\nfor error in [NameError(), NameError('custom'), NameError(name='abc'), NameError('custom', name='abc'), UnboundLocalError('local', name='value')]:\n    print(error.__class__.__name__, error.args, error.name, str(error), repr(error))\nfor source in [\"NameError(bad=1)\", \"NameError(name='x', bad=1)\", \"UnboundLocalError(bad=1)\"]:\n    try:\n        eval(source)\n    except TypeError as error:\n        print(type(error).__name__, str(error), error.args)",
+        &[
+            "runtime (\"name 'missing_name' is not defined\",) missing_name name 'missing_name' is not defined NameError(\"name 'missing_name' is not defined\")",
+            "NameError () None  NameError()",
+            "NameError ('custom',) None custom NameError('custom')",
+            "NameError () abc  NameError()",
+            "NameError ('custom',) abc custom NameError('custom')",
+            "UnboundLocalError ('local',) value local UnboundLocalError('local')",
+            "TypeError NameError() got an unexpected keyword argument 'bad' (\"NameError() got an unexpected keyword argument 'bad'\",)",
+            "TypeError NameError() takes at most 1 keyword argument (2 given) ('NameError() takes at most 1 keyword argument (2 given)',)",
+            "TypeError NameError() got an unexpected keyword argument 'bad' (\"NameError() got an unexpected keyword argument 'bad'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_exceptions.py::testWithTraceback` and
 // `::testInvalidTraceback`. This covers traceback object identity preservation,
 // the CPython `None` path, and rejection of non-tracebacks.

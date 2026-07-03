@@ -66749,7 +66749,10 @@ fn call_exception_constructor_with_hierarchy(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() && type_name != "AttributeError" {
+    if !keywords.is_empty()
+        && type_name != "AttributeError"
+        && !type_hierarchy.iter().any(|name| name == "NameError")
+    {
         return Err(format!("{type_name}() does not accept keyword arguments"));
     }
 
@@ -66806,6 +66809,10 @@ fn builtin_exception_args_and_attrs(
 ) -> Result<(Vec<Value>, Vec<(String, Value)>), String> {
     if type_name == "AttributeError" {
         return Ok((args, attribute_error_attrs(keywords)?));
+    }
+
+    if type_hierarchy.iter().any(|name| name == "NameError") {
+        return Ok((args, name_error_attrs(keywords)?));
     }
 
     if type_name == "SystemExit" {
@@ -66872,6 +66879,26 @@ fn builtin_exception_args_and_attrs(
     }
 
     Ok((args, Vec::new()))
+}
+
+fn name_error_attrs(keywords: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, String> {
+    if keywords.len() > 1 {
+        return Err(format!(
+            "TypeError: NameError() takes at most 1 keyword argument ({} given)",
+            keywords.len()
+        ));
+    }
+
+    let name = match keywords.into_iter().next() {
+        Some((keyword, value)) if keyword == "name" => value,
+        Some((keyword, _)) => {
+            return Err(format!(
+                "TypeError: NameError() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        None => Value::None,
+    };
+    Ok(vec![("name".to_string(), name)])
 }
 
 fn attribute_error_attrs(keywords: Vec<(String, Value)>) -> Result<Vec<(String, Value)>, String> {
@@ -68218,19 +68245,43 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
         return None;
     };
 
+    let type_hierarchy = builtin_exception_type_hierarchy(type_name);
+    let attrs = runtime_exception_attrs_from_message(&type_hierarchy, &message);
+
     Some(MiniException {
         type_name: type_name.to_string(),
-        type_hierarchy: builtin_exception_type_hierarchy(type_name),
+        type_hierarchy,
         type_object: None,
         message: Some(message.clone()),
         args: exception_args_from_message(&message),
-        attrs: Vec::new(),
+        attrs,
         cause: None,
         context: None,
         suppress_context: false,
         exceptions: None,
         identity: Rc::new(()),
     })
+}
+
+fn runtime_exception_attrs_from_message(
+    type_hierarchy: &[String],
+    message: &str,
+) -> Vec<(String, Value)> {
+    if type_hierarchy.iter().any(|name| name == "NameError") {
+        return vec![(
+            "name".to_string(),
+            undefined_name_from_message(message)
+                .map(|name| Value::String(name.to_string()))
+                .unwrap_or(Value::None),
+        )];
+    }
+    Vec::new()
+}
+
+fn undefined_name_from_message(message: &str) -> Option<&str> {
+    message
+        .strip_prefix("name '")
+        .and_then(|message| message.strip_suffix("' is not defined"))
 }
 
 fn undefined_name_error(name: &str) -> String {

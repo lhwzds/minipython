@@ -312,6 +312,11 @@ Recent runtime migration notes:
   public delimiter-message substrings for `json.loads()` missing colon and
   missing comma errors while keeping full `JSONDecodeError` compatibility out
   of the sandbox `json` scope.
+- `cpython_name_error_name_attribute_subset`, backed by
+  `cpython_name_error_name_attribute_diff_subset`, now pins the public
+  `NameError.name` attribute for runtime missing-name failures,
+  `NameError(name=...)`, `UnboundLocalError(name=...)`, and CPython keyword
+  rejection text.
 - `cpython_pow_builtin_subset`, backed by `cpython_pow_builtin_diff_subset`,
   now pins exact CPython unsupported power operand `TypeError` text across
   `pow()`, `**`, and `operator.pow()`, including bool and complex/None
@@ -664,6 +669,7 @@ Recent runtime migration notes:
   `cpython_builtin_exception_hierarchy_diff_subset`,
   `cpython_runtime_exception_capture_diff_subset`,
   `cpython_base_exception_args_diff_subset`,
+  `cpython_name_error_name_attribute_diff_subset`,
   `cpython_base_exception_with_traceback_diff_subset`,
   `cpython_system_exit_oserror_attributes_diff_subset`,
   `cpython_syntax_error_attributes_diff_subset`,

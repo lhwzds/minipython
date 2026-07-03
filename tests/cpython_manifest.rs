@@ -39415,6 +39415,66 @@ fn base_exception_args_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn name_error_name_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_name_error_name_attribute_subset(",
+        "missing_name",
+        "error.name",
+        "NameError(name='abc')",
+        "NameError('custom', name='abc')",
+        "UnboundLocalError('local', name='value')",
+        "NameError(bad=1)",
+        "NameError(name='x', bad=1)",
+        "UnboundLocalError(bad=1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused NameError.name subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_name_error_name_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_exceptions.py::testAttributes NameError.name subset",
+        "missing_name",
+        "error.name",
+        "NameError(name='abc')",
+        "NameError('custom', name='abc')",
+        "UnboundLocalError('local', name='value')",
+        "NameError(bad=1)",
+        "NameError(name='x', bad=1)",
+        "UnboundLocalError(bad=1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused NameError.name CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn name_error_attrs(",
+        "fn runtime_exception_attrs_from_message(",
+        "fn undefined_name_from_message(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "NameError.name implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_name_error_name_attribute_subset")
+                && document.contains("cpython_name_error_name_attribute_diff_subset"),
+            "focused NameError.name evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtin_exception_hierarchy_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_exception_hierarchy_subset(",

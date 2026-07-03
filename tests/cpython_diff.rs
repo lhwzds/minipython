@@ -13154,6 +13154,25 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_name_error_name_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes NameError.name subset",
+        name: "name-error-name-attribute-direct",
+        source: r#"try:
+    missing_name
+except NameError as error:
+    print('runtime', error.args, error.name, str(error), repr(error))
+for error in [NameError(), NameError('custom'), NameError(name='abc'), NameError('custom', name='abc'), UnboundLocalError('local', name='value')]:
+    print(error.__class__.__name__, error.args, error.name, str(error), repr(error))
+for source in ["NameError(bad=1)", "NameError(name='x', bad=1)", "UnboundLocalError(bad=1)"]:
+    try:
+        eval(source)
+    except TypeError as error:
+        print(type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_with_traceback_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testWithTraceback / ::testInvalidTraceback public subset",
