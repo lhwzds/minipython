@@ -5686,6 +5686,32 @@ print('__package__' in dir(sys), repr(sys.__dict__['__package__']))"#,
     );
 }
 
+// Pins CPython's public sys module doc metadata without promoting host process
+// state, refcount/debug helpers, or real stdio streams into the sandbox.
+#[test]
+fn cpython_sys_module_doc_metadata_subset() {
+    assert_output(
+        r#"import sys
+doc = sys.__doc__
+via_object = object.__getattribute__(sys, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[1])
+print(lines[-1])
+print('__doc__' in dir(sys), sys.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])
+print(hasattr(sys, 'getrefcount'), hasattr(sys, 'gettrace'), hasattr(sys, 'settrace'))"#,
+        &[
+            "str True 3570 This module provides access to some objects used or maintained by the",
+            "interpreter and to functions that interact strongly with the interpreter.",
+            "settrace() -- set the global debug tracing function",
+            "True True",
+            "True This module provides access to some objects used or maintained by the",
+            "False False False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_hash
 // and ::test_hash_nan. Exact identity-hash values are process-local, so this
 // pins the public equality relationships instead of numeric addresses.

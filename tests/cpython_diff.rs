@@ -37877,6 +37877,23 @@ print('__package__' in dir(sys), repr(sys.__dict__['__package__']))"#,
 }
 
 #[test]
+fn cpython_sys_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/sys public module __doc__ metadata subset stable on CPython 3.14.6",
+        name: "sys-module-doc-metadata",
+        source: r#"import sys
+doc = sys.__doc__
+via_object = object.__getattribute__(sys, '__doc__')
+lines = doc.splitlines()
+print(type(doc).__name__, bool(doc), len(doc), lines[0])
+print(lines[1])
+print(lines[-1])
+print('__doc__' in dir(sys), sys.__dict__['__doc__'] == doc)
+print(via_object == doc, via_object.splitlines()[0])"#,
+    });
+}
+
+#[test]
 fn cpython_float_hash_and_sys_info_diff_subset() {
     // CPython oracle text: sys.getdefaultencoding() takes no arguments (1 given);
     // sys.getdefaultencoding() takes no keyword arguments

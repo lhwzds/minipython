@@ -33611,6 +33611,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys",
         &[
             "cpython_sys_module_package_metadata_subset",
+            "cpython_sys_module_doc_metadata_subset",
             "cpython_float_hash_and_sys_info_subset",
             "cpython_builtin_negation_sys_maxsize_subset",
             "cpython_int_max_str_digits_runtime_subset",
@@ -33634,6 +33635,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include sys");
     for evidence in [
         "cpython_sys_module_package_metadata_diff_subset",
+        "cpython_sys_module_doc_metadata_diff_subset",
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_builtin_negation_sys_maxsize_diff_subset",
@@ -33653,6 +33655,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         LANGUAGE_TESTS.contains("sys_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'getrefcount', 'getallocatedblocks'")
             && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
+            && LANGUAGE_TESTS.contains("'__doc__'")
+            && LANGUAGE_TESTS.contains("sys.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'builtin_module_names'")
             && LANGUAGE_TESTS.contains("'byteorder'")
             && LANGUAGE_TESTS.contains("'dont_write_bytecode'")
@@ -33754,6 +33758,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         sys_registry.contains("(\"__package__\", Value::String(String::new()))"),
         "sys stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
+    assert!(
+        sys_registry.contains("(\"__doc__\", Value::String(SYS_DOC.to_string()))"),
+        "sys stdlib module registry must expose CPython-compatible __doc__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_sys_module_package_metadata_subset",
@@ -33764,6 +33772,75 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "sys module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let doc_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_sys_module_doc_metadata_diff_subset");
+    let doc_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_sys_module_doc_metadata_subset");
+    for required in [
+        "sys.__doc__",
+        "object.__getattribute__(sys, '__doc__')",
+        "'__doc__' in dir(sys)",
+        "sys.__dict__['__doc__'] == doc",
+        "len(doc)",
+    ] {
+        assert!(
+            doc_diff.contains(required) && doc_subset.contains(required),
+            "sys module doc metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "hasattr(sys, 'getrefcount')",
+        "hasattr(sys, 'gettrace')",
+        "hasattr(sys, 'settrace')",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "sys module doc metadata local subset evidence must keep debug/refcount API `{required}` outside the sandbox surface"
+        );
+    }
+    for required in [
+        "\"str True 3570 This module provides access to some objects used or maintained by the\"",
+        "\"interpreter and to functions that interact strongly with the interpreter.\"",
+        "\"settrace() -- set the global debug tracing function\"",
+        "\"True True\"",
+        "\"False False False\"",
+    ] {
+        assert!(
+            doc_subset.contains(required),
+            "sys module doc metadata subset output must pin `{required}`"
+        );
+    }
+    let sys_doc_start = STDLIB_SOURCE
+        .find("const SYS_DOC: &str")
+        .expect("stdlib.rs must define SYS_DOC");
+    let sys_doc_end = STDLIB_SOURCE[sys_doc_start..]
+        .find("const IO_DOC: &str")
+        .map(|offset| sys_doc_start + offset)
+        .expect("SYS_DOC must precede IO_DOC");
+    let sys_doc = &STDLIB_SOURCE[sys_doc_start..sys_doc_end];
+    for required in [
+        "This module provides access to some objects used or maintained by the",
+        "interpreter and to functions that interact strongly with the interpreter.",
+        "settrace() -- set the global debug tracing function",
+    ] {
+        assert!(
+            sys_doc.contains(required),
+            "sys stdlib doc constant must include `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_sys_module_doc_metadata_subset",
+            "cpython_sys_module_doc_metadata_diff_subset",
+            "sys module `__doc__` metadata",
+            "`sys.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "sys module doc metadata docs must contain `{required}`"
             );
         }
     }
