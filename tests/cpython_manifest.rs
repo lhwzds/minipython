@@ -50072,6 +50072,60 @@ fn cpython_declaration_import_keyword_parameter_name_messages_have_diff_evidence
 }
 
 #[test]
+fn cpython_block_exception_keyword_parameter_name_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "block/exception keyword parameter SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function block/exception keyword parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda block/exception keyword parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "def f(a while b):\\n    pass",
+        "def f(*a elif b):\\n    pass",
+        "def f(**a try b):\\n    pass",
+        "def f(a except b):\\n    pass",
+        "def f(*a with b):\\n    pass",
+        "def f(a as b):\\n    pass",
+        "def f(**a finally b):\\n    pass",
+        "lambda a while b: None",
+        "lambda *a elif b: None",
+        "lambda **a try b: None",
+        "lambda a except b: None",
+        "lambda *a with b: None",
+        "lambda a as b: None",
+        "lambda **a finally b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "block/exception keyword parameter CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "block/exception keyword parameter subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("block/exception keyword parameter name forms")
+                && document.contains("invalid syntax"),
+            "block/exception keyword parameter docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

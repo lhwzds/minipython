@@ -6473,6 +6473,11 @@ impl Parser<'_> {
                     | Token::Assert
                     | Token::From
                     | Token::Import
+                    | Token::Try
+                    | Token::Except
+                    | Token::With
+                    | Token::As
+                    | Token::Finally
                     | Token::Slash
                     | Token::DoubleSlash
                     | Token::Percent
@@ -6482,9 +6487,11 @@ impl Parser<'_> {
                     | Token::LessEqual
                     | Token::Greater
                     | Token::GreaterEqual
+                    | Token::Elif
                     | Token::Else
                     | Token::For
                     | Token::If
+                    | Token::While
                     | Token::Return
                     | Token::Raise
                     | Token::Pass
