@@ -37438,9 +37438,20 @@ fn cpython_invalid_starred_expression_subset() {
     ] {
         assert_error(source, "parse error: invalid syntax");
     }
-    assert_error(
+    for source in [
+        "(**items,)",
+        "(1, **items)",
+        "(1, **items,)",
         "(*items, **extra)",
-        "parse error: cannot use dict unpacking here",
+        "(*items, **extra,)",
+        "(1, *items, **extra)",
+        "(1, **items for items in seq)",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
+    assert_error(
+        "(**items)",
+        "parse error: cannot use double starred expression here",
     );
     assert_error("[*]", "parse error: Invalid star expression");
     assert_error("(*,)", "parse error: Invalid star expression");

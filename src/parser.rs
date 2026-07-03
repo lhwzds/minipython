@@ -5752,7 +5752,7 @@ impl Parser<'_> {
                         return Err("cannot use dict unpacking in generator expression".to_string());
                     }
                     if matches!(self.peek(), Some(Token::Comma)) {
-                        return Err("cannot use dict unpacking here".to_string());
+                        return Err("invalid syntax".to_string());
                     }
                     self.expect_right_paren()?;
                     return Err("cannot use double starred expression here".to_string());
@@ -5893,6 +5893,11 @@ impl Parser<'_> {
             self.advance();
             if matches!(self.peek(), Some(Token::RightParen)) {
                 break;
+            }
+            if matches!(self.peek(), Some(Token::DoubleStar)) {
+                self.advance();
+                self.parse_bitwise_or()?;
+                return Err("invalid syntax".to_string());
             }
 
             elements.push(self.parse_star_named_expression()?);
