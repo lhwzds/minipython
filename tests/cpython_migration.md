@@ -15654,6 +15654,10 @@ Completed in the CPython collections manifest expansion pass:
   `isinstance(..., types.ModuleType)`, and `dir()` raises
   `TypeError: <module>.__dict__ is not a dictionary` when the visible
   `__dict__` is not a dict. `BuiltinTest::test_dir` is now marked `ported`.
+- Extended the same subset with exact built-in `object()` instances having no instance `__dict__`:
+  `vars(object())`, `object().__dict__`, and new-attribute set/delete now use
+  CPython's public `TypeError` / `AttributeError` paths while object subclasses and dynamic classes named `object`
+  remain dictionary-backed.
 - Promoted `BuiltinTest::test_all_any_tuple_list_set_optimization` to `ported`
   for MiniPython's public behavior: dynamic lookup of `all`, `any`, `tuple`,
   `list`, and `set` around generator expressions. The remaining CPython

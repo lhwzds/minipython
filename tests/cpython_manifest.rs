@@ -34931,6 +34931,58 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         }
     }
 
+    let vars_dir_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_vars_dir_builtin_subset");
+    let vars_dir_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_vars_dir_builtin_diff_subset");
+    for required in [
+        "('builtin', object())",
+        "('subclass', O())",
+        "type('object', (), {})()",
+        "hasattr(obj, '__dict__')",
+        "vars(obj)",
+        "obj.__dict__",
+        "obj.extra = 1",
+        "del obj.extra",
+    ] {
+        assert!(
+            vars_dir_subset.contains(required) && vars_dir_diff.contains(required),
+            "vars/dir builtin subset and diff evidence must cover exact-object instance dictionary behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"builtin object False\"",
+        "\"builtin TypeError vars() argument must have __dict__ attribute\"",
+        "\"subclass O True\"",
+        "\"dynamic-name object True\"",
+        "\"getdict AttributeError 'object' object has no attribute '__dict__'\"",
+        "\"set AttributeError 'object' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+        "\"del AttributeError 'object' object has no attribute 'extra' and no __dict__ for setting new attributes\"",
+    ] {
+        assert!(
+            vars_dir_subset.contains(required),
+            "vars/dir builtin subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn instance_allows_attribute_dict(",
+        "fn is_exact_builtin_object_instance(",
+        "class_name == \"object\" && bases.is_empty() && attrs.borrow().is_empty()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM exact-object instance dictionary guard must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("exact built-in `object()` instances")
+                && document.contains("vars(object())")
+                && document.contains("no instance `__dict__`")
+                && document.contains("object subclasses and dynamic classes named `object`"),
+            "vars/dir exact-object dictionary behavior must be documented in coverage and migration notes"
+        );
+    }
+
     for required in [
         "fn.__qualname__",
         "fn.__module__",

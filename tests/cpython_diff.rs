@@ -14063,6 +14063,25 @@ class DictProperty:
         return {'a': 2}
     __dict__ = property(getDict)
 print(vars(DictProperty()))
+class O(object):
+    pass
+for label, obj in [('builtin', object()), ('subclass', O()), ('dynamic-name', type('object', (), {})())]:
+    print(label, type(obj).__name__, hasattr(obj, '__dict__'))
+    try:
+        print(label, vars(obj))
+    except TypeError as error:
+        print(label, error.__class__.__name__, error)
+for op in ['getdict', 'set', 'del']:
+    obj = object()
+    try:
+        if op == 'getdict':
+            print(obj.__dict__)
+        elif op == 'set':
+            obj.extra = 1
+        else:
+            del obj.extra
+    except AttributeError as error:
+        print(op, error.__class__.__name__, error)
 class BadDir:
     def __dir__(self):
         return 7
@@ -31640,6 +31659,25 @@ class DictProperty:
         return {'a': 2}
     __dict__ = property(getDict)
 print(vars(DictProperty()))
+class O(object):
+    pass
+for label, obj in [('builtin', object()), ('subclass', O()), ('dynamic-name', type('object', (), {})())]:
+    print(label, type(obj).__name__, hasattr(obj, '__dict__'))
+    try:
+        print(label, vars(obj))
+    except TypeError as error:
+        print(label, error.__class__.__name__, error)
+for op in ['getdict', 'set', 'del']:
+    obj = object()
+    try:
+        if op == 'getdict':
+            print(obj.__dict__)
+        elif op == 'set':
+            obj.extra = 1
+        else:
+            del obj.extra
+    except AttributeError as error:
+        print(op, error.__class__.__name__, error)
 class BadDir:
     def __dir__(self):
         return 7

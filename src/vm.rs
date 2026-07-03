@@ -14850,7 +14850,9 @@ impl Vm {
                     return Ok(bind_method(value, instance));
                 }
 
-                if name == "__dict__" && class_allows_instance_dict(&class_attrs, &class_bases)? {
+                if name == "__dict__"
+                    && instance_allows_attribute_dict(&class_name, &class_attrs, &class_bases)?
+                {
                     return Ok(scope_dict_value(&fields));
                 }
 
@@ -52823,7 +52825,7 @@ fn reject_disallowed_slot_attribute(
     class_bases: &[Value],
     name: &str,
 ) -> Result<(), String> {
-    if class_allows_instance_dict(class_attrs, class_bases)? {
+    if instance_allows_attribute_dict(class_name, class_attrs, class_bases)? {
         return Ok(());
     }
 
@@ -52834,9 +52836,29 @@ fn reject_disallowed_slot_attribute(
         return Ok(());
     }
 
+    let no_dict_suffix = if is_exact_builtin_object_instance(class_name, class_attrs, class_bases) {
+        " and no __dict__ for setting new attributes"
+    } else {
+        ""
+    };
     Err(format!(
-        "AttributeError: '{class_name}' object has no attribute '{name}'"
+        "AttributeError: '{class_name}' object has no attribute '{name}'{no_dict_suffix}"
     ))
+}
+
+fn instance_allows_attribute_dict(
+    class_name: &str,
+    attrs: &Scope,
+    bases: &[Value],
+) -> Result<bool, String> {
+    if is_exact_builtin_object_instance(class_name, attrs, bases) {
+        return Ok(false);
+    }
+    class_allows_instance_dict(attrs, bases)
+}
+
+fn is_exact_builtin_object_instance(class_name: &str, attrs: &Scope, bases: &[Value]) -> bool {
+    class_name == "object" && bases.is_empty() && attrs.borrow().is_empty()
 }
 
 fn class_allows_instance_dict(attrs: &Scope, bases: &[Value]) -> Result<bool, String> {
@@ -58912,7 +58934,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(bind_method(value, instance));
             }
 
-            if name == "__dict__" && class_allows_instance_dict(&class_attrs, &class_bases)? {
+            if name == "__dict__"
+                && instance_allows_attribute_dict(&class_name, &class_attrs, &class_bases)?
+            {
                 return Ok(scope_dict_value(&fields));
             }
 

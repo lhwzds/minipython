@@ -7341,7 +7341,9 @@ without adding general custom encoder/decoder class support.
   covering `BuiltinTest::test_dir` / `::test_vars` public behavior for local
   namespace introspection, module `__dict__` liveness, class/instance
   dictionaries, tuple-returning `__dir__`, property-backed `__dict__`, TypeError
-  boundaries, and list/object `__dir__` ordering.
+  boundaries, exact built-in `object()` instances with no instance `__dict__`
+  including `vars(object())` and new-attribute mutation errors, object subclasses and dynamic classes named `object`,
+  and list/object `__dir__` ordering.
 - `RUNTIME_BUILTINS` also includes `cpython_globals_locals_builtin_subset`,
   `cpython_isinstance_builtin_subset`, `cpython_issubclass_builtin_subset`,
   `cpython_enumerate_zip_sorted_builtin_subset`, `cpython_zip_strict_builtin_subset`,

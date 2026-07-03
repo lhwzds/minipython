@@ -50391,6 +50391,20 @@ fn cpython_vars_dir_builtin_subset() {
         &["{'a': 2}"],
     );
     assert_output(
+        "class O(object):\n    pass\nfor label, obj in [('builtin', object()), ('subclass', O()), ('dynamic-name', type('object', (), {})())]:\n    print(label, type(obj).__name__, hasattr(obj, '__dict__'))\n    try:\n        print(label, vars(obj))\n    except TypeError as error:\n        print(label, error.__class__.__name__, error)\nfor op in ['getdict', 'set', 'del']:\n    obj = object()\n    try:\n        if op == 'getdict':\n            print(obj.__dict__)\n        elif op == 'set':\n            obj.extra = 1\n        else:\n            del obj.extra\n    except AttributeError as error:\n        print(op, error.__class__.__name__, error)",
+        &[
+            "builtin object False",
+            "builtin TypeError vars() argument must have __dict__ attribute",
+            "subclass O True",
+            "subclass {}",
+            "dynamic-name object True",
+            "dynamic-name {}",
+            "getdict AttributeError 'object' object has no attribute '__dict__'",
+            "set AttributeError 'object' object has no attribute 'extra' and no __dict__ for setting new attributes",
+            "del AttributeError 'object' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        ],
+    );
+    assert_output(
         "class BadDir:\n    def __dir__(self):\n        return 7\nfor expr in [lambda: dir(1, 2), lambda: vars(1, 2), lambda: vars(42), lambda: dir(BadDir())]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &["TypeError", "TypeError", "TypeError", "TypeError"],
     );
