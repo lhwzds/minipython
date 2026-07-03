@@ -1192,7 +1192,7 @@ fn array_sandbox_subset_excludes_pickle_module_internals() {
 fn math_sandbox_subset_keeps_integer_submodule_narrow() {
     assert_eq!(
         run_source(
-            "import math\nimport math.integer as mi\nfor name in ['sqrt', 'gcd', 'prod', 'sumprod', 'nextafter', 'ulp']:\n    print('math', name, hasattr(math, name))\nprint('math __all__', hasattr(math, '__all__'))\nfor name in ['comb', 'factorial', 'gcd', 'isqrt', 'lcm', 'perm']:\n    print('integer', name, hasattr(mi, name))\nfor name in ['sqrt', 'prod', 'sumprod', 'nextafter', 'ulp', '__all__']:\n    print('integer', name, hasattr(mi, name))\nprint(dir(mi))"
+            "import math\nimport math.integer as mi\nfor name in ['sqrt', 'gcd', 'prod', 'sumprod', 'nextafter', 'ulp']:\n    print('math', name, hasattr(math, name))\nprint('math __doc__', type(math.__doc__).__name__, bool(math.__doc__), math.__doc__.splitlines()[0])\nprint('math __all__', hasattr(math, '__all__'))\nfor name in ['comb', 'factorial', 'gcd', 'isqrt', 'lcm', 'perm']:\n    print('integer', name, hasattr(mi, name))\nfor name in ['sqrt', 'prod', 'sumprod', 'nextafter', 'ulp', '__all__']:\n    print('integer', name, hasattr(mi, name))\nprint(dir(mi))"
         ),
         Ok(output_lines(&[
             "math sqrt True",
@@ -1201,6 +1201,7 @@ fn math_sandbox_subset_keeps_integer_submodule_narrow() {
             "math sumprod True",
             "math nextafter True",
             "math ulp True",
+            "math __doc__ str True This module provides access to the mathematical functions",
             "math __all__ False",
             "integer comb True",
             "integer factorial True",

@@ -1003,6 +1003,7 @@ Recent runtime migration notes:
   `cpython_collections_abc_bytestring_deprecation_warnings_diff_subset`,
   `cpython_collections_abc_composite_abstract_methods_diff_subset`,
   `cpython_math_core_diff_subset`,
+  `cpython_math_module_doc_metadata_diff_subset`,
   `cpython_math_keyword_error_messages_diff_subset`,
   `cpython_math_constants_and_classification_diff_subset`,
   `cpython_math_isclose_diff_subset`,
@@ -1567,6 +1568,8 @@ Recent runtime migration notes:
   user-defined `__new__` / `__init__`.
 - The runtime stdlib surface includes `cpython_math_core_diff_subset`,
   `cpython_math_core_subset`,
+  `cpython_math_module_doc_metadata_diff_subset`,
+  `cpython_math_module_doc_metadata_subset`,
   `cpython_math_keyword_error_messages_diff_subset`,
   `cpython_math_keyword_error_messages_subset`,
   `cpython_math_constants_and_classification_diff_subset` gated for newer
@@ -1579,6 +1582,10 @@ Recent runtime migration notes:
   zero, infinities, NaNs, representative no-keyword `TypeError` messages
   including `math.log() takes no keyword arguments`, argument errors, and huge
   integer overflow.
+- `cpython_math_module_doc_metadata_subset`, backed by
+  `cpython_math_module_doc_metadata_diff_subset`, covers
+  math module `__doc__` metadata through `math.__doc__`, `dir()`, `__dict__`,
+  and `object.__getattribute__`.
 - The bundled `collections` module includes
   `cpython_collections_counter_basics_diff_subset` /
   `cpython_collections_counter_basics_subset` and

@@ -55,6 +55,8 @@ const COLLECTIONS_ALL: &[&str] = &[
     "deque",
     "namedtuple",
 ];
+const MATH_DOC: &str =
+    "This module provides access to the mathematical functions\ndefined by the C standard.";
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
     "BuiltinFunctionType",
@@ -617,6 +619,7 @@ pub(crate) fn create_module(
             "math",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__doc__", Value::String(MATH_DOC.to_string())),
                 ("pi", float_value(std::f64::consts::PI)),
                 ("e", float_value(std::f64::consts::E)),
                 ("tau", float_value(std::f64::consts::TAU)),

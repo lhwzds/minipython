@@ -7937,6 +7937,23 @@ fn cpython_math_core_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py public module __doc__ metadata.
+#[test]
+fn cpython_math_module_doc_metadata_subset() {
+    assert_output(
+        r#"import math
+doc = math.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(math), math.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(math, '__doc__')))"#,
+        &[
+            "str True This module provides access to the mathematical functions 84",
+            "True True",
+            "'This module provides access to the mathematical functions\\ndefined by the C standard.'",
+        ],
+    );
+}
+
 #[test]
 fn cpython_math_keyword_error_messages_subset() {
     assert_output(

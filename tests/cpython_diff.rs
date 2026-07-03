@@ -6109,6 +6109,19 @@ for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd
 }
 
 #[test]
+fn cpython_math_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py public module __doc__ metadata subset",
+        name: "math-module-doc-metadata",
+        source: r#"import math
+doc = math.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(math), math.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(math, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_math_keyword_error_messages_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py public no-keyword TypeError subset",

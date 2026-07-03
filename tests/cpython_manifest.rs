@@ -32130,6 +32130,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         "math / math.integer",
         &[
             "cpython_math_core_subset",
+            "cpython_math_module_doc_metadata_subset",
             "cpython_math_keyword_error_messages_subset",
             "cpython_math_constants_and_classification_subset",
             "cpython_math_integer_subset",
@@ -32172,6 +32173,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include math / math.integer");
     for evidence in [
         "cpython_math_core_diff_subset",
+        "cpython_math_module_doc_metadata_diff_subset",
         "cpython_math_keyword_error_messages_diff_subset",
         "cpython_math_constants_and_classification_diff_subset",
         "cpython_math_isclose_diff_subset",
@@ -32243,6 +32245,12 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         math_registry.contains("(\"__package__\", Value::String(String::new()))"),
         "math stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
+    assert!(
+        math_registry.contains("(\"__doc__\", Value::String(MATH_DOC.to_string()))")
+            && STDLIB_SOURCE.contains("const MATH_DOC")
+            && STDLIB_SOURCE.contains("This module provides access to the mathematical functions"),
+        "math stdlib module registry must set CPython-compatible __doc__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_math_core_subset",
@@ -32253,6 +32261,35 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "math module package metadata docs must contain `{required}`"
+            );
+        }
+    }
+    let math_doc_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_math_module_doc_metadata_diff_subset");
+    let math_doc_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_module_doc_metadata_subset");
+    for required in [
+        "doc = math.__doc__",
+        "doc.splitlines()[0]",
+        "'__doc__' in dir(math)",
+        "math.__dict__['__doc__'] == doc",
+        "object.__getattribute__(math, '__doc__')",
+    ] {
+        assert!(
+            math_doc_diff.contains(required) && math_doc_subset.contains(required),
+            "math module __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_math_module_doc_metadata_subset",
+            "cpython_math_module_doc_metadata_diff_subset",
+            "math module `__doc__` metadata",
+            "`math.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "math module __doc__ docs must contain `{required}`"
             );
         }
     }
@@ -32274,9 +32311,10 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
     assert!(
         LANGUAGE_TESTS.contains("math_sandbox_subset_keeps_integer_submodule_narrow")
             && LANGUAGE_TESTS.contains("import math.integer as mi")
+            && LANGUAGE_TESTS.contains("math.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'sqrt', 'prod', 'sumprod', 'nextafter', 'ulp', '__all__'")
             && LANGUAGE_TESTS.contains("dir(mi)"),
-        "math sandbox export test must guard module __all__ and narrow math.integer exports"
+        "math sandbox export test must guard module __doc__, module __all__, and narrow math.integer exports"
     );
 
     let keyword_diff = extract_rust_test_body(
