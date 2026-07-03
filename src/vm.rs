@@ -310,6 +310,49 @@ struct RuntimeFrame {
     fields: DictRef,
 }
 
+fn is_functools_placeholder(value: &Value) -> bool {
+    matches!(value, Value::FunctoolsPlaceholder)
+}
+
+fn partial_constructor_args(bound_args: Vec<Value>, args: Vec<Value>) -> Vec<Value> {
+    let mut args = args.into_iter();
+    let mut result = Vec::with_capacity(bound_args.len() + args.len());
+    for value in bound_args {
+        if is_functools_placeholder(&value) {
+            result.push(args.next().unwrap_or(Value::FunctoolsPlaceholder));
+        } else {
+            result.push(value);
+        }
+    }
+    result.extend(args);
+    result
+}
+
+fn partial_call_args(bound_args: Vec<Value>, args: Vec<Value>) -> Result<Vec<Value>, String> {
+    let required = bound_args
+        .iter()
+        .filter(|value| is_functools_placeholder(value))
+        .count();
+    let given = args.len();
+    if given < required {
+        return Err(format!(
+            "TypeError: missing positional arguments in 'partial' call; expected at least {required}, got {given}"
+        ));
+    }
+    Ok(partial_constructor_args(bound_args, args))
+}
+
+fn reject_functools_placeholder_keywords(keywords: &[(String, Value)]) -> Result<(), String> {
+    if keywords
+        .iter()
+        .any(|(_, value)| is_functools_placeholder(value))
+    {
+        Err("TypeError: Placeholder cannot be passed as a keyword argument".to_string())
+    } else {
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SourceModule {
     pub source: String,
@@ -7373,12 +7416,12 @@ impl Vm {
     fn call_partial(
         &mut self,
         function: Value,
-        mut bound_args: Vec<Value>,
+        bound_args: Vec<Value>,
         mut bound_keywords: Vec<(String, Value)>,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        bound_args.extend(args);
+        let bound_args = partial_call_args(bound_args, args)?;
         Self::merge_partial_keywords(&mut bound_keywords, keywords);
         self.call_value_with_keywords(function, bound_args, bound_keywords)
     }
@@ -7460,15 +7503,16 @@ impl Vm {
         if !is_callable_value(&function) {
             return Err("TypeError: the first argument must be callable".to_string());
         }
+        reject_functools_placeholder_keywords(&keywords)?;
 
         let (function, args, keywords) = match function {
             Value::Partial {
                 function,
-                args: mut bound_args,
+                args: bound_args,
                 keywords: bound_keywords,
                 ..
             } => {
-                bound_args.extend(args);
+                let bound_args = partial_constructor_args(bound_args, args);
                 let mut merged_keywords = Self::partial_keywords_from_dict(&bound_keywords)?;
                 Self::merge_partial_keywords(&mut merged_keywords, keywords);
                 (*function, bound_args, merged_keywords)
@@ -9006,6 +9050,9 @@ impl Vm {
                 ..
             } => self.call_value_with_keywords(*target, args, keywords),
             Value::WeakProxy { .. } => Err("TypeError: weakref proxy is not callable".to_string()),
+            Value::FunctoolsPlaceholder => {
+                Err("'functools._PlaceholderType' object is not callable".to_string())
+            }
             Value::NewType { name, .. } => call_new_type_object(&name, args, keywords),
             Value::MagicMock {
                 calls, side_effect, ..
@@ -53698,6 +53745,7 @@ fn type_object_for_value(value: &Value) -> Value {
         value @ Value::GenericAlias { .. } if is_union_alias(value) => {
             Value::Builtin("UnionType".to_string())
         }
+        Value::FunctoolsPlaceholder => Value::Builtin("functools._PlaceholderType".to_string()),
         class @ Value::Class { .. } => class_metaclass_value(class),
         Value::Builtin(name) if is_builtin_type_object_name(name) => {
             Value::Builtin("type".to_string())
@@ -53810,6 +53858,7 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "Template"
                 | "Interpolation"
                 | "TemplateIter"
+                | "functools._PlaceholderType"
                 | "member_descriptor"
         )
 }
@@ -59178,6 +59227,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::WeakProxy { target, .. } => load_attribute(*target, name),
+        Value::FunctoolsPlaceholder => match name {
+            "__class__" => Ok(Value::Builtin("functools._PlaceholderType".to_string())),
+            _ => Err(format!(
+                "AttributeError: '_PlaceholderType' object has no attribute '{name}'"
+            )),
+        },
         Value::Partial {
             function,
             args,
@@ -63152,6 +63207,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__module__" && is_builtins_module_type_object_name(&function_name) =>
         {
             Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "functools._PlaceholderType" =>
+        {
+            Ok(Value::String("functools".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && is_builtins_module_type_object_name(&function_name) =>
@@ -67461,6 +67521,7 @@ fn type_name(value: &Value) -> &str {
             "builtin_function_or_method"
         }
         Value::BoundMethod { .. } => "method",
+        Value::FunctoolsPlaceholder => "_PlaceholderType",
         Value::Partial { .. } => "partial",
         Value::PartialMethod { .. } => "partialmethod",
         Value::PartialMethodCall {
@@ -85375,6 +85436,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             hash_value_into(function, hasher)?;
             hash_value_into(receiver, hasher)?;
         }
+        Value::FunctoolsPlaceholder => "functools.Placeholder".hash(hasher),
         Value::Partial { identity, .. } => {
             "partial".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
@@ -85653,6 +85715,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ClassMethod { .. }
         | Value::Super { .. }
         | Value::BoundMethod { .. }
+        | Value::FunctoolsPlaceholder
         | Value::Partial { .. }
         | Value::PartialMethod { .. }
         | Value::PartialMethodCall { .. }
@@ -92172,6 +92235,7 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         (Value::None, Value::None)
         | (Value::NotImplemented, Value::NotImplemented)
         | (Value::Ellipsis, Value::Ellipsis)
+        | (Value::FunctoolsPlaceholder, Value::FunctoolsPlaceholder)
         | (Value::Bool(true), Value::Bool(true))
         | (Value::Bool(false), Value::Bool(false)) => true,
         (Value::Number(left), Value::Number(right)) => left == right && (-5..=256).contains(left),
@@ -92777,6 +92841,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ClassMethod { .. } => Ok(true),
         Value::Super { .. } => Ok(true),
         Value::BoundMethod { .. } => Ok(true),
+        Value::FunctoolsPlaceholder => Ok(true),
         Value::Partial { .. } => Ok(true),
         Value::PartialMethod { .. } => Ok(true),
         Value::PartialMethodCall { .. } => Ok(true),

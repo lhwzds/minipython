@@ -8246,6 +8246,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_functools_public_helpers_subset",
             "cpython_functools_partial_subset",
+            "cpython_functools_placeholder_partial_subset",
             "cpython_functools_partial_instance_module_metadata_subset",
             "cpython_functools_partialmethod_subset",
             "cpython_functools_cmp_to_key_subset",
@@ -8275,6 +8276,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
         "cpython_functools_partial_diff_subset",
+        "cpython_functools_placeholder_partial_diff_subset",
         "cpython_functools_partial_instance_module_metadata_diff_subset",
         "cpython_functools_partialmethod_diff_subset",
         "cpython_functools_cmp_to_key_diff_subset",
@@ -8405,6 +8407,66 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             partial_subset.contains(required),
             "functools partial runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
+    let placeholder_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_placeholder_partial_diff_subset",
+    );
+    let placeholder_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_placeholder_partial_subset",
+    );
+    for required in [
+        "hasattr(functools, 'Placeholder')",
+        "skipping functools.Placeholder diff",
+    ] {
+        assert!(
+            placeholder_diff.contains(required),
+            "functools Placeholder CPython diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "P = functools.Placeholder",
+        "type(P).__name__",
+        "type(P).__module__",
+        "P is functools.Placeholder",
+        "hash(P) == hash(functools.Placeholder)",
+        "functools.partial(f, P, 2)",
+        "functools.partial(q, 1).args",
+        "functools.partial(f, a=P)",
+        "missing positional arguments in 'partial' call",
+        "Placeholder cannot be passed as a keyword argument",
+    ] {
+        assert!(
+            placeholder_diff.contains(required),
+            "functools Placeholder CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            placeholder_subset.contains(required),
+            "functools Placeholder runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "Value::FunctoolsPlaceholder",
+        "fn partial_constructor_args(",
+        "fn partial_call_args(",
+        "fn reject_functools_placeholder_keywords(",
+        "\"functools._PlaceholderType\"",
+        "\"TypeError: Placeholder cannot be passed as a keyword argument\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required) || STDLIB_SOURCE.contains(required),
+            "functools Placeholder implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_functools_placeholder_partial_subset")
+                && document.contains("cpython_functools_placeholder_partial_diff_subset")
+                && document.contains("functools.Placeholder"),
+            "functools Placeholder evidence must be documented in coverage and migration notes"
         );
     }
 

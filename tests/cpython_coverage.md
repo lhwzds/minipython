@@ -1121,6 +1121,7 @@ Recent runtime migration notes:
   `cpython_operator_helper_repr_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
+  `cpython_functools_placeholder_partial_diff_subset`,
   `cpython_functools_partial_instance_module_metadata_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_reduce_initial_keyword_diff_subset`,
@@ -3511,6 +3512,12 @@ without adding general custom encoder/decoder class support.
   for public `func` / `args` / `keywords`, custom attributes, default and
   instance-overridden `__doc__` metadata, default and instance-overridden
   `__module__` metadata with deletion fallback, and readonly core attributes.
+  `cpython_functools_placeholder_partial_subset`, backed by
+  `cpython_functools_placeholder_partial_diff_subset`, covers the
+  `functools.Placeholder` singleton surface and `partial()` positional
+  placeholder filling, including nested partial construction, missing-fill
+  `TypeError` diagnostics, and keyword Placeholder rejection, without adding
+  pickle, weakref, or `partialmethod` Placeholder behavior.
   The newer CPython partial instance `__module__` surface is also pinned by
   `cpython_functools_partial_instance_module_metadata_subset` and gated
   `cpython_functools_partial_instance_module_metadata_diff_subset`.

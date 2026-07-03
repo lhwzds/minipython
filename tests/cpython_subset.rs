@@ -56321,8 +56321,9 @@ fn cpython_functools_public_helpers_subset() {
 }
 
 // Adapted from CPython Lib/test/test_functools.py::TestPartial public call,
-// attribute, and side-effect behavior. Placeholder, pickling, and weakref
-// checks remain outside this runtime surface.
+// attribute, and side-effect behavior. Placeholder behavior is covered by the
+// focused subset below; pickling and weakref checks remain outside this runtime
+// surface.
 #[test]
 fn cpython_functools_partial_subset() {
     assert_output(
@@ -56468,6 +56469,44 @@ fn cpython_functools_partial_subset() {
             "func AttributeError",
             "args AttributeError",
             "keywords AttributeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestPartial placeholder
+// rows. This covers the public Placeholder singleton surface and partial()
+// positional placeholder filling without extending into pickle or weakref
+// internals.
+#[test]
+fn cpython_functools_placeholder_partial_subset() {
+    assert_output(
+        r#"import functools
+P = functools.Placeholder
+print(P, repr(P), type(P).__name__, type(P).__module__, bool(P), P is functools.Placeholder)
+print(type(P).__name__, P.__class__.__module__, hash(P) == hash(functools.Placeholder), {P: "x"}[functools.Placeholder])
+def f(a, b, c=0):
+    return (a, b, c)
+p = functools.partial(f, P, 2)
+print(p(1), p(1, 3), p.args, p.keywords)
+p2 = functools.partial(p, 5)
+print(p2(), p2.args, p2.keywords)
+q = functools.partial(f, P, P, 3)
+print(functools.partial(q, 1).args, functools.partial(q, 1)(2))
+for label, expr in [("bare-call", lambda: P()), ("partial-no-fill", lambda: p()), ("partial-one-fill", lambda: q(1)), ("kw-placeholder", lambda: functools.partial(f, a=P))]:
+    try:
+        print(label, expr())
+    except Exception as e:
+        print(label, type(e).__name__, str(e))"#,
+        &[
+            "Placeholder Placeholder _PlaceholderType functools True True",
+            "_PlaceholderType functools True x",
+            "(1, 2, 0) (1, 2, 3) (Placeholder, 2) {}",
+            "(5, 2, 0) (5, 2) {}",
+            "(1, Placeholder, 3) (1, 2, 3)",
+            "bare-call TypeError 'functools._PlaceholderType' object is not callable",
+            "partial-no-fill TypeError missing positional arguments in 'partial' call; expected at least 1, got 0",
+            "partial-one-fill TypeError missing positional arguments in 'partial' call; expected at least 2, got 1",
+            "kw-placeholder TypeError Placeholder cannot be passed as a keyword argument",
         ],
     );
 }

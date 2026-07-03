@@ -26360,6 +26360,46 @@ for attr in ['func', 'args', 'keywords']:
 }
 
 #[test]
+fn cpython_functools_placeholder_partial_diff_subset() {
+    let probe = run_cpython("import functools; print(hasattr(functools, 'Placeholder'))")
+        .expect("failed to probe CPython functools.Placeholder support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping functools.Placeholder diff: CPython oracle lacks Placeholder");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestPartial placeholder public subset",
+        name: "functools-placeholder-partial",
+        source: r#"import functools
+P = functools.Placeholder
+print(P, repr(P), type(P).__name__, type(P).__module__, bool(P), P is functools.Placeholder)
+print(type(P).__name__, P.__class__.__module__, hash(P) == hash(functools.Placeholder), {P: "x"}[functools.Placeholder])
+def f(a, b, c=0):
+    return (a, b, c)
+p = functools.partial(f, P, 2)
+print(p(1), p(1, 3), p.args, p.keywords)
+p2 = functools.partial(p, 5)
+print(p2(), p2.args, p2.keywords)
+q = functools.partial(f, P, P, 3)
+print(functools.partial(q, 1).args, functools.partial(q, 1)(2))
+for label, expr, expected in [
+    ("bare-call", lambda: P(), "'functools._PlaceholderType' object is not callable"),
+    ("partial-no-fill", lambda: p(), "missing positional arguments in 'partial' call; expected at least 1, got 0"),
+    ("partial-one-fill", lambda: q(1), "missing positional arguments in 'partial' call; expected at least 2, got 1"),
+    ("kw-placeholder", lambda: functools.partial(f, a=P), "Placeholder cannot be passed as a keyword argument"),
+]:
+    try:
+        print(label, expr())
+    except Exception as e:
+        message = str(e)
+        if message != expected:
+            raise AssertionError((label, message))
+        print(label, type(e).__name__, message)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_partial_instance_module_metadata_diff_subset() {
     let probe =
         run_cpython("from functools import partial\nprint(hasattr(partial(int), '__module__'))")

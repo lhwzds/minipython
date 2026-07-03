@@ -1066,6 +1066,7 @@ pub enum Value {
         receiver: Box<Value>,
         identity: Rc<()>,
     },
+    FunctoolsPlaceholder,
     Partial {
         function: Box<Value>,
         args: Vec<Value>,
@@ -1443,6 +1444,7 @@ impl fmt::Display for Value {
             } => {
                 write!(f, "{}", format_bound_method(function, receiver))
             }
+            Value::FunctoolsPlaceholder => write!(f, "Placeholder"),
             Value::Partial {
                 function,
                 args,
@@ -2102,6 +2104,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::BoundMethod {
             function, receiver, ..
         } => format_bound_method(function, receiver),
+        Value::FunctoolsPlaceholder => "Placeholder".to_string(),
         Value::Partial {
             function,
             args,
@@ -2510,6 +2513,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "MutableSet"
             | "NodeVisitor"
             | "NodeTransformer"
+            | "functools._PlaceholderType"
             | "NoneType"
     ) || name.starts_with("ast.")
         || name.strip_prefix("typing.").is_some_and(|name| {
@@ -4112,6 +4116,7 @@ impl PartialEq for Value {
             (Value::None, Value::None) => true,
             (Value::NotImplemented, Value::NotImplemented) => true,
             (Value::Ellipsis, Value::Ellipsis) => true,
+            (Value::FunctoolsPlaceholder, Value::FunctoolsPlaceholder) => true,
             _ => false,
         }
     }

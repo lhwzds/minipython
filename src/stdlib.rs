@@ -766,6 +766,7 @@ pub(crate) fn create_module(
                     "WRAPPER_UPDATES",
                     string_tuple_value(FUNCTOOLS_WRAPPER_UPDATES),
                 ),
+                ("Placeholder", Value::FunctoolsPlaceholder),
                 (
                     "cmp_to_key",
                     Value::Builtin("functools.cmp_to_key".to_string()),
@@ -2505,6 +2506,7 @@ fn stdlib_type_name(value: &Value) -> &str {
             "builtin_function_or_method"
         }
         Value::BoundMethod { .. } => "method",
+        Value::FunctoolsPlaceholder => "_PlaceholderType",
         Value::Partial { .. } => "partial",
         Value::PartialMethod { .. } => "partialmethod",
         Value::PartialMethodCall {
