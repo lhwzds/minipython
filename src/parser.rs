@@ -6464,6 +6464,9 @@ impl Parser<'_> {
                     | Token::At
                     | Token::Await
                     | Token::Arrow
+                    | Token::Class
+                    | Token::Def
+                    | Token::Lambda
                     | Token::Slash
                     | Token::DoubleSlash
                     | Token::Percent
