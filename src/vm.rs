@@ -64640,9 +64640,13 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 Err("TypeError: __traceback__ must be a traceback or None".to_string())
             }
         }
-        Value::Class { attrs, .. } => {
+        Value::Class {
+            name: class_name,
+            attrs,
+            ..
+        } => {
             if matches!(name, "__name__" | "__qualname__") {
-                return store_class_metadata_attribute(&attrs, name, value);
+                return store_class_metadata_attribute(&class_name, &attrs, name, value);
             }
             if name == "__module__" {
                 return store_class_module_attribute(&attrs, value);
@@ -64934,12 +64938,17 @@ fn super_attribute_assignment_error(name: &str) -> String {
     }
 }
 
-fn store_class_metadata_attribute(attrs: &Scope, name: &str, value: Value) -> Result<(), String> {
+fn store_class_metadata_attribute(
+    class_name: &str,
+    attrs: &Scope,
+    name: &str,
+    value: Value,
+) -> Result<(), String> {
     let Some(value) = value_as_string(&value) else {
-        let field = name.trim_start_matches("__").trim_end_matches("__");
+        let public_name = class_public_name(class_name, attrs);
         return Err(format!(
-            "TypeError: can only assign string to .{name}, not '{}'",
-            type_name_for_type_assignment_error(&value, field)
+            "TypeError: can only assign string to {public_name}.{name}, not '{}'",
+            type_name_for_type_assignment_error(&value)
         ));
     };
 
@@ -64964,15 +64973,19 @@ fn store_class_module_attribute(attrs: &Scope, value: Value) -> Result<(), Strin
     Ok(())
 }
 
-fn class_metadata_delete_error(class_name: &str, attrs: &Scope, name: &str) -> String {
-    let public_name = match class_name_value(class_name, attrs) {
+fn class_public_name(class_name: &str, attrs: &Scope) -> String {
+    match class_name_value(class_name, attrs) {
         Value::String(name) => name,
         _ => class_name.to_string(),
-    };
+    }
+}
+
+fn class_metadata_delete_error(class_name: &str, attrs: &Scope, name: &str) -> String {
+    let public_name = class_public_name(class_name, attrs);
     format!("TypeError: cannot delete '{name}' attribute of immutable type '{public_name}'")
 }
 
-fn type_name_for_type_assignment_error<'a>(value: &'a Value, _field: &str) -> &'a str {
+fn type_name_for_type_assignment_error(value: &Value) -> &str {
     type_name(value)
 }
 

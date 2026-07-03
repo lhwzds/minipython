@@ -15873,6 +15873,35 @@ for expr in [lambda: setattr(A, '__name__', b'A'), lambda: setattr(A, '__name__'
 }
 
 #[test]
+fn cpython_type_metadata_assignment_error_names_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public metadata assignment error names subset",
+        name: "type-metadata-assignment-error-names",
+        source: r#"class A:
+    pass
+A.__name__ = 'Renamed'
+for name, value in [('__name__', 1), ('__qualname__', 1)]:
+    try:
+        setattr(A, name, value)
+    except TypeError as error:
+        print(name, error.__class__.__name__, str(error), error.args == (str(error),))
+print(A.__name__, A.__qualname__)
+class B:
+    pass
+for name, value in [('__name__', 1), ('__qualname__', 1)]:
+    try:
+        setattr(B, name, value)
+    except TypeError as error:
+        print('default', name, error.__class__.__name__, str(error), error.args == (str(error),))
+try:
+    B.__name__ = 'B\0bad'
+except ValueError as error:
+    print('nul', error.__class__.__name__, str(error))
+print(B.__name__, B.__qualname__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_repr_module_qualname_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType public type.__repr__ module/qualname subset",

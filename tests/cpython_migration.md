@@ -9839,6 +9839,11 @@ Completed in the type builtin pass:
   behavior for `__name__`, `__qualname__`, `__module__`, and `__doc__`,
   including the case where a reassigned `__name__` controls the immutable-type
   name in the error and preserves reassigned metadata values.
+- Added `cpython_type_metadata_assignment_error_names_subset`, backed by
+  `cpython_type_metadata_assignment_error_names_diff_subset`, covering class metadata assignment TypeError
+  behavior for `__name__` and `__qualname__`, including reassigned class names
+  where the error uses the current public class name and preserving the
+  NUL-name ValueError boundary.
 - Added `cpython_type_doc_and_firstlineno_subset`, adapted from
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus

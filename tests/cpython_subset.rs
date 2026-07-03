@@ -50131,6 +50131,26 @@ fn cpython_type_name_qualname_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public metadata
+// assignment behavior. Non-string class metadata assignment is rejected with
+// class-name-qualified TypeError text, while the NUL-name ValueError boundary
+// remains specific to __name__.
+#[test]
+fn cpython_type_metadata_assignment_error_names_subset() {
+    assert_output(
+        "class A:\n    pass\nA.__name__ = 'Renamed'\nfor name, value in [('__name__', 1), ('__qualname__', 1)]:\n    try:\n        setattr(A, name, value)\n    except TypeError as error:\n        print(name, error.__class__.__name__, str(error), error.args == (str(error),))\nprint(A.__name__, A.__qualname__)\nclass B:\n    pass\nfor name, value in [('__name__', 1), ('__qualname__', 1)]:\n    try:\n        setattr(B, name, value)\n    except TypeError as error:\n        print('default', name, error.__class__.__name__, str(error), error.args == (str(error),))\ntry:\n    B.__name__ = 'B\\0bad'\nexcept ValueError as error:\n    print('nul', error.__class__.__name__, str(error))\nprint(B.__name__, B.__qualname__)",
+        &[
+            "__name__ TypeError can only assign string to Renamed.__name__, not 'int' True",
+            "__qualname__ TypeError can only assign string to Renamed.__qualname__, not 'int' True",
+            "Renamed A",
+            "default __name__ TypeError can only assign string to B.__name__, not 'int' True",
+            "default __qualname__ TypeError can only assign string to B.__qualname__, not 'int' True",
+            "nul ValueError type name must not contain null characters",
+            "B B",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.

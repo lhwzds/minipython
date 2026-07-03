@@ -7231,6 +7231,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "setattr(A, '__name__', 'A\\0B')",
         ),
         (
+            "cpython_type_metadata_assignment_error_names_diff_subset",
+            "cpython_type_metadata_assignment_error_names_subset",
+            "setattr(A, name, value)",
+        ),
+        (
             "cpython_type_repr_module_qualname_diff_subset",
             "cpython_type_repr_module_qualname_subset",
             "B.__module__ = 'pkg'",
@@ -7267,6 +7272,75 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_metadata_assignment_error_names_has_cpython_evidence() {
+    let subset_name = "cpython_type_metadata_assignment_error_names_subset";
+    let diff_name = "cpython_type_metadata_assignment_error_names_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "A.__name__ = 'Renamed'",
+        "setattr(A, name, value)",
+        "('__name__', 1)",
+        "('__qualname__', 1)",
+        "error.args == (str(error),)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type metadata assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        subset_body.contains("B.__name__ = 'B\\\\0bad'")
+            && diff_body.contains("B.__name__ = 'B\\0bad'"),
+        "type metadata assignment subset and diff evidence must cover the NUL-name assignment boundary"
+    );
+
+    for required in [
+        "\"__name__ TypeError can only assign string to Renamed.__name__, not 'int' True\"",
+        "\"__qualname__ TypeError can only assign string to Renamed.__qualname__, not 'int' True\"",
+        "\"Renamed A\"",
+        "\"default __name__ TypeError can only assign string to B.__name__, not 'int' True\"",
+        "\"default __qualname__ TypeError can only assign string to B.__qualname__, not 'int' True\"",
+        "\"nul ValueError type name must not contain null characters\"",
+        "\"B B\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type metadata assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_public_name(",
+        "class_name_value(class_name, attrs)",
+        "fn store_class_metadata_attribute(",
+        "can only assign string to {public_name}.{name}",
+        "store_class_metadata_attribute(&class_name, &attrs, name, value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM class metadata assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "class metadata assignment TypeError",
+            "`__name__` and `__qualname__`",
+            "uses the current public class name",
+        ] {
+            assert!(
+                document.contains(required),
+                "type metadata assignment docs must contain `{required}`"
             );
         }
     }
