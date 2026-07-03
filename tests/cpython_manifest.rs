@@ -51255,6 +51255,40 @@ fn cpython_bare_starred_expression_messages_have_diff_evidence() {
 }
 
 #[test]
+fn cpython_leading_list_double_star_unpacking_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let subset_name = "cpython_invalid_starred_expression_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "leading list double-star unpacking SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "leading list double-star unpacking runtime subset evidence must exist"
+    );
+
+    for required_source in ["[**items]", "[**items,]", "[**items for items in seq]"] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "leading list double-star unpacking CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "leading list double-star unpacking subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("leading list double-star unpacking forms")
+                && document.contains("invalid syntax"),
+            "leading list double-star unpacking docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

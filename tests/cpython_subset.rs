@@ -37417,7 +37417,9 @@ fn cpython_invalid_starred_expression_subset() {
         "(*x if flag else other,)",
         "parse error: invalid starred expression. Did you forget to wrap the conditional expression in parentheses?",
     );
-    assert_error("[**items]", "parse error: cannot use dict unpacking here");
+    for source in ["[**items]", "[**items,]", "[**items for items in seq]"] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "(*items, **extra)",
         "parse error: cannot use dict unpacking here",

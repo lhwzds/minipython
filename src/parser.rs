@@ -6082,9 +6082,9 @@ impl Parser<'_> {
             self.advance();
             self.parse_bitwise_or()?;
             if self.starts_comprehension_clause() {
-                return Err("cannot use dict unpacking in list comprehension".to_string());
+                return Err("invalid syntax".to_string());
             }
-            return Err("cannot use dict unpacking here".to_string());
+            return Err("invalid syntax".to_string());
         }
 
         let first = self.parse_star_named_expression()?;

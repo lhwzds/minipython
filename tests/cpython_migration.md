@@ -6415,6 +6415,14 @@ Completed in the bare starred expression diagnostic pass:
   `can't use starred expression here` message, while parenthesized `(*x)` keeps
   the distinct `cannot use starred expression here` wording.
 
+Completed in the leading list double-star unpacking diagnostic pass:
+
+- Extended `cpython_invalid_starred_expression_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so leading list double-star unpacking forms
+  such as `[**items]`, `[**items,]`, and `[**items for items in seq]` use CPython's
+  public `invalid syntax` message, while dict unpacking `{**items}` and call
+  unpacking `f(**items)` remain valid.
+
 Completed in the prefix augmented assignment operator expression diagnostic pass:
 
 - Extended `cpython_invalid_expression_rules_subset` and
