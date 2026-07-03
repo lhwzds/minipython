@@ -51853,6 +51853,26 @@ fn cpython_itertools_core_iterator_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public module __doc__ metadata.
+#[test]
+fn cpython_itertools_module_doc_metadata_subset() {
+    assert_output(
+        r#"import itertools
+doc = itertools.__doc__
+doc2 = object.__getattribute__(itertools, '__doc__')
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(itertools), itertools.__dict__['__doc__'] == doc)
+print(doc2.splitlines()[2])
+print(doc2.splitlines()[-1])"#,
+        &[
+            "str True Functional tools for creating and using iterators. 1386",
+            "True True",
+            "Infinite iterators:",
+            "combinations_with_replacement(p, r)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_itertools.py public chain behavior over
 // pure in-memory iterables.
 #[test]

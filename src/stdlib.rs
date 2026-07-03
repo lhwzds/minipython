@@ -57,6 +57,34 @@ const COLLECTIONS_ALL: &[&str] = &[
 ];
 const MATH_DOC: &str =
     "This module provides access to the mathematical functions\ndefined by the C standard.";
+const ITERTOOLS_DOC: &str = "Functional tools for creating and using iterators.\n\
+\n\
+Infinite iterators:\n\
+count(start=0, step=1) --> start, start+step, start+2*step, ...\n\
+cycle(p) --> p0, p1, ... plast, p0, p1, ...\n\
+repeat(elem [,n]) --> elem, elem, elem, ... endlessly or up to n times\n\
+\n\
+Iterators terminating on the shortest input sequence:\n\
+accumulate(p[, func]) --> p0, p0+p1, p0+p1+p2\n\
+batched(p, n) --> [p0, p1, ..., p_n-1], [p_n, p_n+1, ..., p_2n-1], ...\n\
+chain(p, q, ...) --> p0, p1, ... plast, q0, q1, ...\n\
+chain.from_iterable([p, q, ...]) --> p0, p1, ... plast, q0, q1, ...\n\
+compress(data, selectors) --> (d[0] if s[0]), (d[1] if s[1]), ...\n\
+dropwhile(predicate, seq) --> seq[n], seq[n+1], starting when predicate fails\n\
+groupby(iterable[, keyfunc]) --> sub-iterators grouped by value of keyfunc(v)\n\
+filterfalse(predicate, seq) --> elements of seq where predicate(elem) is False\n\
+islice(seq, [start,] stop [, step]) --> elements from\n       seq[start:stop:step]\n\
+pairwise(s) --> (s[0],s[1]), (s[1],s[2]), (s[2], s[3]), ...\n\
+starmap(fun, seq) --> fun(*seq[0]), fun(*seq[1]), ...\n\
+tee(it, n=2) --> (it1, it2 , ... itn) splits one iterator into n\n\
+takewhile(predicate, seq) --> seq[0], seq[1], until predicate fails\n\
+zip_longest(p, q, ...) --> (p[0], q[0]), (p[1], q[1]), ...\n\
+\n\
+Combinatoric generators:\n\
+product(p, q, ... [repeat=1]) --> cartesian product\n\
+permutations(p[, r])\n\
+combinations(p, r)\n\
+combinations_with_replacement(p, r)\n";
 pub(crate) const TYPES_ALL: &[&str] = &[
     "AsyncGeneratorType",
     "BuiltinFunctionType",
@@ -844,6 +872,7 @@ pub(crate) fn create_module(
             "itertools",
             vec![
                 ("__package__", Value::String(String::new())),
+                ("__doc__", Value::String(ITERTOOLS_DOC.to_string())),
                 (
                     "accumulate",
                     Value::Builtin("itertools.accumulate".to_string()),

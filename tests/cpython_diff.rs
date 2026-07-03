@@ -27973,6 +27973,19 @@ fn cpython_itertools_core_iterator_diff_subset() {
 }
 
 #[test]
+fn cpython_itertools_module_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public module __doc__ metadata subset",
+        name: "itertools-module-doc-metadata",
+        source: r#"import itertools
+doc = itertools.__doc__
+print(type(doc).__name__, bool(doc), doc.splitlines()[0], len(doc))
+print('__doc__' in dir(itertools), itertools.__dict__['__doc__'] == doc)
+print(repr(object.__getattribute__(itertools, '__doc__')))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_chain_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public chain subset",

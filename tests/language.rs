@@ -1224,7 +1224,7 @@ fn math_sandbox_subset_keeps_integer_submodule_narrow() {
 fn itertools_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import itertools\nfor name in ['accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']:\n    print(name, hasattr(itertools, name))\nfor name in ['__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse']:\n    print(name, hasattr(itertools, name))\nprint(dir(itertools))"
+            "import itertools\nfor name in ['accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']:\n    print(name, hasattr(itertools, name))\nprint(type(itertools.__doc__).__name__, bool(itertools.__doc__), itertools.__doc__.splitlines()[0])\nfor name in ['__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse']:\n    print(name, hasattr(itertools, name))\nprint(dir(itertools))"
         ),
         Ok(output_lines(&[
             "accumulate True",
@@ -1247,12 +1247,13 @@ fn itertools_sandbox_subset_keeps_export_surface_explicit() {
             "takewhile True",
             "tee True",
             "zip_longest True",
+            "str True Functional tools for creating and using iterators.",
             "__all__ False",
             "imap False",
             "izip False",
             "ifilter False",
             "ifilterfalse False",
-            "['__name__', 'accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']",
+            "['__doc__', '__name__', '__package__', 'accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']",
         ]))
     );
 }

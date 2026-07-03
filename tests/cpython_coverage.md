@@ -1150,6 +1150,7 @@ Recent runtime migration notes:
   `cpython_functools_singledispatch_union_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
+  `cpython_itertools_module_doc_metadata_diff_subset`,
   `cpython_itertools_chain_diff_subset` and
   `cpython_itertools_chain_subset`,
   `cpython_itertools_chain_from_iterable_diff_subset` and
@@ -3209,6 +3210,7 @@ without adding general custom encoder/decoder class support.
 
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
+  `cpython_itertools_module_doc_metadata_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
   `cpython_itertools_keyword_error_subset`,
   `cpython_itertools_pairwise_subset`, and
@@ -3222,6 +3224,7 @@ without adding general custom encoder/decoder class support.
   `cpython_itertools_repr_subset`, and
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
+  `cpython_itertools_module_doc_metadata_diff_subset`,
   `cpython_itertools_count_bool_arithmetic_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
@@ -3248,6 +3251,7 @@ without adding general custom encoder/decoder class support.
   `cpython_itertools_batched_diff_subset`, and
   `cpython_itertools_groupby_diff_subset`, and
   `cpython_itertools_repr_diff_subset`, covering itertools module `__package__` metadata
+  and itertools module `__doc__` metadata
   (`itertools.__package__` is `''`) and the pure
   in-memory first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
@@ -3306,6 +3310,10 @@ without adding general custom encoder/decoder class support.
   `batched()` constructor surfaces. Full itertools module,
   pickling exactness, exact address repr, `tee()` cache compaction, and
   remaining public/helper types remain outside the sandbox subset.
+- `cpython_itertools_module_doc_metadata_subset`, backed by
+  `cpython_itertools_module_doc_metadata_diff_subset`, covers itertools module
+  `__doc__` metadata through `itertools.__doc__`, `dir()`, `__dict__`, and
+  `object.__getattribute__`.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
   and `cpython_math_isclose_subset`, covering CPython
   `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,

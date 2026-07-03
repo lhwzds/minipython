@@ -9065,6 +9065,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "itertools",
         &[
             "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_module_doc_metadata_subset",
             "cpython_itertools_chain_subset",
             "cpython_itertools_chain_from_iterable_subset",
             "cpython_itertools_repeat_subset",
@@ -9102,6 +9103,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_itertools_core_diff_subset",
         "cpython_itertools_core_iterator_diff_subset",
+        "cpython_itertools_module_doc_metadata_diff_subset",
         "cpython_itertools_chain_diff_subset",
         "cpython_itertools_chain_from_iterable_diff_subset",
         "cpython_itertools_repeat_diff_subset",
@@ -9168,6 +9170,12 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         itertools_registry.contains("(\"__package__\", Value::String(String::new()))"),
         "itertools stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
+    assert!(
+        itertools_registry.contains("(\"__doc__\", Value::String(ITERTOOLS_DOC.to_string()))")
+            && STDLIB_SOURCE.contains("const ITERTOOLS_DOC")
+            && STDLIB_SOURCE.contains("Functional tools for creating and using iterators."),
+        "itertools stdlib module registry must set CPython-compatible __doc__ metadata"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_itertools_core_iterator_subset",
@@ -9181,12 +9189,51 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
             );
         }
     }
+    let itertools_doc_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_itertools_module_doc_metadata_diff_subset",
+    );
+    let itertools_doc_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_itertools_module_doc_metadata_subset",
+    );
+    for required in [
+        "doc = itertools.__doc__",
+        "doc.splitlines()[0]",
+        "len(doc)",
+        "'__doc__' in dir(itertools)",
+        "itertools.__dict__['__doc__'] == doc",
+        "object.__getattribute__(itertools, '__doc__')",
+    ] {
+        assert!(
+            itertools_doc_diff.contains(required) && itertools_doc_subset.contains(required),
+            "itertools module __doc__ diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        itertools_doc_diff.contains("repr(object.__getattribute__(itertools, '__doc__'))"),
+        "itertools module __doc__ diff evidence must compare full CPython repr"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_itertools_module_doc_metadata_subset",
+            "cpython_itertools_module_doc_metadata_diff_subset",
+            "itertools module `__doc__` metadata",
+            "`itertools.__doc__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "itertools module __doc__ docs must contain `{required}`"
+            );
+        }
+    }
 
     assert!(
         LANGUAGE_TESTS.contains("itertools_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("itertools.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("'__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse'")
             && LANGUAGE_TESTS.contains("dir(itertools)"),
-        "itertools sandbox export test must guard module __all__ and non-subset aliases"
+        "itertools sandbox export test must guard module __doc__, module __all__, and non-subset aliases"
     );
 
     for required in [
