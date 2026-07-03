@@ -43125,6 +43125,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower function parameter rejection",
+            name: "def-tilde-follower-parameter-name-message",
+            source: "def f(a ~ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower function parameter rejection",
+            name: "def-tilde-follower-vararg-parameter-name-message",
+            source: "def f(*a ~ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower function parameter rejection",
+            name: "def-tilde-follower-kwarg-parameter-name-message",
+            source: "def f(**a ~ b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower lambda parameter rejection",
+            name: "lambda-tilde-follower-parameter-name-message",
+            source: "lambda a ~ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower lambda parameter rejection",
+            name: "lambda-tilde-follower-vararg-parameter-name-message",
+            source: "lambda *a ~ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram unary invert follower lambda parameter rejection",
+            name: "lambda-tilde-follower-kwarg-parameter-name-message",
+            source: "lambda **a ~ b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
