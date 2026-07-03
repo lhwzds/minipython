@@ -5514,7 +5514,11 @@ without adding general custom encoder/decoder class support.
   subclasses plus path-like `__fspath__` results when the oracle has current
   default-field `ast.dump()` behavior. The same diff also covers
   `SyntaxError.filename` preserving `str` subclass filename objects for direct
-  filenames and path-like results.
+  filenames and path-like results. `cpython_ast_module_metadata_subset`, backed
+  by `cpython_ast_module_metadata_diff_subset`, covers ast module `__package__` metadata
+  and ast module `__doc__` metadata through `dir()`, `__dict__`, and
+  `object.__getattribute__` value parity, without adding `ast.__all__` or
+  promoting `ast` into the required sandbox stdlib surface.
   `cpython_ast_parse_null_bytes_subset` ports
   CPython `AST_Tests::test_null_bytes`, and
   `cpython_ast_parse_null_bytes_diff_subset` adds direct CPython parity for

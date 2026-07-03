@@ -14542,6 +14542,22 @@ for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.pa
 }
 
 #[test]
+fn cpython_ast_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/ast.py public module __package__ / __doc__ metadata subset stable on CPython 3.14.6",
+        name: "ast-module-metadata",
+        source: r#"import ast
+print(ast.__name__, repr(ast.__package__))
+print(hasattr(ast, "__doc__"), type(ast.__doc__).__name__, bool(ast.__doc__), len(ast.__doc__))
+lines = ast.__doc__.splitlines()
+print(lines[0] == "", lines[1].startswith("The `ast` module helps Python applications"), lines[-1])
+print(object.__getattribute__(ast, "__package__") == ast.__dict__["__package__"])
+print(object.__getattribute__(ast, "__doc__") == ast.__dict__["__doc__"])
+print("__doc__" in dir(ast), "__package__" in dir(ast), hasattr(ast, "__all__"), "__all__" in dir(ast))"#,
+    });
+}
+
+#[test]
 fn cpython_ast_parse_null_bytes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::AST_Tests::test_null_bytes",

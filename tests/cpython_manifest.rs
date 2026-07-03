@@ -55466,6 +55466,89 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
 }
 
 #[test]
+fn cpython_ast_module_metadata_has_direct_diff_evidence() {
+    let subset_name = "cpython_ast_module_metadata_subset";
+    let diff_name = "cpython_ast_module_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "ast.__name__, repr(ast.__package__)",
+        "type(ast.__doc__).__name__",
+        "len(ast.__doc__)",
+        "The `ast` module helps Python applications",
+        "object.__getattribute__(ast, \"__package__\") == ast.__dict__[\"__package__\"]",
+        "object.__getattribute__(ast, \"__doc__\") == ast.__dict__[\"__doc__\"]",
+        "hasattr(ast, \"__all__\")",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "ast module metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        subset_body.contains(":license: Python License.") && diff_body.contains("lines[-1]"),
+        "ast module metadata evidence must pin subset doc ending and compare it in diff"
+    );
+    assert!(
+        subset_body.contains("\"True True False False\"")
+            && diff_body.contains("\"__all__\" in dir(ast)"),
+        "ast module metadata evidence must keep ast.__all__ absent"
+    );
+
+    for required in [
+        "Lib/ast.py public module __package__ / __doc__ metadata subset",
+        "stable on CPython 3.14.6",
+        "ast-module-metadata",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "ast module metadata diff evidence must describe `{required}`"
+        );
+    }
+
+    for required in [
+        "const AST_DOC: &str",
+        "The `ast` module helps Python applications to process trees of the Python",
+        "(\"__package__\", Value::String(String::new()))",
+        "(\"__doc__\", Value::String(AST_DOC.to_string()))",
+        "\"ast\" => Ok(module_value(\"ast\", ast_module_entries()))",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required),
+            "ast module metadata implementation must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "fn ast_compatibility_module_keeps_public_metadata_explicit(",
+        "['__package__', '__doc__', '__all__']",
+        "True True :license: Python License.",
+        "True True False",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(required),
+            "ast metadata language guard must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "ast module `__package__` metadata",
+            "ast module `__doc__` metadata",
+            "without adding `ast.__all__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "ast module metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn cpython_ast_parse_null_bytes_subset_has_direct_diff_evidence() {
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_ast_parse_null_bytes_subset");
     let diff_body =

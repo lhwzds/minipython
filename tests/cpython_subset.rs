@@ -13495,6 +13495,28 @@ fn cpython_ast_module_parse_dump_first_pass_subset() {
     );
 }
 
+#[test]
+fn cpython_ast_module_metadata_subset() {
+    assert_output(
+        r#"import ast
+print(ast.__name__, repr(ast.__package__))
+print(hasattr(ast, "__doc__"), type(ast.__doc__).__name__, bool(ast.__doc__), len(ast.__doc__))
+lines = ast.__doc__.splitlines()
+print(lines[0] == "", lines[1].startswith("The `ast` module helps Python applications"), lines[-1])
+print(object.__getattribute__(ast, "__package__") == ast.__dict__["__package__"])
+print(object.__getattribute__(ast, "__doc__") == ast.__dict__["__doc__"])
+print("__doc__" in dir(ast), "__package__" in dir(ast), hasattr(ast, "__all__"), "__all__" in dir(ast))"#,
+        &[
+            "ast ''",
+            "True str True 1014",
+            "True True :license: Python License.",
+            "True",
+            "True",
+            "True True False False",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_null_bytes`.
 #[test]
 fn cpython_ast_parse_null_bytes_subset() {

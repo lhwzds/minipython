@@ -2217,6 +2217,12 @@ migration log rather than the strict method-count manifest because
 `Lib/test/test_tokenize.py` is a tokenizer stream suite, not a current strict
 CPython method-manifest source group.
 
+- Added `cpython_ast_module_metadata_subset`, backed by
+  `cpython_ast_module_metadata_diff_subset`, covering ast module `__package__` metadata
+  and ast module `__doc__` metadata through `dir()`, `__dict__`, and
+  `object.__getattribute__` value parity, without adding `ast.__all__` or
+  promoting `ast` into the required sandbox stdlib surface.
+
 ## Current Snapshot
 
 | Area | Current state | Next migration pressure |

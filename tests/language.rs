@@ -1806,6 +1806,24 @@ fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
 }
 
 #[test]
+fn ast_compatibility_module_keeps_public_metadata_explicit() {
+    assert_eq!(
+        run_source(
+            "import ast\nfor name in ['__package__', '__doc__', '__all__']:\n    print(name, hasattr(ast, name))\nprint(ast.__name__, repr(ast.__package__))\nprint(type(ast.__doc__).__name__, bool(ast.__doc__), len(ast.__doc__))\nlines = ast.__doc__.splitlines()\nprint(lines[0] == '', lines[1].startswith('The `ast` module helps Python applications'), lines[-1])\nprint('__doc__' in dir(ast), '__package__' in dir(ast), '__all__' in dir(ast))"
+        ),
+        Ok(output_lines(&[
+            "__package__ True",
+            "__doc__ True",
+            "__all__ False",
+            "ast ''",
+            "str True 1014",
+            "True True :license: Python License.",
+            "True True False",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims() {
     let sandbox = TestSandboxDir::new("allow-extra-stdlib-shim");
 
