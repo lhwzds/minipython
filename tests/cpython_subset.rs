@@ -50193,6 +50193,29 @@ fn cpython_slots_no_dict_attribute_errors_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_descr.py __slots__ public member
+// descriptor access. This pins missing-slot read diagnostics without copying
+// CPython's object layout.
+#[test]
+fn cpython_slots_member_descriptor_missing_get_subset() {
+    assert_output(
+        "class Plain:\n    __slots__ = ('x',)\nclass Base:\n    __slots__ = ('x',)\nclass Child(Base):\n    __slots__ = ('y',)\nfor label, obj, descriptor, owner in [('plain', Plain(), Plain.x, Plain), ('child', Child(), Base.x, Child)]:\n    for action, expr in [\n        ('attr', lambda obj=obj: obj.x),\n        ('getattr', lambda obj=obj: getattr(obj, 'x')),\n        ('descriptor', lambda obj=obj, descriptor=descriptor, owner=owner: descriptor.__get__(obj, owner)),\n        ('object-getattribute', lambda obj=obj: object.__getattribute__(obj, 'x')),\n    ]:\n        try:\n            expr()\n        except AttributeError as error:\n            print(label, action, error.__class__.__name__, error)\n    try:\n        descriptor.__delete__(obj)\n    except AttributeError as error:\n        print(label, 'delete', error.__class__.__name__, error)\nprint(Plain.x.__get__(None, Plain) is Plain.x)",
+        &[
+            "plain attr AttributeError 'Plain' object has no attribute 'x'",
+            "plain getattr AttributeError 'Plain' object has no attribute 'x'",
+            "plain descriptor AttributeError 'Plain' object has no attribute 'x'",
+            "plain object-getattribute AttributeError 'Plain' object has no attribute 'x'",
+            "plain delete AttributeError x",
+            "child attr AttributeError 'Child' object has no attribute 'x'",
+            "child getattr AttributeError 'Child' object has no attribute 'x'",
+            "child descriptor AttributeError 'Child' object has no attribute 'x'",
+            "child object-getattribute AttributeError 'Child' object has no attribute 'x'",
+            "child delete AttributeError x",
+            "True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_type_nokwargs.
 #[test]
 fn cpython_type_nokwargs_subset() {

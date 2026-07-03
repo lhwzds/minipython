@@ -13034,6 +13034,36 @@ print('plain-child', sp.extra)"#,
 }
 
 #[test]
+fn cpython_slots_member_descriptor_missing_get_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py __slots__ public member descriptor access",
+        name: "slots-member-descriptor-missing-get",
+        source: r#"class Plain:
+    __slots__ = ('x',)
+class Base:
+    __slots__ = ('x',)
+class Child(Base):
+    __slots__ = ('y',)
+for label, obj, descriptor, owner in [('plain', Plain(), Plain.x, Plain), ('child', Child(), Base.x, Child)]:
+    for action, expr in [
+        ('attr', lambda obj=obj: obj.x),
+        ('getattr', lambda obj=obj: getattr(obj, 'x')),
+        ('descriptor', lambda obj=obj, descriptor=descriptor, owner=owner: descriptor.__get__(obj, owner)),
+        ('object-getattribute', lambda obj=obj: object.__getattribute__(obj, 'x')),
+    ]:
+        try:
+            expr()
+        except AttributeError as error:
+            print(label, action, error.__class__.__name__, error)
+    try:
+        descriptor.__delete__(obj)
+    except AttributeError as error:
+        print(label, 'delete', error.__class__.__name__, error)
+print(Plain.x.__get__(None, Plain) is Plain.x)"#,
+    });
+}
+
+#[test]
 fn cpython_super_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_super.py public super attribute assignment errors",

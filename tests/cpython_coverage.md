@@ -8311,6 +8311,11 @@ matching scope-backed namespace `__format__` lookup.
   whose new-attribute set/delete operations raise CPython's public
   `no __dict__ for setting new attributes` `AttributeError` suffix while keeping
   `__dict__` slots and plain-base subclasses dictionary-backed.
+- `cpython_slots_member_descriptor_missing_get_subset`, backed by
+  `cpython_slots_member_descriptor_missing_get_diff_subset`, covers slot member descriptor missing `__get__`
+  reads through direct attribute access, `getattr()`, explicit descriptor calls, and
+  `object.__getattribute__()` with class-qualified `AttributeError` messages, and
+  keeps missing-slot `__delete__` as bare slot-name `AttributeError`.
 
 | CPython rule | Status | Rust evidence |
 | --- | --- | --- |

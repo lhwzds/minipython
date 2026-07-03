@@ -36826,6 +36826,61 @@ fn slots_no_dict_attribute_errors_have_cpython_evidence() {
 }
 
 #[test]
+fn slots_member_descriptor_missing_get_has_cpython_evidence() {
+    let subset_name = "cpython_slots_member_descriptor_missing_get_subset";
+    let diff_name = "cpython_slots_member_descriptor_missing_get_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class Plain:",
+        "__slots__ = ('x',)",
+        "class Child(Base):",
+        "('attr', lambda obj=obj: obj.x)",
+        "getattr(obj, 'x')",
+        "descriptor.__get__(obj, owner)",
+        "object.__getattribute__(obj, 'x')",
+        "descriptor.__delete__(obj)",
+        "Plain.x.__get__(None, Plain) is Plain.x",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "slot member descriptor missing-get subset and diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"plain attr AttributeError 'Plain' object has no attribute 'x'\"",
+        "\"plain descriptor AttributeError 'Plain' object has no attribute 'x'\"",
+        "\"child attr AttributeError 'Child' object has no attribute 'x'\"",
+        "\"child object-getattribute AttributeError 'Child' object has no attribute 'x'\"",
+        "\"child delete AttributeError x\"",
+        "\"True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "slot member descriptor missing-get subset output must pin `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains("fn member_descriptor_get(")
+            && VM_SOURCE.contains("type_name(&object)")
+            && VM_SOURCE.contains("AttributeError: '{}' object has no attribute '{name}'"),
+        "VM member descriptor get path must emit CPython class-qualified missing-slot errors"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name)
+                && document.contains(diff_name)
+                && document.contains("slot member descriptor missing `__get__`")
+                && document.contains("class-qualified `AttributeError`")
+                && document
+                    .contains("keeps missing-slot `__delete__` as bare slot-name `AttributeError`"),
+            "slot member descriptor missing-get behavior must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn super_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_super_attribute_assignment_errors_subset(",

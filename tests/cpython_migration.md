@@ -3977,6 +3977,11 @@ Completed in the differential parity harness pass:
   `no __dict__ for setting new attributes` `AttributeError` suffix. Classes
   with an explicit `__dict__` slot and slotted subclasses of plain bases remain
   dictionary-backed.
+- Added `cpython_slots_member_descriptor_missing_get_subset`, backed by
+  `cpython_slots_member_descriptor_missing_get_diff_subset`, for slot member descriptor missing `__get__`
+  reads through direct attribute access, `getattr()`, explicit descriptor calls,
+  and `object.__getattribute__()` with class-qualified `AttributeError` messages.
+  The same slice keeps missing-slot `__delete__` as bare slot-name `AttributeError`.
 - Migrated and expanded `abs()`, `min()`, `max()`, and `sum()` coverage from
   `Lib/test/test_builtin.py`. The VM now supports numeric and complex absolute
   values, instance-level `__abs__`, multi-argument and single-iterable

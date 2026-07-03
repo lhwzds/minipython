@@ -17563,11 +17563,12 @@ impl Vm {
         }
 
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
-        fields
-            .borrow()
-            .get(&name)
-            .cloned()
-            .ok_or_else(|| format!("AttributeError: {name}"))
+        fields.borrow().get(&name).cloned().ok_or_else(|| {
+            format!(
+                "AttributeError: '{}' object has no attribute '{name}'",
+                type_name(&object)
+            )
+        })
     }
 
     fn member_descriptor_set(
