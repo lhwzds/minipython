@@ -6527,6 +6527,7 @@ impl Parser<'_> {
                     | Token::LeftShiftEqual
                     | Token::RightShift
                     | Token::RightShiftEqual
+                    | Token::String(_)
             )
         ) {
             return Err("invalid syntax".to_string());
