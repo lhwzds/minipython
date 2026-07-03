@@ -5800,6 +5800,10 @@ impl Parser<'_> {
                 | Token::Equal
                 | Token::ColonEqual
                 | Token::Arrow
+                | Token::Comma
+                | Token::Colon
+                | Token::Semicolon
+                | Token::Dot
                 | Token::Slash
                 | Token::DoubleSlash
                 | Token::Percent
@@ -12376,10 +12380,7 @@ mod tests {
             Token::Eof,
         ];
 
-        assert_eq!(
-            parse(&tokens),
-            Err("expected expression, found Comma".to_string())
-        );
+        assert_eq!(parse(&tokens), Err("invalid syntax".to_string()));
     }
 
     #[test]

@@ -43779,6 +43779,30 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram prefix punctuation expression rejection",
+            name: "prefix-comma-expression-message",
+            source: ",x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix punctuation expression rejection",
+            name: "prefix-colon-expression-message",
+            source: ":x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix punctuation expression rejection",
+            name: "prefix-semicolon-expression-message",
+            source: ";x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram prefix punctuation expression rejection",
+            name: "prefix-dot-expression-message",
+            source: ".x",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

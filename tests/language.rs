@@ -5353,7 +5353,7 @@ fn reports_division_by_zero() {
 fn reports_empty_grouped_expression() {
     assert_eq!(
         run_source("print((,))"),
-        Err("parse error: expected expression, found Comma".to_string())
+        Err("parse error: invalid syntax".to_string())
     );
 }
 
