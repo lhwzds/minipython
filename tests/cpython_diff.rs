@@ -43449,6 +43449,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower function parameter rejection",
+            name: "def-true-literal-follower-parameter-name-message",
+            source: "def f(a True b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower function parameter rejection",
+            name: "def-true-literal-follower-vararg-parameter-name-message",
+            source: "def f(*a True b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower function parameter rejection",
+            name: "def-true-literal-follower-kwarg-parameter-name-message",
+            source: "def f(**a True b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower lambda parameter rejection",
+            name: "lambda-true-literal-follower-parameter-name-message",
+            source: "lambda a True b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower lambda parameter rejection",
+            name: "lambda-true-literal-follower-vararg-parameter-name-message",
+            source: "lambda *a True b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram true literal follower lambda parameter rejection",
+            name: "lambda-true-literal-follower-kwarg-parameter-name-message",
+            source: "lambda **a True b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

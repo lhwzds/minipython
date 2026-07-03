@@ -6508,6 +6508,7 @@ impl Parser<'_> {
                     | Token::Pass
                     | Token::Break
                     | Token::Continue
+                    | Token::True
                     | Token::Yield
                     | Token::Identifier(_)
                     | Token::ColonEqual
