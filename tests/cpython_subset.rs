@@ -50171,6 +50171,26 @@ fn cpython_type_base_readonly_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type metadata
+// behavior. __mro__ is computed from the class layout and cannot be assigned
+// or deleted as a shadowing dictionary entry.
+#[test]
+fn cpython_type_mro_readonly_subset() {
+    assert_output(
+        "class A:\n    pass\nprint('initial', A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)\nfor label, action in [\n    ('set-int', lambda: setattr(A, '__mro__', 1)),\n    ('set-none', lambda: setattr(A, '__mro__', None)),\n    ('delete', lambda: delattr(A, '__mro__')),\n]:\n    try:\n        action()\n    except AttributeError as error:\n        print(label, error.__class__.__name__, str(error), error.args == (str(error),))\n    print('state', label, A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)\nprint('final', A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)",
+        &[
+            "initial True 2 False",
+            "set-int AttributeError attribute '__mro__' of 'type' objects is not writable True",
+            "state set-int True 2 False",
+            "set-none AttributeError attribute '__mro__' of 'type' objects is not writable True",
+            "state set-none True 2 False",
+            "delete AttributeError attribute '__mro__' of 'type' objects is not writable True",
+            "state delete True 2 False",
+            "final True 2 False",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.

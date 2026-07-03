@@ -7241,6 +7241,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "setattr(A, '__base__', 1)",
         ),
         (
+            "cpython_type_mro_readonly_diff_subset",
+            "cpython_type_mro_readonly_subset",
+            "setattr(A, '__mro__', 1)",
+        ),
+        (
             "cpython_type_repr_module_qualname_diff_subset",
             "cpython_type_repr_module_qualname_subset",
             "B.__module__ = 'pkg'",
@@ -7277,6 +7282,73 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_mro_readonly_has_cpython_evidence() {
+    let subset_name = "cpython_type_mro_readonly_subset";
+    let diff_name = "cpython_type_mro_readonly_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class A:",
+        "setattr(A, '__mro__', 1)",
+        "setattr(A, '__mro__', None)",
+        "delattr(A, '__mro__')",
+        "'__mro__' in A.__dict__",
+        "error.args == (str(error),)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type __mro__ readonly subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial True 2 False\"",
+        "\"set-int AttributeError attribute '__mro__' of 'type' objects is not writable True\"",
+        "\"state set-int True 2 False\"",
+        "\"set-none AttributeError attribute '__mro__' of 'type' objects is not writable True\"",
+        "\"state set-none True 2 False\"",
+        "\"delete AttributeError attribute '__mro__' of 'type' objects is not writable True\"",
+        "\"state delete True 2 False\"",
+        "\"final True 2 False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type __mro__ readonly subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_mro_readonly_error(",
+        "name == \"__mro__\"",
+        "attribute '__mro__' of 'type' objects is not writable",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM type __mro__ readonly implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.matches("class_mro_readonly_error(name)").count() >= 2,
+        "VM must apply __mro__ readonly errors to class assignment and deletion"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "type `__mro__` readonly AttributeError",
+            "does not shadow the class dictionary",
+        ] {
+            assert!(
+                document.contains(required),
+                "type __mro__ readonly docs must contain `{required}`"
             );
         }
     }

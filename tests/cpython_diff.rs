@@ -15926,6 +15926,28 @@ print('final', A.__base__.__name__, A.__bases__[0].__name__, '__base__' in A.__d
 }
 
 #[test]
+fn cpython_type_mro_readonly_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public __mro__ readonly subset",
+        name: "type-mro-readonly",
+        source: r#"class A:
+    pass
+print('initial', A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)
+for label, action in [
+    ('set-int', lambda: setattr(A, '__mro__', 1)),
+    ('set-none', lambda: setattr(A, '__mro__', None)),
+    ('delete', lambda: delattr(A, '__mro__')),
+]:
+    try:
+        action()
+    except AttributeError as error:
+        print(label, error.__class__.__name__, str(error), error.args == (str(error),))
+    print('state', label, A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)
+print('final', A.__mro__[0] is A, len(A.__mro__), '__mro__' in A.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_repr_module_qualname_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType public type.__repr__ module/qualname subset",
