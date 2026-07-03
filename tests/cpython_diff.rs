@@ -43557,6 +43557,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower function parameter rejection",
+            name: "def-f-string-literal-follower-parameter-name-message",
+            source: "def f(a f\"x\" c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower function parameter rejection",
+            name: "def-f-string-literal-follower-vararg-parameter-name-message",
+            source: "def f(*a f\"x\" c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower function parameter rejection",
+            name: "def-f-string-literal-follower-kwarg-parameter-name-message",
+            source: "def f(**a f\"x\" c):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower lambda parameter rejection",
+            name: "lambda-f-string-literal-follower-parameter-name-message",
+            source: "lambda a f\"x\" c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower lambda parameter rejection",
+            name: "lambda-f-string-literal-follower-vararg-parameter-name-message",
+            source: "lambda *a f\"x\" c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram f-string literal follower lambda parameter rejection",
+            name: "lambda-f-string-literal-follower-kwarg-parameter-name-message",
+            source: "lambda **a f\"x\" c: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",

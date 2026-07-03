@@ -6336,6 +6336,14 @@ Completed in the none literal follower parameter-name diagnostic pass:
   such as `def f(a None b)`, `def f(**a None b)`, `lambda *a None b: None`, and
   `lambda **a None b: None` use CPython's public `invalid syntax` message.
 
+Completed in the f-string literal follower parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so f-string literal follower parameter name forms
+  such as `def f(a f"x" c)`, `def f(**a f"x" c)`, `lambda *a f"x" c: None`, and
+  `lambda **a f"x" c: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted
