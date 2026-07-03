@@ -44007,6 +44007,36 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram set tail double-star unpacking rejection",
+            name: "set-tail-double-star-unpacking-message",
+            source: "{1, **items}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram set tail double-star unpacking rejection",
+            name: "set-tail-double-star-trailing-comma-unpacking-message",
+            source: "{1, **items,}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram set tail double-star unpacking rejection",
+            name: "set-tail-after-star-double-star-unpacking-message",
+            source: "{*items, **extra}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram set tail double-star unpacking rejection",
+            name: "set-tail-after-mixed-star-double-star-unpacking-message",
+            source: "{1, *items, **extra}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram set tail double-star unpacking rejection",
+            name: "set-comprehension-tail-double-star-unpacking-message",
+            source: "{1, **items for items in seq}",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram prefix augmented assignment operator expression rejection",
             name: "prefix-plus-equal-expression-message",
             source: "+=x",

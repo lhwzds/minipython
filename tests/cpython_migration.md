@@ -6431,6 +6431,14 @@ Completed in the list tail double-star unpacking diagnostic pass:
   `[1, *items, **extra]`, and `[1, **items for items in seq]` use CPython's public
   `invalid syntax` message, while tuple starred-expression sequence handling remains separate.
 
+Completed in the set tail double-star unpacking diagnostic pass:
+
+- Extended `cpython_invalid_starred_expression_subset` and
+  `cpython_syntax_error_message_parity_diff_subset` so set tail double-star unpacking forms
+  such as `{1, **items}`, `{1, **items,}`, `{*items, **extra}`,
+  `{1, *items, **extra}`, and `{1, **items for items in seq}` use CPython's public
+  `invalid syntax` message, while dict unpacking forms such as `{**items}` remain separate.
+
 Completed in the prefix augmented assignment operator expression diagnostic pass:
 
 - Extended `cpython_invalid_expression_rules_subset` and
