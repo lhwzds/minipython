@@ -50882,6 +50882,60 @@ fn cpython_t_string_literal_follower_parameter_name_messages_have_diff_evidence(
 }
 
 #[test]
+fn cpython_standalone_bang_syntax_messages_have_diff_evidence() {
+    let diff_name = "cpython_syntax_error_message_parity_diff_subset";
+    let expression_subset_name = "cpython_invalid_expression_rules_subset";
+    let function_subset_name = "cpython_invalid_parameters_subset";
+    let lambda_subset_name = "cpython_invalid_lambda_parameters_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "standalone bang SyntaxError CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {expression_subset_name}(")),
+        "standalone bang expression runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {function_subset_name}(")),
+        "function bang follower parameter runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {lambda_subset_name}(")),
+        "lambda bang follower parameter runtime subset evidence must exist"
+    );
+
+    for required_source in [
+        "x ! y",
+        "!x",
+        "def f(a ! b):\\n    pass",
+        "def f(*a ! b):\\n    pass",
+        "def f(**a ! b):\\n    pass",
+        "lambda a ! b: None",
+        "lambda *a ! b: None",
+        "lambda **a ! b: None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required_source),
+            "standalone bang CPython diff must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(required_source),
+            "standalone bang subset must cover `{required_source}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("standalone bang syntax forms")
+                && document.contains("bang follower parameter name forms")
+                && document.contains("invalid syntax"),
+            "standalone bang docs must describe the CPython message"
+        );
+    }
+}
+
+#[test]
 fn cpython_duplicate_parameter_name_messages_have_diff_evidence() {
     let diff_name = "cpython_syntax_error_message_parity_diff_subset";
     let function_subset_name = "cpython_invalid_parameters_subset";

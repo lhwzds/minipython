@@ -2263,17 +2263,18 @@ fn lex_with_spans_mode(
                 }
             }
             '!' => {
-                let operator_start = current;
                 current += 1;
                 if current < chars.len() && chars[current] == '=' {
                     current += 1;
                     push_token(&mut tokens, &chars, Token::BangEqual, token_start, current);
                 } else {
-                    return Err(lex_error_at(
+                    push_token(
+                        &mut tokens,
                         &chars,
-                        operator_start,
-                        "unexpected character: !",
-                    ));
+                        Token::Exclamation,
+                        token_start,
+                        current,
+                    );
                 }
             }
             '<' => {

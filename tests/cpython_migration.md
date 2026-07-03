@@ -6352,6 +6352,14 @@ Completed in the t-string literal follower parameter-name diagnostic pass:
   such as `def f(a t"x" c)`, `def f(**a t"x" c)`, `lambda *a t"x" c: None`, and
   `lambda **a t"x" c: None` use CPython's public `invalid syntax` message.
 
+Completed in the standalone bang syntax diagnostic pass:
+
+- Extended `cpython_invalid_expression_rules_subset`, `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and `cpython_syntax_error_message_parity_diff_subset`
+  so standalone bang syntax forms and bang follower parameter name forms such as
+  `x ! y`, `!x`, `def f(**a ! b)`, and `lambda *a ! b: None` use CPython's
+  public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

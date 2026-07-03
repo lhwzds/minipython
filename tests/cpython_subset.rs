@@ -10611,6 +10611,9 @@ fn cpython_invalid_expression_rules_subset() {
     ] {
         assert_parse_error(source);
     }
+    for source in ["x ! y", "!x"] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "print(f'{lambda x: x}')",
         "parse error: f-string: lambda expressions are not allowed without parentheses",
@@ -35988,6 +35991,13 @@ fn cpython_invalid_parameters_subset() {
     ] {
         assert_error(source, "parse error: invalid syntax");
     }
+    for source in [
+        "def f(a ! b):\n    pass",
+        "def f(*a ! b):\n    pass",
+        "def f(**a ! b):\n    pass",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
     assert_error(
         "def f(a, a):\n    pass",
         "parse error: duplicate argument 'a' in function definition",
@@ -36543,6 +36553,13 @@ fn cpython_invalid_lambda_parameters_subset() {
         "lambda a t\"x\" c: None",
         "lambda *a t\"x\" c: None",
         "lambda **a t\"x\" c: None",
+    ] {
+        assert_error(source, "parse error: invalid syntax");
+    }
+    for source in [
+        "lambda a ! b: None",
+        "lambda *a ! b: None",
+        "lambda **a ! b: None",
     ] {
         assert_error(source, "parse error: invalid syntax");
     }

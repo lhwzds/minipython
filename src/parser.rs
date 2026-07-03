@@ -158,6 +158,7 @@ impl Parser<'_> {
                 }
                 Some(Token::Eof) | None => {}
                 Some(_) if has_own_boundary => {}
+                Some(Token::Exclamation) => return Err("invalid syntax".to_string()),
                 Some(token) => {
                     let previous = statements.last().expect("statement was just pushed");
                     if let Some(error) = self.former_statement_boundary_error(previous) {
@@ -5783,6 +5784,7 @@ impl Parser<'_> {
                 self.expect_right_brace()?;
                 Ok(expr)
             }
+            Some(Token::Exclamation) => Err("invalid syntax".to_string()),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
         }
@@ -6500,6 +6502,7 @@ impl Parser<'_> {
                     | Token::GreaterEqual
                     | Token::Elif
                     | Token::Else
+                    | Token::Exclamation
                     | Token::For
                     | Token::If
                     | Token::While
