@@ -6232,6 +6232,14 @@ Completed in the augmented assignment parameter-name diagnostic pass:
   such as `def f(a += b)`, `def f(a //= b)`, `lambda a |= b: None`,
   and `lambda a >>= b: None` use CPython's public `invalid syntax` message.
 
+Completed in the semicolon separator parameter-name diagnostic pass:
+
+- Extended `cpython_invalid_parameters_subset`,
+  `cpython_invalid_lambda_parameters_subset`, and
+  `cpython_syntax_error_message_parity_diff_subset` so semicolon separator parameter name forms
+  such as `def f(a; b)`, `def f(**a; b)`, `lambda *a; b: None`, and
+  `lambda **a; b: None` use CPython's public `invalid syntax` message.
+
 Completed in the function-parameter supported-promotion pass:
 
 - Expanded `cpython_function_parameter_helper_rules_subset` and promoted

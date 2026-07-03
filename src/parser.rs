@@ -6472,6 +6472,7 @@ impl Parser<'_> {
                     | Token::Class
                     | Token::Def
                     | Token::Lambda
+                    | Token::Semicolon
                     | Token::Del
                     | Token::Global
                     | Token::Nonlocal

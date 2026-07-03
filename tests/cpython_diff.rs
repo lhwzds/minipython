@@ -43089,6 +43089,42 @@ fn cpython_syntax_error_message_parity_diff_subset() {
             expected_message: "invalid syntax",
         },
         ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator function parameter rejection",
+            name: "def-semicolon-parameter-name-message",
+            source: "def f(a; b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator function parameter rejection",
+            name: "def-semicolon-vararg-parameter-name-message",
+            source: "def f(*a; b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator function parameter rejection",
+            name: "def-semicolon-kwarg-parameter-name-message",
+            source: "def f(**a; b):\n    pass",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator lambda parameter rejection",
+            name: "lambda-semicolon-parameter-name-message",
+            source: "lambda a; b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator lambda parameter rejection",
+            name: "lambda-semicolon-vararg-parameter-name-message",
+            source: "lambda *a; b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
+            origin: "Grammar/python.gram semicolon separator lambda parameter rejection",
+            name: "lambda-semicolon-kwarg-parameter-name-message",
+            source: "lambda **a; b: None",
+            expected_message: "invalid syntax",
+        },
+        ErrorMessageCase {
             origin: "Grammar/python.gram function parameter missing annotation expression",
             name: "missing-positional-parameter-annotation-expression-rparen-message",
             source: "def f(x:):\n    pass",
