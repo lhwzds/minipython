@@ -6454,6 +6454,7 @@ impl Parser<'_> {
             self.peek(),
             Some(
                 Token::Dot
+                    | Token::Ellipsis
                     | Token::LeftParen
                     | Token::LeftBracket
                     | Token::LeftBrace
