@@ -50211,6 +50211,23 @@ fn cpython_type_dict_readonly_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type metadata
+// behavior. __bases__ deletion is rejected and uses the current public class
+// name in the immutable-type TypeError text.
+#[test]
+fn cpython_type_bases_delete_error_subset() {
+    assert_output(
+        "class Root:\n    pass\nclass A(Root):\n    pass\nA.__name__ = 'Renamed'\nprint('initial', A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)\ntry:\n    delattr(A, '__bases__')\nexcept TypeError as error:\n    print('custom', error.__class__.__name__, str(error), error.args == (str(error),))\nprint('after-custom', A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)\nclass B:\n    pass\ntry:\n    delattr(B, '__bases__')\nexcept TypeError as error:\n    print('default', error.__class__.__name__, str(error), error.args == (str(error),))\nprint('after-default', B.__base__.__name__, B.__bases__[0].__name__, '__bases__' in B.__dict__)",
+        &[
+            "initial Root Root False",
+            "custom TypeError cannot delete '__bases__' attribute of immutable type 'Renamed' True",
+            "after-custom Root Root False",
+            "default TypeError cannot delete '__bases__' attribute of immutable type 'B' True",
+            "after-default object object False",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.

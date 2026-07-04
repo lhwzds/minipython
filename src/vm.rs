@@ -65088,7 +65088,10 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             if let Some(error) = class_dict_readonly_error(name) {
                 return Err(error);
             }
-            if matches!(name, "__name__" | "__qualname__" | "__module__" | "__doc__") {
+            if matches!(
+                name,
+                "__name__" | "__qualname__" | "__module__" | "__doc__" | "__bases__"
+            ) {
                 return Err(class_metadata_delete_error(&class_name, &attrs, name));
             }
             if name == "__type_params__" {

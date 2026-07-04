@@ -7251,6 +7251,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "setattr(A, '__dict__', 1)",
         ),
         (
+            "cpython_type_bases_delete_error_diff_subset",
+            "cpython_type_bases_delete_error_subset",
+            "delattr(A, '__bases__')",
+        ),
+        (
             "cpython_type_repr_module_qualname_diff_subset",
             "cpython_type_repr_module_qualname_subset",
             "B.__module__ = 'pkg'",
@@ -7287,6 +7292,68 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_bases_delete_error_has_cpython_evidence() {
+    let subset_name = "cpython_type_bases_delete_error_subset";
+    let diff_name = "cpython_type_bases_delete_error_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class Root:",
+        "class A(Root):",
+        "A.__name__ = 'Renamed'",
+        "delattr(A, '__bases__')",
+        "'__bases__' in A.__dict__",
+        "error.args == (str(error),)",
+        "class B:",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type __bases__ delete subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial Root Root False\"",
+        "\"custom TypeError cannot delete '__bases__' attribute of immutable type 'Renamed' True\"",
+        "\"after-custom Root Root False\"",
+        "\"default TypeError cannot delete '__bases__' attribute of immutable type 'B' True\"",
+        "\"after-default object object False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type __bases__ delete subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_metadata_delete_error(",
+        "class_public_name(class_name, attrs)",
+        "cannot delete '{name}' attribute of immutable type '{public_name}'",
+        "\"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\" | \"__bases__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM type __bases__ delete implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "type `__bases__` deletion TypeError",
+            "uses the current public class name",
+        ] {
+            assert!(
+                document.contains(required),
+                "type __bases__ delete docs must contain `{required}`"
             );
         }
     }
@@ -7608,7 +7675,7 @@ fn cpython_type_metadata_delete_errors_has_cpython_evidence() {
         "fn class_metadata_delete_error(",
         "class_name_value(class_name, attrs)",
         "cannot delete '{name}' attribute of immutable type '{public_name}'",
-        "matches!(name, \"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\")",
+        "\"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\" | \"__bases__\"",
         "return Err(class_metadata_delete_error(&class_name, &attrs, name));",
     ] {
         assert!(

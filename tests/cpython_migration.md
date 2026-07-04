@@ -9839,6 +9839,9 @@ Completed in the type builtin pass:
   behavior for `__name__`, `__qualname__`, `__module__`, and `__doc__`,
   including the case where a reassigned `__name__` controls the immutable-type
   name in the error and preserves reassigned metadata values.
+- Added `cpython_type_bases_delete_error_subset`, backed by
+  `cpython_type_bases_delete_error_diff_subset`, covering type `__bases__` deletion TypeError
+  behavior that uses the current public class name and preserves base metadata.
 - Added `cpython_type_metadata_assignment_error_names_subset`, backed by
   `cpython_type_metadata_assignment_error_names_diff_subset`, covering class metadata assignment TypeError
   behavior for `__name__` and `__qualname__`, including reassigned class names

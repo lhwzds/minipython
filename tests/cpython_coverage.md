@@ -8950,3 +8950,6 @@ behavior for direct exception construction, generator return values, and
 `int expected at most 2 arguments, got 3` positional-argument diagnostic for
 too many positional arguments and the
 `int() got an unexpected keyword argument 'x'` keyword rejection.
+`cpython_type_bases_delete_error_subset`, backed by
+`cpython_type_bases_delete_error_diff_subset`, covers type `__bases__` deletion TypeError
+behavior that uses the current public class name.

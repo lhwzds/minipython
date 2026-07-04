@@ -15970,6 +15970,32 @@ print('final-shadow', A.__dict__.get('__dict__', 'missing') in (1, None))"#,
 }
 
 #[test]
+fn cpython_type_bases_delete_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public __bases__ delete error subset",
+        name: "type-bases-delete-error",
+        source: r#"class Root:
+    pass
+class A(Root):
+    pass
+A.__name__ = 'Renamed'
+print('initial', A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)
+try:
+    delattr(A, '__bases__')
+except TypeError as error:
+    print('custom', error.__class__.__name__, str(error), error.args == (str(error),))
+print('after-custom', A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)
+class B:
+    pass
+try:
+    delattr(B, '__bases__')
+except TypeError as error:
+    print('default', error.__class__.__name__, str(error), error.args == (str(error),))
+print('after-default', B.__base__.__name__, B.__bases__[0].__name__, '__bases__' in B.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_repr_module_qualname_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType public type.__repr__ module/qualname subset",
