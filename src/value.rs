@@ -1948,6 +1948,10 @@ fn format_function_type_builtin_method(function: &Value, receiver: &Value) -> Op
             "<built-in method __init_subclass__ of type object at 0x{:x}>",
             stable_builtin_type_repr_address(receiver_name)
         )),
+        ("function.__subclasshook__", "function") => Some(format!(
+            "<built-in method __subclasshook__ of type object at 0x{:x}>",
+            stable_builtin_type_repr_address(receiver_name)
+        )),
         _ => None,
     }
 }

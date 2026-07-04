@@ -29462,6 +29462,49 @@ print('unshadow', type(f.__init_subclass__).__name__, '__init_subclass__' in f._
     );
 }
 
+// Adapted from CPython public function-object `__subclasshook__` wrapper
+// behavior. This pins type-level builtin method metadata, NotImplemented
+// fallback, and custom attribute shadowing without depending on concrete
+// address values.
+#[test]
+fn cpython_function_subclasshook_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__subclasshook__
+rendered = repr(wrapper)
+doc = wrapper.__doc__
+print('__subclasshook__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is type(f), wrapper.__self__.__name__, wrapper.__name__, wrapper.__qualname__, doc.startswith('Abstract classes can override'), 'This is invoked early' in doc, wrapper.__module__, wrapper.__text_signature__)
+print(rendered.startswith('<built-in method __subclasshook__ of type object at 0x'), rendered.endswith('>'), str(wrapper) == rendered)
+for label, call in [
+    ('missing', lambda: wrapper()),
+    ('arg', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is NotImplemented, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__subclasshook__).__name__
+f.__dict__['__subclasshook__'] = 'shadow-subclasshook'
+print('shadow', base, f.__subclasshook__, f.__dict__['__subclasshook__'], '__subclasshook__' in dir(f))
+del f.__dict__['__subclasshook__']
+print('unshadow', type(f.__subclasshook__).__name__, '__subclasshook__' in f.__dict__)"#,
+        &[
+            "True builtin_function_or_method builtin_function_or_method",
+            "True function __subclasshook__ function.__subclasshook__ True True None ($type, object, /)",
+            "True True True",
+            "missing TypeError function.__subclasshook__() takes exactly one argument (0 given) ('function.__subclasshook__() takes exactly one argument (0 given)',)",
+            "arg True NotImplemented NotImplementedType",
+            "keyword TypeError function.__subclasshook__() takes no keyword arguments ('function.__subclasshook__() takes no keyword arguments',)",
+            "shadow builtin_function_or_method shadow-subclasshook shadow-subclasshook True",
+            "unshadow builtin_function_or_method False",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.
