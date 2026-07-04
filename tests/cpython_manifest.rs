@@ -35362,6 +35362,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_object_instance_default_repr_shape_subset",
             "cpython_function_repr_str_wrapper_subset",
             "cpython_function_call_wrapper_subset",
+            "cpython_function_get_descriptor_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35455,6 +35456,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_object_instance_default_repr_shape_diff_subset",
         "cpython_function_repr_str_wrapper_diff_subset",
         "cpython_function_call_wrapper_diff_subset",
+        "cpython_function_get_descriptor_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -41817,6 +41819,101 @@ fn function_call_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __call__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_get_descriptor_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_get_descriptor_wrapper_subset";
+    let diff_name = "cpython_function_get_descriptor_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f(self=None, value='default'):",
+        "getter = f.__get__",
+        "'__get__' in dir(f)",
+        "type(getter).__name__",
+        "getter.__class__.__name__",
+        "getter.__self__ is f",
+        "getter.__name__",
+        "getter.__qualname__",
+        "getter.__doc__",
+        "getattr(getter, '__module__', 'MISSING')",
+        "('none-owner', lambda: getter(None, C))",
+        "('none-missing-owner', lambda: getter(None))",
+        "('none-none', lambda: getter(None, None))",
+        "('bound', lambda: getter(obj, C))",
+        "('bound-missing-owner', lambda: getter(obj))",
+        "('missing', lambda: getter())",
+        "('extra', lambda: getter(obj, C, 1))",
+        "('keyword', lambda: getter(obj=obj, type=C))",
+        "result[0] is obj",
+        "type(getter.__repr__).__name__",
+        "getter.__repr__(1)",
+        "getter.__repr__(x=1)",
+        "\"<method-wrapper '__get__' of function object at 0x\"",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __get__ descriptor wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True method-wrapper method-wrapper\"",
+        "\"True __get__ function.__get__ Return an attribute of instance, which is of type owner.\"",
+        "\"MISSING\"",
+        "\"none-owner function True False False\"",
+        "\"none-missing-owner TypeError __get__(None, None) is invalid",
+        "\"none-none TypeError __get__(None, None) is invalid",
+        "\"bound method False True True\"",
+        "\"bound-call True x\"",
+        "\"bound-missing-owner method False True True\"",
+        "\"bound-missing-owner-call True x\"",
+        "\"missing TypeError __get__ expected at least 1 argument, got 0",
+        "\"extra TypeError __get__ expected at most 2 arguments, got 3",
+        "\"keyword TypeError wrapper __get__() takes no keyword arguments",
+        "\"method-wrapper str True\"",
+        "\"repr-extra TypeError expected 0 arguments, got 1",
+        "\"repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+        "\"True True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __get__ descriptor wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"function.__get__\" => Some(format!(",
+        "\"<method-wrapper '__get__' of function object at 0x{:x}>\"",
+        "Value::Builtin(\"function.__get__\".to_string())",
+        "fn call_function_get(",
+        "name == \"function.__get__\"",
+        "function_name == \"function.__get__\"",
+        "\"Return an attribute of instance, which is of type owner.\"",
+        "\"__get__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __get__ descriptor wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __get__ descriptor wrapper metadata",
+            "__get__(None, None) is invalid",
+            "without depending on concrete addresses",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __get__ descriptor wrapper docs must contain `{required}`"
             );
         }
     }

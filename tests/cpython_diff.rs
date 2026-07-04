@@ -13924,6 +13924,51 @@ print(str(caller).startswith("<method-wrapper '__call__' of function object at 0
 }
 
 #[test]
+fn cpython_function_get_descriptor_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py public function __get__ descriptor wrapper subset",
+        name: "function-get-descriptor-wrapper",
+        source: r#"def f(self=None, value='default'):
+    return (self, value)
+class C:
+    pass
+obj = C()
+getter = f.__get__
+print('__get__' in dir(f), type(getter).__name__, getter.__class__.__name__)
+print(getter.__self__ is f, getter.__name__, getter.__qualname__, getter.__doc__)
+print(getattr(getter, '__module__', 'MISSING'))
+for label, call in [
+    ('none-owner', lambda: getter(None, C)),
+    ('none-missing-owner', lambda: getter(None)),
+    ('none-none', lambda: getter(None, None)),
+    ('bound', lambda: getter(obj, C)),
+    ('bound-missing-owner', lambda: getter(obj)),
+    ('missing', lambda: getter()),
+    ('extra', lambda: getter(obj, C, 1)),
+    ('keyword', lambda: getter(obj=obj, type=C)),
+]:
+    try:
+        value = call()
+        print(label, type(value).__name__, value is f, getattr(value, '__self__', 'NOSELF') is obj, getattr(value, '__func__', 'NOFUNC') is f)
+        if label.startswith('bound'):
+            result = value('x')
+            print(label + '-call', result[0] is obj, result[1])
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(type(getter.__repr__).__name__, getter.__repr__().__class__.__name__, getter.__str__() == getter.__repr__())
+for label, call in [
+    ('repr-extra', lambda: getter.__repr__(1)),
+    ('repr-keyword', lambda: getter.__repr__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(str(getter).startswith("<method-wrapper '__get__' of function object at 0x"), repr(getter) == str(getter))"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

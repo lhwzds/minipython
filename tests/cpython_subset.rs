@@ -28970,6 +28970,71 @@ print(str(caller).startswith("<method-wrapper '__call__' of function object at 0
     );
 }
 
+// Adapted from CPython public function descriptor behavior. This pins ordinary
+// user-defined function `__get__` metadata, owner handling, and binding without
+// depending on concrete address values.
+#[test]
+fn cpython_function_get_descriptor_wrapper_subset() {
+    assert_output(
+        r#"def f(self=None, value='default'):
+    return (self, value)
+class C:
+    pass
+obj = C()
+getter = f.__get__
+print('__get__' in dir(f), type(getter).__name__, getter.__class__.__name__)
+print(getter.__self__ is f, getter.__name__, getter.__qualname__, getter.__doc__)
+print(getattr(getter, '__module__', 'MISSING'))
+for label, call in [
+    ('none-owner', lambda: getter(None, C)),
+    ('none-missing-owner', lambda: getter(None)),
+    ('none-none', lambda: getter(None, None)),
+    ('bound', lambda: getter(obj, C)),
+    ('bound-missing-owner', lambda: getter(obj)),
+    ('missing', lambda: getter()),
+    ('extra', lambda: getter(obj, C, 1)),
+    ('keyword', lambda: getter(obj=obj, type=C)),
+]:
+    try:
+        value = call()
+        print(label, type(value).__name__, value is f, getattr(value, '__self__', 'NOSELF') is obj, getattr(value, '__func__', 'NOFUNC') is f)
+        if label.startswith('bound'):
+            result = value('x')
+            print(label + '-call', result[0] is obj, result[1])
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(type(getter.__repr__).__name__, getter.__repr__().__class__.__name__, getter.__str__() == getter.__repr__())
+for label, call in [
+    ('repr-extra', lambda: getter.__repr__(1)),
+    ('repr-keyword', lambda: getter.__repr__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(str(getter).startswith("<method-wrapper '__get__' of function object at 0x"), repr(getter) == str(getter))"#,
+        &[
+            "True method-wrapper method-wrapper",
+            "True __get__ function.__get__ Return an attribute of instance, which is of type owner.",
+            "MISSING",
+            "none-owner function True False False",
+            "none-missing-owner TypeError __get__(None, None) is invalid ('__get__(None, None) is invalid',)",
+            "none-none TypeError __get__(None, None) is invalid ('__get__(None, None) is invalid',)",
+            "bound method False True True",
+            "bound-call True x",
+            "bound-missing-owner method False True True",
+            "bound-missing-owner-call True x",
+            "missing TypeError __get__ expected at least 1 argument, got 0 ('__get__ expected at least 1 argument, got 0',)",
+            "extra TypeError __get__ expected at most 2 arguments, got 3 ('__get__ expected at most 2 arguments, got 3',)",
+            "keyword TypeError wrapper __get__() takes no keyword arguments ('wrapper __get__() takes no keyword arguments',)",
+            "method-wrapper str True",
+            "repr-extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "repr-keyword TypeError wrapper __repr__() takes no keyword arguments ('wrapper __repr__() takes no keyword arguments',)",
+            "True True",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

@@ -10117,6 +10117,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__get__" => {
                 self.call_method_get(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__get__" => {
+                self.call_function_get(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__call__" => {
                 self.call_method_call(args, keywords)
             }
@@ -17939,6 +17942,36 @@ impl Vm {
             );
         }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
+    }
+
+    fn call_function_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((function, rest)) = args.split_first() else {
+            return Err("TypeError: __get__() expected a function receiver".to_string());
+        };
+        if !matches!(function, Value::Function { .. }) {
+            return Err("TypeError: __get__() expected a function receiver".to_string());
+        }
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+        if matches!(rest[0], Value::None) {
+            let owner_missing_or_none = match rest.get(1) {
+                Some(owner) => matches!(owner, Value::None),
+                None => true,
+            };
+            if owner_missing_or_none {
+                return Err("TypeError: __get__(None, None) is invalid".to_string());
+            }
+            return Ok(function.clone());
+        }
+
+        Ok(Value::BoundMethod {
+            function: Box::new(function.clone()),
+            receiver: Box::new(rest[0].clone()),
+            identity: Rc::new(()),
+        })
     }
 
     fn call_method_call(
@@ -51493,6 +51526,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__annotations__",
                 "__call__",
                 "__doc__",
+                "__get__",
                 "__globals__",
                 "__module__",
                 "__name__",
@@ -57473,6 +57507,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__get__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("function.__get__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
         "__repr__" | "__str__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("function.{name}"))),
             receiver: Box::new(function.clone()),
@@ -63384,6 +63423,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("Call self as a function.".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__get__" =>
+        {
+            Ok(Value::String("function.__get__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "function.__get__" =>
+        {
+            Ok(Value::String(
+                "Return an attribute of instance, which is of type owner.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "json.function.__call__" =>
         {
             Ok(Value::String("function.__call__".to_string()))
@@ -66080,6 +66131,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__repr__"
             | "function.__str__"
             | "function.__call__"
+            | "function.__get__"
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"

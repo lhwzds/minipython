@@ -1942,6 +1942,10 @@ fn format_function_method_wrapper(function: &Value, receiver: &Value) -> Option<
             "<method-wrapper '__call__' of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize
         )),
+        "function.__get__" => Some(format!(
+            "<method-wrapper '__get__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
         _ => None,
     }
 }
