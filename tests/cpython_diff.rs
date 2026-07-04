@@ -2456,6 +2456,30 @@ for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] |
 }
 
 #[test]
+fn cpython_dict_subclass_direct_union_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py PEP 584 dict subclass direct union method subset",
+        name: "dict-subclass-direct-union-methods",
+        source: r#"class D(dict):
+    pass
+left = D(a=1)
+right = D(b=2)
+print('visible', hasattr(left, '__or__'), hasattr(left, '__ror__'), '__or__' in dir(left), '__ror__' in dir(D))
+for label, expr in [
+    ('bound-or-dict', lambda: left.__or__({'b': 20, 'c': 3})),
+    ('bound-or-sub', lambda: left.__or__(right)),
+    ('bound-ror-dict', lambda: left.__ror__({'z': 0, 'a': 9})),
+    ('dict-or-sub', lambda: dict.__or__(left, {'d': 4})),
+    ('dict-ror-sub', lambda: dict.__ror__(left, {'e': 5})),
+    ('or-list', lambda: left.__or__([])),
+    ('ror-list', lambda: left.__ror__([])),
+]:
+    result = expr()
+    print(label, type(result).__name__, result is NotImplemented, result, left)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_subclass_ior_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py PEP 584 dict subclass in-place union subset",
@@ -24585,8 +24609,11 @@ print(UserDict.__setitem__(class_obj, 'c', 3), class_obj)
 print(UserDict.pop(class_obj, 'b'), class_obj)
 print(UserDict.setdefault(class_obj, 'd', 4), class_obj)
 print(UserDict.update(class_obj, {'e': 5}), class_obj)
+print('or-direct', type(UserDict.__or__(class_obj, {'f': 6})).__name__, UserDict.__or__(class_obj, {'f': 6}), class_obj)
+print('ror-direct', type(UserDict.__ror__(class_obj, {'z': 0})).__name__, UserDict.__ror__(class_obj, {'z': 0}), class_obj)
 print('ior-direct', UserDict.__ior__(class_obj, {'f': 6}) is class_obj, class_obj)
 print('ior-bound', class_obj.__ior__([('g', 7)]) is class_obj, class_obj)
+print('or-list', class_obj.__or__([]) is NotImplemented, 'ror-list', class_obj.__ror__([]) is NotImplemented)
 print(UserDict.__delitem__(class_obj, 'c'), class_obj)
 def show_missing(label, action):
     try:
@@ -24600,6 +24627,8 @@ show_missing('del-syntax-missing', delete_missing_userdict)
 class UDSub(UserDict):
     pass
 sub_obj = UDSub({'a': 1})
+print('subclass-or', type(UserDict.__or__(sub_obj, {'b': 2})).__name__, list(UserDict.__or__(sub_obj, {'b': 2}).items()))
+print('subclass-ror', type(UserDict.__ror__(sub_obj, {'z': 0})).__name__, list(UserDict.__ror__(sub_obj, {'z': 0}).items()))
 print('subclass-ior', UserDict.__ior__(sub_obj, {'b': 2}) is sub_obj, type(sub_obj).__name__, list(sub_obj.items()))
 def delete_missing_userdict_subclass():
     del sub_obj['missing']

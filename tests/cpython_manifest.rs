@@ -3000,6 +3000,91 @@ fn dict_subclass_union_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_subclass_direct_union_methods_have_focused_diff_evidence() {
+    let diff_name = "cpython_dict_subclass_direct_union_methods_diff_subset";
+    let subset_name = "cpython_dict_subclass_direct_union_methods_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict subclass direct union method CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict subclass direct union method runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "class D(dict):",
+        "hasattr(left, '__or__')",
+        "hasattr(left, '__ror__')",
+        "'__or__' in dir(left)",
+        "'__ror__' in dir(D)",
+        "left.__or__({'b': 20, 'c': 3})",
+        "left.__or__(right)",
+        "left.__ror__({'z': 0, 'a': 9})",
+        "dict.__or__(left, {'d': 4})",
+        "dict.__ror__(left, {'e': 5})",
+        "left.__or__([])",
+        "left.__ror__([])",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "dict subclass direct union diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible True True True True\"",
+        "\"bound-or-dict dict False {'a': 1, 'b': 20, 'c': 3} {'a': 1}\"",
+        "\"bound-or-sub dict False {'a': 1, 'b': 2} {'a': 1}\"",
+        "\"bound-ror-dict dict False {'z': 0, 'a': 1} {'a': 1}\"",
+        "\"dict-or-sub dict False {'a': 1, 'd': 4} {'a': 1}\"",
+        "\"dict-ror-sub dict False {'e': 5, 'a': 1} {'a': 1}\"",
+        "\"or-list NotImplementedType True NotImplemented {'a': 1}\"",
+        "\"ror-list NotImplementedType True NotImplemented {'a': 1}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "dict subclass direct union subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_direct_union_entries(value: &Value) -> Option<Vec<(Value, Value)>>",
+        "fn is_builtin_dict_union_type_method(name: &str) -> bool",
+        "is_builtin_dict_union_type_method(name)",
+        "\"dict.__or__\" | \"dict.__ror__\" =>",
+        "return Ok(Value::NotImplemented);",
+        "dict_union_from_entries(receiver_entries, other_entries)",
+        "dict_union_from_entries(other_entries, receiver_entries)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict subclass direct union implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "dict subclass direct __or__ / __ror__",
+            "PEP 584 direct union methods",
+            "ordinary `dict` results",
+            "`NotImplemented` for unsupported direct operands",
+            "without widening mappingproxy or update-source operand handling",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict subclass direct union docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn dict_subclass_ior_has_focused_diff_evidence() {
     let diff_name = "cpython_dict_subclass_ior_diff_subset";
     let subset_name = "cpython_dict_subclass_ior_subset";
@@ -26068,13 +26153,19 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserDict.pop(class_obj, 'b')",
         "UserDict.setdefault(class_obj, 'd', 4)",
         "UserDict.update(class_obj, {'e': 5})",
+        "UserDict.__or__(class_obj, {'f': 6})",
+        "UserDict.__ror__(class_obj, {'z': 0})",
         "UserDict.__ior__(class_obj, {'f': 6})",
         "class_obj.__ior__([('g', 7)])",
+        "class_obj.__or__([]) is NotImplemented",
+        "class_obj.__ror__([]) is NotImplemented",
         "UserDict.__delitem__(class_obj, 'c')",
         "def delete_missing_userdict():",
         "UserDict.__delitem__(class_obj, 'missing')",
         "del class_obj['missing']",
         "class UDSub(UserDict):",
+        "UserDict.__or__(sub_obj, {'b': 2})",
+        "UserDict.__ror__(sub_obj, {'z': 0})",
         "UserDict.__ior__(sub_obj, {'b': 2})",
         "def delete_missing_userdict_subclass():",
         "UserDict.__delitem__(sub_obj, 'missing')",
@@ -26098,8 +26189,13 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "delitem-missing True str 'missing'",
         "del-syntax-missing True str 'missing'",
+        "or-direct UserDict {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6} {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
+        "ror-direct UserDict {'z': 0, 'a': 1, 'c': 3, 'd': 4, 'e': 5} {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
         "ior-direct True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6}",
         "ior-bound True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+        "or-list True ror-list True",
+        "subclass-or UDSub [('a', 1), ('b', 2)]",
+        "subclass-ror UDSub [('z', 0), ('a', 1)]",
         "subclass-ior True UDSub [('a', 1), ('b', 2)]",
         "subclass-delitem-missing True str 'missing'",
         "subclass-del-syntax-missing True str 'missing'",
@@ -26138,6 +26234,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "if method == \"popitem\"",
         "if method == \"__ior__\"",
+        "matches!(method, \"__or__\" | \"__ror__\")",
+        "user_dict_union_result_like(receiver, entries)",
         "return Ok(receiver.clone());",
         "return raise_key_error_empty(vm);",
         "mark_dict_changed(&mut data);",

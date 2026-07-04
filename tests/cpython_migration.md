@@ -3543,6 +3543,10 @@ Completed in the differential parity harness pass:
   `cpython_dict_subclass_union_diff_subset`, for PEP 584 dict subclass union
   returning an ordinary `dict` result, preserving the left subclass operand,
   accepting mappingproxy operands, and rejecting non-mapping operands without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes.
+- Added `cpython_dict_subclass_direct_union_methods_subset`, backed by
+  `cpython_dict_subclass_direct_union_methods_diff_subset`, for dict subclass direct __or__ / __ror__ and
+  PEP 584 direct union methods returning ordinary `dict` results, preserving the subclass operand,
+  and returning `NotImplemented` for unsupported direct operands without widening mappingproxy or update-source operand handling.
 - Added `cpython_dict_subclass_ior_subset`, backed by
   `cpython_dict_subclass_ior_diff_subset`, for dict subclass __ior__ /
   PEP 584 in-place union. It pins inherited dict method visibility, preserving the subclass instance for direct and syntax forms,

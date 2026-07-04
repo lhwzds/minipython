@@ -56150,6 +56150,39 @@ for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] |
 }
 
 #[test]
+fn cpython_dict_subclass_direct_union_methods_subset() {
+    assert_output_with_stack(
+        r#"class D(dict):
+    pass
+left = D(a=1)
+right = D(b=2)
+print('visible', hasattr(left, '__or__'), hasattr(left, '__ror__'), '__or__' in dir(left), '__ror__' in dir(D))
+for label, expr in [
+    ('bound-or-dict', lambda: left.__or__({'b': 20, 'c': 3})),
+    ('bound-or-sub', lambda: left.__or__(right)),
+    ('bound-ror-dict', lambda: left.__ror__({'z': 0, 'a': 9})),
+    ('dict-or-sub', lambda: dict.__or__(left, {'d': 4})),
+    ('dict-ror-sub', lambda: dict.__ror__(left, {'e': 5})),
+    ('or-list', lambda: left.__or__([])),
+    ('ror-list', lambda: left.__ror__([])),
+]:
+    result = expr()
+    print(label, type(result).__name__, result is NotImplemented, result, left)"#,
+        &[
+            "visible True True True True",
+            "bound-or-dict dict False {'a': 1, 'b': 20, 'c': 3} {'a': 1}",
+            "bound-or-sub dict False {'a': 1, 'b': 2} {'a': 1}",
+            "bound-ror-dict dict False {'z': 0, 'a': 1} {'a': 1}",
+            "dict-or-sub dict False {'a': 1, 'd': 4} {'a': 1}",
+            "dict-ror-sub dict False {'e': 5, 'a': 1} {'a': 1}",
+            "or-list NotImplementedType True NotImplemented {'a': 1}",
+            "ror-list NotImplementedType True NotImplemented {'a': 1}",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_dict_subclass_ior_subset() {
     assert_output_with_stack(
         r#"class D(dict):
@@ -65519,8 +65552,11 @@ fn cpython_collections_userdict_public_methods_subset() {
             "print(UserDict.pop(class_obj, 'b'), class_obj)\n",
             "print(UserDict.setdefault(class_obj, 'd', 4), class_obj)\n",
             "print(UserDict.update(class_obj, {'e': 5}), class_obj)\n",
+            "print('or-direct', type(UserDict.__or__(class_obj, {'f': 6})).__name__, UserDict.__or__(class_obj, {'f': 6}), class_obj)\n",
+            "print('ror-direct', type(UserDict.__ror__(class_obj, {'z': 0})).__name__, UserDict.__ror__(class_obj, {'z': 0}), class_obj)\n",
             "print('ior-direct', UserDict.__ior__(class_obj, {'f': 6}) is class_obj, class_obj)\n",
             "print('ior-bound', class_obj.__ior__([('g', 7)]) is class_obj, class_obj)\n",
+            "print('or-list', class_obj.__or__([]) is NotImplemented, 'ror-list', class_obj.__ror__([]) is NotImplemented)\n",
             "print(UserDict.__delitem__(class_obj, 'c'), class_obj)\n",
             "def show_missing(label, action):\n",
             "    try:\n",
@@ -65534,6 +65570,8 @@ fn cpython_collections_userdict_public_methods_subset() {
             "class UDSub(UserDict):\n",
             "    pass\n",
             "sub_obj = UDSub({'a': 1})\n",
+            "print('subclass-or', type(UserDict.__or__(sub_obj, {'b': 2})).__name__, list(UserDict.__or__(sub_obj, {'b': 2}).items()))\n",
+            "print('subclass-ror', type(UserDict.__ror__(sub_obj, {'z': 0})).__name__, list(UserDict.__ror__(sub_obj, {'z': 0}).items()))\n",
             "print('subclass-ior', UserDict.__ior__(sub_obj, {'b': 2}) is sub_obj, type(sub_obj).__name__, list(sub_obj.items()))\n",
             "def delete_missing_userdict_subclass():\n",
             "    del sub_obj['missing']\n",
@@ -65577,11 +65615,16 @@ fn cpython_collections_userdict_public_methods_subset() {
             "2 {'a': 1, 'c': 3}",
             "4 {'a': 1, 'c': 3, 'd': 4}",
             "None {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
+            "or-direct UserDict {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6} {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
+            "ror-direct UserDict {'z': 0, 'a': 1, 'c': 3, 'd': 4, 'e': 5} {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
             "ior-direct True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6}",
             "ior-bound True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+            "or-list True ror-list True",
             "None {'a': 1, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
             "delitem-missing True str 'missing'",
             "del-syntax-missing True str 'missing'",
+            "subclass-or UDSub [('a', 1), ('b', 2)]",
+            "subclass-ror UDSub [('z', 0), ('a', 1)]",
             "subclass-ior True UDSub [('a', 1), ('b', 2)]",
             "subclass-delitem-missing True str 'missing'",
             "subclass-del-syntax-missing True str 'missing'",

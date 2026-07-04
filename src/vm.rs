@@ -15089,6 +15089,8 @@ impl Vm {
                             | "__ior__"
                             | "__iter__"
                             | "__len__"
+                            | "__or__"
+                            | "__ror__"
                             | "__setitem__"
                     ) {
                         return Ok(Value::BoundMethod {
@@ -52819,7 +52821,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__iter__",
             "__len__",
             "__new__",
+            "__or__",
             "__repr__",
+            "__ror__",
             "__setitem__",
             "__str__",
             "clear",
@@ -52844,7 +52848,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__iter__",
             "__len__",
             "__new__",
+            "__or__",
             "__repr__",
+            "__ror__",
             "__setitem__",
             "__str__",
             "clear",
@@ -56558,7 +56564,9 @@ fn simple_namespace_replace_type_error(class: &Value, value: &Value) -> String {
 }
 
 fn dict_subclass_method(receiver: Value, name: &str) -> Option<Value> {
-    if dict_subclass_entries(&receiver).is_some() && is_builtin_dict_type_method(name) {
+    if dict_subclass_entries(&receiver).is_some()
+        && (is_builtin_dict_type_method(name) || is_builtin_dict_union_type_method(name))
+    {
         Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("dict.{name}"))),
             receiver: Box::new(receiver),
@@ -56606,8 +56614,14 @@ fn is_builtin_dict_type_method(name: &str) -> bool {
     )
 }
 
+fn is_builtin_dict_union_type_method(name: &str) -> bool {
+    matches!(name, "__or__" | "__ror__")
+}
+
 fn is_builtin_user_dict_type_method(name: &str) -> bool {
-    is_builtin_dict_type_method(name) || matches!(name, "__format__" | "__init__")
+    is_builtin_dict_type_method(name)
+        || is_builtin_dict_union_type_method(name)
+        || matches!(name, "__format__" | "__init__")
 }
 
 fn is_builtin_mappingproxy_type_method(name: &str) -> bool {
@@ -59926,7 +59940,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__ior__"
                         | "__iter__"
                         | "__len__"
+                        | "__or__"
                         | "__repr__"
+                        | "__ror__"
                         | "__setitem__"
                         | "__str__"
                 ) {
@@ -61314,7 +61330,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
                 | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
                 | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__"
-                | "__repr__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
+                | "__or__" | "__repr__" | "__ror__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
                     receiver: Box::new(Value::UserDict { data, attrs }),
                     identity: Rc::new(()),
@@ -62734,6 +62750,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("dict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "dict" && is_builtin_dict_union_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
         }
@@ -66955,7 +66976,8 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
 
     match type_name {
         "object" => matches!(method, "__getstate__"),
-        "dict" | "OrderedDict" => is_builtin_dict_type_method(method),
+        "dict" => is_builtin_dict_type_method(method) || is_builtin_dict_union_type_method(method),
+        "OrderedDict" => is_builtin_dict_type_method(method),
         "defaultdict" => {
             is_builtin_dict_type_method(method) || matches!(method, "__copy__" | "__missing__")
         }
@@ -80483,6 +80505,30 @@ fn call_dict_method(
             insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
             Ok(Value::None)
         }
+        "dict.__or__" | "dict.__ror__" => {
+            reject_method_keywords(name, &keywords)?;
+            let [dict, other] = args.as_slice() else {
+                return Err(format!(
+                    "{}() expected 1 argument, got {}",
+                    method_display_name(name),
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(receiver_entries) = dict_direct_union_entries(dict) else {
+                return Err(format!(
+                    "{}() expected a dict receiver",
+                    method_display_name(name)
+                ));
+            };
+            let Some(other_entries) = dict_direct_union_entries(other) else {
+                return Ok(Value::NotImplemented);
+            };
+            if name == "dict.__ror__" {
+                dict_union_from_entries(other_entries, receiver_entries)
+            } else {
+                dict_union_from_entries(receiver_entries, other_entries)
+            }
+        }
         "dict.__ior__" => {
             reject_method_keywords(name, &keywords)?;
             let [dict, other] = args.as_slice() else {
@@ -80862,6 +80908,28 @@ fn call_user_dict_method(
             insert_live_dict_entry(&mut data, key, value)?;
         }
         return Ok(receiver.clone());
+    }
+
+    if matches!(method, "__or__" | "__ror__") {
+        reject_method_keywords(name, &keywords)?;
+        let [other] = rest else {
+            return Err(format!(
+                "{method}() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let Some(other_entries) = user_dict_union_entries(other) else {
+            return Ok(Value::NotImplemented);
+        };
+        let (mut entries, updates) = if method == "__ror__" {
+            (other_entries, data.borrow().clone())
+        } else {
+            (data.borrow().clone(), other_entries)
+        };
+        for (key, value) in updates {
+            insert_dict_entry(&mut entries, key, value)?;
+        }
+        return user_dict_union_result_like(receiver, entries);
     }
 
     let dict_receiver = Value::Dict(data.clone());
@@ -83042,6 +83110,28 @@ fn dict_union_from_entries(
     build_dict(entries)
 }
 
+fn dict_direct_union_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
+    match value {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::Counter { entries } => Some(entries.borrow().clone()),
+        value if counter_subclass_entries(value).is_some() => Some(
+            counter_subclass_entries(value)
+                .expect("Counter subclass entries exist after guard")
+                .borrow()
+                .clone(),
+        ),
+        value if dict_subclass_entries(value).is_some() => Some(
+            dict_subclass_entries(value)
+                .expect("dict subclass entries exist after guard")
+                .borrow()
+                .clone(),
+        ),
+        _ => None,
+    }
+}
+
 fn dict_union_operand_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
     match value {
         Value::Dict(entries) | Value::MappingProxy { entries, .. } => {
@@ -83054,6 +83144,54 @@ fn dict_union_operand_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
                 .clone(),
         ),
         _ => None,
+    }
+}
+
+fn user_dict_union_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
+    match value {
+        Value::UserDict { data, .. } => Some(data.borrow().clone()),
+        value if user_dict_subclass_data(value).is_some() => Some(
+            user_dict_subclass_data(value)
+                .expect("UserDict subclass data exists after guard")
+                .borrow()
+                .clone(),
+        ),
+        value => dict_direct_union_entries(value),
+    }
+}
+
+fn user_dict_union_result_like(
+    receiver: &Value,
+    entries: Vec<(Value, Value)>,
+) -> Result<Value, String> {
+    let data = dict_ref_from_entries(entries)?;
+    match receiver {
+        Value::UserDict { attrs, .. } => Ok(Value::UserDict {
+            data,
+            attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
+        Value::Instance {
+            class_name,
+            fields,
+            class_attrs,
+            class_bases,
+        } if user_dict_subclass_data(receiver).is_some() => {
+            let copied_fields = Rc::new(RefCell::new(fields.borrow().clone()));
+            copied_fields.borrow_mut().insert(
+                USER_DICT_SUBCLASS_STORAGE_FIELD.to_string(),
+                Value::UserDict {
+                    data,
+                    attrs: dict_ref_from_entries(Vec::new())?,
+                },
+            );
+            Ok(Value::Instance {
+                class_name: class_name.clone(),
+                fields: copied_fields,
+                class_attrs: class_attrs.clone(),
+                class_bases: class_bases.clone(),
+            })
+        }
+        _ => Err(format!("{} is not a UserDict", type_name(receiver))),
     }
 }
 
