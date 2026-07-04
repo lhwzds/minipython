@@ -35370,6 +35370,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_getattribute_wrapper_subset",
             "cpython_function_setattr_delattr_wrapper_subset",
             "cpython_function_init_wrapper_subset",
+            "cpython_function_init_subclass_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35471,6 +35472,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_getattribute_wrapper_diff_subset",
         "cpython_function_setattr_delattr_wrapper_diff_subset",
         "cpython_function_init_wrapper_diff_subset",
+        "cpython_function_init_subclass_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42647,6 +42649,102 @@ fn function_init_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __init__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_init_subclass_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_init_subclass_wrapper_subset";
+    let diff_name = "cpython_function_init_subclass_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "wrapper = f.__init_subclass__",
+        "rendered = repr(wrapper)",
+        "doc = wrapper.__doc__",
+        "'__init_subclass__' in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is type(f)",
+        "wrapper.__self__.__name__",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "doc.startswith('This method is called')",
+        "'default implementation does nothing' in doc",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "rendered.startswith('<built-in method __init_subclass__ of type object at 0x')",
+        "('call', lambda: wrapper())",
+        "('extra', lambda: wrapper(1))",
+        "('keyword', lambda: wrapper(x=1))",
+        "value is None",
+        "error.args",
+        "f.__dict__['__init_subclass__'] = 'shadow-init-subclass'",
+        "del f.__dict__['__init_subclass__']",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __init_subclass__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True builtin_function_or_method builtin_function_or_method\"",
+        "\"True function __init_subclass__ function.__init_subclass__ True True None ($type, /)\"",
+        "\"True True True\"",
+        "\"call True None NoneType\"",
+        "\"extra TypeError function.__init_subclass__() takes no arguments (1 given)",
+        "\"keyword TypeError function.__init_subclass__() takes no keyword arguments",
+        "\"shadow builtin_function_or_method shadow-init-subclass shadow-init-subclass True\"",
+        "\"unshadow builtin_function_or_method False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __init_subclass__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<built-in method __init_subclass__ of type object at 0x{:x}>\"",
+        "stable_builtin_type_repr_address(receiver_name)",
+        "fn stable_builtin_type_repr_address(",
+        "name == \"function.__init_subclass__\"",
+        "self.call_function_init_subclass(args, keywords)",
+        "fn call_function_init_subclass(",
+        "\"function.__init_subclass__\".to_string()",
+        "Value::Builtin(\"function\".to_string())",
+        "function.__init_subclass__() takes no keyword arguments",
+        "function.__init_subclass__() takes no arguments",
+        "function.__init_subclass__",
+        "This method is called when a class is subclassed.",
+        "default implementation does nothing",
+        "($type, /)",
+        "\"__init_subclass__\"",
+        "Ok(Value::None)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __init_subclass__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __init_subclass__ wrapper metadata",
+            "type-level builtin method binding",
+            "custom attribute shadowing",
+            "builtin_function_or_method",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __init_subclass__ wrapper docs must contain `{required}`"
             );
         }
     }

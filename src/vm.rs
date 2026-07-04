@@ -10172,6 +10172,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__init__" => {
                 self.call_function_init(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__init_subclass__" => {
+                self.call_function_init_subclass(args, keywords)
+            }
             Value::Builtin(name) if function_rich_compare_wrapper_name(&name) => {
                 self.call_function_rich_compare(&name, args, keywords)
             }
@@ -18159,6 +18162,31 @@ impl Vm {
             return Err(
                 "TypeError: descriptor method wrapper requires a function object".to_string(),
             );
+        }
+        Ok(Value::None)
+    }
+
+    fn call_function_init_subclass(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: function.__init_subclass__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if function_name == "function") {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: function.__init_subclass__() takes no arguments ({} given)",
+                rest.len()
+            ));
         }
         Ok(Value::None)
     }
@@ -51764,6 +51792,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                     "__gt__",
                     "__hash__",
                     "__init__",
+                    "__init_subclass__",
                     "__le__",
                     "__lt__",
                     "__module__",
@@ -57773,6 +57802,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__init_subclass__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("function.__init_subclass__".to_string())),
+            receiver: Box::new(Value::Builtin("function".to_string())),
+            identity: Rc::new(()),
+        }),
         "__format__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__format__".to_string())),
             receiver: Box::new(function.clone()),
@@ -61799,6 +61833,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__init_subclass__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__format__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63805,6 +63844,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "function.__init__" =>
         {
             Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__init_subclass__" =>
+        {
+            Ok(Value::String("function.__init_subclass__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "function.__init_subclass__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "function.__init_subclass__" =>
+        {
+            Ok(Value::String("This method is called when a class is subclassed.\n\nThe default implementation does nothing. It may be\noverridden to extend subclasses.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__init_subclass__" =>
+        {
+            Ok(Value::String("($type, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__format__" =>

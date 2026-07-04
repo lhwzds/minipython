@@ -14209,6 +14209,37 @@ print('unshadow', type(f.__init__).__name__, '__init__' in f.__dict__)"#,
 }
 
 #[test]
+fn cpython_function_init_subclass_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __init_subclass__ wrapper subset",
+        name: "function-init-subclass-wrapper",
+        source: r#"def f():
+    pass
+wrapper = f.__init_subclass__
+rendered = repr(wrapper)
+doc = wrapper.__doc__
+print('__init_subclass__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is type(f), wrapper.__self__.__name__, wrapper.__name__, wrapper.__qualname__, doc.startswith('This method is called'), 'default implementation does nothing' in doc, wrapper.__module__, wrapper.__text_signature__)
+print(rendered.startswith('<built-in method __init_subclass__ of type object at 0x'), rendered.endswith('>'), str(wrapper) == rendered)
+for label, call in [
+    ('call', lambda: wrapper()),
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__init_subclass__).__name__
+f.__dict__['__init_subclass__'] = 'shadow-init-subclass'
+print('shadow', base, f.__init_subclass__, f.__dict__['__init_subclass__'], '__init_subclass__' in dir(f))
+del f.__dict__['__init_subclass__']
+print('unshadow', type(f.__init_subclass__).__name__, '__init_subclass__' in f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

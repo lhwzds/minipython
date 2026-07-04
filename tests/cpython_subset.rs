@@ -29420,6 +29420,48 @@ print('unshadow', type(f.__init__).__name__, '__init__' in f.__dict__)"#,
     );
 }
 
+// Adapted from CPython public function-object `__init_subclass__` wrapper
+// behavior. This pins type-level builtin method metadata, no-op calls, and
+// custom attribute shadowing without depending on concrete address values.
+#[test]
+fn cpython_function_init_subclass_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__init_subclass__
+rendered = repr(wrapper)
+doc = wrapper.__doc__
+print('__init_subclass__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is type(f), wrapper.__self__.__name__, wrapper.__name__, wrapper.__qualname__, doc.startswith('This method is called'), 'default implementation does nothing' in doc, wrapper.__module__, wrapper.__text_signature__)
+print(rendered.startswith('<built-in method __init_subclass__ of type object at 0x'), rendered.endswith('>'), str(wrapper) == rendered)
+for label, call in [
+    ('call', lambda: wrapper()),
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__init_subclass__).__name__
+f.__dict__['__init_subclass__'] = 'shadow-init-subclass'
+print('shadow', base, f.__init_subclass__, f.__dict__['__init_subclass__'], '__init_subclass__' in dir(f))
+del f.__dict__['__init_subclass__']
+print('unshadow', type(f.__init_subclass__).__name__, '__init_subclass__' in f.__dict__)"#,
+        &[
+            "True builtin_function_or_method builtin_function_or_method",
+            "True function __init_subclass__ function.__init_subclass__ True True None ($type, /)",
+            "True True True",
+            "call True None NoneType",
+            "extra TypeError function.__init_subclass__() takes no arguments (1 given) ('function.__init_subclass__() takes no arguments (1 given)',)",
+            "keyword TypeError function.__init_subclass__() takes no keyword arguments ('function.__init_subclass__() takes no keyword arguments',)",
+            "shadow builtin_function_or_method shadow-init-subclass shadow-init-subclass True",
+            "unshadow builtin_function_or_method False",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

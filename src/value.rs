@@ -1920,6 +1920,9 @@ fn format_exception_args_repr(args: &[Value]) -> String {
 }
 
 fn format_bound_method(function: &Value, receiver: &Value) -> String {
+    if let Some(rendered) = format_function_type_builtin_method(function, receiver) {
+        return rendered;
+    }
     if let Some(rendered) = format_function_builtin_method(function, receiver) {
         return rendered;
     }
@@ -1931,6 +1934,27 @@ fn format_bound_method(function: &Value, receiver: &Value) -> String {
         bound_method_display_name(function),
         format_value_repr(receiver)
     )
+}
+
+fn format_function_type_builtin_method(function: &Value, receiver: &Value) -> Option<String> {
+    let Value::Builtin(function_name) = function else {
+        return None;
+    };
+    let Value::Builtin(receiver_name) = receiver else {
+        return None;
+    };
+    match (function_name.as_str(), receiver_name.as_str()) {
+        ("function.__init_subclass__", "function") => Some(format!(
+            "<built-in method __init_subclass__ of type object at 0x{:x}>",
+            stable_builtin_type_repr_address(receiver_name)
+        )),
+        _ => None,
+    }
+}
+
+fn stable_builtin_type_repr_address(name: &str) -> usize {
+    name.bytes()
+        .fold(0x345usize, |acc, byte| acc.wrapping_mul(33) ^ byte as usize)
 }
 
 fn format_function_builtin_method(function: &Value, receiver: &Value) -> Option<String> {
