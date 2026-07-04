@@ -16140,6 +16140,9 @@ impl Vm {
                 ),
             [] if self.is_module => Ok(sorted_name_list(scope_names(&self.globals))),
             [] => Ok(sorted_name_list(scope_names(&self.locals))),
+            [object] if matches!(object, Value::Builtin(name) if name == "tuple") => Ok(
+                sorted_name_list(self.default_dir_names_value(object.clone())?),
+            ),
             [object] => match self.load_attribute_catching(object.clone(), "__dir__")? {
                 Ok(dir_method) => match self.call_value_catching(dir_method, Vec::new())? {
                     Ok(value) => self.dir_result_from_value(value),
@@ -59855,7 +59858,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | Value::Function { .. }
                 | Value::BoundMethod { .. }
         )
-        && !matches!(&object, Value::Builtin(builtin) if builtin == "object")
+        && !matches!(&object, Value::Builtin(builtin) if matches!(builtin.as_str(), "object" | "tuple"))
     {
         return Ok(object_dir_bound_method(object));
     }
@@ -62873,6 +62876,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__dir__" => {
+            Ok(Value::Builtin("object.__dir__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__getstate__" => {
             Ok(Value::Builtin("object.__getstate__".to_string()))
@@ -67140,7 +67146,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         return false;
     };
     match type_name {
-        "object" => matches!(method, "__format__" | "__getstate__"),
+        "object" => matches!(method, "__dir__" | "__format__" | "__getstate__"),
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "io" => matches!(
             method,

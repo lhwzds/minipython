@@ -81,6 +81,13 @@ Recent runtime migration notes:
   `object.__getstate__`, `tuple.__getstate__ is object.__getstate__`, and
   `method_descriptor` visibility, without adding pickle state, object-layout internals, or descriptor `__get__` metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_tuple_inherited_dir_direct_subset`, backed by
+  `cpython_tuple_inherited_dir_direct_diff_subset`, now pins tuple inherited `__dir__`,
+  exact and tuple-subclass default dir-list shape checks, direct `tuple.__dir__`
+  dispatch for tuple and non-tuple receivers, non-tuple direct receiver support
+  through `object.__dir__`, `tuple.__dir__ is object.__dir__`, and
+  `method_descriptor` visibility, without adding exact `dir()` list length/order parity or full descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_list_subclass_new_storage_subset`, backed by
   `cpython_list_subclass_new_storage_diff_subset`, now pins list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,

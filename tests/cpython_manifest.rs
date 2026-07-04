@@ -910,6 +910,96 @@ fn tuple_inherited_getstate_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_dir_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_dir_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_dir_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited dir direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited dir direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__dir__()",
+        "left.__dir__()",
+        "tuple.__dir__((1, 'x'))",
+        "tuple.__dir__(left)",
+        "tuple.__dir__(object())",
+        "'__class__' in result",
+        "'__dir__' in result",
+        "'__len__' in result",
+        "'__getstate__' in result",
+        "hasattr(left, '__dir__')",
+        "'__dir__' in dir(left)",
+        "'__dir__' in dir(T)",
+        "'__dir__' in dir(tuple)",
+        "type(tuple.__dir__).__name__",
+        "tuple.__dir__ is object.__dir__",
+        "type(object.__dir__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited dir direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dir-exact list True True True True True\"",
+        "\"dir-sub list True True True True True\"",
+        "\"type-dir-exact list True True True True True\"",
+        "\"type-dir-sub list True True True True True\"",
+        "\"type-dir-object list True True False True True\"",
+        "\"visible True True True True method_descriptor True method_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited dir direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"tuple\" && name == \"__dir__\"",
+        "Ok(Value::Builtin(\"object.__dir__\".to_string()))",
+        "matches!(object, Value::Builtin(name) if name == \"tuple\")",
+        "Value::Builtin(name) if name == \"object.__dir__\"",
+        "self.call_object_dir(args)",
+        "matches!(builtin.as_str(), \"object\" | \"tuple\")",
+        "object_dir_bound_method(object)",
+        "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
+        "\"object\" => matches!(method, \"__dir__\" | \"__format__\" | \"__getstate__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited dir direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__dir__`",
+            "`tuple.__dir__ is object.__dir__`",
+            "non-tuple direct receiver support",
+            "method_descriptor",
+            "without adding exact `dir()` list length/order parity or full descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited dir direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_subclass_new_storage_docs_cover_core_runtime() {
     let diff_name = "cpython_list_subclass_new_storage_diff_subset";
     let subset_name = "cpython_list_subclass_new_storage_subset";

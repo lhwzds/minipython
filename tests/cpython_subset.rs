@@ -54921,6 +54921,41 @@ fn cpython_tuple_inherited_getstate_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __dir__ inheritance. This pins the
+// inherited object.__dir__ method descriptor without expanding into exact
+// dir-list length/order or full descriptor metadata.
+#[test]
+fn cpython_tuple_inherited_dir_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('dir-exact', lambda: (1, 'x').__dir__()),\n",
+            "    ('dir-sub', lambda: left.__dir__()),\n",
+            "    ('type-dir-exact', lambda: tuple.__dir__((1, 'x'))),\n",
+            "    ('type-dir-sub', lambda: tuple.__dir__(left)),\n",
+            "    ('type-dir-object', lambda: tuple.__dir__(object())),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, '__class__' in result, '__dir__' in result, '__len__' in result, '__getstate__' in result, len(result) > 0)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__dir__'), '__dir__' in dir(left), '__dir__' in dir(T), '__dir__' in dir(tuple), type(tuple.__dir__).__name__, tuple.__dir__ is object.__dir__, type(object.__dir__).__name__)",
+        ),
+        &[
+            "dir-exact list True True True True True",
+            "dir-sub list True True True True True",
+            "type-dir-exact list True True True True True",
+            "type-dir-sub list True True True True True",
+            "type-dir-object list True True False True True",
+            "visible True True True True method_descriptor True method_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

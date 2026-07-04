@@ -18281,6 +18281,30 @@ print('visible', hasattr(left, '__getstate__'), '__getstate__' in dir(left), '__
 }
 
 #[test]
+fn cpython_tuple_inherited_dir_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __dir__ method descriptor behavior",
+        name: "tuple-inherited-dir-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('dir-exact', lambda: (1, 'x').__dir__()),
+    ('dir-sub', lambda: left.__dir__()),
+    ('type-dir-exact', lambda: tuple.__dir__((1, 'x'))),
+    ('type-dir-sub', lambda: tuple.__dir__(left)),
+    ('type-dir-object', lambda: tuple.__dir__(object())),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, '__class__' in result, '__dir__' in result, '__len__' in result, '__getstate__' in result, len(result) > 0)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__dir__'), '__dir__' in dir(left), '__dir__' in dir(T), '__dir__' in dir(tuple), type(tuple.__dir__).__name__, tuple.__dir__ is object.__dir__, type(object.__dir__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
