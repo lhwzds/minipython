@@ -14027,6 +14027,40 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_rich_compare_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __eq__ / __ne__ wrapper subset",
+        name: "function-rich-compare-wrapper",
+        source: r#"def f():
+    pass
+def g():
+    pass
+for attr in ['__eq__', '__ne__']:
+    wrapper = getattr(f, attr)
+    wrapper_rendered = repr(wrapper)
+    print(attr, attr in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, other in [('self', f), ('same', f), ('different', g), ('non-function', 1)]:
+        value = wrapper(other)
+        print(attr, label, value, value is NotImplemented, type(value).__name__)
+    print(attr, wrapper_rendered.startswith("<method-wrapper '" + attr + "' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(f, 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(value=f)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(attr, label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

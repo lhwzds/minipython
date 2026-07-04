@@ -10160,6 +10160,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__hash__" => {
                 self.call_function_hash(args, keywords)
             }
+            Value::Builtin(name) if function_rich_compare_wrapper_name(&name) => {
+                self.call_function_rich_compare(&name, args, keywords)
+            }
             Value::Builtin(name)
                 if name == "json.function.__repr__" || name == "json.function.__str__" =>
             {
@@ -18035,6 +18038,43 @@ impl Vm {
         }
 
         self.hash_key_value(receiver)
+    }
+
+    fn call_function_rich_compare(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [other] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+
+        match method {
+            "__eq__" if is_identical(receiver, other) => Ok(Value::Bool(true)),
+            "__ne__" if is_identical(receiver, other) => Ok(Value::Bool(false)),
+            "__eq__" | "__ne__" => Ok(Value::NotImplemented),
+            _ => Ok(Value::NotImplemented),
+        }
     }
 
     fn call_method_call(
@@ -51589,12 +51629,14 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__annotations__",
                 "__call__",
                 "__doc__",
+                "__eq__",
                 "__format__",
                 "__get__",
                 "__globals__",
                 "__hash__",
                 "__module__",
                 "__name__",
+                "__ne__",
                 "__qualname__",
                 "__repr__",
                 "__str__",
@@ -57587,6 +57629,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__eq__" | "__ne__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("function.{name}"))),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
         "__repr__" | "__str__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("function.{name}"))),
             receiver: Box::new(function.clone()),
@@ -61568,6 +61615,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if function_rich_compare_wrapper_name(name)) =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__format__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63553,6 +63605,25 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "function.__hash__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_rich_compare_wrapper_name(&function_name) =>
+        {
+            Ok(Value::String(format!(
+                "object.{}",
+                method_display_name(&function_name)
+            )))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__eq__" => {
+            Ok(Value::String("Return self==value.".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__ne__" => {
+            Ok(Value::String("Return self!=value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_rich_compare_wrapper_name(&function_name) =>
+        {
+            Ok(Value::String("($self, value, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "json.function.__call__" =>
@@ -66206,6 +66277,10 @@ fn method_rich_compare_wrapper_name(name: &str) -> bool {
     )
 }
 
+fn function_rich_compare_wrapper_name(name: &str) -> bool {
+    matches!(name, "function.__eq__" | "function.__ne__")
+}
+
 fn is_cell_rich_compare_method_name(name: &str) -> bool {
     matches!(
         name,
@@ -66244,7 +66319,9 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 }
 
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
-    matches!(name, "function.__hash__") || json_function_method_wrapper_missing_module_name(name)
+    matches!(name, "function.__hash__")
+        || function_rich_compare_wrapper_name(name)
+        || json_function_method_wrapper_missing_module_name(name)
 }
 
 fn is_method_wrapper_name(name: &str) -> bool {
@@ -66257,6 +66334,8 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__call__"
             | "function.__get__"
             | "function.__hash__"
+            | "function.__eq__"
+            | "function.__ne__"
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"

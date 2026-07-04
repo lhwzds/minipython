@@ -35365,6 +35365,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_get_descriptor_wrapper_subset",
             "cpython_function_format_wrapper_subset",
             "cpython_function_hash_wrapper_subset",
+            "cpython_function_rich_compare_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35461,6 +35462,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_get_descriptor_wrapper_diff_subset",
         "cpython_function_format_wrapper_diff_subset",
         "cpython_function_hash_wrapper_diff_subset",
+        "cpython_function_rich_compare_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42091,6 +42093,111 @@ fn function_hash_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __hash__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_rich_compare_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_rich_compare_wrapper_subset";
+    let diff_name = "cpython_function_rich_compare_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "def g():",
+        "for attr in ['__eq__', '__ne__']",
+        "wrapper = getattr(f, attr)",
+        "wrapper_rendered = repr(wrapper)",
+        "attr in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "('self', f)",
+        "('same', f)",
+        "('different', g)",
+        "('non-function', 1)",
+        "value is NotImplemented",
+        "wrapper_rendered.startswith(\"<method-wrapper '\" + attr + \"' of function object at 0x\")",
+        "wrapper.__module__",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper: wrapper(f, 1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(value=f))",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function rich-compare wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__eq__ True method-wrapper method-wrapper\"",
+        "\"__eq__ True __eq__ object.__eq__ Return self==value. MISSING ($self, value, /)\"",
+        "\"__eq__ self True False bool\"",
+        "\"__eq__ different NotImplemented True NotImplementedType\"",
+        "\"__eq__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__eq__ missing TypeError expected 1 argument, got 0",
+        "\"__eq__ extra TypeError expected 1 argument, got 2",
+        "\"__eq__ keyword TypeError wrapper __eq__() takes no keyword arguments",
+        "\"__ne__ True method-wrapper method-wrapper\"",
+        "\"__ne__ True __ne__ object.__ne__ Return self!=value. MISSING ($self, value, /)\"",
+        "\"__ne__ self False False bool\"",
+        "\"__ne__ different NotImplemented True NotImplementedType\"",
+        "\"__ne__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__ne__ missing TypeError expected 1 argument, got 0",
+        "\"__ne__ extra TypeError expected 1 argument, got 2",
+        "\"__ne__ keyword TypeError wrapper __ne__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function rich-compare wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<method-wrapper '__eq__' of function object at 0x{:x}>\"",
+        "\"<method-wrapper '__ne__' of function object at 0x{:x}>\"",
+        "Value::Builtin(format!(\"function.{name}\"))",
+        "fn call_function_rich_compare(",
+        "function_rich_compare_wrapper_name(&name)",
+        "function_rich_compare_wrapper_name(&function_name)",
+        "matches!(name, \"function.__eq__\" | \"function.__ne__\")",
+        "function_method_wrapper_missing_module_name(name)",
+        "function_rich_compare_wrapper_name(name)",
+        "wrapper {method}() takes no keyword arguments",
+        "expected 1 argument, got {}",
+        "\"__eq__\" if is_identical(receiver, other)",
+        "\"__ne__\" if is_identical(receiver, other)",
+        "Ok(Value::NotImplemented)",
+        "($self, value, /)",
+        "| \"function.__eq__\"",
+        "| \"function.__ne__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function rich-compare wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __eq__ / __ne__ wrapper metadata",
+            "method-wrapper",
+            "NotImplemented fallback",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function rich-compare wrapper docs must contain `{required}`"
             );
         }
     }

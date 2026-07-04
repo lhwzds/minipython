@@ -29116,6 +29116,65 @@ for label, call in [
     );
 }
 
+// Adapted from CPython public function-object rich-compare wrapper behavior.
+// This pins `__eq__` / `__ne__` metadata, identity comparison, and
+// NotImplemented fallback without depending on concrete address values.
+#[test]
+fn cpython_function_rich_compare_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+def g():
+    pass
+for attr in ['__eq__', '__ne__']:
+    wrapper = getattr(f, attr)
+    wrapper_rendered = repr(wrapper)
+    print(attr, attr in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, other in [('self', f), ('same', f), ('different', g), ('non-function', 1)]:
+        value = wrapper(other)
+        print(attr, label, value, value is NotImplemented, type(value).__name__)
+    print(attr, wrapper_rendered.startswith("<method-wrapper '" + attr + "' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(f, 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(value=f)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "__eq__ True method-wrapper method-wrapper",
+            "__eq__ True __eq__ object.__eq__ Return self==value. MISSING ($self, value, /)",
+            "__eq__ self True False bool",
+            "__eq__ same True False bool",
+            "__eq__ different NotImplemented True NotImplementedType",
+            "__eq__ non-function NotImplemented True NotImplementedType",
+            "__eq__ True True True",
+            "__eq__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__eq__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__eq__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__eq__ keyword TypeError wrapper __eq__() takes no keyword arguments ('wrapper __eq__() takes no keyword arguments',)",
+            "__ne__ True method-wrapper method-wrapper",
+            "__ne__ True __ne__ object.__ne__ Return self!=value. MISSING ($self, value, /)",
+            "__ne__ self False False bool",
+            "__ne__ same False False bool",
+            "__ne__ different NotImplemented True NotImplementedType",
+            "__ne__ non-function NotImplemented True NotImplementedType",
+            "__ne__ True True True",
+            "__ne__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__ne__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__ne__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__ne__ keyword TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

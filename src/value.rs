@@ -1969,6 +1969,14 @@ fn format_function_method_wrapper(function: &Value, receiver: &Value) -> Option<
             "<method-wrapper '__hash__' of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize
         )),
+        "function.__eq__" => Some(format!(
+            "<method-wrapper '__eq__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        "function.__ne__" => Some(format!(
+            "<method-wrapper '__ne__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
         _ => None,
     }
 }
