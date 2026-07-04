@@ -53181,6 +53181,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__eq__",
             "__format__",
             "__ge__",
+            "__getstate__",
             "__getitem__",
             "__gt__",
             "__iter__",
@@ -62872,6 +62873,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__getstate__" => {
+            Ok(Value::Builtin("object.__getstate__".to_string()))
         }
         Value::Builtin(function_name)
             if matches!(function_name.as_str(), "int" | "bool")

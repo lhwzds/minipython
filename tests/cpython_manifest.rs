@@ -812,6 +812,104 @@ fn tuple_inherited_format_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_getstate_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_getstate_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_getstate_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited getstate direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited getstate direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__getstate__()",
+        "left.__getstate__()",
+        "tuple.__getstate__((1, 'x'))",
+        "tuple.__getstate__(left)",
+        "tuple.__getstate__([1, 2])",
+        "hasattr(left, '__getstate__')",
+        "'__getstate__' in dir(left)",
+        "'__getstate__' in dir(T)",
+        "'__getstate__' in dir(tuple)",
+        "type(tuple.__getstate__).__name__",
+        "tuple.__getstate__ is object.__getstate__",
+        "type(object.__getstate__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited getstate direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"getstate-exact NoneType None\"",
+        "\"getstate-sub NoneType None\"",
+        "\"type-getstate-exact NoneType None\"",
+        "\"type-getstate-sub NoneType None\"",
+        "\"type-getstate-list NoneType None\"",
+        "\"visible True True True True method_descriptor True method_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited getstate direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__getstate__\""),
+        "tuple dir block must expose inherited `__getstate__`"
+    );
+
+    for required in [
+        "function_name == \"tuple\" && name == \"__getstate__\"",
+        "Ok(Value::Builtin(\"object.__getstate__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__getstate__\"",
+        "self.call_object_getstate(args, keywords)",
+        "has_default_object_getstate(&object)",
+        "object_getstate_bound_method(object)",
+        "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited getstate direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__getstate__`",
+            "`tuple.__getstate__ is object.__getstate__`",
+            "non-tuple direct receiver support",
+            "method_descriptor",
+            "without adding pickle state, object-layout internals, or descriptor `__get__` metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited getstate direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_subclass_new_storage_docs_cover_core_runtime() {
     let diff_name = "cpython_list_subclass_new_storage_diff_subset";
     let subset_name = "cpython_list_subclass_new_storage_subset";

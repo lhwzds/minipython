@@ -18257,6 +18257,30 @@ print('visible', hasattr(left, '__format__'), '__format__' in dir(left), '__form
 }
 
 #[test]
+fn cpython_tuple_inherited_getstate_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __getstate__ method descriptor behavior",
+        name: "tuple-inherited-getstate-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('getstate-exact', lambda: (1, 'x').__getstate__()),
+    ('getstate-sub', lambda: left.__getstate__()),
+    ('type-getstate-exact', lambda: tuple.__getstate__((1, 'x'))),
+    ('type-getstate-sub', lambda: tuple.__getstate__(left)),
+    ('type-getstate-list', lambda: tuple.__getstate__([1, 2])),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__getstate__'), '__getstate__' in dir(left), '__getstate__' in dir(T), '__getstate__' in dir(tuple), type(tuple.__getstate__).__name__, tuple.__getstate__ is object.__getstate__, type(object.__getstate__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

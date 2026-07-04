@@ -54886,6 +54886,41 @@ fn cpython_tuple_inherited_format_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __getstate__ inheritance. This pins the
+// inherited object.__getstate__ method descriptor without expanding into pickle
+// state, object layout, or descriptor __get__ metadata.
+#[test]
+fn cpython_tuple_inherited_getstate_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('getstate-exact', lambda: (1, 'x').__getstate__()),\n",
+            "    ('getstate-sub', lambda: left.__getstate__()),\n",
+            "    ('type-getstate-exact', lambda: tuple.__getstate__((1, 'x'))),\n",
+            "    ('type-getstate-sub', lambda: tuple.__getstate__(left)),\n",
+            "    ('type-getstate-list', lambda: tuple.__getstate__([1, 2])),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__getstate__'), '__getstate__' in dir(left), '__getstate__' in dir(T), '__getstate__' in dir(tuple), type(tuple.__getstate__).__name__, tuple.__getstate__ is object.__getstate__, type(object.__getstate__).__name__)",
+        ),
+        &[
+            "getstate-exact NoneType None",
+            "getstate-sub NoneType None",
+            "type-getstate-exact NoneType None",
+            "type-getstate-sub NoneType None",
+            "type-getstate-list NoneType None",
+            "visible True True True True method_descriptor True method_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]
