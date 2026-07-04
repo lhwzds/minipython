@@ -35372,6 +35372,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_init_wrapper_subset",
             "cpython_function_init_subclass_wrapper_subset",
             "cpython_function_subclasshook_wrapper_subset",
+            "cpython_function_getstate_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35475,6 +35476,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_init_wrapper_diff_subset",
         "cpython_function_init_subclass_wrapper_diff_subset",
         "cpython_function_subclasshook_wrapper_diff_subset",
+        "cpython_function_getstate_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42843,6 +42845,103 @@ fn function_subclasshook_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __subclasshook__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_getstate_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_getstate_wrapper_subset";
+    let diff_name = "cpython_function_getstate_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "wrapper = f.__getstate__",
+        "rendered = repr(wrapper)",
+        "'__getstate__' in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "rendered.startswith('<built-in method __getstate__ of function object at 0x')",
+        "('call', lambda: wrapper())",
+        "('extra', lambda: wrapper(1))",
+        "('keyword', lambda: wrapper(x=1))",
+        "('direct', lambda: object.__getstate__(f))",
+        "('direct-extra', lambda: object.__getstate__(f, 1))",
+        "('direct-keyword', lambda: object.__getstate__(f, x=1))",
+        "value is None",
+        "error.args",
+        "f.__dict__['__getstate__'] = 'shadow-getstate'",
+        "del f.__dict__['__getstate__']",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __getstate__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True builtin_function_or_method builtin_function_or_method\"",
+        "\"True __getstate__ function.__getstate__ Helper for pickle. None ($self, /)\"",
+        "\"True True True\"",
+        "\"call True None NoneType\"",
+        "\"extra TypeError function.__getstate__() takes no arguments (1 given)",
+        "\"keyword TypeError function.__getstate__() takes no keyword arguments",
+        "\"direct True None NoneType\"",
+        "\"direct-extra TypeError object.__getstate__() takes no arguments (1 given)",
+        "\"direct-keyword TypeError object.__getstate__() takes no keyword arguments",
+        "\"shadow builtin_function_or_method shadow-getstate shadow-getstate True\"",
+        "\"unshadow builtin_function_or_method False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __getstate__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<built-in method __getstate__ of function object at 0x{:x}>\"",
+        "name == \"function.__getstate__\"",
+        "self.call_function_getstate(args, keywords)",
+        "fn call_function_getstate(",
+        "\"function.__getstate__\".to_string()",
+        "function.__getstate__() takes no keyword arguments",
+        "function.__getstate__() takes no arguments",
+        "function.__getstate__",
+        "object.__getstate__() takes no keyword arguments",
+        "object.__getstate__() takes no arguments",
+        "Helper for pickle.",
+        "($self, /)",
+        "\"__getstate__\"",
+        "Ok(Value::None)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __getstate__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __getstate__ wrapper metadata",
+            "object.__getstate__ direct call",
+            "custom attribute shadowing",
+            "builtin_function_or_method",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __getstate__ wrapper docs must contain `{required}`"
             );
         }
     }

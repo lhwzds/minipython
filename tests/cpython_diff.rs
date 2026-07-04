@@ -14271,6 +14271,39 @@ print('unshadow', type(f.__subclasshook__).__name__, '__subclasshook__' in f.__d
 }
 
 #[test]
+fn cpython_function_getstate_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __getstate__ wrapper subset",
+        name: "function-getstate-wrapper",
+        source: r#"def f():
+    pass
+wrapper = f.__getstate__
+rendered = repr(wrapper)
+print('__getstate__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+print(rendered.startswith('<built-in method __getstate__ of function object at 0x'), rendered.endswith('>'), str(wrapper) == rendered)
+for label, call in [
+    ('call', lambda: wrapper()),
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+    ('direct', lambda: object.__getstate__(f)),
+    ('direct-extra', lambda: object.__getstate__(f, 1)),
+    ('direct-keyword', lambda: object.__getstate__(f, x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__getstate__).__name__
+f.__dict__['__getstate__'] = 'shadow-getstate'
+print('shadow', base, f.__getstate__, f.__dict__['__getstate__'], '__getstate__' in dir(f))
+del f.__dict__['__getstate__']
+print('unshadow', type(f.__getstate__).__name__, '__getstate__' in f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

@@ -1969,6 +1969,10 @@ fn format_function_builtin_method(function: &Value, receiver: &Value) -> Option<
         return None;
     };
     match name.as_str() {
+        "function.__getstate__" => Some(format!(
+            "<built-in method __getstate__ of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
         "function.__format__" => Some(format!(
             "<built-in method __format__ of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize

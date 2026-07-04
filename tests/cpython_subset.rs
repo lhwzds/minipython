@@ -29505,6 +29505,54 @@ print('unshadow', type(f.__subclasshook__).__name__, '__subclasshook__' in f.__d
     );
 }
 
+// Adapted from CPython public function-object `__getstate__` wrapper behavior.
+// This pins inherited object no-state behavior, direct object.__getstate__
+// calls, and custom attribute shadowing without depending on concrete address
+// values.
+#[test]
+fn cpython_function_getstate_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__getstate__
+rendered = repr(wrapper)
+print('__getstate__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+print(rendered.startswith('<built-in method __getstate__ of function object at 0x'), rendered.endswith('>'), str(wrapper) == rendered)
+for label, call in [
+    ('call', lambda: wrapper()),
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+    ('direct', lambda: object.__getstate__(f)),
+    ('direct-extra', lambda: object.__getstate__(f, 1)),
+    ('direct-keyword', lambda: object.__getstate__(f, x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__getstate__).__name__
+f.__dict__['__getstate__'] = 'shadow-getstate'
+print('shadow', base, f.__getstate__, f.__dict__['__getstate__'], '__getstate__' in dir(f))
+del f.__dict__['__getstate__']
+print('unshadow', type(f.__getstate__).__name__, '__getstate__' in f.__dict__)"#,
+        &[
+            "True builtin_function_or_method builtin_function_or_method",
+            "True __getstate__ function.__getstate__ Helper for pickle. None ($self, /)",
+            "True True True",
+            "call True None NoneType",
+            "extra TypeError function.__getstate__() takes no arguments (1 given) ('function.__getstate__() takes no arguments (1 given)',)",
+            "keyword TypeError function.__getstate__() takes no keyword arguments ('function.__getstate__() takes no keyword arguments',)",
+            "direct True None NoneType",
+            "direct-extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "direct-keyword TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+            "shadow builtin_function_or_method shadow-getstate shadow-getstate True",
+            "unshadow builtin_function_or_method False",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.
