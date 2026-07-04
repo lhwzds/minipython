@@ -35359,6 +35359,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_unicode_error_attributes_subset",
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
+            "cpython_object_instance_default_repr_shape_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35449,6 +35450,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_unicode_error_attributes_diff_subset",
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
+        "cpython_object_instance_default_repr_shape_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -41597,6 +41599,71 @@ fn object_repr_str_direct_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_object_repr_str_direct_diff_subset"),
             "focused object repr/str evidence must be documented in coverage and CPython test manifest"
         );
+    }
+}
+
+#[test]
+fn object_instance_default_repr_shape_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_object_instance_default_repr_shape_subset";
+    let diff_name = "cpython_object_instance_default_repr_shape_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "repr(c)",
+        "str(c)",
+        "object.__repr__(c)",
+        "C.__module__ = 'pkg.mod'",
+        "C.__module__ = 'builtins'",
+        "C.__module__ = 42",
+        "{'__module__': '', '__qualname__': 'Q'}",
+        "class Outer:",
+        "i.__repr__ = lambda: 'instance-repr'",
+        "Outer.Inner.__repr__ = lambda self: 'class-repr'",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused object instance repr shape subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True True True True True\"",
+        "\"True True\"",
+        "\"class-repr True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object instance repr shape subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "pub fn format_instance_object_repr(",
+        "\"<{type_name} object at 0x{:x}>\"",
+        "Rc::as_ptr(fields) as usize",
+        "format_instance_object_repr(class_name, fields, class_attrs)",
+        "return format_instance_object_repr(class_name, fields, class_attrs);",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "object instance repr shape implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "default user-instance repr/str shape",
+            "module and qualname",
+            "without depending on concrete addresses",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object instance repr shape docs must contain `{required}`"
+            );
+        }
     }
 }
 

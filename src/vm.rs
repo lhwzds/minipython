@@ -41,10 +41,10 @@ use crate::value::{
     SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState, TemplateInterpolation, Value,
     byte_array_value, bytes_io_value, bytes_value, code_metadata_namespace_entries_equal,
     complex_value, dict_value, dict_view_value, dict_view_values, float_value,
-    format_float_display, format_iterator_repr, frame_locals_proxy_value, frozen_set_value,
-    generic_alias_subclass_alias, identity_string_value, list_value, mapping_proxy_value,
-    mapping_view_value, memory_view_from_byte_array,
-    memory_view_from_parts_with_exported_bytearray,
+    format_float_display, format_instance_object_repr, format_iterator_repr,
+    frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
+    identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
+    memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
     memory_view_from_parts_with_exported_bytearray_and_ndim, memory_view_from_parts_with_format,
     memory_view_value, ordered_dict_view_value, set_value, tuple_value,
 };
@@ -68805,6 +68805,15 @@ impl Vm {
 fn default_object_repr(value: &Value) -> String {
     if matches!(value, Value::Cell { .. }) {
         return format!("<cell object at 0x{:x}>", identity_bits(value));
+    }
+    if let Value::Instance {
+        class_name,
+        fields,
+        class_attrs,
+        ..
+    } = value
+    {
+        return format_instance_object_repr(class_name, fields, class_attrs);
     }
     format!("<{} object>", type_name(value))
 }

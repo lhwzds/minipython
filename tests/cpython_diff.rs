@@ -13830,6 +13830,39 @@ for expr in [lambda: object.__repr__(), lambda: object.__repr__(plain, plain), l
 }
 
 #[test]
+fn cpython_object_instance_default_repr_shape_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public default user-instance repr shape subset",
+        name: "object-instance-default-repr-shape",
+        source: r#"class C:
+    pass
+c = C()
+r = repr(c)
+s = str(c)
+direct = object.__repr__(c)
+print(r.startswith('<__main__.C object at 0x'), r.endswith('>'), s == r, direct.startswith('<__main__.C object at 0x'), direct.endswith('>'))
+C.__module__ = 'pkg.mod'
+print(repr(c).startswith('<pkg.mod.C object at 0x'), object.__repr__(c).startswith('<pkg.mod.C object at 0x'))
+C.__module__ = 'builtins'
+print(repr(c).startswith('<C object at 0x'), object.__repr__(c).startswith('<C object at 0x'))
+C.__module__ = 42
+print(repr(c).startswith('<C object at 0x'), object.__repr__(c).startswith('<C object at 0x'))
+D = type('D', (), {'__module__': '', '__qualname__': 'Q'})
+d = D()
+print(repr(d).startswith('<.Q object at 0x'), object.__repr__(d).startswith('<.Q object at 0x'))
+class Outer:
+    class Inner:
+        pass
+i = Outer.Inner()
+print(repr(i).startswith('<__main__.Outer.Inner object at 0x'), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))
+i.__repr__ = lambda: 'instance-repr'
+print(repr(i).startswith('<__main__.Outer.Inner object at 0x'), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))
+Outer.Inner.__repr__ = lambda self: 'class-repr'
+print(repr(i), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

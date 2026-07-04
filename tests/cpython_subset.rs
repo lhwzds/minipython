@@ -28864,6 +28864,26 @@ fn cpython_object_repr_str_direct_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py` object representation
+// behavior. This pins the public default user-instance repr/str shape without
+// depending on the concrete address value.
+#[test]
+fn cpython_object_instance_default_repr_shape_subset() {
+    assert_output(
+        "class C:\n    pass\nc = C()\nr = repr(c)\ns = str(c)\ndirect = object.__repr__(c)\nprint(r.startswith('<__main__.C object at 0x'), r.endswith('>'), s == r, direct.startswith('<__main__.C object at 0x'), direct.endswith('>'))\nC.__module__ = 'pkg.mod'\nprint(repr(c).startswith('<pkg.mod.C object at 0x'), object.__repr__(c).startswith('<pkg.mod.C object at 0x'))\nC.__module__ = 'builtins'\nprint(repr(c).startswith('<C object at 0x'), object.__repr__(c).startswith('<C object at 0x'))\nC.__module__ = 42\nprint(repr(c).startswith('<C object at 0x'), object.__repr__(c).startswith('<C object at 0x'))\nD = type('D', (), {'__module__': '', '__qualname__': 'Q'})\nd = D()\nprint(repr(d).startswith('<.Q object at 0x'), object.__repr__(d).startswith('<.Q object at 0x'))\nclass Outer:\n    class Inner:\n        pass\ni = Outer.Inner()\nprint(repr(i).startswith('<__main__.Outer.Inner object at 0x'), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))\ni.__repr__ = lambda: 'instance-repr'\nprint(repr(i).startswith('<__main__.Outer.Inner object at 0x'), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))\nOuter.Inner.__repr__ = lambda self: 'class-repr'\nprint(repr(i), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x'))",
+        &[
+            "True True True True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "class-repr True",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

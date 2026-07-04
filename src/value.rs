@@ -1409,7 +1409,10 @@ impl fmt::Display for Value {
                 write!(f, "{}", format_template_interpolation(interpolation))
             }
             Value::Instance {
-                class_name, fields, ..
+                class_name,
+                fields,
+                class_attrs,
+                ..
             } => {
                 if let Some(rendered) = format_int_subclass(fields) {
                     write!(f, "{rendered}")
@@ -1428,7 +1431,11 @@ impl fmt::Display for Value {
                 } else if let Some(rendered) = format_generic_alias_subclass(fields) {
                     write!(f, "{rendered}")
                 } else {
-                    write!(f, "<{class_name} object>")
+                    write!(
+                        f,
+                        "{}",
+                        format_instance_object_repr(class_name, fields, class_attrs)
+                    )
                 }
             }
             Value::Property { .. } => write!(f, "<property object>"),
@@ -1948,6 +1955,28 @@ fn format_class_repr(name: &str, attrs: &Scope) -> String {
     }
 }
 
+pub fn format_instance_object_repr(
+    class_name: &str,
+    fields: &Scope,
+    class_attrs: &Scope,
+) -> String {
+    let attrs = class_attrs.borrow();
+    let qualname = match attrs.get(CLASS_QUALNAME_ATTR) {
+        Some(Value::String(qualname)) => qualname.clone(),
+        Some(Value::IdentityString { value, .. }) => value.clone(),
+        _ => class_name.to_string(),
+    };
+    let type_name = match attrs.get("__module__") {
+        Some(Value::String(module)) if module != "builtins" => format!("{module}.{qualname}"),
+        None => format!("__main__.{qualname}"),
+        _ => qualname,
+    };
+    format!(
+        "<{type_name} object at 0x{:x}>",
+        Rc::as_ptr(fields) as usize
+    )
+}
+
 fn format_value_repr(value: &Value) -> String {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
@@ -2080,7 +2109,10 @@ fn format_value_repr(value: &Value) -> String {
         ),
         Value::TemplateInterpolation(interpolation) => format_template_interpolation(interpolation),
         Value::Instance {
-            class_name, fields, ..
+            class_name,
+            fields,
+            class_attrs,
+            ..
         } => format_int_enum_member_repr(class_name, fields)
             .or_else(|| format_str_enum_member_repr(class_name, fields))
             .or_else(|| format_int_subclass(fields))
@@ -2090,7 +2122,7 @@ fn format_value_repr(value: &Value) -> String {
             .or_else(|| format_set_subclass(class_name, fields))
             .or_else(|| format_frozen_set_subclass(class_name, fields))
             .or_else(|| format_generic_alias_subclass(fields))
-            .unwrap_or_else(|| format!("<{class_name} object>")),
+            .unwrap_or_else(|| format_instance_object_repr(class_name, fields, class_attrs)),
         Value::Property { .. } => "<property object>".to_string(),
         Value::NamedTupleFieldDescriptor { typ, index } => {
             let field = namedtuple_field_name(typ, *index);
