@@ -7256,6 +7256,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "delattr(A, '__bases__')",
         ),
         (
+            "cpython_type_bases_assignment_error_diff_subset",
+            "cpython_type_bases_assignment_error_subset",
+            "setattr(A, '__bases__', value)",
+        ),
+        (
             "cpython_type_repr_module_qualname_diff_subset",
             "cpython_type_repr_module_qualname_subset",
             "B.__module__ = 'pkg'",
@@ -7292,6 +7297,73 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_bases_assignment_error_has_cpython_evidence() {
+    let subset_name = "cpython_type_bases_assignment_error_subset";
+    let diff_name = "cpython_type_bases_assignment_error_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class Root:",
+        "class A(Root):",
+        "A.__name__ = 'Renamed'",
+        "setattr(A, '__bases__', value)",
+        "('int', 1)",
+        "('none', None)",
+        "'__bases__' in A.__dict__",
+        "error.args == (str(error),)",
+        "class B:",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type __bases__ assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial Root Root False\"",
+        "\"int TypeError can only assign tuple to Renamed.__bases__, not int True\"",
+        "\"state int Root Root False\"",
+        "\"none TypeError can only assign tuple to Renamed.__bases__, not NoneType True\"",
+        "\"state none Root Root False\"",
+        "\"default TypeError can only assign tuple to B.__bases__, not int True\"",
+        "\"after-default object object False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type __bases__ assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_bases_assignment_error(",
+        "name == \"__bases__\" && !matches!(value, Value::Tuple(_))",
+        "class_public_name(class_name, attrs)",
+        "can only assign tuple to {public_name}.__bases__, not {}",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM type __bases__ assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "type `__bases__` assignment TypeError",
+            "rejects non-tuple values",
+            "uses the current public class name",
+        ] {
+            assert!(
+                document.contains(required),
+                "type __bases__ assignment docs must contain `{required}`"
             );
         }
     }

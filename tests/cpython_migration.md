@@ -9842,6 +9842,10 @@ Completed in the type builtin pass:
 - Added `cpython_type_bases_delete_error_subset`, backed by
   `cpython_type_bases_delete_error_diff_subset`, covering type `__bases__` deletion TypeError
   behavior that uses the current public class name and preserves base metadata.
+- Added `cpython_type_bases_assignment_error_subset`, backed by
+  `cpython_type_bases_assignment_error_diff_subset`, covering type `__bases__` assignment TypeError
+  behavior that rejects non-tuple values, uses the current public class name,
+  and avoids shadowing class base metadata.
 - Added `cpython_type_metadata_assignment_error_names_subset`, backed by
   `cpython_type_metadata_assignment_error_names_diff_subset`, covering class metadata assignment TypeError
   behavior for `__name__` and `__qualname__`, including reassigned class names

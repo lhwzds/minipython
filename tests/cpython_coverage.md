@@ -8953,3 +8953,6 @@ too many positional arguments and the
 `cpython_type_bases_delete_error_subset`, backed by
 `cpython_type_bases_delete_error_diff_subset`, covers type `__bases__` deletion TypeError
 behavior that uses the current public class name.
+`cpython_type_bases_assignment_error_subset`, backed by
+`cpython_type_bases_assignment_error_diff_subset`, covers type `__bases__` assignment TypeError
+behavior that rejects non-tuple values and uses the current public class name.

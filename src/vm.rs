@@ -64654,6 +64654,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             if let Some(error) = class_dict_readonly_error(name) {
                 return Err(error);
             }
+            if let Some(error) = class_bases_assignment_error(&class_name, &attrs, name, &value) {
+                return Err(error);
+            }
             if matches!(name, "__name__" | "__qualname__") {
                 return store_class_metadata_attribute(&class_name, &attrs, name, value);
             }
@@ -65001,6 +65004,23 @@ fn class_mro_readonly_error(name: &str) -> Option<String> {
 fn class_dict_readonly_error(name: &str) -> Option<String> {
     if name == "__dict__" {
         Some("AttributeError: attribute '__dict__' of 'type' objects is not writable".to_string())
+    } else {
+        None
+    }
+}
+
+fn class_bases_assignment_error(
+    class_name: &str,
+    attrs: &Scope,
+    name: &str,
+    value: &Value,
+) -> Option<String> {
+    if name == "__bases__" && !matches!(value, Value::Tuple(_)) {
+        let public_name = class_public_name(class_name, attrs);
+        Some(format!(
+            "TypeError: can only assign tuple to {public_name}.__bases__, not {}",
+            type_name(value)
+        ))
     } else {
         None
     }

@@ -50228,6 +50228,25 @@ fn cpython_type_bases_delete_error_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type metadata
+// behavior. Non-tuple __bases__ assignment is rejected with the current public
+// class name and does not shadow class base metadata.
+#[test]
+fn cpython_type_bases_assignment_error_subset() {
+    assert_output(
+        "class Root:\n    pass\nclass A(Root):\n    pass\nA.__name__ = 'Renamed'\nprint('initial', A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)\nfor label, value in [('int', 1), ('none', None)]:\n    try:\n        setattr(A, '__bases__', value)\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error), error.args == (str(error),))\n    print('state', label, A.__base__.__name__, A.__bases__[0].__name__, '__bases__' in A.__dict__)\nclass B:\n    pass\ntry:\n    setattr(B, '__bases__', 1)\nexcept TypeError as error:\n    print('default', error.__class__.__name__, str(error), error.args == (str(error),))\nprint('after-default', B.__base__.__name__, B.__bases__[0].__name__, '__bases__' in B.__dict__)",
+        &[
+            "initial Root Root False",
+            "int TypeError can only assign tuple to Renamed.__bases__, not int True",
+            "state int Root Root False",
+            "none TypeError can only assign tuple to Renamed.__bases__, not NoneType True",
+            "state none Root Root False",
+            "default TypeError can only assign tuple to B.__bases__, not int True",
+            "after-default object object False",
+        ],
+    );
+}
+
 // Adapted from CPython's public type.__repr__ behavior covered by
 // Lib/test/test_builtin.py::TestType metadata tests. This pins how class
 // repr/str and tuple repr for __mro__ use __module__ and __qualname__.
