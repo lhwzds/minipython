@@ -942,6 +942,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
+  `cpython_collections_namedtuple_identity_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
   `cpython_collections_namedtuple_repr_diff_subset`,
   `cpython_collections_namedtuple_name_conflicts_diff_subset`,
@@ -1846,6 +1847,13 @@ Recent runtime migration notes:
   metadata, indexing, iteration, tuple/list conversion, `_make()`,
   `_replace()`, `_asdict()`, zero/one-field namedtuples, keyword construction,
   and representative invalid typename/field errors.
+- The bundled `collections` module also includes
+  `cpython_collections_namedtuple_identity_diff_subset` and
+  `cpython_collections_namedtuple_identity_subset`, covering CPython public
+  namedtuple identity behavior for alias identity, container and attribute
+  retrieval identity, fresh namedtuple inequality by identity, and `tuple(p)`
+  conversion without changing namedtuple equality and without expanding pickle
+  or host IO.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset` and
   `cpython_collections_namedtuple_defaults_rename_readonly_subset`, covering
@@ -8672,6 +8680,8 @@ reserved-keyword-start match patterns are rejected the same way while `None`,
 
 Namedtuple coverage note: `cpython_collections_namedtuple_factory_instance_subset`,
 `cpython_collections_namedtuple_factory_instance_diff_subset`,
+`cpython_collections_namedtuple_identity_subset`,
+`cpython_collections_namedtuple_identity_diff_subset`,
 `cpython_collections_namedtuple_defaults_rename_readonly_subset`,
 `cpython_collections_namedtuple_field_doc_subset`,
 `cpython_collections_namedtuple_name_conflicts_subset`,
@@ -8694,8 +8704,11 @@ weakref exclusion, `defaults=`, `_field_defaults`, `__new__.__defaults__`,
 readonly field/item behavior, shallow/deep copy, keyword-only factory options,
 CPython's field-name conflict matrix, generated namedtuple/subclass repr,
 generated `__match_args__` class-pattern execution, generated `__new__`
-builtins metadata, deterministic large generated types, pickle round trips over
-MiniPython's internal payload, and namedtuple type generic-alias subscription.
+builtins metadata, alias identity, container and attribute retrieval identity,
+fresh namedtuple inequality by identity without changing namedtuple equality,
+deterministic large generated types, pickle round trips over MiniPython's
+internal payload, and namedtuple type generic-alias subscription without
+expanding pickle or host IO.
 The remaining CPython descriptor reuse/repr tests are tracked as
 `blocked_by_cpython_internal`.
 

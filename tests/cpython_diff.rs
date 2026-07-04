@@ -23608,6 +23608,32 @@ print('bad', bad)"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py namedtuple identity subset",
+        name: "collections-namedtuple-identity",
+        source: r#"from collections import namedtuple
+Point = namedtuple('Point', 'x y')
+p = Point(1, 2)
+alias = p
+print('alias', p is alias, id(p) == id(alias))
+items = [p]
+print('list', items[0] is p, id(items[0]) == id(p))
+box = {'p': p}
+print('dict', box['p'] is p, id(box['p']) == id(p))
+class Holder:
+    pass
+holder = Holder()
+holder.value = p
+print('attr', holder.value is p, id(holder.value) == id(p))
+q = Point(1, 2)
+print('fresh', p is q, p == q, id(p) == id(q))
+print('is-not', p is not q, p is not alias)
+print('tuple-same', p is tuple(p), p == tuple(p))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_namedtuple_match_args_diff_subset() {
     let probe = run_cpython(
         "from collections import namedtuple\nPoint = namedtuple('Point', 'x y')\nprint(getattr(Point, '__match_args__', None))",

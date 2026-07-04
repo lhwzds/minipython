@@ -67522,6 +67522,41 @@ fn cpython_collections_namedtuple_public_subset() {
     );
 }
 
+#[test]
+fn cpython_collections_namedtuple_identity_subset() {
+    assert_output(
+        concat!(
+            "from collections import namedtuple\n",
+            "Point = namedtuple('Point', 'x y')\n",
+            "p = Point(1, 2)\n",
+            "alias = p\n",
+            "print('alias', p is alias, id(p) == id(alias))\n",
+            "items = [p]\n",
+            "print('list', items[0] is p, id(items[0]) == id(p))\n",
+            "box = {'p': p}\n",
+            "print('dict', box['p'] is p, id(box['p']) == id(p))\n",
+            "class Holder:\n",
+            "    pass\n",
+            "holder = Holder()\n",
+            "holder.value = p\n",
+            "print('attr', holder.value is p, id(holder.value) == id(p))\n",
+            "q = Point(1, 2)\n",
+            "print('fresh', p is q, p == q, id(p) == id(q))\n",
+            "print('is-not', p is not q, p is not alias)\n",
+            "print('tuple-same', p is tuple(p), p == tuple(p))"
+        ),
+        &[
+            "alias True True",
+            "list True True",
+            "dict True True",
+            "attr True True",
+            "fresh False True False",
+            "is-not True False",
+            "tuple-same False True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserDict` instance `__doc__` type-attribute
 // lookup without changing UserDict mapping storage semantics.
 #[test]

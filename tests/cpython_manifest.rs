@@ -23696,6 +23696,87 @@ fn collections_chainmap_pickle_eval_identity_stays_subset_only() {
 }
 
 #[test]
+fn collections_namedtuple_identity_has_focused_diff_evidence() {
+    let diff_name = "cpython_collections_namedtuple_identity_diff_subset";
+    let subset_name = "cpython_collections_namedtuple_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "namedtuple identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "namedtuple identity runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "Point = namedtuple('Point', 'x y')",
+        "alias = p",
+        "items = [p]",
+        "box = {'p': p}",
+        "class Holder:",
+        "holder.value = p",
+        "q = Point(1, 2)",
+        "p is q",
+        "p is not q",
+        "p is tuple(p)",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "namedtuple identity diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"alias True True\"",
+        "\"list True True\"",
+        "\"dict True True\"",
+        "\"attr True True\"",
+        "\"fresh False True False\"",
+        "\"is-not True False\"",
+        "\"tuple-same False True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "namedtuple identity subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "Instruction::Is { dst, left, right }",
+        "Value::NamedTuple { values, .. } => rc_plain_identity_bits(values)",
+        "values: left_values",
+        "values: right_values",
+        "Rc::ptr_eq(left_values, right_values)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "namedtuple identity implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            diff_name,
+            subset_name,
+            "namedtuple identity",
+            "alias identity",
+            "container and attribute retrieval identity",
+            "fresh namedtuple inequality by identity",
+            "without changing namedtuple equality",
+            "without expanding pickle or host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "namedtuple identity docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn collections_namedtuple_pickle_stays_subset_only() {
     for required in [
         "fn cpython_collections_namedtuple_pickle_subset(",
@@ -24404,6 +24485,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
             "cpython_collections_namedtuple_public_subset",
+            "cpython_collections_namedtuple_identity_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
             "cpython_collections_namedtuple_repr_subset",
             "cpython_collections_namedtuple_name_conflicts_subset",
@@ -25546,6 +25628,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_namedtuple_factory_instance_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for namedtuple factory/instance behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_namedtuple_identity_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for namedtuple identity behavior"
     );
     assert!(
         row.diff_evidence

@@ -93636,6 +93636,16 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             },
         ) => Rc::ptr_eq(left_data, right_data),
         (Value::Tuple(left), Value::Tuple(right)) => Rc::ptr_eq(left, right),
+        (
+            Value::NamedTuple {
+                values: left_values,
+                ..
+            },
+            Value::NamedTuple {
+                values: right_values,
+                ..
+            },
+        ) => Rc::ptr_eq(left_values, right_values),
         (Value::ByteArray(left), Value::ByteArray(right)) => Rc::ptr_eq(left, right),
         (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) => {
             Rc::ptr_eq(left, right)
