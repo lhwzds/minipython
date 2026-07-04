@@ -18094,6 +18094,35 @@ for label, call in [
 }
 
 #[test]
+fn cpython_tuple_subclass_add_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple subclass addition behavior",
+        name: "tuple-subclass-add",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 2))
+right = T((3, 4))
+for label, expr in [
+    ('sub-plus-tuple', lambda: left + (9,)),
+    ('tuple-plus-sub', lambda: (0,) + left),
+    ('sub-plus-sub', lambda: left + right),
+    ('direct-add', lambda: left.__add__((5,))),
+    ('type-direct-add', lambda: tuple.__add__(left, (8,))),
+    ('direct-radd', lambda: left.__radd__((6,))),
+    ('bad-list', lambda: left + [7]),
+    ('direct-bad-list', lambda: left.__add__([7])),
+    ('type-direct-bad-list', lambda: tuple.__add__(left, [8])),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, isinstance(result, T), result, left)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), left)
+print('visible', hasattr(left, '__add__'), hasattr(left, '__radd__'), '__add__' in dir(left), '__radd__' in dir(T))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

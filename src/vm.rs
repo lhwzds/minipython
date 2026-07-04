@@ -53152,7 +53152,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "rotate",
         ],
-        "tuple" => &["__new__", "count", "index"],
+        "tuple" => &["__add__", "__new__", "count", "index"],
         "range" => &["__new__", "count", "index", "start", "stop", "step"],
         "bytes" => &[
             "__bytes__",
@@ -57685,6 +57685,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
         name,
         "__contains__" | "__getitem__" | "__iter__" | "__len__"
     ) || (matches!(type_name, "tuple" | "range") && matches!(name, "count" | "index"))
+        || (type_name == "tuple" && name == "__add__")
         || (type_name == "tuple"
             && matches!(
                 name,
@@ -75924,6 +75925,25 @@ fn call_immutable_sequence_method(
                 missing_value_error,
             )
         }
+        "__add__" => {
+            let [receiver, other] = args.as_slice() else {
+                return Err(format!(
+                    "__add__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(mut items) = tuple_concat_operand_values(receiver) else {
+                return Err("__add__() expected a tuple receiver".to_string());
+            };
+            let Some(other_items) = tuple_concat_operand_values(other) else {
+                return Err(format!(
+                    "TypeError: can only concatenate tuple (not \"{}\") to tuple",
+                    type_name(other)
+                ));
+            };
+            items.extend(other_items);
+            Ok(tuple_value(items))
+        }
         "__eq__" | "__ne__" => {
             let [receiver, other] = args.as_slice() else {
                 return Err(format!(
@@ -86074,6 +86094,21 @@ fn tuple_order_operand_values(value: &Value) -> Option<Vec<Value>> {
     }
 }
 
+fn tuple_concat_operand_values(value: &Value) -> Option<Vec<Value>> {
+    match value {
+        Value::Tuple(items) | Value::NamedTuple { values: items, .. } => {
+            Some(items.as_ref().clone())
+        }
+        value if tuple_subclass_items(value).is_some() => Some(
+            tuple_subclass_items(value)
+                .expect("tuple subclass items exist after guard")
+                .as_ref()
+                .clone(),
+        ),
+        value => namedtuple_subclass_storage(value).map(|(_, values)| values.as_ref().clone()),
+    }
+}
+
 #[derive(Clone, Copy)]
 enum CounterUpdateMode {
     Add,
@@ -90223,15 +90258,18 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             items.extend(data.borrow().iter().cloned());
             user_list_value(items)
         }
-        (Value::Tuple(left), Value::Tuple(right)) => {
-            let mut items = left.as_ref().clone();
-            items.extend(right.iter().cloned());
+        (left, right) if tuple_concat_operand_values(&left).is_some() => {
+            let mut items = tuple_concat_operand_values(&left)
+                .expect("tuple concat left operand exists after guard");
+            let Some(right_items) = tuple_concat_operand_values(&right) else {
+                return Err(format!(
+                    "TypeError: can only concatenate tuple (not \"{}\") to tuple",
+                    type_name(&original_right)
+                ));
+            };
+            items.extend(right_items);
             Ok(tuple_value(items))
         }
-        (Value::Tuple(_), _) => Err(format!(
-            "TypeError: can only concatenate tuple (not \"{}\") to tuple",
-            type_name(&original_right)
-        )),
         _ => Err(unsupported_binary_operand_message(
             "+",
             &original_left,

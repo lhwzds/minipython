@@ -39,6 +39,12 @@ Recent runtime migration notes:
   return behavior, and `__init__` only when `__new__` returns a matching tuple subclass,
   without expanding into pickle helpers, tuple C-layout internals, or
   full immutable-sequence method-table parity.
+- `cpython_tuple_subclass_add_subset`, backed by
+  `cpython_tuple_subclass_add_diff_subset`, now pins tuple subclass `+`,
+  exact tuple plus tuple subclass operands, ordinary `tuple` result type, direct
+  `__add__` / `tuple.__add__` dispatch, direct `__add__` visibility, CPython
+  tuple-concat TypeError text for non-tuple operands, and no inherited `__radd__`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_list_subclass_new_storage_subset`, backed by
   `cpython_list_subclass_new_storage_diff_subset`, now pins list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,

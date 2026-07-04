@@ -170,7 +170,7 @@ fn tuple_subclass_new_storage_docs_cover_core_runtime() {
         "fn call_tuple_new(",
         "Value::Builtin(name) if name == \"tuple.__new__\"",
         "function_name == \"tuple\" && name == \"__new__\"",
-        "\"tuple\" => &[\"__new__\", \"count\", \"index\"]",
+        "\"tuple\" => &[\"__add__\", \"__new__\", \"count\", \"index\"]",
         "let has_own_new = attrs.borrow().contains_key(\"__new__\");",
         "self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), \"__new__\")",
         "value_matches_class_value(&instance, &class)",
@@ -196,6 +196,99 @@ fn tuple_subclass_new_storage_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple subclass __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_subclass_add_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_subclass_add_diff_subset";
+    let subset_name = "cpython_tuple_subclass_add_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple subclass addition CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple subclass addition runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 2))",
+        "right = T((3, 4))",
+        "left + (9,)",
+        "(0,) + left",
+        "left + right",
+        "left.__add__((5,))",
+        "tuple.__add__(left, (8,))",
+        "left.__radd__((6,))",
+        "left + [7]",
+        "left.__add__([7])",
+        "tuple.__add__(left, [8])",
+        "hasattr(left, '__add__')",
+        "hasattr(left, '__radd__')",
+        "'__add__' in dir(left)",
+        "'__radd__' in dir(T)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple subclass addition diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"sub-plus-tuple tuple False (1, 2, 9) (1, 2)\"",
+        "\"tuple-plus-sub tuple False (0, 1, 2) (1, 2)\"",
+        "\"sub-plus-sub tuple False (1, 2, 3, 4) (1, 2)\"",
+        "\"direct-add tuple False (1, 2, 5) (1, 2)\"",
+        "\"type-direct-add tuple False (1, 2, 8) (1, 2)\"",
+        "\"direct-radd AttributeError 'T' object has no attribute '__radd__' (1, 2)\"",
+        "\"bad-list TypeError can only concatenate tuple (not \\\"list\\\") to tuple (1, 2)\"",
+        "\"direct-bad-list TypeError can only concatenate tuple (not \\\"list\\\") to tuple (1, 2)\"",
+        "\"type-direct-bad-list TypeError can only concatenate tuple (not \\\"list\\\") to tuple (1, 2)\"",
+        "\"visible True False True False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple subclass addition subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn tuple_concat_operand_values(",
+        "tuple_subclass_items(value)",
+        "tuple_concat_operand_values(&left)",
+        "tuple_concat_operand_values(&right)",
+        "tuple_concat_operand_values(receiver)",
+        "tuple_concat_operand_values(other)",
+        "\"tuple\" => &[\"__add__\", \"__new__\", \"count\", \"index\"]",
+        "type_name(&original_right)",
+        "can only concatenate tuple (not",
+        "Ok(tuple_value(items))",
+        "type_name(other)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple subclass addition implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple subclass `+`",
+            "ordinary `tuple` result",
+            "direct `__add__`",
+            "no inherited `__radd__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple subclass addition docs must contain `{required}`"
             );
         }
     }

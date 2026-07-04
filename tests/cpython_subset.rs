@@ -54614,6 +54614,50 @@ fn cpython_tuple_subclass_core_sequence_subset() {
     );
 }
 
+// Adapted from CPython public tuple-subclass binary addition behavior. This
+// pins tuple-subclass operands and inherited direct tuple.__add__ without
+// adding a reflected __radd__ surface.
+#[test]
+fn cpython_tuple_subclass_add_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 2))\n",
+            "right = T((3, 4))\n",
+            "for label, expr in [\n",
+            "    ('sub-plus-tuple', lambda: left + (9,)),\n",
+            "    ('tuple-plus-sub', lambda: (0,) + left),\n",
+            "    ('sub-plus-sub', lambda: left + right),\n",
+            "    ('direct-add', lambda: left.__add__((5,))),\n",
+            "    ('type-direct-add', lambda: tuple.__add__(left, (8,))),\n",
+            "    ('direct-radd', lambda: left.__radd__((6,))),\n",
+            "    ('bad-list', lambda: left + [7]),\n",
+            "    ('direct-bad-list', lambda: left.__add__([7])),\n",
+            "    ('type-direct-bad-list', lambda: tuple.__add__(left, [8])),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, isinstance(result, T), result, left)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), left)\n",
+            "print('visible', hasattr(left, '__add__'), hasattr(left, '__radd__'), '__add__' in dir(left), '__radd__' in dir(T))",
+        ),
+        &[
+            "sub-plus-tuple tuple False (1, 2, 9) (1, 2)",
+            "tuple-plus-sub tuple False (0, 1, 2) (1, 2)",
+            "sub-plus-sub tuple False (1, 2, 3, 4) (1, 2)",
+            "direct-add tuple False (1, 2, 5) (1, 2)",
+            "type-direct-add tuple False (1, 2, 8) (1, 2)",
+            "direct-radd AttributeError 'T' object has no attribute '__radd__' (1, 2)",
+            "bad-list TypeError can only concatenate tuple (not \"list\") to tuple (1, 2)",
+            "direct-bad-list TypeError can only concatenate tuple (not \"list\") to tuple (1, 2)",
+            "type-direct-bad-list TypeError can only concatenate tuple (not \"list\") to tuple (1, 2)",
+            "visible True False True False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]
