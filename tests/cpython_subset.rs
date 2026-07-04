@@ -29762,6 +29762,52 @@ print('dict-clean', f.__dict__)"#,
     );
 }
 
+// Adapted from CPython public function-object `__annotations__` assignment
+// behavior. This pins metadata identity, live annotations dict mutation, type
+// errors, and deletion reset to an empty dict without expanding host IO.
+#[test]
+fn cpython_function_annotations_assignment_subset() {
+    assert_output(
+        r#"class D(dict):
+    pass
+
+def f(x: int) -> str:
+    return str(x)
+
+initial = f.__annotations__
+print('initial', type(initial).__name__, initial, f.__annotations__ is initial, 'x' in initial, 'return' in initial)
+replacement = {'a': 1}
+f.__annotations__ = replacement
+print('set-dict', f.__annotations__ is replacement, f.__annotations__)
+replacement['b'] = 2
+print('live-dict', f.__annotations__, f.__annotations__ is replacement)
+sub = D(c=3)
+f.__annotations__ = sub
+print('set-subclass', f.__annotations__ is sub, type(f.__annotations__).__name__, f.__annotations__)
+f.__annotations__ = None
+empty = f.__annotations__
+print('set-none', type(empty).__name__, empty, f.__annotations__ is empty)
+try:
+    f.__annotations__ = []
+except Exception as error:
+    print('set-list', type(error).__name__, str(error), error.args)
+del f.__annotations__
+after_del = f.__annotations__
+print('del', type(after_del).__name__, after_del, f.__annotations__ is after_del)
+print('dict-clean', f.__dict__)"#,
+        &[
+            "initial dict {'x': <class 'int'>, 'return': <class 'str'>} True True True",
+            "set-dict True {'a': 1}",
+            "live-dict {'a': 1, 'b': 2} True",
+            "set-subclass True D {'c': 3}",
+            "set-none dict {} True",
+            "set-list TypeError __annotations__ must be set to a dict object ('__annotations__ must be set to a dict object',)",
+            "del dict {} True",
+            "dict-clean {}",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

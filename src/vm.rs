@@ -4359,6 +4359,7 @@ const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
 const FUNCTION_DICT_SOURCE_ATTR: &str = "\0function_dict_source";
 const FUNCTION_DEFAULTS_ATTR: &str = "\0function_defaults";
 const FUNCTION_KWDEFAULTS_ATTR: &str = "\0function_kwdefaults";
+const FUNCTION_ANNOTATIONS_ATTR: &str = "\0function_annotations";
 
 fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Scope, String> {
     let entries = match namespace {
@@ -4604,6 +4605,10 @@ fn call_function_type_constructor(
         );
         attrs.insert(FUNCTION_DEFAULTS_ATTR.to_string(), argdefs);
         attrs.insert(FUNCTION_KWDEFAULTS_ATTR.to_string(), kwdefaults);
+        attrs.insert(
+            FUNCTION_ANNOTATIONS_ATTR.to_string(),
+            function_annotations_value(&[]),
+        );
     }
 
     let identity = Rc::new(());
@@ -6047,6 +6052,10 @@ impl Vm {
                         attrs.insert(
                             FUNCTION_KWDEFAULTS_ATTR.to_string(),
                             function_keyword_defaults_value(&keyword_defaults),
+                        );
+                        attrs.insert(
+                            FUNCTION_ANNOTATIONS_ATTR.to_string(),
+                            function_annotations_value(&annotations),
                         );
                     }
                     self.write_register(
@@ -51639,6 +51648,14 @@ fn function_keyword_defaults_metadata_value(
         .unwrap_or_else(|| function_keyword_defaults_value(keyword_defaults))
 }
 
+fn function_annotations_metadata_value(attrs: &Scope, annotations: &[(String, Value)]) -> Value {
+    attrs
+        .borrow()
+        .get(FUNCTION_ANNOTATIONS_ATTR)
+        .cloned()
+        .unwrap_or_else(|| function_annotations_value(annotations))
+}
+
 fn set_function_defaults_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
     if !matches!(value, Value::Tuple(_) | Value::None) {
         return Err("TypeError: __defaults__ must be set to a tuple object".to_string());
@@ -51656,6 +51673,22 @@ fn set_function_keyword_defaults_metadata(attrs: &Scope, value: Value) -> Result
     attrs
         .borrow_mut()
         .insert(FUNCTION_KWDEFAULTS_ATTR.to_string(), value);
+    Ok(())
+}
+
+fn set_function_annotations_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
+    let value = match value {
+        Value::None => dict_value(Vec::new()),
+        value => {
+            if function_dict_replacement_entries(&value).is_none() {
+                return Err("TypeError: __annotations__ must be set to a dict object".to_string());
+            }
+            value
+        }
+    };
+    attrs
+        .borrow_mut()
+        .insert(FUNCTION_ANNOTATIONS_ATTR.to_string(), value);
     Ok(())
 }
 
@@ -58101,11 +58134,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
                     )
                 }
             })),
-        "__annotations__" => Ok(attrs
-            .borrow()
-            .get("__annotations__")
-            .cloned()
-            .unwrap_or_else(|| function_annotations_value(annotations))),
+        "__annotations__" => Ok(function_annotations_metadata_value(attrs, annotations)),
         "__code__" => function_code_object_value(
             function_name,
             positional_only,
@@ -65815,7 +65844,10 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 }
                 return Ok(());
             }
-            if matches!(name, "__annotations__" | "__annotate__") {
+            if name == "__annotations__" {
+                return set_function_annotations_metadata(&attrs, value);
+            }
+            if name == "__annotate__" {
                 attrs.borrow_mut().insert(name.to_string(), value);
                 return Ok(());
             }
@@ -66252,6 +66284,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
             if name == "__kwdefaults__" {
                 return set_function_keyword_defaults_metadata(&attrs, Value::None);
+            }
+            if name == "__annotations__" {
+                return set_function_annotations_metadata(&attrs, dict_value(Vec::new()));
             }
             delete_function_custom_attribute(&attrs, name)
         }

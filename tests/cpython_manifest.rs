@@ -35377,6 +35377,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_dir_wrapper_subset",
             "cpython_function_dict_assignment_subset",
             "cpython_function_defaults_kwdefaults_assignment_subset",
+            "cpython_function_annotations_assignment_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35485,6 +35486,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_dir_wrapper_diff_subset",
         "cpython_function_dict_assignment_diff_subset",
         "cpython_function_defaults_kwdefaults_assignment_diff_subset",
+        "cpython_function_annotations_assignment_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -43321,6 +43323,84 @@ fn function_defaults_kwdefaults_assignment_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __defaults__ / __kwdefaults__ assignment docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_annotations_assignment_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_annotations_assignment_subset";
+    let diff_name = "cpython_function_annotations_assignment_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class D(dict):",
+        "def f(x: int) -> str:",
+        "f.__annotations__ is initial",
+        "f.__annotations__ = replacement",
+        "replacement['b'] = 2",
+        "f.__annotations__ = sub",
+        "f.__annotations__ = None",
+        "f.__annotations__ = []",
+        "del f.__annotations__",
+        "dict-clean",
+        "type(error).__name__",
+        "error.args",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __annotations__ assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial dict {'x': <class 'int'>, 'return': <class 'str'>} True True True\"",
+        "\"set-dict True {'a': 1}\"",
+        "\"live-dict {'a': 1, 'b': 2} True\"",
+        "\"set-subclass True D {'c': 3}\"",
+        "\"set-none dict {} True\"",
+        "\"set-list TypeError __annotations__ must be set to a dict object",
+        "\"del dict {} True\"",
+        "\"dict-clean {}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __annotations__ assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_ANNOTATIONS_ATTR",
+        "fn function_annotations_metadata_value(",
+        "fn set_function_annotations_metadata(",
+        "FUNCTION_ANNOTATIONS_ATTR.to_string()",
+        "\"__annotations__\" => Ok(function_annotations_metadata_value(attrs, annotations))",
+        "return set_function_annotations_metadata(&attrs, value)",
+        "set_function_annotations_metadata(&attrs, dict_value(Vec::new()))",
+        "__annotations__ must be set to a dict object",
+        "function_dict_replacement_entries(&value)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function __annotations__ assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __annotations__ assignment",
+            "metadata identity",
+            "live annotations dict mutation",
+            "delete reset to empty dict",
+            "without expanding host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __annotations__ assignment docs must contain `{required}`"
             );
         }
     }

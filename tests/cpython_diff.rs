@@ -14457,6 +14457,41 @@ print('dict-clean', f.__dict__)"#,
 }
 
 #[test]
+fn cpython_function_annotations_assignment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_funcattrs.py public function __annotations__ assignment subset",
+        name: "function-annotations-assignment",
+        source: r#"class D(dict):
+    pass
+
+def f(x: int) -> str:
+    return str(x)
+
+initial = f.__annotations__
+print('initial', type(initial).__name__, initial, f.__annotations__ is initial, 'x' in initial, 'return' in initial)
+replacement = {'a': 1}
+f.__annotations__ = replacement
+print('set-dict', f.__annotations__ is replacement, f.__annotations__)
+replacement['b'] = 2
+print('live-dict', f.__annotations__, f.__annotations__ is replacement)
+sub = D(c=3)
+f.__annotations__ = sub
+print('set-subclass', f.__annotations__ is sub, type(f.__annotations__).__name__, f.__annotations__)
+f.__annotations__ = None
+empty = f.__annotations__
+print('set-none', type(empty).__name__, empty, f.__annotations__ is empty)
+try:
+    f.__annotations__ = []
+except Exception as error:
+    print('set-list', type(error).__name__, str(error), error.args)
+del f.__annotations__
+after_del = f.__annotations__
+print('del', type(after_del).__name__, after_del, f.__annotations__ is after_del)
+print('dict-clean', f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",
