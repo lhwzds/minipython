@@ -35369,6 +35369,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_order_compare_wrapper_subset",
             "cpython_function_getattribute_wrapper_subset",
             "cpython_function_setattr_delattr_wrapper_subset",
+            "cpython_function_init_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35469,6 +35470,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_order_compare_wrapper_diff_subset",
         "cpython_function_getattribute_wrapper_diff_subset",
         "cpython_function_setattr_delattr_wrapper_diff_subset",
+        "cpython_function_init_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42552,6 +42554,99 @@ fn function_setattr_delattr_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __setattr__ / __delattr__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_init_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_init_wrapper_subset";
+    let diff_name = "cpython_function_init_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "wrapper = f.__init__",
+        "rendered = repr(wrapper)",
+        "'__init__' in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "rendered.startswith(\"<method-wrapper '__init__' of function object at 0x\")",
+        "wrapper.__module__",
+        "('plain', lambda: wrapper())",
+        "('one', lambda: wrapper(1))",
+        "('two', lambda: wrapper(1, 2))",
+        "('keyword', lambda: wrapper(x=1))",
+        "value is None",
+        "error.args",
+        "f.__dict__['__init__'] = 'shadow-init'",
+        "del f.__dict__['__init__']",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __init__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True method-wrapper method-wrapper\"",
+        "\"True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)\"",
+        "\"True True True\"",
+        "\"module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"plain True None NoneType\"",
+        "\"one True None NoneType\"",
+        "\"two True None NoneType\"",
+        "\"keyword True None NoneType\"",
+        "\"shadow method-wrapper shadow-init shadow-init True\"",
+        "\"unshadow method-wrapper False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __init__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<method-wrapper '__init__' of function object at 0x{:x}>\"",
+        "name == \"function.__init__\"",
+        "self.call_function_init(args, keywords)",
+        "fn call_function_init(",
+        "\"function.__init__\".to_string()",
+        "function_init_wrapper_name(name)",
+        "fn function_init_wrapper_name(",
+        "function_method_wrapper_missing_module_name(name)",
+        "object.__init__",
+        "Initialize self.  See help(type(self)) for accurate signature.",
+        "($self, /, *args, **kwargs)",
+        "Ok(Value::None)",
+        "| \"function.__init__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __init__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __init__ wrapper metadata",
+            "custom attribute shadowing",
+            "method-wrapper",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __init__ wrapper docs must contain `{required}`"
             );
         }
     }

@@ -14174,6 +14174,41 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_init_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __init__ wrapper subset",
+        name: "function-init-wrapper",
+        source: r#"def f():
+    pass
+wrapper = f.__init__
+rendered = repr(wrapper)
+print('__init__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+print(rendered.startswith("<method-wrapper '__init__' of function object at 0x"), rendered.endswith('>'), str(wrapper) == rendered)
+try:
+    wrapper.__module__
+except AttributeError as error:
+    print('module', type(error).__name__, str(error), error.args)
+for label, call in [
+    ('plain', lambda: wrapper()),
+    ('one', lambda: wrapper(1)),
+    ('two', lambda: wrapper(1, 2)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__init__).__name__
+f.__dict__['__init__'] = 'shadow-init'
+print('shadow', base, f.__init__, f.__dict__['__init__'], '__init__' in dir(f))
+del f.__dict__['__init__']
+print('unshadow', type(f.__init__).__name__, '__init__' in f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

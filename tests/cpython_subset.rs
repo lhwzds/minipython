@@ -29372,6 +29372,54 @@ for label, call in [
     );
 }
 
+// Adapted from CPython public function-object `__init__` wrapper behavior.
+// This pins no-op initialization, metadata, and custom attribute shadowing
+// without depending on concrete address values.
+#[test]
+fn cpython_function_init_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__init__
+rendered = repr(wrapper)
+print('__init__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+print(rendered.startswith("<method-wrapper '__init__' of function object at 0x"), rendered.endswith('>'), str(wrapper) == rendered)
+try:
+    wrapper.__module__
+except AttributeError as error:
+    print('module', type(error).__name__, str(error), error.args)
+for label, call in [
+    ('plain', lambda: wrapper()),
+    ('one', lambda: wrapper(1)),
+    ('two', lambda: wrapper(1, 2)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        value = call()
+        print(label, value is None, value, type(value).__name__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__init__).__name__
+f.__dict__['__init__'] = 'shadow-init'
+print('shadow', base, f.__init__, f.__dict__['__init__'], '__init__' in dir(f))
+del f.__dict__['__init__']
+print('unshadow', type(f.__init__).__name__, '__init__' in f.__dict__)"#,
+        &[
+            "True method-wrapper method-wrapper",
+            "True __init__ object.__init__ Initialize self.  See help(type(self)) for accurate signature. MISSING ($self, /, *args, **kwargs)",
+            "True True True",
+            "module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "plain True None NoneType",
+            "one True None NoneType",
+            "two True None NoneType",
+            "keyword True None NoneType",
+            "shadow method-wrapper shadow-init shadow-init True",
+            "unshadow method-wrapper False",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

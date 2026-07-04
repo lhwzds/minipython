@@ -10169,6 +10169,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__hash__" => {
                 self.call_function_hash(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__init__" => {
+                self.call_function_init(args, keywords)
+            }
             Value::Builtin(name) if function_rich_compare_wrapper_name(&name) => {
                 self.call_function_rich_compare(&name, args, keywords)
             }
@@ -18140,6 +18143,24 @@ impl Vm {
         }
 
         self.hash_key_value(receiver)
+    }
+
+    fn call_function_init(
+        &mut self,
+        args: Vec<Value>,
+        _keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, _rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        Ok(Value::None)
     }
 
     fn call_function_rich_compare(
@@ -51742,6 +51763,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                     "__globals__",
                     "__gt__",
                     "__hash__",
+                    "__init__",
                     "__le__",
                     "__lt__",
                     "__module__",
@@ -57746,6 +57768,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__init__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("function.__init__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
         "__format__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__format__".to_string())),
             receiver: Box::new(function.clone()),
@@ -61767,6 +61794,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__init__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__format__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63758,6 +63790,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "function.__delattr__" =>
         {
             Ok(Value::String("($self, name, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__init__" =>
+        {
+            Ok(Value::String("object.__init__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__init__" => {
+            Ok(Value::String(
+                "Initialize self.  See help(type(self)) for accurate signature.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__init__" =>
+        {
+            Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__format__" =>
@@ -66505,6 +66552,10 @@ fn function_set_delattr_wrapper_name(name: &str) -> bool {
     matches!(name, "function.__setattr__" | "function.__delattr__")
 }
 
+fn function_init_wrapper_name(name: &str) -> bool {
+    matches!(name, "function.__init__")
+}
+
 fn is_cell_rich_compare_method_name(name: &str) -> bool {
     matches!(
         name,
@@ -66544,6 +66595,7 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
     matches!(name, "function.__hash__")
+        || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
         || function_order_compare_wrapper_name(name)
@@ -66563,6 +66615,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__getattribute__"
             | "function.__setattr__"
             | "function.__delattr__"
+            | "function.__init__"
             | "function.__hash__"
             | "function.__eq__"
             | "function.__ne__"
