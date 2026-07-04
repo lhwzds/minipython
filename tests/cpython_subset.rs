@@ -29252,6 +29252,56 @@ for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
     );
 }
 
+// Adapted from CPython public function-object `__getattribute__` wrapper
+// behavior. This pins metadata, direct wrapper lookup, and attribute/error
+// forwarding without depending on concrete address values.
+#[test]
+fn cpython_function_getattribute_wrapper_subset() {
+    assert_output(
+        r#"def f(x=1):
+    return x
+wrapper = f.__getattribute__
+wrapper_rendered = repr(wrapper)
+print('__getattribute__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+print(wrapper('__name__'), wrapper('__name__') == f.__name__, type(wrapper('__name__')).__name__)
+print(wrapper('__doc__'), wrapper('__doc__') is f.__doc__, type(wrapper('__doc__')).__name__)
+print(wrapper('__call__') is f.__call__, type(wrapper('__call__')).__name__)
+print(wrapper('__getattribute__') is f.__getattribute__, type(wrapper('__getattribute__')).__name__)
+print(wrapper_rendered.startswith("<method-wrapper '__getattribute__' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+try:
+    wrapper.__module__
+except AttributeError as error:
+    print('module', type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing-attr', lambda: wrapper('missing_attr')),
+    ('missing', lambda: wrapper()),
+    ('extra', lambda: wrapper('__name__', 1)),
+    ('keyword', lambda: wrapper(name='__name__')),
+    ('bad-name', lambda: wrapper(1)),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "True method-wrapper method-wrapper",
+            "True __getattribute__ object.__getattribute__ Return getattr(self, name). MISSING ($self, name, /)",
+            "f True str",
+            "None True NoneType",
+            "False method-wrapper",
+            "False method-wrapper",
+            "True True True",
+            "module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "missing-attr AttributeError 'function' object has no attribute 'missing_attr' (\"'function' object has no attribute 'missing_attr'\",)",
+            "missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "keyword TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
+            "bad-name TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

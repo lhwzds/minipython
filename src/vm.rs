@@ -10120,6 +10120,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__get__" => {
                 self.call_function_get(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__getattribute__" => {
+                self.call_function_getattribute(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__call__" => {
                 self.call_method_call(args, keywords)
             }
@@ -17984,6 +17987,37 @@ impl Vm {
             receiver: Box::new(rest[0].clone()),
             identity: Rc::new(()),
         })
+    }
+
+    fn call_function_getattribute(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        load_attribute(receiver.clone(), &name)
+            .map_err(|error| function_getattribute_attribute_error(&name, error))
     }
 
     fn call_function_format(
@@ -51636,6 +51670,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__format__",
                 "__ge__",
                 "__get__",
+                "__getattribute__",
                 "__globals__",
                 "__gt__",
                 "__hash__",
@@ -57626,6 +57661,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__getattribute__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("function.__getattribute__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
         "__format__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__format__".to_string())),
             receiver: Box::new(function.clone()),
@@ -61637,6 +61677,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__getattribute__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__format__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63587,6 +63632,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(
                 "Return an attribute of instance, which is of type owner.".to_string(),
             ))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__getattribute__" =>
+        {
+            Ok(Value::String("object.__getattribute__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "function.__getattribute__" =>
+        {
+            Ok(Value::String("Return getattr(self, name).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__getattribute__" =>
+        {
+            Ok(Value::String("($self, name, /)".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__format__" =>
@@ -66369,6 +66429,7 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
     matches!(name, "function.__hash__")
+        || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
         || function_order_compare_wrapper_name(name)
         || json_function_method_wrapper_missing_module_name(name)
@@ -66383,6 +66444,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__str__"
             | "function.__call__"
             | "function.__get__"
+            | "function.__getattribute__"
             | "function.__hash__"
             | "function.__eq__"
             | "function.__ne__"
@@ -66415,6 +66477,16 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "json.function.__str__"
             | "json.function.__getattribute__"
     )
+}
+
+fn function_getattribute_attribute_error(name: &str, error: String) -> String {
+    let direct_function_missing_attr =
+        format!("AttributeError: function has no attribute '{name}'");
+    if error == direct_function_missing_attr {
+        format!("AttributeError: 'function' object has no attribute '{name}'")
+    } else {
+        error
+    }
 }
 
 fn json_function_getattribute_attribute_error(name: &str, error: String) -> String {

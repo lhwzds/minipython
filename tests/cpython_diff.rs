@@ -14095,6 +14095,40 @@ for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
 }
 
 #[test]
+fn cpython_function_getattribute_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __getattribute__ wrapper subset",
+        name: "function-getattribute-wrapper",
+        source: r#"def f(x=1):
+    return x
+wrapper = f.__getattribute__
+wrapper_rendered = repr(wrapper)
+print('__getattribute__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+print(wrapper('__name__'), wrapper('__name__') == f.__name__, type(wrapper('__name__')).__name__)
+print(wrapper('__doc__'), wrapper('__doc__') is f.__doc__, type(wrapper('__doc__')).__name__)
+print(wrapper('__call__') is f.__call__, type(wrapper('__call__')).__name__)
+print(wrapper('__getattribute__') is f.__getattribute__, type(wrapper('__getattribute__')).__name__)
+print(wrapper_rendered.startswith("<method-wrapper '__getattribute__' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+try:
+    wrapper.__module__
+except AttributeError as error:
+    print('module', type(error).__name__, str(error), error.args)
+for label, call in [
+    ('missing-attr', lambda: wrapper('missing_attr')),
+    ('missing', lambda: wrapper()),
+    ('extra', lambda: wrapper('__name__', 1)),
+    ('keyword', lambda: wrapper(name='__name__')),
+    ('bad-name', lambda: wrapper(1)),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",
