@@ -29077,6 +29077,45 @@ for label, call in [
     );
 }
 
+// Adapted from CPython public function-object `__hash__` wrapper behavior.
+// This pins the wrapper metadata and identity-hash path without depending on
+// concrete hash or address values.
+#[test]
+fn cpython_function_hash_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__hash__
+wrapper_rendered = repr(wrapper)
+print('__hash__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+value = wrapper()
+print(type(value).__name__, isinstance(value, int), value == hash(f), wrapper() == wrapper())
+print(wrapper_rendered.startswith("<method-wrapper '__hash__' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+try:
+    wrapper.__module__
+except AttributeError as error:
+    print('module', type(error).__name__, str(error), error.args)
+for label, call in [
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "True method-wrapper method-wrapper",
+            "True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)",
+            "int True True True",
+            "True True True",
+            "module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "keyword TypeError wrapper __hash__() takes no keyword arguments ('wrapper __hash__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

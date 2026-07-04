@@ -35364,6 +35364,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_call_wrapper_subset",
             "cpython_function_get_descriptor_wrapper_subset",
             "cpython_function_format_wrapper_subset",
+            "cpython_function_hash_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35459,6 +35460,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_call_wrapper_diff_subset",
         "cpython_function_get_descriptor_wrapper_diff_subset",
         "cpython_function_format_wrapper_diff_subset",
+        "cpython_function_hash_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42004,6 +42006,91 @@ fn function_format_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __format__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_hash_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_hash_wrapper_subset";
+    let diff_name = "cpython_function_hash_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "wrapper = f.__hash__",
+        "wrapper_rendered = repr(wrapper)",
+        "'__hash__' in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "value = wrapper()",
+        "value == hash(f)",
+        "wrapper() == wrapper()",
+        "wrapper_rendered.startswith(\"<method-wrapper '__hash__' of function object at 0x\")",
+        "wrapper.__module__",
+        "('extra', lambda: wrapper(1))",
+        "('keyword', lambda: wrapper(x=1))",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __hash__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True method-wrapper method-wrapper\"",
+        "\"True __hash__ object.__hash__ Return hash(self). MISSING ($self, /)\"",
+        "\"int True True True\"",
+        "\"module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"extra TypeError expected 0 arguments, got 1",
+        "\"keyword TypeError wrapper __hash__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __hash__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<method-wrapper '__hash__' of function object at 0x{:x}>\"",
+        "Value::Builtin(\"function.__hash__\".to_string())",
+        "fn call_function_hash(",
+        "name == \"function.__hash__\"",
+        "function_name == \"function.__hash__\"",
+        "wrapper __hash__() takes no keyword arguments",
+        "expected 0 arguments, got {}",
+        "self.hash_key_value(receiver)",
+        "($self, /)",
+        "function_method_wrapper_missing_module_name(name)",
+        "matches!(name, \"function.__hash__\")",
+        "json_function_method_wrapper_missing_module_name(name)",
+        "| \"function.__hash__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __hash__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __hash__ wrapper metadata",
+            "method-wrapper",
+            "without depending on concrete hash or address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __hash__ wrapper docs must contain `{required}`"
             );
         }
     }
