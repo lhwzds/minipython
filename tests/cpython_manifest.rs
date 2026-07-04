@@ -170,7 +170,8 @@ fn tuple_subclass_new_storage_docs_cover_core_runtime() {
         "fn call_tuple_new(",
         "Value::Builtin(name) if name == \"tuple.__new__\"",
         "function_name == \"tuple\" && name == \"__new__\"",
-        "\"tuple\" => &[\"__add__\", \"__new__\", \"count\", \"index\"]",
+        "\"tuple\" => &[",
+        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
         "let has_own_new = attrs.borrow().contains_key(\"__new__\");",
         "self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), \"__new__\")",
         "value_matches_class_value(&instance, &class)",
@@ -264,7 +265,8 @@ fn tuple_subclass_add_docs_cover_core_runtime() {
         "tuple_concat_operand_values(&right)",
         "tuple_concat_operand_values(receiver)",
         "tuple_concat_operand_values(other)",
-        "\"tuple\" => &[\"__add__\", \"__new__\", \"count\", \"index\"]",
+        "\"tuple\" => &[",
+        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
         "type_name(&original_right)",
         "can only concatenate tuple (not",
         "Ok(tuple_value(items))",
@@ -289,6 +291,116 @@ fn tuple_subclass_add_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple subclass addition docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_subclass_repeat_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_subclass_repeat_diff_subset";
+    let subset_name = "cpython_tuple_subclass_repeat_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple subclass repeat CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple subclass repeat runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "class I(int):",
+        "left = T((1, 2))",
+        "value *= 2",
+        "left * 2",
+        "2 * left",
+        "left * True",
+        "left * I(2)",
+        "left * 0",
+        "left * -1",
+        "left.__mul__(2)",
+        "left.__mul__(I(2))",
+        "left.__rmul__(2)",
+        "left.__rmul__(I(2))",
+        "tuple.__mul__(left, 2)",
+        "tuple.__rmul__(left, 2)",
+        "left * 1.5",
+        "left.__mul__(1.5)",
+        "tuple.__mul__(left, 1.5)",
+        "hasattr(left, '__mul__')",
+        "hasattr(left, '__rmul__')",
+        "hasattr(left, '__imul__')",
+        "'__mul__' in dir(left)",
+        "'__rmul__' in dir(T)",
+        "'__imul__' in dir(left)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple subclass repeat diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"inplace tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"sub-mul-int tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"int-mul-sub tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"sub-mul-bool tuple False (1, 2) (1, 2)\"",
+        "\"sub-mul-subint tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"sub-mul-zero tuple False () (1, 2)\"",
+        "\"sub-mul-neg tuple False () (1, 2)\"",
+        "\"direct-mul tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"direct-mul-subint tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"direct-rmul tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"direct-rmul-subint tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"type-direct-mul tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"type-direct-rmul tuple False (1, 2, 1, 2) (1, 2)\"",
+        "\"bad-float TypeError can't multiply sequence by non-int of type 'float' (1, 2)\"",
+        "\"direct-bad-float TypeError 'float' object cannot be interpreted as an integer (1, 2)\"",
+        "\"type-direct-bad-float TypeError 'float' object cannot be interpreted as an integer (1, 2)\"",
+        "\"visible True True False True True False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple subclass repeat subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "tuple_concat_operand_values(&left).is_some()",
+        "tuple_concat_operand_values(&right).is_some()",
+        "tuple_concat_operand_values(receiver)",
+        "self.sequence_repeat_count_operator(right)?",
+        "self.sequence_repeat_count_operator(left)?",
+        "vm.index_integer_value(count.clone())?",
+        "repeat_count_from_integer_value(count)?",
+        "repeat_values(items, count)?",
+        "\"tuple\" => &[",
+        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
+        "matches!(name, \"__add__\" | \"__mul__\" | \"__rmul__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple subclass repeat implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple subclass `*`",
+            "tuple subclass `*=`",
+            "ordinary `tuple` result",
+            "direct `__mul__` and `__rmul__`",
+            "no inherited `__imul__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple subclass repeat docs must contain `{required}`"
             );
         }
     }

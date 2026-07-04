@@ -14704,6 +14704,21 @@ impl Vm {
             return user_list_value(repeat_values(data.borrow().clone(), count)?);
         }
 
+        if tuple_concat_operand_values(&left).is_some() {
+            let count = self.sequence_repeat_count_operator(right)?;
+            let count = repeat_count_from_integer_value(count)?;
+            let items = tuple_concat_operand_values(&left)
+                .expect("tuple repeat operand exists after guard");
+            return Ok(tuple_value(repeat_values(items, count)?));
+        }
+        if tuple_concat_operand_values(&right).is_some() {
+            let count = self.sequence_repeat_count_operator(left)?;
+            let count = repeat_count_from_integer_value(count)?;
+            let items = tuple_concat_operand_values(&right)
+                .expect("tuple repeat operand exists after guard");
+            return Ok(tuple_value(repeat_values(items, count)?));
+        }
+
         multiply_values(left, right)
     }
 
@@ -14744,6 +14759,14 @@ impl Vm {
             let repeated = repeat_values(data.borrow().clone(), count)?;
             *data.borrow_mut() = repeated;
             return Ok(left);
+        }
+
+        if tuple_concat_operand_values(&left).is_some() {
+            let count = self.sequence_repeat_count_operator(right)?;
+            let count = repeat_count_from_integer_value(count)?;
+            let items = tuple_concat_operand_values(&left)
+                .expect("tuple repeat operand exists after guard");
+            return Ok(tuple_value(repeat_values(items, count)?));
         }
 
         let original_left = left.clone();
@@ -53152,7 +53175,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "rotate",
         ],
-        "tuple" => &["__add__", "__new__", "count", "index"],
+        "tuple" => &[
+            "__add__", "__mul__", "__new__", "__rmul__", "count", "index",
+        ],
         "range" => &["__new__", "count", "index", "start", "stop", "step"],
         "bytes" => &[
             "__bytes__",
@@ -57685,7 +57710,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
         name,
         "__contains__" | "__getitem__" | "__iter__" | "__len__"
     ) || (matches!(type_name, "tuple" | "range") && matches!(name, "count" | "index"))
-        || (type_name == "tuple" && name == "__add__")
+        || (type_name == "tuple" && matches!(name, "__add__" | "__mul__" | "__rmul__"))
         || (type_name == "tuple"
             && matches!(
                 name,
@@ -75943,6 +75968,24 @@ fn call_immutable_sequence_method(
             };
             items.extend(other_items);
             Ok(tuple_value(items))
+        }
+        "__mul__" | "__rmul__" => {
+            let [receiver, count] = args.as_slice() else {
+                return Err(format!(
+                    "{}() expected 1 argument, got {}",
+                    method_display_name(name),
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(items) = tuple_concat_operand_values(receiver) else {
+                return Err(format!(
+                    "{}() expected a tuple receiver",
+                    method_display_name(name)
+                ));
+            };
+            let count = vm.index_integer_value(count.clone())?;
+            let count = repeat_count_from_integer_value(count)?;
+            Ok(tuple_value(repeat_values(items, count)?))
         }
         "__eq__" | "__ne__" => {
             let [receiver, other] = args.as_slice() else {

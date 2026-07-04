@@ -54658,6 +54658,67 @@ fn cpython_tuple_subclass_add_subset() {
     );
 }
 
+// Adapted from CPython public tuple-subclass repeat behavior. This pins
+// tuple-subclass repeat operators and direct tuple repeat methods without
+// adding an __imul__ surface.
+#[test]
+fn cpython_tuple_subclass_repeat_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "class I(int):\n",
+            "    pass\n",
+            "left = T((1, 2))\n",
+            "value = left\n",
+            "value *= 2\n",
+            "print('inplace', type(value).__name__, isinstance(value, T), value, left)\n",
+            "for label, expr in [\n",
+            "    ('sub-mul-int', lambda: left * 2),\n",
+            "    ('int-mul-sub', lambda: 2 * left),\n",
+            "    ('sub-mul-bool', lambda: left * True),\n",
+            "    ('sub-mul-subint', lambda: left * I(2)),\n",
+            "    ('sub-mul-zero', lambda: left * 0),\n",
+            "    ('sub-mul-neg', lambda: left * -1),\n",
+            "    ('direct-mul', lambda: left.__mul__(2)),\n",
+            "    ('direct-mul-subint', lambda: left.__mul__(I(2))),\n",
+            "    ('direct-rmul', lambda: left.__rmul__(2)),\n",
+            "    ('direct-rmul-subint', lambda: left.__rmul__(I(2))),\n",
+            "    ('type-direct-mul', lambda: tuple.__mul__(left, 2)),\n",
+            "    ('type-direct-rmul', lambda: tuple.__rmul__(left, 2)),\n",
+            "    ('bad-float', lambda: left * 1.5),\n",
+            "    ('direct-bad-float', lambda: left.__mul__(1.5)),\n",
+            "    ('type-direct-bad-float', lambda: tuple.__mul__(left, 1.5)),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, isinstance(result, T), result, left)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), left)\n",
+            "print('visible', hasattr(left, '__mul__'), hasattr(left, '__rmul__'), hasattr(left, '__imul__'), '__mul__' in dir(left), '__rmul__' in dir(T), '__imul__' in dir(left))",
+        ),
+        &[
+            "inplace tuple False (1, 2, 1, 2) (1, 2)",
+            "sub-mul-int tuple False (1, 2, 1, 2) (1, 2)",
+            "int-mul-sub tuple False (1, 2, 1, 2) (1, 2)",
+            "sub-mul-bool tuple False (1, 2) (1, 2)",
+            "sub-mul-subint tuple False (1, 2, 1, 2) (1, 2)",
+            "sub-mul-zero tuple False () (1, 2)",
+            "sub-mul-neg tuple False () (1, 2)",
+            "direct-mul tuple False (1, 2, 1, 2) (1, 2)",
+            "direct-mul-subint tuple False (1, 2, 1, 2) (1, 2)",
+            "direct-rmul tuple False (1, 2, 1, 2) (1, 2)",
+            "direct-rmul-subint tuple False (1, 2, 1, 2) (1, 2)",
+            "type-direct-mul tuple False (1, 2, 1, 2) (1, 2)",
+            "type-direct-rmul tuple False (1, 2, 1, 2) (1, 2)",
+            "bad-float TypeError can't multiply sequence by non-int of type 'float' (1, 2)",
+            "direct-bad-float TypeError 'float' object cannot be interpreted as an integer (1, 2)",
+            "type-direct-bad-float TypeError 'float' object cannot be interpreted as an integer (1, 2)",
+            "visible True True False True True False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

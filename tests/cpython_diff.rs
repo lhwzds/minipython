@@ -18123,6 +18123,45 @@ print('visible', hasattr(left, '__add__'), hasattr(left, '__radd__'), '__add__' 
 }
 
 #[test]
+fn cpython_tuple_subclass_repeat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple subclass repeat behavior",
+        name: "tuple-subclass-repeat",
+        source: r#"class T(tuple):
+    pass
+class I(int):
+    pass
+left = T((1, 2))
+value = left
+value *= 2
+print('inplace', type(value).__name__, isinstance(value, T), value, left)
+for label, expr in [
+    ('sub-mul-int', lambda: left * 2),
+    ('int-mul-sub', lambda: 2 * left),
+    ('sub-mul-bool', lambda: left * True),
+    ('sub-mul-subint', lambda: left * I(2)),
+    ('sub-mul-zero', lambda: left * 0),
+    ('sub-mul-neg', lambda: left * -1),
+    ('direct-mul', lambda: left.__mul__(2)),
+    ('direct-mul-subint', lambda: left.__mul__(I(2))),
+    ('direct-rmul', lambda: left.__rmul__(2)),
+    ('direct-rmul-subint', lambda: left.__rmul__(I(2))),
+    ('type-direct-mul', lambda: tuple.__mul__(left, 2)),
+    ('type-direct-rmul', lambda: tuple.__rmul__(left, 2)),
+    ('bad-float', lambda: left * 1.5),
+    ('direct-bad-float', lambda: left.__mul__(1.5)),
+    ('type-direct-bad-float', lambda: tuple.__mul__(left, 1.5)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, isinstance(result, T), result, left)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), left)
+print('visible', hasattr(left, '__mul__'), hasattr(left, '__rmul__'), hasattr(left, '__imul__'), '__mul__' in dir(left), '__rmul__' in dir(T), '__imul__' in dir(left))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

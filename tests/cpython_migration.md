@@ -56,6 +56,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   plus tuple subclass operands, ordinary `tuple` result type, direct `__add__`
   / `tuple.__add__` dispatch, direct `__add__` visibility, CPython tuple-concat
   TypeError text for non-tuple operands, and no inherited `__radd__`, without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_subclass_repeat_subset` and
+  `cpython_tuple_subclass_repeat_diff_subset` for tuple subclass `*`, tuple subclass `*=`,
+  exact int, bool, and int-subclass repeat counts, ordinary `tuple` result type,
+  direct `__mul__` and `__rmul__` / `tuple.__mul__` and `tuple.__rmul__` dispatch,
+  CPython operator versus direct-call TypeError text for non-integer counts, and
+  no inherited `__imul__`, without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_list_subclass_new_storage_subset` and
   `cpython_list_subclass_new_storage_diff_subset` for list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,
