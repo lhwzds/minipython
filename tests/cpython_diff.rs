@@ -18179,6 +18179,30 @@ print('sample', [name for name in supported[:10] if name in dir(left)])"#,
 }
 
 #[test]
+fn cpython_tuple_subclass_repr_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple __repr__ wrapper behavior",
+        name: "tuple-subclass-repr-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('repr-exact', lambda: (1, 'x').__repr__()),
+    ('repr-sub', lambda: left.__repr__()),
+    ('type-repr-exact', lambda: tuple.__repr__((1, 'x'))),
+    ('type-repr-sub', lambda: tuple.__repr__(left)),
+    ('bad-repr-list', lambda: tuple.__repr__([1, 2])),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__repr__'), '__repr__' in dir(left), '__repr__' in dir(T), '__repr__' in dir(tuple), type(tuple.__repr__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

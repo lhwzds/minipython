@@ -380,7 +380,7 @@ fn tuple_subclass_repeat_docs_cover_core_runtime() {
         "\"tuple\" => &[",
         "\"__mul__\",",
         "\"__rmul__\",",
-        "matches!(name, \"__add__\" | \"__mul__\" | \"__rmul__\")",
+        "matches!(name, \"__add__\" | \"__mul__\" | \"__repr__\" | \"__rmul__\")",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -523,6 +523,89 @@ fn tuple_subclass_sequence_dir_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple subclass sequence dir docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_subclass_repr_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_subclass_repr_direct_diff_subset";
+    let subset_name = "cpython_tuple_subclass_repr_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple subclass repr direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple subclass repr direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__repr__()",
+        "left.__repr__()",
+        "tuple.__repr__((1, 'x'))",
+        "tuple.__repr__(left)",
+        "tuple.__repr__([1, 2])",
+        "hasattr(left, '__repr__')",
+        "'__repr__' in dir(left)",
+        "'__repr__' in dir(T)",
+        "'__repr__' in dir(tuple)",
+        "type(tuple.__repr__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple subclass repr direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"repr-exact str (1, 'x')\"",
+        "\"repr-sub str (1, 'x')\"",
+        "\"type-repr-exact str (1, 'x')\"",
+        "\"type-repr-sub str (1, 'x')\"",
+        "\"bad-repr-list TypeError descriptor '__repr__' requires a 'tuple' object but received a 'list'\"",
+        "\"visible True True True True wrapper_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple subclass repr direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn tuple_repr_receiver_value(",
+        "tuple_subclass_items(value)",
+        "Value::Tuple(items)",
+        "\"__repr__\" =>",
+        "tuple_repr_receiver_value(receiver)",
+        "descriptor '__repr__' requires a 'tuple' object but received a",
+        "repr_value_checked(&receiver).map(Value::String)",
+        "matches!(name, \"__add__\" | \"__mul__\" | \"__repr__\" | \"__rmul__\")",
+        "\"tuple\" => matches!(method, \"__repr__\")",
+        "\"__repr__\",",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple subclass repr direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple subclass direct `__repr__`",
+            "`tuple.__repr__` wrapper behavior",
+            "without adding `tuple.__str__` or full wrapper-descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple subclass repr direct docs must contain `{required}`"
             );
         }
     }

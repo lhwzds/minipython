@@ -53189,6 +53189,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__mul__",
             "__ne__",
             "__new__",
+            "__repr__",
             "__rmul__",
             "count",
             "index",
@@ -57725,7 +57726,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
         name,
         "__contains__" | "__getitem__" | "__iter__" | "__len__"
     ) || (matches!(type_name, "tuple" | "range") && matches!(name, "count" | "index"))
-        || (type_name == "tuple" && matches!(name, "__add__" | "__mul__" | "__rmul__"))
+        || (type_name == "tuple" && matches!(name, "__add__" | "__mul__" | "__repr__" | "__rmul__"))
         || (type_name == "tuple"
             && matches!(
                 name,
@@ -67190,6 +67191,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
+        "tuple" => matches!(method, "__repr__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
@@ -75927,6 +75929,21 @@ fn call_immutable_sequence_method(
             let len = i64::try_from(value_len(receiver)?)
                 .map_err(|_| "len() result is too large".to_string())?;
             Ok(Value::Number(len))
+        }
+        "__repr__" => {
+            let [receiver] = args.as_slice() else {
+                return Err(format!(
+                    "__repr__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(receiver) = tuple_repr_receiver_value(receiver) else {
+                return Err(format!(
+                    "TypeError: descriptor '__repr__' requires a 'tuple' object but received a '{}'",
+                    type_name(receiver)
+                ));
+            };
+            repr_value_checked(&receiver).map(Value::String)
         }
         "count" => {
             let [receiver, needle] = args.as_slice() else {
@@ -86164,6 +86181,24 @@ fn tuple_concat_operand_values(value: &Value) -> Option<Vec<Value>> {
                 .clone(),
         ),
         value => namedtuple_subclass_storage(value).map(|(_, values)| values.as_ref().clone()),
+    }
+}
+
+fn tuple_repr_receiver_value(value: &Value) -> Option<Value> {
+    match value {
+        Value::Tuple(_) => Some(value.clone()),
+        Value::NamedTuple { values, .. } => Some(Value::Tuple(values.clone())),
+        value if tuple_subclass_items(value).is_some() => {
+            let items =
+                tuple_subclass_items(value).expect("tuple subclass items exist after guard");
+            Some(Value::Tuple(items))
+        }
+        value if namedtuple_subclass_storage(value).is_some() => {
+            let (_, values) = namedtuple_subclass_storage(value)
+                .expect("namedtuple subclass storage exists after guard");
+            Some(Value::Tuple(values))
+        }
+        _ => None,
     }
 }
 

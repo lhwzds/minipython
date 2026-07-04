@@ -67,6 +67,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   supported tuple sequence dunder visibility for instance, `tuple`, and tuple subclass type
   objects, while preserving no inherited `__radd__` / `__imul__` and without adding unsupported `__radd__` or `__imul__`,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_subclass_repr_direct_subset` and
+  `cpython_tuple_subclass_repr_direct_diff_subset` for tuple subclass direct `__repr__`,
+  `tuple.__repr__` wrapper behavior for exact and tuple-subclass receivers and
+  non-tuple receiver TypeError text, without adding `tuple.__str__` or full wrapper-descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_list_subclass_new_storage_subset` and
   `cpython_list_subclass_new_storage_diff_subset` for list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,

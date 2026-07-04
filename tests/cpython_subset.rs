@@ -54772,6 +54772,41 @@ fn cpython_tuple_subclass_sequence_dir_subset() {
     );
 }
 
+// Adapted from CPython public tuple __repr__ wrapper behavior. This pins the
+// tuple-specific direct repr path without expanding into tuple.__str__ or full
+// wrapper-descriptor metadata.
+#[test]
+fn cpython_tuple_subclass_repr_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('repr-exact', lambda: (1, 'x').__repr__()),\n",
+            "    ('repr-sub', lambda: left.__repr__()),\n",
+            "    ('type-repr-exact', lambda: tuple.__repr__((1, 'x'))),\n",
+            "    ('type-repr-sub', lambda: tuple.__repr__(left)),\n",
+            "    ('bad-repr-list', lambda: tuple.__repr__([1, 2])),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__repr__'), '__repr__' in dir(left), '__repr__' in dir(T), '__repr__' in dir(tuple), type(tuple.__repr__).__name__)",
+        ),
+        &[
+            "repr-exact str (1, 'x')",
+            "repr-sub str (1, 'x')",
+            "type-repr-exact str (1, 'x')",
+            "type-repr-sub str (1, 'x')",
+            "bad-repr-list TypeError descriptor '__repr__' requires a 'tuple' object but received a 'list'",
+            "visible True True True True wrapper_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]
