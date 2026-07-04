@@ -585,7 +585,7 @@ fn tuple_subclass_repr_direct_docs_cover_core_runtime() {
         "descriptor '__repr__' requires a 'tuple' object but received a",
         "repr_value_checked(&receiver).map(Value::String)",
         "matches!(name, \"__add__\" | \"__mul__\" | \"__repr__\" | \"__rmul__\")",
-        "\"tuple\" => matches!(method, \"__repr__\")",
+        "\"tuple\" => matches!(method, \"__repr__\" | \"__hash__\")",
         "\"__repr__\",",
     ] {
         assert!(
@@ -606,6 +606,115 @@ fn tuple_subclass_repr_direct_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple subclass repr direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_hash_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_hash_direct_diff_subset";
+    let subset_name = "cpython_tuple_hash_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple hash direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple hash direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__hash__()",
+        "left.__hash__()",
+        "hash(left)",
+        "tuple.__hash__((1, 'x'))",
+        "tuple.__hash__(left)",
+        "tuple.__hash__([1, 2])",
+        "([1],).__hash__()",
+        "result == hash((1, 'x'))",
+        "hasattr(left, '__hash__')",
+        "'__hash__' in dir(left)",
+        "'__hash__' in dir(T)",
+        "'__hash__' in dir(tuple)",
+        "type(tuple.__hash__).__name__",
+        "tuple.__hash__ is object.__hash__",
+        "type(object.__hash__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple hash direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"hash-exact int True\"",
+        "\"hash-sub int True\"",
+        "\"builtin-hash-sub int True\"",
+        "\"type-hash-exact int True\"",
+        "\"type-hash-sub int True\"",
+        "\"type-hash-list TypeError descriptor '__hash__' requires a 'tuple' object but received a 'list'\"",
+        "\"hash-unhashable TypeError unhashable type: 'list'\"",
+        "\"visible True True True True wrapper_descriptor False wrapper_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple hash direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__hash__\""),
+        "tuple dir block must expose direct `__hash__`"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"tuple.__hash__\"",
+        "call_tuple_hash(args)",
+        "Value::Tuple(items) if name == \"__hash__\"",
+        "function: Box::new(Value::Builtin(\"tuple.__hash__\".to_string()))",
+        "function_name == \"tuple\" && name == \"__hash__\"",
+        "Ok(Value::Builtin(\"tuple.__hash__\".to_string()))",
+        "fn call_tuple_hash(args: Vec<Value>) -> Result<Value, String>",
+        "fn tuple_hash_receiver_value(",
+        "tuple_hash_receiver_value(receiver)",
+        "hash_value(&receiver)",
+        "descriptor '__hash__' requires a 'tuple' object but received a",
+        "tuple_subclass_items(value)",
+        "\"tuple\" => matches!(method, \"__repr__\" | \"__hash__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple hash direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple direct `__hash__`",
+            "`tuple.__hash__` wrapper behavior",
+            "tuple subclass receiver",
+            "unhashable tuple item propagation",
+            "without adding full wrapper metadata or unrelated hash-method parity",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple hash direct docs must contain `{required}`"
             );
         }
     }

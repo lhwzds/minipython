@@ -18203,6 +18203,35 @@ print('visible', hasattr(left, '__repr__'), '__repr__' in dir(left), '__repr__' 
 }
 
 #[test]
+fn cpython_tuple_hash_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple __hash__ wrapper behavior",
+        name: "tuple-hash-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('hash-exact', lambda: (1, 'x').__hash__()),
+    ('hash-sub', lambda: left.__hash__()),
+    ('builtin-hash-sub', lambda: hash(left)),
+    ('type-hash-exact', lambda: tuple.__hash__((1, 'x'))),
+    ('type-hash-sub', lambda: tuple.__hash__(left)),
+    ('type-hash-list', lambda: tuple.__hash__([1, 2])),
+    ('hash-unhashable', lambda: ([1],).__hash__()),
+]:
+    try:
+        result = expr()
+        if isinstance(result, int):
+            print(label, type(result).__name__, result == hash((1, 'x')))
+        else:
+            print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__hash__'), '__hash__' in dir(left), '__hash__' in dir(T), '__hash__' in dir(tuple), type(tuple.__hash__).__name__, tuple.__hash__ is object.__hash__, type(object.__hash__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_inherited_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple inherited __str__ wrapper behavior",

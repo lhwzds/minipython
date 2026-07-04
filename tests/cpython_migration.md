@@ -72,6 +72,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `tuple.__repr__` wrapper behavior for exact and tuple-subclass receivers and
   non-tuple receiver TypeError text, without adding full wrapper-descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_hash_direct_subset` and
+  `cpython_tuple_hash_direct_diff_subset` for tuple direct `__hash__`,
+  `tuple.__hash__` wrapper behavior for exact and tuple subclass receiver,
+  builtin `hash()` inheritance for a tuple subclass receiver, non-tuple receiver
+  TypeError text, and unhashable tuple item propagation, without adding full wrapper metadata or unrelated hash-method parity,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_tuple_inherited_str_direct_subset` and
   `cpython_tuple_inherited_str_direct_diff_subset` for tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

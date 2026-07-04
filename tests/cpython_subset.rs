@@ -54807,6 +54807,48 @@ fn cpython_tuple_subclass_repr_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __hash__ wrapper behavior. This pins exact
+// and tuple-subclass receiver dispatch without expanding into full hash metadata
+// or unrelated container hash parity.
+#[test]
+fn cpython_tuple_hash_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('hash-exact', lambda: (1, 'x').__hash__()),\n",
+            "    ('hash-sub', lambda: left.__hash__()),\n",
+            "    ('builtin-hash-sub', lambda: hash(left)),\n",
+            "    ('type-hash-exact', lambda: tuple.__hash__((1, 'x'))),\n",
+            "    ('type-hash-sub', lambda: tuple.__hash__(left)),\n",
+            "    ('type-hash-list', lambda: tuple.__hash__([1, 2])),\n",
+            "    ('hash-unhashable', lambda: ([1],).__hash__()),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        if isinstance(result, int):\n",
+            "            print(label, type(result).__name__, result == hash((1, 'x')))\n",
+            "        else:\n",
+            "            print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__hash__'), '__hash__' in dir(left), '__hash__' in dir(T), '__hash__' in dir(tuple), type(tuple.__hash__).__name__, tuple.__hash__ is object.__hash__, type(object.__hash__).__name__)",
+        ),
+        &[
+            "hash-exact int True",
+            "hash-sub int True",
+            "builtin-hash-sub int True",
+            "type-hash-exact int True",
+            "type-hash-sub int True",
+            "type-hash-list TypeError descriptor '__hash__' requires a 'tuple' object but received a 'list'",
+            "hash-unhashable TypeError unhashable type: 'list'",
+            "visible True True True True wrapper_descriptor False wrapper_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple __str__ inheritance. This pins the
 // inherited object.__str__ wrapper for tuple without making it a tuple-specific
 // sequence method.

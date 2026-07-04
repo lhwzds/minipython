@@ -10030,6 +10030,15 @@ impl Vm {
 
                 self.call_object_hash(args)
             }
+            Value::Builtin(name) if name == "tuple.__hash__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: wrapper __hash__() takes no keyword arguments".to_string()
+                    );
+                }
+
+                call_tuple_hash(args)
+            }
             Value::Builtin(name)
                 if matches!(
                     name.as_str(),
@@ -53187,6 +53196,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getstate__",
             "__getitem__",
             "__gt__",
+            "__hash__",
             "__init__",
             "__iter__",
             "__le__",
@@ -61008,6 +61018,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver: Box::new(Value::Tuple(items)),
             identity: Rc::new(()),
         }),
+        Value::Tuple(items) if name == "__hash__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("tuple.__hash__".to_string())),
+            receiver: Box::new(Value::Tuple(items)),
+            identity: Rc::new(()),
+        }),
         Value::Tuple(items) if name == "__init__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("object.__init__".to_string())),
             receiver: Box::new(Value::Tuple(items)),
@@ -62882,6 +62897,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__hash__" => {
+            Ok(Value::Builtin("tuple.__hash__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__dir__" => {
             Ok(Value::Builtin("object.__dir__".to_string()))
@@ -67215,6 +67233,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__getattribute__"
                 | "__setattr__"
                 | "__delattr__"
+                | "__hash__"
         ),
         "int" | "bool" => matches!(
             method,
@@ -67228,7 +67247,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
-        "tuple" => matches!(method, "__repr__"),
+        "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
@@ -76102,6 +76121,22 @@ fn call_immutable_sequence_method(
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
+}
+
+fn call_tuple_hash(args: Vec<Value>) -> Result<Value, String> {
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "__hash__() expected 0 arguments, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(receiver) = tuple_hash_receiver_value(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '__hash__' requires a 'tuple' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    hash_value(&receiver)
 }
 
 fn call_str_prefix_suffix_method(
@@ -86239,6 +86274,10 @@ fn tuple_repr_receiver_value(value: &Value) -> Option<Value> {
     }
 }
 
+fn tuple_hash_receiver_value(value: &Value) -> Option<Value> {
+    tuple_repr_receiver_value(value)
+}
+
 #[derive(Clone, Copy)]
 enum CounterUpdateMode {
     Add,
@@ -86638,6 +86677,12 @@ fn instance_hash_method(value: &Value) -> Result<Option<Value>, String> {
         Ok(Some(Value::BoundMethod {
             function: Box::new(Value::Builtin("frozenset.__hash__".to_string())),
             receiver: Box::new(Value::FrozenSet(items)),
+            identity: Rc::new(()),
+        }))
+    } else if let Some(items) = tuple_subclass_items(value) {
+        Ok(Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin("tuple.__hash__".to_string())),
+            receiver: Box::new(Value::Tuple(items)),
             identity: Rc::new(()),
         }))
     } else if let Some(method) = find_base_attr_by_mro(class_bases, "__hash__") {
