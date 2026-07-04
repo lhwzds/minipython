@@ -679,6 +679,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_object_instance_default_repr_shape_diff_subset`,
+  `cpython_function_repr_str_wrapper_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
@@ -7406,6 +7407,12 @@ without adding general custom encoder/decoder class support.
   `cpython_object_instance_default_repr_shape_diff_subset`, covering default user-instance repr/str shape
   with module and qualname, builtins and non-string module boundaries, nested
   class qualnames, and class-level repr override behavior without depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes `cpython_function_repr_str_wrapper_subset`
+  with direct CPython output parity in
+  `cpython_function_repr_str_wrapper_diff_subset`, covering function repr/str wrapper shape,
+  nested function qualname display, `__name__` versus `__qualname__` effects,
+  visible `__repr__` / `__str__` method-wrapper attributes, and wrapper
+  arity/keyword errors without depending on concrete addresses.
 - `RUNTIME_BUILTINS` also includes `cpython_object_getstate_direct_subset` with
   direct CPython output parity in
   `cpython_object_getstate_direct_diff_subset`, covering CPython's inherited

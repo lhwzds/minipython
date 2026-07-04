@@ -10145,6 +10145,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__repr__" || name == "method.__str__" => {
                 self.call_method_repr_str(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "function.__repr__" || name == "function.__str__" => {
+                self.call_function_repr_str(&name, args, keywords)
+            }
             Value::Builtin(name)
                 if name == "json.function.__repr__" || name == "json.function.__str__" =>
             {
@@ -17886,6 +17889,32 @@ impl Vm {
         if !matches!(receiver, Value::BoundMethod { .. }) {
             return Err(
                 "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        }
+        Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_function_repr_str(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: wrapper {method}() takes no keyword arguments"
+            ));
+        }
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
@@ -51441,11 +51470,14 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Function { .. } => names.extend(
             [
                 "__annotations__",
+                "__call__",
                 "__doc__",
                 "__globals__",
                 "__module__",
                 "__name__",
                 "__qualname__",
+                "__repr__",
+                "__str__",
                 "__type_params__",
                 "__builtins__",
             ]
@@ -57417,6 +57449,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         ),
         "__call__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("callable.__call__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
+        "__repr__" | "__str__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("function.{name}"))),
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
@@ -66009,6 +66046,8 @@ fn is_method_wrapper_name(name: &str) -> bool {
         name,
         "method.__repr__"
             | "method.__str__"
+            | "function.__repr__"
+            | "function.__str__"
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"

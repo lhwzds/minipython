@@ -41,6 +41,7 @@ pub const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
 pub const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
 pub const GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_genericalias_storage";
 const CLASS_QUALNAME_ATTR: &str = "\0class_qualname";
+const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
 
 pub fn identity_string_value(value: String) -> Value {
     Value::IdentityString {
@@ -1346,7 +1347,19 @@ impl fmt::Display for Value {
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
             Value::Iterator(_) => write!(f, "<iterator>"),
-            Value::Function { name, .. } => write!(f, "<function {name}>"),
+            Value::Function {
+                name,
+                attrs,
+                identity,
+                ..
+            } => {
+                let display_name = function_like_name_from_attrs(attrs, name);
+                write!(
+                    f,
+                    "{}",
+                    format_function_object_repr(&display_name, identity)
+                )
+            }
             Value::TypesCoroutineFunction { function, .. } => write!(f, "{function}"),
             Value::MagicMock { .. } => write!(f, "<MagicMock object>"),
             Value::MockMethod { name, .. } => write!(f, "<MagicMock name='{name}'>"),
@@ -1770,6 +1783,12 @@ fn format_singledispatchmethod_callable(descriptor: &Value, receiver: Option<&Va
 
 fn function_like_name_from_attrs(attrs: &Scope, fallback: &str) -> String {
     let attrs = attrs.borrow();
+    match attrs.get(FUNCTION_QUALNAME_ATTR) {
+        Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => {
+            return value.clone();
+        }
+        _ => {}
+    }
     for name in ["__qualname__", "__name__"] {
         match attrs.get(name) {
             Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => {
@@ -2055,7 +2074,15 @@ fn format_value_repr(value: &Value) -> String {
         Value::Frame { .. } => "<frame object>".to_string(),
         Value::FrameLocalsProxy { .. } => "<frame locals proxy object>".to_string(),
         Value::Traceback { .. } => "<traceback object>".to_string(),
-        Value::Function { name, .. } => format!("<function {name}>"),
+        Value::Function {
+            name,
+            attrs,
+            identity,
+            ..
+        } => {
+            let display_name = function_like_name_from_attrs(attrs, name);
+            format_function_object_repr(&display_name, identity)
+        }
         Value::TypesCoroutineFunction { function, .. } => format_value_repr(function),
         Value::MagicMock { .. } => "<MagicMock object>".to_string(),
         Value::MockMethod { name, .. } => format!("<MagicMock name='{name}'>"),

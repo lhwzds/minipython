@@ -28884,6 +28884,56 @@ fn cpython_object_instance_default_repr_shape_subset() {
     );
 }
 
+// Adapted from CPython public function-object display behavior. This pins the
+// repr/str shape and wrappers without depending on the concrete address value.
+#[test]
+fn cpython_function_repr_str_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+def outer():
+    def inner():
+        pass
+    return inner
+for label, function, prefix in [
+    ('plain', f, '<function f at 0x'),
+    ('nested', outer(), '<function outer.<locals>.inner at 0x'),
+]:
+    rendered = repr(function)
+    print(label, rendered.startswith(prefix), rendered.endswith('>'), str(function) == rendered)
+    print(label, '__repr__' in dir(function), '__str__' in dir(function), '__call__' in dir(function), type(function.__repr__).__name__, type(function.__str__).__name__)
+    print(label, function.__repr__().startswith(prefix), function.__repr__().endswith('>'), function.__str__() == function.__repr__())
+f.__name__ = 'renamed'
+print('name-only', repr(f).startswith('<function f at 0x'))
+f.__qualname__ = 'custom.qual'
+print('qualname', repr(f).startswith('<function custom.qual at 0x'), f.__repr__().startswith('<function custom.qual at 0x'))
+for label, call in [
+    ('repr-extra', lambda: f.__repr__(1)),
+    ('repr-keyword', lambda: f.__repr__(x=1)),
+    ('str-extra', lambda: f.__str__(1)),
+    ('str-keyword', lambda: f.__str__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "plain True True True",
+            "plain True True True method-wrapper method-wrapper",
+            "plain True True True",
+            "nested True True True",
+            "nested True True True method-wrapper method-wrapper",
+            "nested True True True",
+            "name-only True",
+            "qualname True True",
+            "repr-extra TypeError expected 0 arguments, got 1",
+            "repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+            "str-extra TypeError expected 0 arguments, got 1",
+            "str-keyword TypeError wrapper __str__() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

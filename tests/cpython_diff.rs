@@ -13863,6 +13863,42 @@ print(repr(i), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x
 }
 
 #[test]
+fn cpython_function_repr_str_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public function repr / str wrapper subset",
+        name: "function-repr-str-wrapper",
+        source: r#"def f():
+    pass
+def outer():
+    def inner():
+        pass
+    return inner
+for label, function, prefix in [
+    ('plain', f, '<function f at 0x'),
+    ('nested', outer(), '<function outer.<locals>.inner at 0x'),
+]:
+    rendered = repr(function)
+    print(label, rendered.startswith(prefix), rendered.endswith('>'), str(function) == rendered)
+    print(label, '__repr__' in dir(function), '__str__' in dir(function), '__call__' in dir(function), type(function.__repr__).__name__, type(function.__str__).__name__)
+    print(label, function.__repr__().startswith(prefix), function.__repr__().endswith('>'), function.__str__() == function.__repr__())
+f.__name__ = 'renamed'
+print('name-only', repr(f).startswith('<function f at 0x'))
+f.__qualname__ = 'custom.qual'
+print('qualname', repr(f).startswith('<function custom.qual at 0x'), f.__repr__().startswith('<function custom.qual at 0x'))
+for label, call in [
+    ('repr-extra', lambda: f.__repr__(1)),
+    ('repr-keyword', lambda: f.__repr__(x=1)),
+    ('str-extra', lambda: f.__str__(1)),
+    ('str-keyword', lambda: f.__str__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

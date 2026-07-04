@@ -35360,6 +35360,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_object_instance_default_repr_shape_subset",
+            "cpython_function_repr_str_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35451,6 +35452,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_object_instance_default_repr_shape_diff_subset",
+        "cpython_function_repr_str_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -41662,6 +41664,76 @@ fn object_instance_default_repr_shape_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused object instance repr shape docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_repr_str_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_repr_str_wrapper_subset";
+    let diff_name = "cpython_function_repr_str_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "def outer():",
+        "'<function outer.<locals>.inner at 0x'",
+        "rendered.startswith(prefix)",
+        "'__repr__' in dir(function)",
+        "type(function.__repr__).__name__",
+        "f.__name__ = 'renamed'",
+        "f.__qualname__ = 'custom.qual'",
+        "f.__repr__(1)",
+        "f.__repr__(x=1)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function repr/str wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"plain True True True\"",
+        "\"nested True True True\"",
+        "\"name-only True\"",
+        "\"qualname True True\"",
+        "\"repr-extra TypeError expected 0 arguments, got 1\"",
+        "\"repr-keyword TypeError wrapper __repr__() takes no keyword arguments\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function repr/str wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_QUALNAME_ATTR: &str = \"\\0function_qualname\";",
+        "format_function_object_repr(&display_name, identity)",
+        "Value::Builtin(format!(\"function.{name}\"))",
+        "fn call_function_repr_str(",
+        "name == \"function.__repr__\" || name == \"function.__str__\"",
+        "\"function.__repr__\"",
+        "\"function.__str__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function repr/str wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function repr/str wrapper shape",
+            "nested function qualname",
+            "without depending on concrete addresses",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function repr/str wrapper docs must contain `{required}`"
             );
         }
     }
