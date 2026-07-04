@@ -16104,6 +16104,31 @@ print(A.__dict__['__firstlineno__'], A.__firstlineno__)"#,
 }
 
 #[test]
+fn cpython_type_parameters_missing_for_nongeneric_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public non-generic __parameters__ subset",
+        name: "type-parameters-missing-for-nongeneric",
+        source: r#"class A:
+    pass
+A.__name__ = 'Renamed'
+try:
+    print('initial', A.__parameters__)
+except AttributeError as error:
+    print('initial', error.__class__.__name__, str(error), error.args == (str(error),), '__parameters__' in A.__dict__)
+A.__parameters__ = 1
+print('assigned', A.__parameters__, '__parameters__' in A.__dict__)
+del A.__parameters__
+try:
+    print('after-delete', A.__parameters__)
+except AttributeError as error:
+    print('after-delete', error.__class__.__name__, str(error), error.args == (str(error),), hasattr(A, '__parameters__'), '__parameters__' in A.__dict__)
+class G[T]:
+    pass
+print('generic', tuple(param.__name__ for param in G.__parameters__), G.__parameters__ == G.__type_params__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",

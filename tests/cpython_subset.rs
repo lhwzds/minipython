@@ -50396,6 +50396,22 @@ fn cpython_type_typeparams_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public type-parameter
+// metadata behavior. Ordinary non-generic classes do not expose
+// __parameters__ unless user code assigns it, while generic classes still do.
+#[test]
+fn cpython_type_parameters_missing_for_nongeneric_subset() {
+    assert_output(
+        "class A:\n    pass\nA.__name__ = 'Renamed'\ntry:\n    print('initial', A.__parameters__)\nexcept AttributeError as error:\n    print('initial', error.__class__.__name__, str(error), error.args == (str(error),), '__parameters__' in A.__dict__)\nA.__parameters__ = 1\nprint('assigned', A.__parameters__, '__parameters__' in A.__dict__)\ndel A.__parameters__\ntry:\n    print('after-delete', A.__parameters__)\nexcept AttributeError as error:\n    print('after-delete', error.__class__.__name__, str(error), error.args == (str(error),), hasattr(A, '__parameters__'), '__parameters__' in A.__dict__)\nclass G[T]:\n    pass\nprint('generic', tuple(param.__name__ for param in G.__parameters__), G.__parameters__ == G.__type_params__)",
+        &[
+            "initial AttributeError type object 'Renamed' has no attribute '__parameters__' True False",
+            "assigned 1 True",
+            "after-delete AttributeError type object 'Renamed' has no attribute '__parameters__' True False False",
+            "generic ('T',) True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_namespace_order.
 // MiniPython covers the public behavior that a dynamic class preserves the
 // insertion order of an ordered namespace mapping in its class dictionary.

@@ -9881,6 +9881,10 @@ Completed in the type builtin pass:
 - Added `cpython_type_typeparams_subset`, adapted from
   `TestType::test_type_typeparams`, covering generic class `__type_params__`,
   assignment override, and delete rejection that preserves the override.
+- Added `cpython_type_parameters_missing_for_nongeneric_subset`, backed by
+  `cpython_type_parameters_missing_for_nongeneric_diff_subset`, covering
+  ordinary class `__parameters__` absence after default construction and
+  delete and preserves generic class `__parameters__`.
 - Added `cpython_type_namespace_order_subset`, adapted from
   `TestType::test_namespace_order`, covering minimal `OrderedDict`
   construction/update, public type/instance `__doc__` plus type `__module__` /

@@ -8956,3 +8956,6 @@ behavior that uses the current public class name.
 `cpython_type_bases_assignment_error_subset`, backed by
 `cpython_type_bases_assignment_error_diff_subset`, covers type `__bases__` assignment TypeError
 behavior that rejects non-tuple values and uses the current public class name.
+`cpython_type_parameters_missing_for_nongeneric_subset`, backed by
+`cpython_type_parameters_missing_for_nongeneric_diff_subset`, covers ordinary class `__parameters__` absence
+and preserves generic class `__parameters__`.

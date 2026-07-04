@@ -15103,7 +15103,7 @@ impl Vm {
                     return Ok(type_params_attr_value(&attrs, type_params));
                 }
                 if name == "__parameters__" {
-                    return Ok(parameters_attr_value(&attrs, type_params));
+                    return class_parameters_attr_value(&class_name, &attrs, type_params);
                 }
                 if name == "__bases__" {
                     if let Some(value) = attrs.borrow().get(CLASS_BASES_ATTR).cloned() {
@@ -57297,6 +57297,25 @@ fn parameters_attr_value(attrs: &Scope, type_params: Vec<Value>) -> Value {
     type_params_attr_value(attrs, type_params)
 }
 
+fn class_parameters_attr_value(
+    class_name: &str,
+    attrs: &Scope,
+    type_params: Vec<Value>,
+) -> Result<Value, String> {
+    if attrs.borrow().contains_key("__parameters__")
+        || !type_params.is_empty()
+        || attrs.borrow().contains_key("__type_params__")
+        || attrs.borrow().contains_key("__orig_bases__")
+    {
+        Ok(parameters_attr_value(attrs, type_params))
+    } else {
+        let public_name = class_public_name(class_name, attrs);
+        Err(format!(
+            "AttributeError: type object '{public_name}' has no attribute '__parameters__'"
+        ))
+    }
+}
+
 fn load_function_attribute(function: Value, name: &str) -> Result<Value, String> {
     let Value::Function {
         name: function_name,
@@ -59091,7 +59110,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(type_params_attr_value(&attrs, type_params));
             }
             if name == "__parameters__" {
-                return Ok(parameters_attr_value(&attrs, type_params));
+                return class_parameters_attr_value(&class_name, &attrs, type_params);
             }
             if name == "__bases__" {
                 return Ok(class_bases_value(&bases));

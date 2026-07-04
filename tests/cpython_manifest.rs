@@ -7261,6 +7261,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "setattr(A, '__bases__', value)",
         ),
         (
+            "cpython_type_parameters_missing_for_nongeneric_diff_subset",
+            "cpython_type_parameters_missing_for_nongeneric_subset",
+            "A.__parameters__ = 1",
+        ),
+        (
             "cpython_type_repr_module_qualname_diff_subset",
             "cpython_type_repr_module_qualname_subset",
             "B.__module__ = 'pkg'",
@@ -7297,6 +7302,69 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_parameters_missing_for_nongeneric_has_cpython_evidence() {
+    let subset_name = "cpython_type_parameters_missing_for_nongeneric_subset";
+    let diff_name = "cpython_type_parameters_missing_for_nongeneric_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class A:",
+        "A.__name__ = 'Renamed'",
+        "A.__parameters__ = 1",
+        "del A.__parameters__",
+        "hasattr(A, '__parameters__')",
+        "'__parameters__' in A.__dict__",
+        "class G[T]:",
+        "G.__parameters__ == G.__type_params__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type __parameters__ missing subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial AttributeError type object 'Renamed' has no attribute '__parameters__' True False\"",
+        "\"assigned 1 True\"",
+        "\"after-delete AttributeError type object 'Renamed' has no attribute '__parameters__' True False False\"",
+        "\"generic ('T',) True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type __parameters__ missing subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_parameters_attr_value(",
+        "attrs.borrow().contains_key(\"__parameters__\")",
+        "attrs.borrow().contains_key(\"__orig_bases__\")",
+        "type object '{public_name}' has no attribute '__parameters__'",
+        "class_parameters_attr_value(&class_name, &attrs, type_params)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM type __parameters__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "ordinary class `__parameters__` absence",
+            "preserves generic class `__parameters__`",
+        ] {
+            assert!(
+                document.contains(required),
+                "type __parameters__ missing docs must contain `{required}`"
             );
         }
     }
