@@ -18231,6 +18231,32 @@ print('visible', hasattr(left, '__str__'), '__str__' in dir(left), '__str__' in 
 }
 
 #[test]
+fn cpython_tuple_inherited_format_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __format__ method descriptor behavior",
+        name: "tuple-inherited-format-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('format-exact', lambda: (1, 'x').__format__('')),
+    ('format-sub', lambda: left.__format__('')),
+    ('type-format-exact', lambda: tuple.__format__((1, 'x'), '')),
+    ('type-format-sub', lambda: tuple.__format__(left, '')),
+    ('type-format-list', lambda: tuple.__format__([1, 2], '')),
+    ('format-nonempty', lambda: (1,).__format__('x')),
+    ('type-format-nonempty', lambda: tuple.__format__((1,), 'x')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__format__'), '__format__' in dir(left), '__format__' in dir(T), '__format__' in dir(tuple), type(tuple.__format__).__name__, tuple.__format__ is object.__format__, type(object.__format__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

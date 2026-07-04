@@ -710,6 +710,108 @@ fn tuple_inherited_str_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_format_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_format_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_format_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited format direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited format direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__format__('')",
+        "left.__format__('')",
+        "tuple.__format__((1, 'x'), '')",
+        "tuple.__format__(left, '')",
+        "tuple.__format__([1, 2], '')",
+        "(1,).__format__('x')",
+        "tuple.__format__((1,), 'x')",
+        "hasattr(left, '__format__')",
+        "'__format__' in dir(left)",
+        "'__format__' in dir(T)",
+        "'__format__' in dir(tuple)",
+        "type(tuple.__format__).__name__",
+        "tuple.__format__ is object.__format__",
+        "type(object.__format__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited format direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"format-exact str (1, 'x')\"",
+        "\"format-sub str (1, 'x')\"",
+        "\"type-format-exact str (1, 'x')\"",
+        "\"type-format-sub str (1, 'x')\"",
+        "\"type-format-list str [1, 2]\"",
+        "\"format-nonempty TypeError unsupported format string passed to tuple.__format__\"",
+        "\"type-format-nonempty TypeError unsupported format string passed to tuple.__format__\"",
+        "\"visible True True True True method_descriptor True method_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited format direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__format__\""),
+        "tuple dir block must expose inherited `__format__`"
+    );
+
+    for required in [
+        "Value::Tuple(items) if name == \"__format__\"",
+        "function: Box::new(Value::Builtin(\"object.__format__\".to_string()))",
+        "function_name == \"tuple\" && name == \"__format__\"",
+        "Ok(Value::Builtin(\"object.__format__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__format__\"",
+        "self.call_object_format(args).map(Value::String)",
+        "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited format direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__format__`",
+            "`tuple.__format__ is object.__format__`",
+            "non-tuple direct receiver support",
+            "method_descriptor",
+            "without adding descriptor `__get__` or full method-descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited format direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_subclass_new_storage_docs_cover_core_runtime() {
     let diff_name = "cpython_list_subclass_new_storage_diff_subset";
     let subset_name = "cpython_list_subclass_new_storage_subset";
@@ -44410,7 +44512,7 @@ fn object_getstate_direct_subset_has_focused_diff_evidence() {
         "Value::Builtin(name) if name == \"object.__getstate__\"",
         "function: Box::new(Value::Builtin(\"object.__getstate__\".to_string()))",
         "if name == \"__getstate__\"",
-        "\"object\" => matches!(method, \"__getstate__\")",
+        "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -47772,7 +47874,7 @@ fn types_celltype_getstate_docs_cover_core_runtime() {
         "\"__getstate__\" => Ok(Value::BoundMethod",
         "Value::Builtin(\"object.__getstate__\".to_string())",
         "function_name == \"CellType\" && name == \"__getstate__\"",
-        "\"object\" => matches!(method, \"__getstate__\")",
+        "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
     ] {
         assert!(
             VM_SOURCE.contains(required),

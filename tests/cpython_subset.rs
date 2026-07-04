@@ -54847,6 +54847,45 @@ fn cpython_tuple_inherited_str_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __format__ inheritance. This pins the
+// inherited object.__format__ method descriptor without expanding into full
+// descriptor metadata.
+#[test]
+fn cpython_tuple_inherited_format_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('format-exact', lambda: (1, 'x').__format__('')),\n",
+            "    ('format-sub', lambda: left.__format__('')),\n",
+            "    ('type-format-exact', lambda: tuple.__format__((1, 'x'), '')),\n",
+            "    ('type-format-sub', lambda: tuple.__format__(left, '')),\n",
+            "    ('type-format-list', lambda: tuple.__format__([1, 2], '')),\n",
+            "    ('format-nonempty', lambda: (1,).__format__('x')),\n",
+            "    ('type-format-nonempty', lambda: tuple.__format__((1,), 'x')),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__format__'), '__format__' in dir(left), '__format__' in dir(T), '__format__' in dir(tuple), type(tuple.__format__).__name__, tuple.__format__ is object.__format__, type(object.__format__).__name__)",
+        ),
+        &[
+            "format-exact str (1, 'x')",
+            "format-sub str (1, 'x')",
+            "type-format-exact str (1, 'x')",
+            "type-format-sub str (1, 'x')",
+            "type-format-list str [1, 2]",
+            "format-nonempty TypeError unsupported format string passed to tuple.__format__",
+            "type-format-nonempty TypeError unsupported format string passed to tuple.__format__",
+            "visible True True True True method_descriptor True method_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

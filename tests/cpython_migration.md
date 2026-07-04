@@ -78,6 +78,13 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   tuple and non-tuple receivers, non-tuple direct receiver support through `object.__str__`,
   `tuple.__str__ is object.__str__`, and wrapper descriptor visibility, without adding tuple-specific `__str__` or full wrapper-descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_inherited_format_direct_subset` and
+  `cpython_tuple_inherited_format_direct_diff_subset` for tuple inherited `__format__`,
+  exact and tuple-subclass instance empty-format display, direct `tuple.__format__`
+  dispatch for tuple and non-tuple receivers, non-tuple direct receiver support
+  through `object.__format__`, non-empty format-spec TypeErrors for tuple receivers,
+  `tuple.__format__ is object.__format__`, and `method_descriptor` visibility, without adding descriptor `__get__` or full method-descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_list_subclass_new_storage_subset` and
   `cpython_list_subclass_new_storage_diff_subset` for list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,

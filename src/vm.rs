@@ -53179,6 +53179,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__add__",
             "__contains__",
             "__eq__",
+            "__format__",
             "__ge__",
             "__getitem__",
             "__gt__",
@@ -60997,6 +60998,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver: Box::new(Value::Tuple(items)),
             identity: Rc::new(()),
         }),
+        Value::Tuple(items) if name == "__format__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("object.__format__".to_string())),
+            receiver: Box::new(Value::Tuple(items)),
+            identity: Rc::new(()),
+        }),
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),
         Value::String(_) | Value::IdentityString { .. } if name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))
@@ -62863,6 +62869,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__str__" => {
             Ok(Value::Builtin("object.__str__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
         }
         Value::Builtin(function_name)
             if matches!(function_name.as_str(), "int" | "bool")
@@ -67026,7 +67035,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
     }
 
     match type_name {
-        "object" => matches!(method, "__getstate__"),
+        "object" => matches!(method, "__format__" | "__getstate__"),
         "dict" => is_builtin_dict_type_method(method) || is_builtin_dict_union_type_method(method),
         "OrderedDict" => is_builtin_dict_type_method(method),
         "defaultdict" => {
@@ -67127,7 +67136,7 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         return false;
     };
     match type_name {
-        "object" => matches!(method, "__getstate__"),
+        "object" => matches!(method, "__format__" | "__getstate__"),
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "io" => matches!(
             method,
