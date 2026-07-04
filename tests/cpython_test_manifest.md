@@ -2494,6 +2494,7 @@ direct method-level evidence.
 - `cpython_function_defaults_kwdefaults_assignment_subset` and
   `cpython_function_defaults_kwdefaults_assignment_diff_subset` cover function __defaults__ / __kwdefaults__ assignment, metadata identity, call-binding mutation, live keyword-default dict mutation, type errors, and deletion to None without depending on exact missing-argument TypeError text and without expanding host IO.
 - `cpython_function_annotations_assignment_subset` and `cpython_function_annotations_assignment_diff_subset` cover function __annotations__ assignment, metadata identity, live annotations dict mutation, dict subclass replacement, non-dict TypeError paths, and delete reset to empty dict without expanding host IO.
+- `cpython_function_type_params_assignment_subset` and `cpython_function_type_params_assignment_diff_subset` cover function __type_params__ assignment, tuple and tuple-subclass replacement identity, namedtuple acceptance, invalid assignment TypeError paths, deletion TypeError, and preserving the assigned override without expanding host IO.
 
 ## Immediate Method-Level Audit Order
 

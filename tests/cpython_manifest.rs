@@ -35378,6 +35378,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_dict_assignment_subset",
             "cpython_function_defaults_kwdefaults_assignment_subset",
             "cpython_function_annotations_assignment_subset",
+            "cpython_function_type_params_assignment_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35487,6 +35488,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_dict_assignment_diff_subset",
         "cpython_function_defaults_kwdefaults_assignment_diff_subset",
         "cpython_function_annotations_assignment_diff_subset",
+        "cpython_function_type_params_assignment_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -43401,6 +43403,95 @@ fn function_annotations_assignment_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __annotations__ assignment docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_type_params_assignment_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_params_assignment_subset";
+    let diff_name = "cpython_function_type_params_assignment_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "from collections import namedtuple",
+        "class T(tuple):",
+        "N = namedtuple('N', 'x')",
+        "def f():",
+        "f.__type_params__ is initial",
+        "f.__type_params__ = replacement",
+        "f.__type_params__ = subclass",
+        "f.__type_params__ = named",
+        "f.__type_params__ = value",
+        "del f.__type_params__",
+        "f.__delattr__('__type_params__')",
+        "after-errors",
+        "dict-clean",
+        "type(error).__name__",
+        "error.args",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __type_params__ assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial tuple () True\"",
+        "\"set-tuple True ('T',)\"",
+        "\"set-subclass True T ('U',)\"",
+        "\"set-namedtuple N N(x='V')\"",
+        "\"set-list TypeError __type_params__ must be set to a tuple",
+        "\"set-none TypeError __type_params__ must be set to a tuple",
+        "\"set-dict TypeError __type_params__ must be set to a tuple",
+        "\"del TypeError __type_params__ must be set to a tuple",
+        "\"del-wrapper TypeError __type_params__ must be set to a tuple",
+        "\"after-errors N N(x='V')\"",
+        "\"dict-clean {}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __type_params__ assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_TYPE_PARAMS_ATTR",
+        "fn function_type_params_metadata_value(",
+        "fn set_function_type_params_metadata(",
+        "FUNCTION_TYPE_PARAMS_ATTR.to_string()",
+        "Value::NamedTuple { .. }",
+        "tuple_subclass_items(&value)",
+        "namedtuple_subclass_storage(&value)",
+        "__type_params__ must be set to a tuple",
+        "\"__type_params__\" => Ok(function_type_params_metadata_value(",
+        "return set_function_type_params_metadata(&attrs, value)",
+        "if name == \"__type_params__\"",
+        "return Err(\"TypeError: __type_params__ must be set to a tuple\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function __type_params__ assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __type_params__ assignment",
+            "tuple and tuple-subclass replacement identity",
+            "namedtuple acceptance",
+            "invalid assignment TypeError paths",
+            "deletion TypeError",
+            "preserving the assigned override",
+            "without expanding host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __type_params__ assignment docs must contain `{required}`"
             );
         }
     }

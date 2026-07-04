@@ -14492,6 +14492,49 @@ print('dict-clean', f.__dict__)"#,
 }
 
 #[test]
+fn cpython_function_type_params_assignment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_type_params.py public function __type_params__ assignment subset",
+        name: "function-type-params-assignment",
+        source: r#"from collections import namedtuple
+class T(tuple):
+    pass
+N = namedtuple('N', 'x')
+def f():
+    pass
+initial = f.__type_params__
+print('initial', type(initial).__name__, initial, f.__type_params__ is initial)
+replacement = ('T',)
+f.__type_params__ = replacement
+print('set-tuple', f.__type_params__ is replacement, f.__type_params__)
+subclass = T(('U',))
+f.__type_params__ = subclass
+print('set-subclass', f.__type_params__ is subclass, type(f.__type_params__).__name__, f.__type_params__)
+named = N('V')
+f.__type_params__ = named
+print('set-namedtuple', type(f.__type_params__).__name__, f.__type_params__)
+for label, value in [('set-list', []), ('set-none', None), ('set-dict', {})]:
+    try:
+        f.__type_params__ = value
+        print(label, 'OK', f.__type_params__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+try:
+    del f.__type_params__
+    print('del', 'OK', f.__type_params__)
+except Exception as error:
+    print('del', type(error).__name__, str(error), error.args)
+try:
+    f.__delattr__('__type_params__')
+    print('del-wrapper', 'OK', f.__type_params__)
+except Exception as error:
+    print('del-wrapper', type(error).__name__, str(error), error.args)
+print('after-errors', type(f.__type_params__).__name__, f.__type_params__)
+print('dict-clean', f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

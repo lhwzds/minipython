@@ -4360,6 +4360,7 @@ const FUNCTION_DICT_SOURCE_ATTR: &str = "\0function_dict_source";
 const FUNCTION_DEFAULTS_ATTR: &str = "\0function_defaults";
 const FUNCTION_KWDEFAULTS_ATTR: &str = "\0function_kwdefaults";
 const FUNCTION_ANNOTATIONS_ATTR: &str = "\0function_annotations";
+const FUNCTION_TYPE_PARAMS_ATTR: &str = "\0function_type_params";
 
 fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Scope, String> {
     let entries = match namespace {
@@ -4608,6 +4609,10 @@ fn call_function_type_constructor(
         attrs.insert(
             FUNCTION_ANNOTATIONS_ATTR.to_string(),
             function_annotations_value(&[]),
+        );
+        attrs.insert(
+            FUNCTION_TYPE_PARAMS_ATTR.to_string(),
+            tuple_value(Vec::new()),
         );
     }
 
@@ -6056,6 +6061,10 @@ impl Vm {
                         attrs.insert(
                             FUNCTION_ANNOTATIONS_ATTR.to_string(),
                             function_annotations_value(&annotations),
+                        );
+                        attrs.insert(
+                            FUNCTION_TYPE_PARAMS_ATTR.to_string(),
+                            tuple_value(type_params.clone()),
                         );
                     }
                     self.write_register(
@@ -51656,6 +51665,14 @@ fn function_annotations_metadata_value(attrs: &Scope, annotations: &[(String, Va
         .unwrap_or_else(|| function_annotations_value(annotations))
 }
 
+fn function_type_params_metadata_value(attrs: &Scope, type_params: Vec<Value>) -> Value {
+    attrs
+        .borrow()
+        .get(FUNCTION_TYPE_PARAMS_ATTR)
+        .cloned()
+        .unwrap_or_else(|| tuple_value(type_params))
+}
+
 fn set_function_defaults_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
     if !matches!(value, Value::Tuple(_) | Value::None) {
         return Err("TypeError: __defaults__ must be set to a tuple object".to_string());
@@ -51689,6 +51706,19 @@ fn set_function_annotations_metadata(attrs: &Scope, value: Value) -> Result<(), 
     attrs
         .borrow_mut()
         .insert(FUNCTION_ANNOTATIONS_ATTR.to_string(), value);
+    Ok(())
+}
+
+fn set_function_type_params_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::Tuple(_) | Value::NamedTuple { .. })
+        && tuple_subclass_items(&value).is_none()
+        && namedtuple_subclass_storage(&value).is_none()
+    {
+        return Err("TypeError: __type_params__ must be set to a tuple".to_string());
+    }
+    attrs
+        .borrow_mut()
+        .insert(FUNCTION_TYPE_PARAMS_ATTR.to_string(), value);
     Ok(())
 }
 
@@ -58119,7 +58149,10 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         )),
         "__closure__" => Ok(function_closure_value(body, closure)),
         "__dict__" => Ok(function_dict_value(attrs)),
-        "__type_params__" => Ok(type_params_attr_value(attrs, type_params.clone())),
+        "__type_params__" => Ok(function_type_params_metadata_value(
+            attrs,
+            type_params.clone(),
+        )),
         "__annotate__" => Ok(attrs
             .borrow()
             .get("__annotate__")
@@ -65847,6 +65880,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             if name == "__annotations__" {
                 return set_function_annotations_metadata(&attrs, value);
             }
+            if name == "__type_params__" {
+                return set_function_type_params_metadata(&attrs, value);
+            }
             if name == "__annotate__" {
                 attrs.borrow_mut().insert(name.to_string(), value);
                 return Ok(());
@@ -66287,6 +66323,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
             if name == "__annotations__" {
                 return set_function_annotations_metadata(&attrs, dict_value(Vec::new()));
+            }
+            if name == "__type_params__" {
+                return Err("TypeError: __type_params__ must be set to a tuple".to_string());
             }
             delete_function_custom_attribute(&attrs, name)
         }

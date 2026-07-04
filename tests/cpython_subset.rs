@@ -29808,6 +29808,64 @@ print('dict-clean', f.__dict__)"#,
     );
 }
 
+// Adapted from CPython public function-object `__type_params__` assignment
+// behavior. This pins tuple and tuple-subclass replacement identity,
+// namedtuple acceptance, invalid assignment TypeError paths, and deletion
+// errors without expanding host IO.
+#[test]
+fn cpython_function_type_params_assignment_subset() {
+    assert_output(
+        r#"from collections import namedtuple
+class T(tuple):
+    pass
+N = namedtuple('N', 'x')
+def f():
+    pass
+initial = f.__type_params__
+print('initial', type(initial).__name__, initial, f.__type_params__ is initial)
+replacement = ('T',)
+f.__type_params__ = replacement
+print('set-tuple', f.__type_params__ is replacement, f.__type_params__)
+subclass = T(('U',))
+f.__type_params__ = subclass
+print('set-subclass', f.__type_params__ is subclass, type(f.__type_params__).__name__, f.__type_params__)
+named = N('V')
+f.__type_params__ = named
+print('set-namedtuple', type(f.__type_params__).__name__, f.__type_params__)
+for label, value in [('set-list', []), ('set-none', None), ('set-dict', {})]:
+    try:
+        f.__type_params__ = value
+        print(label, 'OK', f.__type_params__)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+try:
+    del f.__type_params__
+    print('del', 'OK', f.__type_params__)
+except Exception as error:
+    print('del', type(error).__name__, str(error), error.args)
+try:
+    f.__delattr__('__type_params__')
+    print('del-wrapper', 'OK', f.__type_params__)
+except Exception as error:
+    print('del-wrapper', type(error).__name__, str(error), error.args)
+print('after-errors', type(f.__type_params__).__name__, f.__type_params__)
+print('dict-clean', f.__dict__)"#,
+        &[
+            "initial tuple () True",
+            "set-tuple True ('T',)",
+            "set-subclass True T ('U',)",
+            "set-namedtuple N N(x='V')",
+            "set-list TypeError __type_params__ must be set to a tuple ('__type_params__ must be set to a tuple',)",
+            "set-none TypeError __type_params__ must be set to a tuple ('__type_params__ must be set to a tuple',)",
+            "set-dict TypeError __type_params__ must be set to a tuple ('__type_params__ must be set to a tuple',)",
+            "del TypeError __type_params__ must be set to a tuple ('__type_params__ must be set to a tuple',)",
+            "del-wrapper TypeError __type_params__ must be set to a tuple ('__type_params__ must be set to a tuple',)",
+            "after-errors N N(x='V')",
+            "dict-clean {}",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.
