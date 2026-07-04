@@ -10120,6 +10120,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__call__" => {
                 self.call_method_call(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__call__" => {
+                self.call_function_call(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
@@ -17918,6 +17921,24 @@ impl Vm {
             );
         }
         Ok(Value::String(repr_value_checked(receiver)?))
+    }
+
+    fn call_function_call(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
     }
 
     fn call_method_call(
@@ -57448,7 +57469,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             function_code_identity(identity),
         ),
         "__call__" => Ok(Value::BoundMethod {
-            function: Box::new(Value::Builtin("callable.__call__".to_string())),
+            function: Box::new(Value::Builtin("function.__call__".to_string())),
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
@@ -63353,6 +63374,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__call__" =>
+        {
+            Ok(Value::String("function.__call__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "function.__call__" =>
+        {
+            Ok(Value::String("Call self as a function.".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "json.function.__call__" =>
         {
             Ok(Value::String("function.__call__".to_string()))
@@ -66048,6 +66079,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__str__"
             | "function.__repr__"
             | "function.__str__"
+            | "function.__call__"
             | "method.__call__"
             | "method.__get__"
             | "method.__getattribute__"

@@ -35361,6 +35361,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_object_repr_str_direct_subset",
             "cpython_object_instance_default_repr_shape_subset",
             "cpython_function_repr_str_wrapper_subset",
+            "cpython_function_call_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35453,6 +35454,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_object_instance_default_repr_shape_diff_subset",
         "cpython_function_repr_str_wrapper_diff_subset",
+        "cpython_function_call_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -41734,6 +41736,87 @@ fn function_repr_str_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function repr/str wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_call_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_call_wrapper_subset";
+    let diff_name = "cpython_function_call_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f(a, b=2, *rest, **kw):",
+        "caller = f.__call__",
+        "'__call__' in dir(f)",
+        "type(caller).__name__",
+        "caller.__class__.__name__",
+        "caller.__self__ is f",
+        "caller.__name__",
+        "caller.__qualname__",
+        "caller.__doc__",
+        "getattr(caller, '__module__', 'MISSING')",
+        "caller(1)",
+        "caller(a=7)",
+        "caller(1, 3, 4, z=5)",
+        "type(caller.__repr__).__name__",
+        "caller.__str__() == caller.__repr__()",
+        "caller.__repr__(1)",
+        "caller.__repr__(x=1)",
+        "\"<method-wrapper '__call__' of function object at 0x\"",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __call__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True method-wrapper method-wrapper\"",
+        "\"True __call__ function.__call__ Call self as a function.\"",
+        "\"MISSING\"",
+        "\"(1, 2, (), []) (7, 2, (), []) (1, 3, (4,), [('z', 5)])\"",
+        "\"method-wrapper str True\"",
+        "\"repr-extra TypeError expected 0 arguments, got 1",
+        "\"repr-keyword TypeError wrapper __repr__() takes no keyword arguments",
+        "\"True True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __call__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "format_function_method_wrapper(function, receiver)",
+        "\"function.__call__\" => Some(format!(",
+        "\"<method-wrapper '__call__' of function object at 0x{:x}>\"",
+        "Value::Builtin(\"function.__call__\".to_string())",
+        "fn call_function_call(",
+        "name == \"function.__call__\"",
+        "function_name == \"function.__call__\"",
+        "\"Call self as a function.\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __call__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __call__ method-wrapper metadata",
+            "function object at 0x",
+            "without depending on concrete addresses",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __call__ wrapper docs must contain `{required}`"
             );
         }
     }

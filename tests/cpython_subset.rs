@@ -28934,6 +28934,42 @@ for label, call in [
     );
 }
 
+// Adapted from CPython public function-object method-wrapper behavior. This
+// pins ordinary user-defined function `__call__` metadata and forwarding without
+// depending on the concrete address value.
+#[test]
+fn cpython_function_call_wrapper_subset() {
+    assert_output(
+        r#"def f(a, b=2, *rest, **kw):
+    return (a, b, rest, sorted(kw.items()))
+caller = f.__call__
+print('__call__' in dir(f), type(caller).__name__, caller.__class__.__name__)
+print(caller.__self__ is f, caller.__name__, caller.__qualname__, caller.__doc__)
+print(getattr(caller, '__module__', 'MISSING'))
+print(caller(1), caller(a=7), caller(1, 3, 4, z=5))
+print(type(caller.__repr__).__name__, caller.__repr__().__class__.__name__, caller.__str__() == caller.__repr__())
+for label, call in [
+    ('repr-extra', lambda: caller.__repr__(1)),
+    ('repr-keyword', lambda: caller.__repr__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(str(caller).startswith("<method-wrapper '__call__' of function object at 0x"), repr(caller) == str(caller))"#,
+        &[
+            "True method-wrapper method-wrapper",
+            "True __call__ function.__call__ Call self as a function.",
+            "MISSING",
+            "(1, 2, (), []) (7, 2, (), []) (1, 3, (4,), [('z', 5)])",
+            "method-wrapper str True",
+            "repr-extra TypeError expected 0 arguments, got 1 ('expected 0 arguments, got 1',)",
+            "repr-keyword TypeError wrapper __repr__() takes no keyword arguments ('wrapper __repr__() takes no keyword arguments',)",
+            "True True",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

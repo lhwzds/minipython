@@ -13899,6 +13899,31 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_call_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",
+        name: "function-call-wrapper",
+        source: r#"def f(a, b=2, *rest, **kw):
+    return (a, b, rest, sorted(kw.items()))
+caller = f.__call__
+print('__call__' in dir(f), type(caller).__name__, caller.__class__.__name__)
+print(caller.__self__ is f, caller.__name__, caller.__qualname__, caller.__doc__)
+print(getattr(caller, '__module__', 'MISSING'))
+print(caller(1), caller(a=7), caller(1, 3, 4, z=5))
+print(type(caller.__repr__).__name__, caller.__repr__().__class__.__name__, caller.__str__() == caller.__repr__())
+for label, call in [
+    ('repr-extra', lambda: caller.__repr__(1)),
+    ('repr-keyword', lambda: caller.__repr__(x=1)),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)
+print(str(caller).startswith("<method-wrapper '__call__' of function object at 0x"), repr(caller) == str(caller))"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",
