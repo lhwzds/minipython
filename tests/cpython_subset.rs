@@ -54719,6 +54719,59 @@ fn cpython_tuple_subclass_repeat_subset() {
     );
 }
 
+// Adapted from CPython public tuple method visibility. This pins dir() for the
+// tuple sequence dunders MiniPython already supports, without expanding into
+// unsupported pickle/hash/reduce method-table parity.
+#[test]
+fn cpython_tuple_subclass_sequence_dir_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 2))\n",
+            "supported = ['__contains__', '__getitem__', '__iter__', '__len__', '__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__', '__add__', '__mul__', '__rmul__']\n",
+            "unsupported = ['__radd__', '__imul__']\n",
+            "for name in supported + unsupported:\n",
+            "    print('instance', name, hasattr(left, name), name in dir(left))\n",
+            "    print('type', name, hasattr(tuple, name), name in dir(tuple), name in dir(T))\n",
+            "print('sample', [name for name in supported[:10] if name in dir(left)])",
+        ),
+        &[
+            "instance __contains__ True True",
+            "type __contains__ True True True",
+            "instance __getitem__ True True",
+            "type __getitem__ True True True",
+            "instance __iter__ True True",
+            "type __iter__ True True True",
+            "instance __len__ True True",
+            "type __len__ True True True",
+            "instance __eq__ True True",
+            "type __eq__ True True True",
+            "instance __ne__ True True",
+            "type __ne__ True True True",
+            "instance __lt__ True True",
+            "type __lt__ True True True",
+            "instance __le__ True True",
+            "type __le__ True True True",
+            "instance __gt__ True True",
+            "type __gt__ True True True",
+            "instance __ge__ True True",
+            "type __ge__ True True True",
+            "instance __add__ True True",
+            "type __add__ True True True",
+            "instance __mul__ True True",
+            "type __mul__ True True True",
+            "instance __rmul__ True True",
+            "type __rmul__ True True True",
+            "instance __radd__ False False",
+            "type __radd__ False False False",
+            "instance __imul__ False False",
+            "type __imul__ False False False",
+            "sample ['__contains__', '__getitem__', '__iter__', '__len__', '__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

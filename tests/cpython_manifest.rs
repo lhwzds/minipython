@@ -171,7 +171,7 @@ fn tuple_subclass_new_storage_docs_cover_core_runtime() {
         "Value::Builtin(name) if name == \"tuple.__new__\"",
         "function_name == \"tuple\" && name == \"__new__\"",
         "\"tuple\" => &[",
-        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
+        "\"__new__\",",
         "let has_own_new = attrs.borrow().contains_key(\"__new__\");",
         "self.call_user_new(&class, &attrs, args.clone(), keywords.clone(), \"__new__\")",
         "value_matches_class_value(&instance, &class)",
@@ -266,7 +266,7 @@ fn tuple_subclass_add_docs_cover_core_runtime() {
         "tuple_concat_operand_values(receiver)",
         "tuple_concat_operand_values(other)",
         "\"tuple\" => &[",
-        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
+        "\"__add__\",",
         "type_name(&original_right)",
         "can only concatenate tuple (not",
         "Ok(tuple_value(items))",
@@ -378,7 +378,8 @@ fn tuple_subclass_repeat_docs_cover_core_runtime() {
         "repeat_count_from_integer_value(count)?",
         "repeat_values(items, count)?",
         "\"tuple\" => &[",
-        "\"__add__\", \"__mul__\", \"__new__\", \"__rmul__\", \"count\", \"index\",",
+        "\"__mul__\",",
+        "\"__rmul__\",",
         "matches!(name, \"__add__\" | \"__mul__\" | \"__rmul__\")",
     ] {
         assert!(
@@ -401,6 +402,127 @@ fn tuple_subclass_repeat_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple subclass repeat docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_subclass_sequence_dir_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_subclass_sequence_dir_diff_subset";
+    let subset_name = "cpython_tuple_subclass_sequence_dir_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple subclass sequence dir CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple subclass sequence dir runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 2))",
+        "supported = ['__contains__', '__getitem__', '__iter__', '__len__', '__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__', '__add__', '__mul__', '__rmul__']",
+        "unsupported = ['__radd__', '__imul__']",
+        "hasattr(left, name)",
+        "name in dir(left)",
+        "hasattr(tuple, name)",
+        "name in dir(tuple)",
+        "name in dir(T)",
+        "supported[:10]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple subclass sequence dir diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"instance __contains__ True True\"",
+        "\"type __contains__ True True True\"",
+        "\"instance __getitem__ True True\"",
+        "\"type __getitem__ True True True\"",
+        "\"instance __iter__ True True\"",
+        "\"type __iter__ True True True\"",
+        "\"instance __len__ True True\"",
+        "\"type __len__ True True True\"",
+        "\"instance __eq__ True True\"",
+        "\"type __eq__ True True True\"",
+        "\"instance __ne__ True True\"",
+        "\"type __ne__ True True True\"",
+        "\"instance __lt__ True True\"",
+        "\"type __lt__ True True True\"",
+        "\"instance __le__ True True\"",
+        "\"type __le__ True True True\"",
+        "\"instance __gt__ True True\"",
+        "\"type __gt__ True True True\"",
+        "\"instance __ge__ True True\"",
+        "\"type __ge__ True True True\"",
+        "\"instance __radd__ False False\"",
+        "\"type __radd__ False False False\"",
+        "\"instance __imul__ False False\"",
+        "\"type __imul__ False False False\"",
+        "\"sample ['__contains__', '__getitem__', '__iter__', '__len__', '__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple subclass sequence dir subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    for required in [
+        "\"__add__\"",
+        "\"__contains__\"",
+        "\"__eq__\"",
+        "\"__ge__\"",
+        "\"__getitem__\"",
+        "\"__gt__\"",
+        "\"__iter__\"",
+        "\"__le__\"",
+        "\"__len__\"",
+        "\"__lt__\"",
+        "\"__mul__\"",
+        "\"__ne__\"",
+        "\"__new__\"",
+        "\"__rmul__\"",
+        "\"count\"",
+        "\"index\"",
+    ] {
+        assert!(
+            tuple_dir_block.contains(required),
+            "tuple dir block must contain `{required}`"
+        );
+    }
+    for forbidden in ["\"__radd__\"", "\"__imul__\""] {
+        assert!(
+            !tuple_dir_block.contains(forbidden),
+            "tuple dir block must not contain `{forbidden}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple subclass sequence `dir()`",
+            "supported tuple sequence dunder visibility",
+            "without adding unsupported `__radd__` or `__imul__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple subclass sequence dir docs must contain `{required}`"
             );
         }
     }

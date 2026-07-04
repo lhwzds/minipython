@@ -18162,6 +18162,23 @@ print('visible', hasattr(left, '__mul__'), hasattr(left, '__rmul__'), hasattr(le
 }
 
 #[test]
+fn cpython_tuple_subclass_sequence_dir_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple sequence method visibility",
+        name: "tuple-subclass-sequence-dir",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 2))
+supported = ['__contains__', '__getitem__', '__iter__', '__len__', '__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__', '__add__', '__mul__', '__rmul__']
+unsupported = ['__radd__', '__imul__']
+for name in supported + unsupported:
+    print('instance', name, hasattr(left, name), name in dir(left))
+    print('type', name, hasattr(tuple, name), name in dir(tuple), name in dir(T))
+print('sample', [name for name in supported[:10] if name in dir(left)])"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

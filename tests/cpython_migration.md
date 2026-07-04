@@ -62,6 +62,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   direct `__mul__` and `__rmul__` / `tuple.__mul__` and `tuple.__rmul__` dispatch,
   CPython operator versus direct-call TypeError text for non-integer counts, and
   no inherited `__imul__`, without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_subclass_sequence_dir_subset` and
+  `cpython_tuple_subclass_sequence_dir_diff_subset` for tuple subclass sequence `dir()`,
+  supported tuple sequence dunder visibility for instance, `tuple`, and tuple subclass type
+  objects, while preserving no inherited `__radd__` / `__imul__` and without adding unsupported `__radd__` or `__imul__`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_list_subclass_new_storage_subset` and
   `cpython_list_subclass_new_storage_diff_subset` for list subclass `__new__` storage,
   `list.__new__` direct allocation, non-type and non-subtype error classification,
