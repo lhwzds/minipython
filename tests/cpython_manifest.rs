@@ -35360,6 +35360,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_object_instance_default_repr_shape_subset",
+            "cpython_object_builtin_default_repr_format_subset",
             "cpython_function_repr_str_wrapper_subset",
             "cpython_function_call_wrapper_subset",
             "cpython_function_get_descriptor_wrapper_subset",
@@ -35467,6 +35468,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_object_instance_default_repr_shape_diff_subset",
+        "cpython_object_builtin_default_repr_format_diff_subset",
         "cpython_function_repr_str_wrapper_diff_subset",
         "cpython_function_call_wrapper_diff_subset",
         "cpython_function_get_descriptor_wrapper_diff_subset",
@@ -41694,6 +41696,75 @@ fn object_instance_default_repr_shape_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused object instance repr shape docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn object_builtin_default_repr_format_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_object_builtin_default_repr_format_subset";
+    let diff_name = "cpython_object_builtin_default_repr_format_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "obj = object()",
+        "repr(obj).startswith('<object object at 0x')",
+        "str(obj) == repr(obj)",
+        "format(obj, '') == str(obj)",
+        "obj.__format__('') == str(obj)",
+        "class DerivedFromStr(str):",
+        "object().__format__(DerivedFromStr('')).startswith('<object object at 0x')",
+        "format(obj, 'x')",
+        "'object.__format__' in str(error)",
+        "class object:",
+        "repr(shadow).startswith('<__main__.object object at 0x')",
+        "object.__module__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused builtin object repr/format subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True True True True\"",
+        "\"nonempty TypeError True\"",
+        "\"True __main__ object\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused builtin object repr/format subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "pub fn format_instance_object_repr(",
+        "class_name == \"object\"",
+        "attrs.get(CLASS_QUALNAME_ATTR).is_none()",
+        "attrs.get(\"__module__\").is_none()",
+        "\"object\".to_string()",
+        "format_instance_object_repr(class_name, fields, class_attrs)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "builtin object repr/format implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "builtin object default repr/format shape",
+            "user classes named object",
+            "without depending on concrete addresses",
+            "without expanding host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused builtin object repr/format docs must contain `{required}`"
             );
         }
     }

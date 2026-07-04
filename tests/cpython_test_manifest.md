@@ -2484,6 +2484,11 @@ direct method-level evidence.
 | `test_roundtrip` | `ported` | `cpython_float_hex_fromhex_roundtrip_matrix_subset` covers endpoint, signed-zero, infinity, NaN, max/min/subnormal boundaries, and a deterministic 10,000-row exponent/mantissa/sign sweep with CPython-style overflow skipping. The matching `float-hex-fromhex-roundtrip-matrix` differential case compares the same sweep against the local CPython oracle. | None for this method's public round-trip invariant. |
 | `test_subclass` | `ported` | `cpython_float_hex_fromhex_subclass_subset` covers float subclass `fromhex()` dispatch, `__new__`, `__init__`, and subclass return type behavior. | None for this method. |
 
+## Runtime Object Evidence Notes
+
+- `cpython_object_builtin_default_repr_format_subset` and
+  `cpython_object_builtin_default_repr_format_diff_subset` cover builtin object default repr/format shape, empty `object.__format__`, str-subclass empty specs, non-empty format errors, and user classes named object without depending on concrete addresses and without expanding host IO.
+
 ## Runtime Function Object Evidence Notes
 
 - `cpython_function_defaults_kwdefaults_assignment_subset` and

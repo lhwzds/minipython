@@ -2108,6 +2108,12 @@ pub fn format_instance_object_repr(
         _ => class_name.to_string(),
     };
     let type_name = match attrs.get("__module__") {
+        _ if class_name == "object"
+            && attrs.get(CLASS_QUALNAME_ATTR).is_none()
+            && attrs.get("__module__").is_none() =>
+        {
+            "object".to_string()
+        }
         Some(Value::String(module)) if module != "builtins" => format!("{module}.{qualname}"),
         None => format!("__main__.{qualname}"),
         _ => qualname,

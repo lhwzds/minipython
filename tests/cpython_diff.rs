@@ -13863,6 +13863,31 @@ print(repr(i), object.__repr__(i).startswith('<__main__.Outer.Inner object at 0x
 }
 
 #[test]
+fn cpython_object_builtin_default_repr_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public object() default repr/format subset",
+        name: "object-builtin-default-repr-format",
+        source: r#"class C:
+    pass
+class DerivedFromStr(str):
+    pass
+obj = object()
+custom = C()
+print(repr(obj).startswith('<object object at 0x'), str(obj) == repr(obj), format(obj, '') == str(obj), obj.__format__('') == str(obj))
+print(repr(custom).startswith('<__main__.C object at 0x'), format(custom, '').startswith('<__main__.C object at 0x'))
+print(object().__format__(DerivedFromStr('')).startswith('<object object at 0x'))
+try:
+    format(obj, 'x')
+except Exception as error:
+    print('nonempty', type(error).__name__, 'object.__format__' in str(error))
+class object:
+    pass
+shadow = object()
+print(repr(shadow).startswith('<__main__.object object at 0x'), object.__module__, type(shadow).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_function_repr_str_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public function repr / str wrapper subset",

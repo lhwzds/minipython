@@ -28884,6 +28884,39 @@ fn cpython_object_instance_default_repr_shape_subset() {
     );
 }
 
+// Adapted from CPython public `object()` display and `object.__format__`
+// behavior. This pins the builtin object instance prefix while preserving
+// user classes named `object` and avoiding concrete address dependence.
+#[test]
+fn cpython_object_builtin_default_repr_format_subset() {
+    assert_output(
+        r#"class C:
+    pass
+class DerivedFromStr(str):
+    pass
+obj = object()
+custom = C()
+print(repr(obj).startswith('<object object at 0x'), str(obj) == repr(obj), format(obj, '') == str(obj), obj.__format__('') == str(obj))
+print(repr(custom).startswith('<__main__.C object at 0x'), format(custom, '').startswith('<__main__.C object at 0x'))
+print(object().__format__(DerivedFromStr('')).startswith('<object object at 0x'))
+try:
+    format(obj, 'x')
+except Exception as error:
+    print('nonempty', type(error).__name__, 'object.__format__' in str(error))
+class object:
+    pass
+shadow = object()
+print(repr(shadow).startswith('<__main__.object object at 0x'), object.__module__, type(shadow).__name__)"#,
+        &[
+            "True True True True",
+            "True True",
+            "True",
+            "nonempty TypeError True",
+            "True __main__ object",
+        ],
+    );
+}
+
 // Adapted from CPython public function-object display behavior. This pins the
 // repr/str shape and wrappers without depending on the concrete address value.
 #[test]
@@ -50669,8 +50702,8 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
         "runtime error: TypeError: format() argument 2 must be str, not int",
     );
     assert_output(
-        "class B:\n    pass\nb = B()\nprint(format(b), format(b, ''))\nprint(b.__format__(''))",
-        &["<B object> <B object>", "<B object>"],
+        "class B:\n    pass\nb = B()\nprint(format(b).startswith('<__main__.B object at 0x'), format(b, '') == format(b), b.__format__('') == format(b))",
+        &["True True True"],
     );
     assert_output("print(object().__format__('')[:14])", &["<object object"]);
     assert_output(
