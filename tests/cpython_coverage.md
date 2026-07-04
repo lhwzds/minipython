@@ -682,6 +682,7 @@ Recent runtime migration notes:
   `cpython_function_repr_str_wrapper_diff_subset`,
   `cpython_function_call_wrapper_diff_subset`,
   `cpython_function_get_descriptor_wrapper_diff_subset`,
+  `cpython_function_format_wrapper_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
@@ -7427,6 +7428,12 @@ without adding general custom encoder/decoder class support.
   `None` / owner handling including `__get__(None, None) is invalid`,
   bound-method creation and receiver identity, missing `__module__`, method-wrapper
   repr/str shape, and wrapper arity/keyword errors without depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes `cpython_function_format_wrapper_subset`
+  with direct CPython output parity in
+  `cpython_function_format_wrapper_diff_subset`, covering function __format__ wrapper metadata,
+  `builtin_function_or_method` classification, missing `__module__`, text signature
+  and doc metadata, empty-format delegation to the function repr/str path,
+  non-empty format rejection, and arity/keyword errors without depending on concrete addresses.
 - `RUNTIME_BUILTINS` also includes `cpython_object_getstate_direct_subset` with
   direct CPython output parity in
   `cpython_object_getstate_direct_diff_subset`, covering CPython's inherited

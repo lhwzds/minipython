@@ -13969,6 +13969,35 @@ print(str(getter).startswith("<method-wrapper '__get__' of function object at 0x
 }
 
 #[test]
+fn cpython_function_format_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __format__ wrapper subset",
+        name: "function-format-wrapper",
+        source: r#"def f():
+    pass
+wrapper = f.__format__
+rendered = repr(f)
+wrapper_rendered = repr(wrapper)
+print('__format__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__)
+print(wrapper.__module__, wrapper.__text_signature__)
+print(wrapper.__doc__.splitlines()[0], wrapper.__doc__.splitlines()[2])
+print(wrapper_rendered.startswith("<built-in method __format__ of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+print(format(f, '') == rendered, wrapper('') == rendered, f'{f}' == rendered)
+for label, call in [
+    ('nonempty', lambda: wrapper('x')),
+    ('missing', lambda: wrapper()),
+    ('extra', lambda: wrapper('', 1)),
+    ('keyword', lambda: wrapper(format_spec='')),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

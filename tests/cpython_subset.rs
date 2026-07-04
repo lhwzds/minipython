@@ -29035,6 +29035,48 @@ print(str(getter).startswith("<method-wrapper '__get__' of function object at 0x
     );
 }
 
+// Adapted from CPython public function-object `__format__` wrapper behavior.
+// This pins the wrapper metadata and default object formatting path without
+// depending on concrete address values.
+#[test]
+fn cpython_function_format_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__format__
+rendered = repr(f)
+wrapper_rendered = repr(wrapper)
+print('__format__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__)
+print(wrapper.__module__, wrapper.__text_signature__)
+print(wrapper.__doc__.splitlines()[0], wrapper.__doc__.splitlines()[2])
+print(wrapper_rendered.startswith("<built-in method __format__ of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+print(format(f, '') == rendered, wrapper('') == rendered, f'{f}' == rendered)
+for label, call in [
+    ('nonempty', lambda: wrapper('x')),
+    ('missing', lambda: wrapper()),
+    ('extra', lambda: wrapper('', 1)),
+    ('keyword', lambda: wrapper(format_spec='')),
+]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "True builtin_function_or_method builtin_function_or_method",
+            "True __format__ function.__format__",
+            "None ($self, format_spec, /)",
+            "Default object formatter. Return str(self) if format_spec is empty. Raise TypeError otherwise.",
+            "True True True",
+            "True True True",
+            "nonempty TypeError unsupported format string passed to function.__format__ ('unsupported format string passed to function.__format__',)",
+            "missing TypeError function.__format__() takes exactly one argument (0 given) ('function.__format__() takes exactly one argument (0 given)',)",
+            "extra TypeError function.__format__() takes exactly one argument (2 given) ('function.__format__() takes exactly one argument (2 given)',)",
+            "keyword TypeError function.__format__() takes no keyword arguments ('function.__format__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

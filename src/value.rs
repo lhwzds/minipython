@@ -1920,6 +1920,9 @@ fn format_exception_args_repr(args: &[Value]) -> String {
 }
 
 fn format_bound_method(function: &Value, receiver: &Value) -> String {
+    if let Some(rendered) = format_function_builtin_method(function, receiver) {
+        return rendered;
+    }
     if let Some(rendered) = format_function_method_wrapper(function, receiver) {
         return rendered;
     }
@@ -1928,6 +1931,22 @@ fn format_bound_method(function: &Value, receiver: &Value) -> String {
         bound_method_display_name(function),
         format_value_repr(receiver)
     )
+}
+
+fn format_function_builtin_method(function: &Value, receiver: &Value) -> Option<String> {
+    let Value::Builtin(name) = function else {
+        return None;
+    };
+    let Value::Function { identity, .. } = receiver else {
+        return None;
+    };
+    match name.as_str() {
+        "function.__format__" => Some(format!(
+            "<built-in method __format__ of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        _ => None,
+    }
 }
 
 fn format_function_method_wrapper(function: &Value, receiver: &Value) -> Option<String> {
