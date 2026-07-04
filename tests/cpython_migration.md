@@ -3543,6 +3543,10 @@ Completed in the differential parity harness pass:
   `cpython_dict_subclass_union_diff_subset`, for PEP 584 dict subclass union
   returning an ordinary `dict` result, preserving the left subclass operand,
   accepting mappingproxy operands, and rejecting non-mapping operands without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes.
+- Added `cpython_dict_subclass_ior_subset`, backed by
+  `cpython_dict_subclass_ior_diff_subset`, for dict subclass __ior__ /
+  PEP 584 in-place union. It pins inherited dict method visibility, preserving the subclass instance for direct and syntax forms,
+  update-source operands, and without changing ordinary dict union result types.
 - Added `cpython_dict_missing_keyerror_payload_subset`, backed by
   `cpython_dict_missing_keyerror_payload_diff_subset`, for CPython public
   missing-key `KeyError.args[0]` behavior across dict, dict subclasses, and

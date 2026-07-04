@@ -8273,6 +8273,12 @@ aligned with CPython by returning an ordinary `dict` result for dict subclass
 operands, preserving the left subclass operand, accepting mappingproxy operands,
 and rejecting non-mapping operands without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes.
 
+`cpython_dict_subclass_ior_subset`, backed by
+`cpython_dict_subclass_ior_diff_subset`, keeps dict subclass __ior__ /
+PEP 584 in-place union aligned with CPython by pinning inherited dict method visibility,
+preserving the subclass instance for direct and syntax forms, accepting
+update-source operands, and doing so without changing ordinary dict union result types.
+
 `cpython_set_operations_mutating_subset` is backed by the
 `set-operations-mutating` direct CPython diff case, keeping CPython's stable
 set equality, ordering, algebra, relation methods, and update methods whose

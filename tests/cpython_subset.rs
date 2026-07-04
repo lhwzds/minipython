@@ -56149,6 +56149,41 @@ for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] |
     );
 }
 
+#[test]
+fn cpython_dict_subclass_ior_subset() {
+    assert_output_with_stack(
+        r#"class D(dict):
+    pass
+
+mut = D(a=1)
+print('has-ior', hasattr(mut, '__ior__'), '__ior__' in dir(mut), '__ior__' in dir(D))
+ret = mut.__ior__({'b': 2})
+print('direct-dict', ret is mut, type(ret).__name__, type(mut).__name__, mut)
+ret = dict.__ior__(mut, D(c=3))
+print('dict-sub', ret is mut, type(ret).__name__, type(mut).__name__, mut)
+mut |= {'d': 4}
+print('syntax-dict', type(mut).__name__, mut)
+mut |= D(e=5)
+print('syntax-sub', type(mut).__name__, mut)
+ret = mut.__ior__([('f', 6)])
+print('direct-pairs', ret is mut, mut)
+ret = dict.__ior__(mut, [('g', 7)])
+print('dict-pairs', ret is mut, mut)
+print('final', isinstance(mut, D), isinstance(mut, dict), mut)"#,
+        &[
+            "has-ior True True True",
+            "direct-dict True D D {'a': 1, 'b': 2}",
+            "dict-sub True D D {'a': 1, 'b': 2, 'c': 3}",
+            "syntax-dict D {'a': 1, 'b': 2, 'c': 3, 'd': 4}",
+            "syntax-sub D {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5}",
+            "direct-pairs True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}",
+            "dict-pairs True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+            "final True True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public dict missing-key behavior. KeyError display uses
 // repr(key), but KeyError.args must preserve the original missing key object.
 #[test]
@@ -65484,6 +65519,8 @@ fn cpython_collections_userdict_public_methods_subset() {
             "print(UserDict.pop(class_obj, 'b'), class_obj)\n",
             "print(UserDict.setdefault(class_obj, 'd', 4), class_obj)\n",
             "print(UserDict.update(class_obj, {'e': 5}), class_obj)\n",
+            "print('ior-direct', UserDict.__ior__(class_obj, {'f': 6}) is class_obj, class_obj)\n",
+            "print('ior-bound', class_obj.__ior__([('g', 7)]) is class_obj, class_obj)\n",
             "print(UserDict.__delitem__(class_obj, 'c'), class_obj)\n",
             "def show_missing(label, action):\n",
             "    try:\n",
@@ -65497,6 +65534,7 @@ fn cpython_collections_userdict_public_methods_subset() {
             "class UDSub(UserDict):\n",
             "    pass\n",
             "sub_obj = UDSub({'a': 1})\n",
+            "print('subclass-ior', UserDict.__ior__(sub_obj, {'b': 2}) is sub_obj, type(sub_obj).__name__, list(sub_obj.items()))\n",
             "def delete_missing_userdict_subclass():\n",
             "    del sub_obj['missing']\n",
             "show_missing('subclass-delitem-missing', lambda: UserDict.__delitem__(sub_obj, 'missing'))\n",
@@ -65539,9 +65577,12 @@ fn cpython_collections_userdict_public_methods_subset() {
             "2 {'a': 1, 'c': 3}",
             "4 {'a': 1, 'c': 3, 'd': 4}",
             "None {'a': 1, 'c': 3, 'd': 4, 'e': 5}",
-            "None {'a': 1, 'd': 4, 'e': 5}",
+            "ior-direct True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6}",
+            "ior-bound True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+            "None {'a': 1, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
             "delitem-missing True str 'missing'",
             "del-syntax-missing True str 'missing'",
+            "subclass-ior True UDSub [('a', 1), ('b', 2)]",
             "subclass-delitem-missing True str 'missing'",
             "subclass-del-syntax-missing True str 'missing'",
             "popitem-direct ('z', 9) {}",
@@ -65550,7 +65591,7 @@ fn cpython_collections_userdict_public_methods_subset() {
             "popitem-direct-empty 0 True",
             "subclass-popitem-empty 0 True",
             "subclass-direct-popitem-empty 0 True",
-            "{'a': 1, 'd': 4, 'e': 5} UserDict False",
+            "{'a': 1, 'd': 4, 'e': 5, 'f': 6, 'g': 7} UserDict False",
             "None {}",
         ],
     );

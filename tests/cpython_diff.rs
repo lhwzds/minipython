@@ -2456,6 +2456,32 @@ for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] |
 }
 
 #[test]
+fn cpython_dict_subclass_ior_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py PEP 584 dict subclass in-place union subset",
+        name: "dict-subclass-ior",
+        source: r#"class D(dict):
+    pass
+
+mut = D(a=1)
+print('has-ior', hasattr(mut, '__ior__'), '__ior__' in dir(mut), '__ior__' in dir(D))
+ret = mut.__ior__({'b': 2})
+print('direct-dict', ret is mut, type(ret).__name__, type(mut).__name__, mut)
+ret = dict.__ior__(mut, D(c=3))
+print('dict-sub', ret is mut, type(ret).__name__, type(mut).__name__, mut)
+mut |= {'d': 4}
+print('syntax-dict', type(mut).__name__, mut)
+mut |= D(e=5)
+print('syntax-sub', type(mut).__name__, mut)
+ret = mut.__ior__([('f', 6)])
+print('direct-pairs', ret is mut, mut)
+ret = dict.__ior__(mut, [('g', 7)])
+print('dict-pairs', ret is mut, mut)
+print('final', isinstance(mut, D), isinstance(mut, dict), mut)"#,
+    });
+}
+
+#[test]
 fn cpython_sequence_repeat_allocation_guard_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public sequence repeat allocation behavior",
@@ -24559,6 +24585,8 @@ print(UserDict.__setitem__(class_obj, 'c', 3), class_obj)
 print(UserDict.pop(class_obj, 'b'), class_obj)
 print(UserDict.setdefault(class_obj, 'd', 4), class_obj)
 print(UserDict.update(class_obj, {'e': 5}), class_obj)
+print('ior-direct', UserDict.__ior__(class_obj, {'f': 6}) is class_obj, class_obj)
+print('ior-bound', class_obj.__ior__([('g', 7)]) is class_obj, class_obj)
 print(UserDict.__delitem__(class_obj, 'c'), class_obj)
 def show_missing(label, action):
     try:
@@ -24572,6 +24600,7 @@ show_missing('del-syntax-missing', delete_missing_userdict)
 class UDSub(UserDict):
     pass
 sub_obj = UDSub({'a': 1})
+print('subclass-ior', UserDict.__ior__(sub_obj, {'b': 2}) is sub_obj, type(sub_obj).__name__, list(sub_obj.items()))
 def delete_missing_userdict_subclass():
     del sub_obj['missing']
 show_missing('subclass-delitem-missing', lambda: UserDict.__delitem__(sub_obj, 'missing'))

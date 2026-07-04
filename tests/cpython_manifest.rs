@@ -381,7 +381,8 @@ fn dict_subclass_new_storage_docs_cover_core_runtime() {
         "dict.__new__(X): X is not a type object",
         "dict.__new__({}): {} is not a subtype of dict",
         "function_name == \"dict\" && name == \"__new__\"",
-        "\"dict\" | \"UserDict\"",
+        "\"dict\" => &[",
+        "\"UserDict\" => &[",
         "Value::OrderedDict(_)",
     ] {
         assert!(
@@ -2993,6 +2994,91 @@ fn dict_subclass_union_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "dict subclass union docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn dict_subclass_ior_has_focused_diff_evidence() {
+    let diff_name = "cpython_dict_subclass_ior_diff_subset";
+    let subset_name = "cpython_dict_subclass_ior_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict subclass __ior__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict subclass __ior__ runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "class D(dict):",
+        "hasattr(mut, '__ior__')",
+        "'__ior__' in dir(mut)",
+        "'__ior__' in dir(D)",
+        "ret = mut.__ior__({'b': 2})",
+        "ret = dict.__ior__(mut, D(c=3))",
+        "mut |= {'d': 4}",
+        "mut |= D(e=5)",
+        "ret = mut.__ior__([('f', 6)])",
+        "ret = dict.__ior__(mut, [('g', 7)])",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "dict subclass __ior__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"has-ior True True True\"",
+        "\"direct-dict True D D {'a': 1, 'b': 2}\"",
+        "\"dict-sub True D D {'a': 1, 'b': 2, 'c': 3}\"",
+        "\"syntax-dict D {'a': 1, 'b': 2, 'c': 3, 'd': 4}\"",
+        "\"syntax-sub D {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5}\"",
+        "\"direct-pairs True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6}\"",
+        "\"dict-pairs True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}\"",
+        "\"final True True {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "dict subclass __ior__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dict.__ior__\" =>",
+        "| \"__ior__\"",
+        "left if dict_subclass_entries(&left).is_some()",
+        "dict_subclass_entries(&left).expect(\"dict subclass entries exist after guard\")",
+        "vm.dict_entries_from_update_source(other.clone())?",
+        "insert_live_dict_entry(&mut entries, key, value)?",
+        "Ok(dict.clone())",
+        "Ok(left)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict subclass __ior__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "dict subclass __ior__",
+            "PEP 584 in-place union",
+            "inherited dict method visibility",
+            "preserving the subclass instance",
+            "update-source operands",
+            "without changing ordinary dict union result types",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict subclass __ior__ docs must contain `{required}`"
             );
         }
     }
@@ -25982,11 +26068,14 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserDict.pop(class_obj, 'b')",
         "UserDict.setdefault(class_obj, 'd', 4)",
         "UserDict.update(class_obj, {'e': 5})",
+        "UserDict.__ior__(class_obj, {'f': 6})",
+        "class_obj.__ior__([('g', 7)])",
         "UserDict.__delitem__(class_obj, 'c')",
         "def delete_missing_userdict():",
         "UserDict.__delitem__(class_obj, 'missing')",
         "del class_obj['missing']",
         "class UDSub(UserDict):",
+        "UserDict.__ior__(sub_obj, {'b': 2})",
         "def delete_missing_userdict_subclass():",
         "UserDict.__delitem__(sub_obj, 'missing')",
         "del sub_obj['missing']",
@@ -26009,6 +26098,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "delitem-missing True str 'missing'",
         "del-syntax-missing True str 'missing'",
+        "ior-direct True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6}",
+        "ior-bound True {'a': 1, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7}",
+        "subclass-ior True UDSub [('a', 1), ('b', 2)]",
         "subclass-delitem-missing True str 'missing'",
         "subclass-del-syntax-missing True str 'missing'",
         "popitem-direct ('z', 9) {}",
@@ -26045,6 +26137,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         .expect("UserDict method implementation must be extractable");
     for required in [
         "if method == \"popitem\"",
+        "if method == \"__ior__\"",
+        "return Ok(receiver.clone());",
         "return raise_key_error_empty(vm);",
         "mark_dict_changed(&mut data);",
     ] {

@@ -15086,6 +15086,7 @@ impl Vm {
                             | "__contains__"
                             | "__delitem__"
                             | "__getitem__"
+                            | "__ior__"
                             | "__iter__"
                             | "__len__"
                             | "__setitem__"
@@ -32162,6 +32163,17 @@ impl Vm {
                 }
                 drop(entries_ref);
                 Ok(Value::Dict(entries))
+            }
+            left if dict_subclass_entries(&left).is_some() => {
+                let updates = self.dict_entries_from_update_source(right)?;
+                let entries =
+                    dict_subclass_entries(&left).expect("dict subclass entries exist after guard");
+                let mut entries_ref = entries.borrow_mut();
+                for (key, value) in updates {
+                    insert_live_dict_entry(&mut entries_ref, key, value)?;
+                }
+                drop(entries_ref);
+                Ok(left)
             }
             Value::OrderedDict(entries) => {
                 let updates = self.dict_entries_from_update_source(right)?;
@@ -52797,12 +52809,38 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "sort",
         ],
-        "dict" | "UserDict" => &[
+        "dict" => &[
             "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__format__",
             "__getitem__",
+            "__ior__",
+            "__iter__",
+            "__len__",
+            "__new__",
+            "__repr__",
+            "__setitem__",
+            "__str__",
+            "clear",
+            "copy",
+            "fromkeys",
+            "get",
+            "items",
+            "keys",
+            "pop",
+            "popitem",
+            "setdefault",
+            "update",
+            "values",
+        ],
+        "UserDict" => &[
+            "__class_getitem__",
+            "__contains__",
+            "__delitem__",
+            "__format__",
+            "__getitem__",
+            "__ior__",
             "__iter__",
             "__len__",
             "__new__",
@@ -56561,6 +56599,7 @@ fn is_builtin_dict_type_method(name: &str) -> bool {
             | "__getitem__"
             | "__len__"
             | "__iter__"
+            | "__ior__"
             | "__repr__"
             | "__setitem__"
             | "__str__"
@@ -59884,6 +59923,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__delitem__"
                         | "__format__"
                         | "__getitem__"
+                        | "__ior__"
                         | "__iter__"
                         | "__len__"
                         | "__repr__"
@@ -61273,8 +61313,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__doc__" => Ok(Value::None),
                 "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
                 | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
-                | "__format__" | "__getitem__" | "__iter__" | "__len__" | "__repr__"
-                | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
+                | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__"
+                | "__repr__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
                     receiver: Box::new(Value::UserDict { data, attrs }),
                     identity: Rc::new(()),
@@ -80443,6 +80483,27 @@ fn call_dict_method(
             insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
             Ok(Value::None)
         }
+        "dict.__ior__" => {
+            reject_method_keywords(name, &keywords)?;
+            let [dict, other] = args.as_slice() else {
+                return Err(format!(
+                    "__ior__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let entries = match dict {
+                Value::Dict(entries) | Value::Counter { entries } => Some(entries.clone()),
+                Value::DefaultDict { entries, .. } => Some(entries.clone()),
+                value => counter_subclass_entries(value).or_else(|| dict_subclass_entries(value)),
+            }
+            .ok_or_else(|| "__ior__() expected a dict receiver".to_string())?;
+            let updates = vm.dict_entries_from_update_source(other.clone())?;
+            let mut entries = entries.borrow_mut();
+            for (key, value) in updates {
+                insert_live_dict_entry(&mut entries, key, value)?;
+            }
+            Ok(dict.clone())
+        }
         "dict.__repr__" | "dict.__str__" => {
             reject_method_keywords(name, &keywords)?;
             let [dict] = args.as_slice() else {
@@ -80785,6 +80846,22 @@ fn call_user_dict_method(
         };
         mark_dict_changed(&mut data);
         return Ok(tuple_value(vec![key, value]));
+    }
+
+    if method == "__ior__" {
+        reject_method_keywords(name, &keywords)?;
+        let [other] = rest else {
+            return Err(format!(
+                "__ior__() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let updates = vm.dict_entries_from_update_source(other.clone())?;
+        let mut data = data.borrow_mut();
+        for (key, value) in updates {
+            insert_live_dict_entry(&mut data, key, value)?;
+        }
+        return Ok(receiver.clone());
     }
 
     let dict_receiver = Value::Dict(data.clone());
@@ -92741,6 +92818,17 @@ fn in_place_bit_or_values(left: Value, right: Value) -> Result<Value, String> {
             }
             drop(entries_ref);
             Ok(Value::Dict(entries))
+        }
+        left if dict_subclass_entries(&left).is_some() => {
+            let updates = dict_entries_from_update_source(right)?;
+            let entries =
+                dict_subclass_entries(&left).expect("dict subclass entries exist after guard");
+            let mut entries_ref = entries.borrow_mut();
+            for (key, value) in updates {
+                insert_live_dict_entry(&mut entries_ref, key, value)?;
+            }
+            drop(entries_ref);
+            Ok(left)
         }
         left @ Value::ChainMap { .. } => {
             let maps = chain_map_receiver_maps(&left)?;
