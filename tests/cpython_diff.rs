@@ -2429,6 +2429,33 @@ show('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))"#,
 }
 
 #[test]
+fn cpython_dict_subclass_union_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py PEP 584 dict subclass union subset",
+        name: "dict-subclass-union",
+        source: r#"import types
+class D(dict):
+    pass
+left = D(a=1)
+right = D(b=2)
+merged = left | {'b': 20, 'c': 3}
+print('sub-dict', type(merged).__name__, isinstance(merged, D), isinstance(merged, dict), merged, left)
+reverse = {'z': 0, 'a': 9} | left
+print('dict-sub', type(reverse).__name__, isinstance(reverse, D), reverse)
+subsub = left | right
+print('sub-sub', type(subsub).__name__, isinstance(subsub, D), subsub)
+proxy = types.MappingProxyType({'p': 5})
+print('proxy-sub', type(proxy | left).__name__, proxy | left)
+print('sub-proxy', type(left | proxy).__name__, left | proxy)
+for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] | left)]:
+    try:
+        action()
+    except TypeError as error:
+        print(label, type(error).__name__, 'unsupported operand type' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_sequence_repeat_allocation_guard_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public sequence repeat allocation behavior",

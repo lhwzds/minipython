@@ -8267,6 +8267,12 @@ on dict and dict subclasses aligned with CPython by preserving
 `KeyError.args[0] == 'popitem(): dictionary is empty'` and the
 `KeyError(message)` string display rule.
 
+`cpython_dict_subclass_union_subset`, backed by
+`cpython_dict_subclass_union_diff_subset`, keeps PEP 584 dict subclass union
+aligned with CPython by returning an ordinary `dict` result for dict subclass
+operands, preserving the left subclass operand, accepting mappingproxy operands,
+and rejecting non-mapping operands without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes.
+
 `cpython_set_operations_mutating_subset` is backed by the
 `set-operations-mutating` direct CPython diff case, keeping CPython's stable
 set equality, ordering, algebra, relation methods, and update methods whose

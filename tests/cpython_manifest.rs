@@ -2919,6 +2919,86 @@ fn dict_empty_popitem_keyerror_display_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_subclass_union_has_focused_diff_evidence() {
+    let diff_name = "cpython_dict_subclass_union_diff_subset";
+    let subset_name = "cpython_dict_subclass_union_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict subclass union CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict subclass union runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "class D(dict):",
+        "merged = left | {'b': 20, 'c': 3}",
+        "reverse = {'z': 0, 'a': 9} | left",
+        "subsub = left | right",
+        "types.MappingProxyType({'p': 5})",
+        "proxy | left",
+        "left | proxy",
+        "left | []",
+        "[] | left",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "dict subclass union diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"sub-dict dict False True {'a': 1, 'b': 20, 'c': 3} {'a': 1}\"",
+        "\"dict-sub dict False {'z': 0, 'a': 1}\"",
+        "\"sub-sub dict False {'a': 1, 'b': 2}\"",
+        "\"proxy-sub dict {'p': 5, 'a': 1}\"",
+        "\"sub-proxy dict {'a': 1, 'p': 5}\"",
+        "\"sub-list TypeError True\"",
+        "\"list-sub TypeError True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "dict subclass union subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_union_operand_entries(value: &Value) -> Option<Vec<(Value, Value)>>",
+        "Value::Dict(entries) | Value::MappingProxy { entries, .. }",
+        "value if dict_subclass_entries(value).is_some()",
+        "dict_union_operand_entries(&left).is_some()",
+        "dict_union_operand_entries(&right).is_some()",
+        "dict_union_from_entries(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict subclass union implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "dict subclass union",
+            "PEP 584",
+            "ordinary `dict` result",
+            "mappingproxy operands",
+            "without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict subclass union docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
     let diff_name = "cpython_dict_missing_keyerror_payload_diff_subset";
     let subset_name = "cpython_dict_missing_keyerror_payload_subset";

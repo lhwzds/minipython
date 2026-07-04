@@ -82965,6 +82965,21 @@ fn dict_union_from_entries(
     build_dict(entries)
 }
 
+fn dict_union_operand_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
+    match value {
+        Value::Dict(entries) | Value::MappingProxy { entries, .. } => {
+            Some(entries.borrow().clone())
+        }
+        value if dict_subclass_entries(value).is_some() => Some(
+            dict_subclass_entries(value)
+                .expect("dict subclass entries exist after guard")
+                .borrow()
+                .clone(),
+        ),
+        _ => None,
+    }
+}
+
 fn ordered_dict_union_from_entries(
     mut entries: Vec<(Value, Value)>,
     updates: Vec<(Value, Value)>,
@@ -92553,13 +92568,16 @@ fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
                 )
             })
         }
-        (Value::Dict(left), Value::Dict(right)) => {
-            dict_union_from_entries(left.borrow().clone(), right.borrow().clone())
-        }
-        (Value::MappingProxy { entries: left, .. }, Value::Dict(right))
-        | (Value::Dict(left), Value::MappingProxy { entries: right, .. })
-        | (Value::MappingProxy { entries: left, .. }, Value::MappingProxy { entries: right, .. }) => {
-            dict_union_from_entries(left.borrow().clone(), right.borrow().clone())
+        (left, right)
+            if dict_union_operand_entries(&left).is_some()
+                && dict_union_operand_entries(&right).is_some() =>
+        {
+            dict_union_from_entries(
+                dict_union_operand_entries(&left)
+                    .expect("dict union left operand entries exist after guard"),
+                dict_union_operand_entries(&right)
+                    .expect("dict union right operand entries exist after guard"),
+            )
         }
         (Value::MappingProxy { .. }, right) => Err(format!(
             "TypeError: unsupported operand type(s) for |: 'dict' and '{}'",

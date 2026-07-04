@@ -56101,7 +56101,7 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
 // is stored as the original KeyError argument while str(error) renders repr().
 #[test]
 fn cpython_dict_popitem_empty_keyerror_subset() {
-    assert_output(
+    assert_output_with_stack(
         "class D(dict):\n    pass\n\ndef show(label, action):\n    try:\n        action()\n    except KeyError as error:\n        print(label, error.args[0] == 'popitem(): dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))\nshow('popitem-empty', lambda: {}.popitem())\nshow('direct-popitem-empty', lambda: dict.popitem({}))\nshow('subclass-popitem-empty', lambda: D().popitem())\nshow('subclass-direct-popitem-empty', lambda: dict.popitem(D()))\nprint('popitem-nonempty', {'a': 1}.popitem())\nprint('subclass-popitem-nonempty', D({'a': 1}).popitem())",
         &[
             "popitem-empty True str True",
@@ -56111,6 +56111,41 @@ fn cpython_dict_popitem_empty_keyerror_subset() {
             "popitem-nonempty ('a', 1)",
             "subclass-popitem-nonempty ('a', 1)",
         ],
+        64 * 1024 * 1024,
+    );
+}
+
+#[test]
+fn cpython_dict_subclass_union_subset() {
+    assert_output(
+        r#"import types
+class D(dict):
+    pass
+left = D(a=1)
+right = D(b=2)
+merged = left | {'b': 20, 'c': 3}
+print('sub-dict', type(merged).__name__, isinstance(merged, D), isinstance(merged, dict), merged, left)
+reverse = {'z': 0, 'a': 9} | left
+print('dict-sub', type(reverse).__name__, isinstance(reverse, D), reverse)
+subsub = left | right
+print('sub-sub', type(subsub).__name__, isinstance(subsub, D), subsub)
+proxy = types.MappingProxyType({'p': 5})
+print('proxy-sub', type(proxy | left).__name__, proxy | left)
+print('sub-proxy', type(left | proxy).__name__, left | proxy)
+for label, action in [('sub-list', lambda: left | []), ('list-sub', lambda: [] | left)]:
+    try:
+        action()
+    except TypeError as error:
+        print(label, type(error).__name__, 'unsupported operand type' in str(error))"#,
+        &[
+            "sub-dict dict False True {'a': 1, 'b': 20, 'c': 3} {'a': 1}",
+            "dict-sub dict False {'z': 0, 'a': 1}",
+            "sub-sub dict False {'a': 1, 'b': 2}",
+            "proxy-sub dict {'p': 5, 'a': 1}",
+            "sub-proxy dict {'a': 1, 'p': 5}",
+            "sub-list TypeError True",
+            "list-sub TypeError True",
+        ],
     );
 }
 
@@ -56118,7 +56153,7 @@ fn cpython_dict_popitem_empty_keyerror_subset() {
 // repr(key), but KeyError.args must preserve the original missing key object.
 #[test]
 fn cpython_dict_missing_keyerror_payload_subset() {
-    assert_output(
+    assert_output_with_stack(
         "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\ndef delete_str():\n    d = {}\n    del d['missing']\ndef delete_subclass_str():\n    d = D()\n    del d['missing']\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('delitem-str', 'missing', lambda: dict.__delitem__({}, 'missing'))\nshow('del-subscript-str', 'missing', delete_str)\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('subclass-delitem', 'missing', lambda: dict.__delitem__(D(), 'missing'))\nshow('subclass-del-subscript', 'missing', delete_subclass_str)\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
         &[
             "subscript-str True str 'missing'",
@@ -56135,6 +56170,7 @@ fn cpython_dict_missing_keyerror_payload_subset() {
             "scope-subscript True str 'scope_missing'",
             "scope-pop True str 'scope_missing'",
         ],
+        64 * 1024 * 1024,
     );
 }
 

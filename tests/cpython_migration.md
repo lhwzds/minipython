@@ -3539,6 +3539,10 @@ Completed in the differential parity harness pass:
   `dict-setdefault-popitem-and-union` CPython diff case, for empty `popitem()`
   on dict and dict subclasses preserving `KeyError.args[0]` and
   `KeyError(message)` string display.
+- Added `cpython_dict_subclass_union_subset`, backed by
+  `cpython_dict_subclass_union_diff_subset`, for PEP 584 dict subclass union
+  returning an ordinary `dict` result, preserving the left subclass operand,
+  accepting mappingproxy operands, and rejecting non-mapping operands without adding `UserDict`, `OrderedDict`, or `ChainMap` result-type changes.
 - Added `cpython_dict_missing_keyerror_payload_subset`, backed by
   `cpython_dict_missing_keyerror_payload_diff_subset`, for CPython public
   missing-key `KeyError.args[0]` behavior across dict, dict subclasses, and
