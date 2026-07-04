@@ -29600,6 +29600,64 @@ print('unshadow', type(f.__dir__).__name__, '__dir__' in f.__dict__)"#,
     );
 }
 
+// Adapted from CPython public function-object `__dict__` assignment behavior.
+// This pins replacement identity, live external dict mutation, dict-subclass
+// replacement, and deletion/type errors without expanding pickle or host IO.
+#[test]
+fn cpython_function_dict_assignment_subset() {
+    assert_output(
+        r#"class D(dict):
+    pass
+
+def f():
+    pass
+print('__dict__' in dir(f), type(f.__dict__).__name__, f.__dict__ == {}, f.__dict__ is f.__dict__)
+f.marker = 1
+print('custom', f.__dict__, f.marker, 'marker' in dir(f))
+replacement = {'x': 2}
+f.__dict__ = replacement
+print('assigned-dict', f.__dict__ is replacement, f.__dict__, hasattr(f, 'marker'), f.x, 'x' in dir(f))
+replacement['z'] = 5
+print('external-add', f.z, 'z' in dir(f))
+del replacement['x']
+print('external-del', hasattr(f, 'x'), 'x' in dir(f))
+sub = D(y=3)
+f.__dict__ = sub
+print('assigned-subclass', f.__dict__ is sub, type(f.__dict__).__name__, f.y, 'y' in dir(f))
+f.extra = 4
+print('subclass-extra', f.__dict__, f.extra)
+for label, call in [
+    ('assign-none', lambda: setattr(f, '__dict__', None)),
+    ('assign-list', lambda: setattr(f, '__dict__', [])),
+    ('del-direct', lambda: delattr(f, '__dict__')),
+    ('del-wrapper', lambda: f.__delattr__('__dict__')),
+]:
+    try:
+        call()
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('after-errors', type(f.__dict__).__name__, f.__dict__)
+f.__dict__ = {}
+print('reset', f.__dict__)"#,
+        &[
+            "True dict True True",
+            "custom {'marker': 1} 1 True",
+            "assigned-dict True {'x': 2} False 2 True",
+            "external-add 5 True",
+            "external-del False False",
+            "assigned-subclass True D 3 True",
+            "subclass-extra {'y': 3, 'extra': 4} 4",
+            "assign-none TypeError __dict__ must be set to a dictionary, not a 'NoneType' (\"__dict__ must be set to a dictionary, not a 'NoneType'\",)",
+            "assign-list TypeError __dict__ must be set to a dictionary, not a 'list' (\"__dict__ must be set to a dictionary, not a 'list'\",)",
+            "del-direct TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "del-wrapper TypeError cannot delete __dict__ ('cannot delete __dict__',)",
+            "after-errors D {'y': 3, 'extra': 4}",
+            "reset {}",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

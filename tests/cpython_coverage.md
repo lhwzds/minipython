@@ -693,6 +693,7 @@ Recent runtime migration notes:
   `cpython_function_subclasshook_wrapper_diff_subset`,
   `cpython_function_getstate_wrapper_diff_subset`,
   `cpython_function_dir_wrapper_diff_subset`,
+  `cpython_function_dict_assignment_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
@@ -7514,6 +7515,11 @@ without adding general custom encoder/decoder class support.
   extra positional and keyword TypeError paths, custom attribute shadowing,
   `builtin_function_or_method` classification, text signature and doc metadata,
   and wrapper repr/str shape without depending on complete CPython name-list order.
+- `RUNTIME_BUILTINS` also includes `cpython_function_dict_assignment_subset`
+  with direct CPython output parity in
+  `cpython_function_dict_assignment_diff_subset`, covering function __dict__ assignment,
+  dict replacement identity, live external dict mutation, dict subclass replacement, custom attribute visibility through `dir()`, non-dict
+  assignment TypeError paths, and cannot delete __dict__ errors without expanding pickle or host IO.
 - `RUNTIME_BUILTINS` also includes `cpython_object_getstate_direct_subset` with
   direct CPython output parity in
   `cpython_object_getstate_direct_diff_subset`, covering CPython's inherited

@@ -4356,6 +4356,7 @@ const CLASS_ATTR_ORDER_ATTR: &str = "\0class_attr_order";
 const CLASS_BASES_ATTR: &str = "\0class_bases";
 const TYPED_DICT_CLASS_ATTR: &str = "\0minipython_typed_dict_class";
 const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
+const FUNCTION_DICT_SOURCE_ATTR: &str = "\0function_dict_source";
 
 fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Scope, String> {
     let entries = match namespace {
@@ -51464,6 +51465,144 @@ fn dict_to_scope(entries: &DictRef) -> Scope {
     scope
 }
 
+fn function_dict_value(attrs: &Scope) -> Value {
+    attrs
+        .borrow()
+        .get(FUNCTION_DICT_SOURCE_ATTR)
+        .cloned()
+        .unwrap_or_else(|| Value::ScopeDict(attrs.clone()))
+}
+
+fn function_dict_entries(attrs: &Scope) -> Option<DictRef> {
+    let source = attrs.borrow().get(FUNCTION_DICT_SOURCE_ATTR).cloned()?;
+    function_dict_replacement_entries(&source)
+}
+
+fn function_dict_replacement_entries(value: &Value) -> Option<DictRef> {
+    match value {
+        Value::Dict(entries) | Value::OrderedDict(entries) => Some(entries.clone()),
+        value => dict_subclass_entries(value),
+    }
+}
+
+fn is_controlled_function_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "__annotate__"
+            | "__annotations__"
+            | "__builtins__"
+            | "__class__"
+            | "__closure__"
+            | "__code__"
+            | "__defaults__"
+            | "__dict__"
+            | "__doc__"
+            | "__globals__"
+            | "__kwdefaults__"
+            | "__module__"
+            | "__name__"
+            | "__qualname__"
+            | "__type_params__"
+    )
+}
+
+fn is_preserved_function_attr_on_dict_replacement(name: &str) -> bool {
+    name.starts_with('\0') || is_controlled_function_attribute(name)
+}
+
+fn set_function_dict(attrs: &Scope, value: Value) -> Result<(), String> {
+    let Some(entries) = function_dict_replacement_entries(&value) else {
+        return Err(format!(
+            "TypeError: __dict__ must be set to a dictionary, not a '{}'",
+            type_name(&value)
+        ));
+    };
+
+    let preserved = attrs
+        .borrow()
+        .iter()
+        .filter(|(name, _)| is_preserved_function_attr_on_dict_replacement(name))
+        .map(|(name, value)| (name.clone(), value.clone()))
+        .collect::<Vec<_>>();
+    let public_attrs = entries
+        .borrow()
+        .iter()
+        .filter_map(|(key, value)| {
+            let name = value_as_string(key)?;
+            if is_preserved_function_attr_on_dict_replacement(name) {
+                None
+            } else {
+                Some((name.to_string(), value.clone()))
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut attrs = attrs.borrow_mut();
+    attrs.clear();
+    attrs.extend(preserved);
+    attrs.extend(public_attrs);
+    attrs.insert(FUNCTION_DICT_SOURCE_ATTR.to_string(), value);
+    Ok(())
+}
+
+fn function_custom_attribute(attrs: &Scope, name: &str) -> Option<Value> {
+    if let Some(entries) = function_dict_entries(attrs) {
+        return lookup_string_key(&entries, name);
+    }
+    attrs.borrow().get(name).cloned()
+}
+
+fn function_custom_attribute_names(attrs: &Scope) -> Vec<String> {
+    function_dict_entries(attrs)
+        .map(|entries| dict_string_names(&entries))
+        .unwrap_or_else(|| scope_names(attrs))
+}
+
+fn store_function_custom_attribute(attrs: &Scope, name: &str, value: Value) -> Result<(), String> {
+    if let Some(entries) = function_dict_entries(attrs) {
+        insert_live_dict_entry(
+            &mut entries.borrow_mut(),
+            Value::String(name.to_string()),
+            value.clone(),
+        )?;
+    }
+    attrs.borrow_mut().insert(name.to_string(), value);
+    Ok(())
+}
+
+fn delete_live_dict_string_entry(entries: &DictRef, name: &str) -> bool {
+    let mut entries = entries.borrow_mut();
+    let Some(position) = entries
+        .iter()
+        .position(|(key, _)| matches!(key, Value::String(key_name) | Value::IdentityString { value: key_name, .. } if key_name == name))
+    else {
+        return false;
+    };
+    entries.remove(position);
+    mark_dict_changed(&mut entries);
+    true
+}
+
+fn delete_function_custom_attribute(attrs: &Scope, name: &str) -> Result<(), String> {
+    if let Some(entries) = function_dict_entries(attrs) {
+        let removed = delete_live_dict_string_entry(&entries, name);
+        attrs.borrow_mut().remove(name);
+        if removed {
+            Ok(())
+        } else {
+            Err(format!(
+                "AttributeError: function has no attribute '{name}'"
+            ))
+        }
+    } else if attrs.borrow_mut().remove(name).is_some() {
+        Ok(())
+    } else {
+        Err(format!(
+            "AttributeError: function has no attribute '{name}'"
+        ))
+    }
+}
+
 fn dict_to_scope_with_mapping_source(entries: &DictRef, source_field: &str) -> Scope {
     let scope = dict_to_scope(entries);
     scope
@@ -51869,13 +52008,14 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             }
         }
         Value::Function { attrs, .. } => {
-            names.extend(scope_names(attrs));
+            names.extend(function_custom_attribute_names(attrs));
             names.extend(
                 [
                     "__annotations__",
                     "__call__",
                     "__delattr__",
                     "__dir__",
+                    "__dict__",
                     "__doc__",
                     "__eq__",
                     "__format__",
@@ -57830,7 +57970,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             .cloned()
             .unwrap_or_else(|| function_keyword_defaults_value(keyword_defaults))),
         "__closure__" => Ok(function_closure_value(body, closure)),
-        "__dict__" => Ok(Value::ScopeDict(attrs.clone())),
+        "__dict__" => Ok(function_dict_value(attrs)),
         "__type_params__" => Ok(type_params_attr_value(attrs, type_params.clone())),
         "__annotate__" => Ok(attrs
             .borrow()
@@ -57868,11 +58008,10 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             closure,
             function_code_identity(identity),
         ),
-        name if attrs.borrow().contains_key(name) => Ok(attrs
-            .borrow()
-            .get(name)
-            .cloned()
-            .expect("function attrs contains checked name")),
+        name if function_custom_attribute(attrs, name).is_some() => {
+            Ok(function_custom_attribute(attrs, name)
+                .expect("function attrs contains checked name"))
+        }
         "__call__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__call__".to_string())),
             receiver: Box::new(function.clone()),
@@ -57943,6 +58082,9 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        _ if function_dict_entries(attrs).is_some() => Err(format!(
+            "AttributeError: function has no attribute '{name}'"
+        )),
         _ => attrs
             .borrow()
             .get(name)
@@ -65511,6 +65653,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                     "AttributeError: function attribute '{name}' is read-only"
                 ));
             }
+            if name == "__dict__" {
+                return set_function_dict(&attrs, value);
+            }
             if name == "__name__" {
                 match value {
                     value @ Value::String(_) => {
@@ -65553,8 +65698,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 attrs.borrow_mut().insert(name.to_string(), value);
                 return Ok(());
             }
-            attrs.borrow_mut().insert(name.to_string(), value);
-            Ok(())
+            store_function_custom_attribute(&attrs, name, value)
         }
         Value::Property {
             name: property_name,
@@ -65979,13 +66123,10 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 *doc.borrow_mut() = Value::None;
                 return Ok(());
             }
-            if attrs.borrow_mut().remove(name).is_some() {
-                Ok(())
-            } else {
-                Err(format!(
-                    "AttributeError: function has no attribute '{name}'"
-                ))
+            if name == "__dict__" {
+                return Err("TypeError: cannot delete __dict__".to_string());
             }
+            delete_function_custom_attribute(&attrs, name)
         }
         Value::Property {
             name: property_name,

@@ -14338,6 +14338,48 @@ print('unshadow', type(f.__dir__).__name__, '__dir__' in f.__dict__)"#,
 }
 
 #[test]
+fn cpython_function_dict_assignment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __dict__ assignment subset",
+        name: "function-dict-assignment",
+        source: r#"class D(dict):
+    pass
+
+def f():
+    pass
+print('__dict__' in dir(f), type(f.__dict__).__name__, f.__dict__ == {}, f.__dict__ is f.__dict__)
+f.marker = 1
+print('custom', f.__dict__, f.marker, 'marker' in dir(f))
+replacement = {'x': 2}
+f.__dict__ = replacement
+print('assigned-dict', f.__dict__ is replacement, f.__dict__, hasattr(f, 'marker'), f.x, 'x' in dir(f))
+replacement['z'] = 5
+print('external-add', f.z, 'z' in dir(f))
+del replacement['x']
+print('external-del', hasattr(f, 'x'), 'x' in dir(f))
+sub = D(y=3)
+f.__dict__ = sub
+print('assigned-subclass', f.__dict__ is sub, type(f.__dict__).__name__, f.y, 'y' in dir(f))
+f.extra = 4
+print('subclass-extra', f.__dict__, f.extra)
+for label, call in [
+    ('assign-none', lambda: setattr(f, '__dict__', None)),
+    ('assign-list', lambda: setattr(f, '__dict__', [])),
+    ('del-direct', lambda: delattr(f, '__dict__')),
+    ('del-wrapper', lambda: f.__delattr__('__dict__')),
+]:
+    try:
+        call()
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('after-errors', type(f.__dict__).__name__, f.__dict__)
+f.__dict__ = {}
+print('reset', f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

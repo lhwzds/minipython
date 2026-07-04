@@ -35374,6 +35374,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_subclasshook_wrapper_subset",
             "cpython_function_getstate_wrapper_subset",
             "cpython_function_dir_wrapper_subset",
+            "cpython_function_dict_assignment_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35479,6 +35480,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_subclasshook_wrapper_diff_subset",
         "cpython_function_getstate_wrapper_diff_subset",
         "cpython_function_dir_wrapper_diff_subset",
+        "cpython_function_dict_assignment_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42528,8 +42530,9 @@ fn function_setattr_delattr_wrapper_subset_has_focused_diff_evidence() {
         "store_attribute_without_custom_setattr(receiver.clone(), &name, value.clone())",
         "delete_attribute_without_custom_delattr(receiver.clone(), &name)",
         "function_getattribute_attribute_error(&name, error)",
-        "names.extend(scope_names(attrs));",
-        "name if attrs.borrow().contains_key(name)",
+        "names.extend(function_custom_attribute_names(attrs));",
+        "store_function_custom_attribute(&attrs, name, value)",
+        "delete_function_custom_attribute(&attrs, name)",
         "object.__setattr__",
         "object.__delattr__",
         "Implement setattr(self, name, value).",
@@ -43040,6 +43043,111 @@ fn function_dir_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __dir__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_dict_assignment_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_dict_assignment_subset";
+    let diff_name = "cpython_function_dict_assignment_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class D(dict):",
+        "def f():",
+        "'__dict__' in dir(f)",
+        "f.__dict__ is f.__dict__",
+        "f.marker = 1",
+        "replacement = {'x': 2}",
+        "f.__dict__ = replacement",
+        "f.__dict__ is replacement",
+        "hasattr(f, 'marker')",
+        "replacement['z'] = 5",
+        "del replacement['x']",
+        "hasattr(f, 'x')",
+        "sub = D(y=3)",
+        "f.__dict__ = sub",
+        "f.__dict__ is sub",
+        "f.extra = 4",
+        "setattr(f, '__dict__', None)",
+        "setattr(f, '__dict__', [])",
+        "delattr(f, '__dict__')",
+        "f.__delattr__('__dict__')",
+        "type(error).__name__",
+        "error.args",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __dict__ assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True dict True True\"",
+        "\"custom {'marker': 1} 1 True\"",
+        "\"assigned-dict True {'x': 2} False 2 True\"",
+        "\"external-add 5 True\"",
+        "\"external-del False False\"",
+        "\"assigned-subclass True D 3 True\"",
+        "\"subclass-extra {'y': 3, 'extra': 4} 4\"",
+        "\"assign-none TypeError __dict__ must be set to a dictionary, not a 'NoneType'",
+        "\"assign-list TypeError __dict__ must be set to a dictionary, not a 'list'",
+        "\"del-direct TypeError cannot delete __dict__",
+        "\"del-wrapper TypeError cannot delete __dict__",
+        "\"after-errors D {'y': 3, 'extra': 4}\"",
+        "\"reset {}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __dict__ assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_DICT_SOURCE_ATTR",
+        "fn function_dict_value(",
+        "fn function_dict_entries(",
+        "fn function_dict_replacement_entries(",
+        "fn set_function_dict(",
+        "fn function_custom_attribute(",
+        "fn function_custom_attribute_names(",
+        "fn store_function_custom_attribute(",
+        "fn delete_live_dict_string_entry(",
+        "fn delete_function_custom_attribute(",
+        "FUNCTION_DICT_SOURCE_ATTR.to_string()",
+        "\"__dict__\" => Ok(function_dict_value(attrs))",
+        "return set_function_dict(&attrs, value)",
+        "delete_function_custom_attribute(&attrs, name)",
+        "function_custom_attribute_names(attrs)",
+        "__dict__ must be set to a dictionary",
+        "TypeError: cannot delete __dict__",
+        "dict_subclass_entries(value)",
+        "insert_live_dict_entry(",
+        "mark_dict_changed(&mut entries)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function __dict__ assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __dict__ assignment",
+            "dict replacement identity",
+            "external dict mutation",
+            "dict subclass replacement",
+            "cannot delete __dict__",
+            "without expanding pickle or host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __dict__ assignment docs must contain `{required}`"
             );
         }
     }
