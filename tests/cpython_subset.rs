@@ -29302,6 +29302,76 @@ for label, call in [
     );
 }
 
+// Adapted from CPython public function-object `__setattr__` / `__delattr__`
+// wrapper behavior. This pins metadata, function attribute mutation, custom
+// attribute lookup shadowing, and error forwarding without depending on
+// concrete address values.
+#[test]
+fn cpython_function_setattr_delattr_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+for attr in ['__setattr__', '__delattr__']:
+    wrapper = getattr(f, attr)
+    rendered = repr(wrapper)
+    print(attr, attr in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    print(attr, rendered.startswith("<method-wrapper '" + attr + "' of function object at 0x"), rendered.endswith('>'), str(wrapper) == rendered)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+setter = f.__setattr__
+deleter = f.__delattr__
+setter('mini_probe_attr', 7)
+print('set-custom', f.mini_probe_attr, f.__dict__['mini_probe_attr'], 'mini_probe_attr' in dir(f))
+setter('__call__', 'shadow-call')
+print('set-dunder', f.__call__, f.__dict__['__call__'])
+deleter('__call__')
+print('del-dunder', type(f.__call__).__name__, '__call__' in f.__dict__)
+deleter('mini_probe_attr')
+print('del-custom', 'mini_probe_attr' in f.__dict__, hasattr(f, 'mini_probe_attr'))
+for label, call in [
+    ('del-missing', lambda: deleter('mini_probe_attr')),
+    ('set-name-nonstr', lambda: setter(1, 2)),
+    ('del-name-nonstr', lambda: deleter(1)),
+    ('set-missing', lambda: setter('x')),
+    ('del-missing-arg', lambda: deleter()),
+    ('set-extra', lambda: setter('x', 1, 2)),
+    ('del-extra', lambda: deleter('x', 1)),
+    ('set-keyword', lambda: setter(name='kw', value=3)),
+    ('del-keyword', lambda: deleter(name='kw')),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "__setattr__ True method-wrapper method-wrapper",
+            "__setattr__ True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)",
+            "__setattr__ True True True",
+            "__setattr__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__delattr__ True method-wrapper method-wrapper",
+            "__delattr__ True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)",
+            "__delattr__ True True True",
+            "__delattr__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "set-custom 7 7 True",
+            "set-dunder shadow-call shadow-call",
+            "del-dunder method-wrapper False",
+            "del-custom False False",
+            "del-missing AttributeError 'function' object has no attribute 'mini_probe_attr' (\"'function' object has no attribute 'mini_probe_attr'\",)",
+            "set-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "del-name-nonstr TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "set-missing TypeError __setattr__ expected 2 arguments, got 1 ('__setattr__ expected 2 arguments, got 1',)",
+            "del-missing-arg TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "set-extra TypeError __setattr__ expected 2 arguments, got 3 ('__setattr__ expected 2 arguments, got 3',)",
+            "del-extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "set-keyword TypeError wrapper __setattr__() takes no keyword arguments ('wrapper __setattr__() takes no keyword arguments',)",
+            "del-keyword TypeError wrapper __delattr__() takes no keyword arguments ('wrapper __delattr__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

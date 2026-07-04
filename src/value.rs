@@ -1969,6 +1969,14 @@ fn format_function_method_wrapper(function: &Value, receiver: &Value) -> Option<
             "<method-wrapper '__getattribute__' of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize
         )),
+        "function.__setattr__" => Some(format!(
+            "<method-wrapper '__setattr__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        "function.__delattr__" => Some(format!(
+            "<method-wrapper '__delattr__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
         "function.__hash__" => Some(format!(
             "<method-wrapper '__hash__' of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize

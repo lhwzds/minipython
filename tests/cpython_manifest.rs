@@ -35368,6 +35368,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_rich_compare_wrapper_subset",
             "cpython_function_order_compare_wrapper_subset",
             "cpython_function_getattribute_wrapper_subset",
+            "cpython_function_setattr_delattr_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35467,6 +35468,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_rich_compare_wrapper_diff_subset",
         "cpython_function_order_compare_wrapper_diff_subset",
         "cpython_function_getattribute_wrapper_diff_subset",
+        "cpython_function_setattr_delattr_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42418,6 +42420,138 @@ fn function_getattribute_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __getattribute__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_setattr_delattr_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_setattr_delattr_wrapper_subset";
+    let diff_name = "cpython_function_setattr_delattr_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "for attr in ['__setattr__', '__delattr__']",
+        "wrapper = getattr(f, attr)",
+        "rendered = repr(wrapper)",
+        "attr in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "rendered.startswith(\"<method-wrapper '\" + attr + \"' of function object at 0x\")",
+        "wrapper.__module__",
+        "setter = f.__setattr__",
+        "deleter = f.__delattr__",
+        "setter('mini_probe_attr', 7)",
+        "f.__dict__['mini_probe_attr']",
+        "'mini_probe_attr' in dir(f)",
+        "setter('__call__', 'shadow-call')",
+        "f.__dict__['__call__']",
+        "deleter('__call__')",
+        "deleter('mini_probe_attr')",
+        "hasattr(f, 'mini_probe_attr')",
+        "('del-missing', lambda: deleter('mini_probe_attr'))",
+        "('set-name-nonstr', lambda: setter(1, 2))",
+        "('del-name-nonstr', lambda: deleter(1))",
+        "('set-missing', lambda: setter('x'))",
+        "('del-missing-arg', lambda: deleter())",
+        "('set-extra', lambda: setter('x', 1, 2))",
+        "('del-extra', lambda: deleter('x', 1))",
+        "('set-keyword', lambda: setter(name='kw', value=3))",
+        "('del-keyword', lambda: deleter(name='kw'))",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __setattr__ / __delattr__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__setattr__ True method-wrapper method-wrapper\"",
+        "\"__setattr__ True __setattr__ object.__setattr__ Implement setattr(self, name, value). MISSING ($self, name, value, /)\"",
+        "\"__setattr__ True True True\"",
+        "\"__setattr__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__delattr__ True method-wrapper method-wrapper\"",
+        "\"__delattr__ True __delattr__ object.__delattr__ Implement delattr(self, name). MISSING ($self, name, /)\"",
+        "\"__delattr__ True True True\"",
+        "\"__delattr__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"set-custom 7 7 True\"",
+        "\"set-dunder shadow-call shadow-call\"",
+        "\"del-dunder method-wrapper False\"",
+        "\"del-custom False False\"",
+        "\"del-missing AttributeError 'function' object has no attribute 'mini_probe_attr'",
+        "\"set-name-nonstr TypeError attribute name must be string, not 'int'",
+        "\"del-name-nonstr TypeError attribute name must be string, not 'int'",
+        "\"set-missing TypeError __setattr__ expected 2 arguments, got 1",
+        "\"del-missing-arg TypeError expected 1 argument, got 0",
+        "\"set-extra TypeError __setattr__ expected 2 arguments, got 3",
+        "\"del-extra TypeError expected 1 argument, got 2",
+        "\"set-keyword TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"del-keyword TypeError wrapper __delattr__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __setattr__ / __delattr__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<method-wrapper '__setattr__' of function object at 0x{:x}>\"",
+        "\"<method-wrapper '__delattr__' of function object at 0x{:x}>\"",
+        "name == \"function.__setattr__\"",
+        "name == \"function.__delattr__\"",
+        "self.call_function_setattr(args, keywords)",
+        "self.call_function_delattr(args, keywords)",
+        "fn call_function_setattr(",
+        "fn call_function_delattr(",
+        "Value::Builtin(format!(\"function.{name}\"))",
+        "function_set_delattr_wrapper_name(name)",
+        "fn function_set_delattr_wrapper_name(",
+        "store_attribute_without_custom_setattr(receiver.clone(), &name, value.clone())",
+        "delete_attribute_without_custom_delattr(receiver.clone(), &name)",
+        "function_getattribute_attribute_error(&name, error)",
+        "names.extend(scope_names(attrs));",
+        "name if attrs.borrow().contains_key(name)",
+        "object.__setattr__",
+        "object.__delattr__",
+        "Implement setattr(self, name, value).",
+        "Implement delattr(self, name).",
+        "($self, name, value, /)",
+        "($self, name, /)",
+        "wrapper __setattr__() takes no keyword arguments",
+        "wrapper __delattr__() takes no keyword arguments",
+        "__setattr__ expected 2 arguments, got {}",
+        "expected 1 argument, got {}",
+        "| \"function.__setattr__\"",
+        "| \"function.__delattr__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __setattr__ / __delattr__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __setattr__ / __delattr__ wrapper metadata",
+            "attribute mutation",
+            "custom attribute shadowing",
+            "method-wrapper",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __setattr__ / __delattr__ wrapper docs must contain `{required}`"
             );
         }
     }

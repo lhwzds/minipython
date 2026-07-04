@@ -14129,6 +14129,51 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_setattr_delattr_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __setattr__ / __delattr__ wrapper subset",
+        name: "function-setattr-delattr-wrapper",
+        source: r#"def f():
+    pass
+for attr in ['__setattr__', '__delattr__']:
+    wrapper = getattr(f, attr)
+    rendered = repr(wrapper)
+    print(attr, attr in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    print(attr, rendered.startswith("<method-wrapper '" + attr + "' of function object at 0x"), rendered.endswith('>'), str(wrapper) == rendered)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+setter = f.__setattr__
+deleter = f.__delattr__
+setter('mini_probe_attr', 7)
+print('set-custom', f.mini_probe_attr, f.__dict__['mini_probe_attr'], 'mini_probe_attr' in dir(f))
+setter('__call__', 'shadow-call')
+print('set-dunder', f.__call__, f.__dict__['__call__'])
+deleter('__call__')
+print('del-dunder', type(f.__call__).__name__, '__call__' in f.__dict__)
+deleter('mini_probe_attr')
+print('del-custom', 'mini_probe_attr' in f.__dict__, hasattr(f, 'mini_probe_attr'))
+for label, call in [
+    ('del-missing', lambda: deleter('mini_probe_attr')),
+    ('set-name-nonstr', lambda: setter(1, 2)),
+    ('del-name-nonstr', lambda: deleter(1)),
+    ('set-missing', lambda: setter('x')),
+    ('del-missing-arg', lambda: deleter()),
+    ('set-extra', lambda: setter('x', 1, 2)),
+    ('del-extra', lambda: deleter('x', 1)),
+    ('set-keyword', lambda: setter(name='kw', value=3)),
+    ('del-keyword', lambda: deleter(name='kw')),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

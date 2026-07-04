@@ -10123,6 +10123,12 @@ impl Vm {
             Value::Builtin(name) if name == "function.__getattribute__" => {
                 self.call_function_getattribute(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__setattr__" => {
+                self.call_function_setattr(args, keywords)
+            }
+            Value::Builtin(name) if name == "function.__delattr__" => {
+                self.call_function_delattr(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__call__" => {
                 self.call_method_call(args, keywords)
             }
@@ -18018,6 +18024,65 @@ impl Vm {
         let name = attribute_name_arg(name)?;
         load_attribute(receiver.clone(), &name)
             .map_err(|error| function_getattribute_attribute_error(&name, error))
+    }
+
+    fn call_function_setattr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __setattr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name, value] = rest else {
+            return Err(format!(
+                "TypeError: __setattr__ expected 2 arguments, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        self.store_attribute_without_custom_setattr(receiver.clone(), &name, value.clone())?;
+        Ok(Value::None)
+    }
+
+    fn call_function_delattr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __delattr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        self.delete_attribute_without_custom_delattr(receiver.clone(), &name)
+            .map_err(|error| function_getattribute_attribute_error(&name, error))?;
+        Ok(Value::None)
     }
 
     fn call_function_format(
@@ -51661,33 +51726,38 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("maxlen".to_string());
             }
         }
-        Value::Function { .. } => names.extend(
-            [
-                "__annotations__",
-                "__call__",
-                "__doc__",
-                "__eq__",
-                "__format__",
-                "__ge__",
-                "__get__",
-                "__getattribute__",
-                "__globals__",
-                "__gt__",
-                "__hash__",
-                "__le__",
-                "__lt__",
-                "__module__",
-                "__name__",
-                "__ne__",
-                "__qualname__",
-                "__repr__",
-                "__str__",
-                "__type_params__",
-                "__builtins__",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        ),
+        Value::Function { attrs, .. } => {
+            names.extend(scope_names(attrs));
+            names.extend(
+                [
+                    "__annotations__",
+                    "__call__",
+                    "__delattr__",
+                    "__doc__",
+                    "__eq__",
+                    "__format__",
+                    "__ge__",
+                    "__get__",
+                    "__getattribute__",
+                    "__globals__",
+                    "__gt__",
+                    "__hash__",
+                    "__le__",
+                    "__lt__",
+                    "__module__",
+                    "__name__",
+                    "__ne__",
+                    "__qualname__",
+                    "__repr__",
+                    "__setattr__",
+                    "__str__",
+                    "__type_params__",
+                    "__builtins__",
+                ]
+                .into_iter()
+                .map(str::to_string),
+            );
+        }
         Value::Property { .. } => names.extend(
             [
                 "__delete__",
@@ -57651,6 +57721,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             closure,
             function_code_identity(identity),
         ),
+        name if attrs.borrow().contains_key(name) => Ok(attrs
+            .borrow()
+            .get(name)
+            .cloned()
+            .expect("function attrs contains checked name")),
         "__call__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__call__".to_string())),
             receiver: Box::new(function.clone()),
@@ -57663,6 +57738,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         }),
         "__getattribute__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__getattribute__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
+        "__setattr__" | "__delattr__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("function.{name}"))),
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
@@ -61682,6 +61762,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if function_set_delattr_wrapper_name(name)) =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__format__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63645,6 +63730,32 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "function.__getattribute__" =>
+        {
+            Ok(Value::String("($self, name, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_set_delattr_wrapper_name(&function_name) =>
+        {
+            Ok(Value::String(format!(
+                "object.{}",
+                method_display_name(&function_name)
+            )))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__setattr__" => {
+            Ok(Value::String(
+                "Implement setattr(self, name, value).".to_string(),
+            ))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__delattr__" => {
+            Ok(Value::String("Implement delattr(self, name).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__setattr__" =>
+        {
+            Ok(Value::String("($self, name, value, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__delattr__" =>
         {
             Ok(Value::String("($self, name, /)".to_string()))
         }
@@ -66390,6 +66501,10 @@ fn function_order_compare_wrapper_name(name: &str) -> bool {
     )
 }
 
+fn function_set_delattr_wrapper_name(name: &str) -> bool {
+    matches!(name, "function.__setattr__" | "function.__delattr__")
+}
+
 fn is_cell_rich_compare_method_name(name: &str) -> bool {
     matches!(
         name,
@@ -66432,6 +66547,7 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
         || function_order_compare_wrapper_name(name)
+        || function_set_delattr_wrapper_name(name)
         || json_function_method_wrapper_missing_module_name(name)
 }
 
@@ -66445,6 +66561,8 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__call__"
             | "function.__get__"
             | "function.__getattribute__"
+            | "function.__setattr__"
+            | "function.__delattr__"
             | "function.__hash__"
             | "function.__eq__"
             | "function.__ne__"
