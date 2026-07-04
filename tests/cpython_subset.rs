@@ -54956,6 +54956,41 @@ fn cpython_tuple_inherited_dir_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __init__ inheritance. This pins the
+// inherited object.__init__ wrapper descriptor for normal no-argument calls
+// without expanding into tuple construction or arity-message parity.
+#[test]
+fn cpython_tuple_inherited_init_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('init-exact', lambda: (1, 'x').__init__()),\n",
+            "    ('init-sub', lambda: left.__init__()),\n",
+            "    ('type-init-exact', lambda: tuple.__init__((1, 'x'))),\n",
+            "    ('type-init-sub', lambda: tuple.__init__(left)),\n",
+            "    ('type-init-object', lambda: tuple.__init__(object())),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__init__'), '__init__' in dir(left), '__init__' in dir(T), '__init__' in dir(tuple), type(tuple.__init__).__name__, tuple.__init__ is object.__init__, type(object.__init__).__name__)",
+        ),
+        &[
+            "init-exact NoneType None",
+            "init-sub NoneType None",
+            "type-init-exact NoneType None",
+            "type-init-sub NoneType None",
+            "type-init-object NoneType None",
+            "visible True True True True wrapper_descriptor True wrapper_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

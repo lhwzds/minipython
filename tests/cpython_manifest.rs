@@ -1000,6 +1000,105 @@ fn tuple_inherited_dir_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_init_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_init_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_init_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited init direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited init direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__init__()",
+        "left.__init__()",
+        "tuple.__init__((1, 'x'))",
+        "tuple.__init__(left)",
+        "tuple.__init__(object())",
+        "hasattr(left, '__init__')",
+        "'__init__' in dir(left)",
+        "'__init__' in dir(T)",
+        "'__init__' in dir(tuple)",
+        "type(tuple.__init__).__name__",
+        "tuple.__init__ is object.__init__",
+        "type(object.__init__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited init direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"init-exact NoneType None\"",
+        "\"init-sub NoneType None\"",
+        "\"type-init-exact NoneType None\"",
+        "\"type-init-sub NoneType None\"",
+        "\"type-init-object NoneType None\"",
+        "\"visible True True True True wrapper_descriptor True wrapper_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited init direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__init__\""),
+        "tuple dir block must expose inherited `__init__`"
+    );
+
+    for required in [
+        "Value::Tuple(items) if name == \"__init__\"",
+        "function: Box::new(Value::Builtin(\"object.__init__\".to_string()))",
+        "function_name == \"tuple\" && name == \"__init__\"",
+        "Ok(Value::Builtin(\"object.__init__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__init__\"",
+        "self.call_object_init(args)",
+        "\"object\" => matches!(",
+        "| \"__init__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited init direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__init__`",
+            "`tuple.__init__ is object.__init__`",
+            "non-tuple direct receiver support",
+            "wrapper_descriptor",
+            "without adding tuple construction, extra-argument, or full wrapper metadata parity",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited init direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_subclass_new_storage_docs_cover_core_runtime() {
     let diff_name = "cpython_list_subclass_new_storage_diff_subset";
     let subset_name = "cpython_list_subclass_new_storage_subset";

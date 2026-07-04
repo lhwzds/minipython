@@ -18305,6 +18305,30 @@ print('visible', hasattr(left, '__dir__'), '__dir__' in dir(left), '__dir__' in 
 }
 
 #[test]
+fn cpython_tuple_inherited_init_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __init__ wrapper descriptor behavior",
+        name: "tuple-inherited-init-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('init-exact', lambda: (1, 'x').__init__()),
+    ('init-sub', lambda: left.__init__()),
+    ('type-init-exact', lambda: tuple.__init__((1, 'x'))),
+    ('type-init-sub', lambda: tuple.__init__(left)),
+    ('type-init-object', lambda: tuple.__init__(object())),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__init__'), '__init__' in dir(left), '__init__' in dir(T), '__init__' in dir(tuple), type(tuple.__init__).__name__, tuple.__init__ is object.__init__, type(object.__init__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

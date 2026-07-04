@@ -53187,6 +53187,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getstate__",
             "__getitem__",
             "__gt__",
+            "__init__",
             "__iter__",
             "__le__",
             "__len__",
@@ -61007,6 +61008,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver: Box::new(Value::Tuple(items)),
             identity: Rc::new(()),
         }),
+        Value::Tuple(items) if name == "__init__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("object.__init__".to_string())),
+            receiver: Box::new(Value::Tuple(items)),
+            identity: Rc::new(()),
+        }),
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),
         Value::String(_) | Value::IdentityString { .. } if name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))
@@ -62879,6 +62885,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__dir__" => {
             Ok(Value::Builtin("object.__dir__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__init__" => {
+            Ok(Value::Builtin("object.__init__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__getstate__" => {
             Ok(Value::Builtin("object.__getstate__".to_string()))
