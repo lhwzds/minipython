@@ -685,6 +685,7 @@ Recent runtime migration notes:
   `cpython_function_format_wrapper_diff_subset`,
   `cpython_function_hash_wrapper_diff_subset`,
   `cpython_function_rich_compare_wrapper_diff_subset`,
+  `cpython_function_order_compare_wrapper_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
@@ -7449,6 +7450,13 @@ without adding general custom encoder/decoder class support.
   doc metadata, identity comparison for the same function, NotImplemented fallback
   for different functions and non-functions, method-wrapper repr/str shape,
   and arity/keyword errors without depending on concrete address values.
+- `RUNTIME_BUILTINS` also includes `cpython_function_order_compare_wrapper_subset`
+  with direct CPython output parity in
+  `cpython_function_order_compare_wrapper_diff_subset`, covering function ordering wrapper metadata
+  for `__lt__`, `__le__`, `__gt__`, and `__ge__`, `method-wrapper` classification,
+  missing `__module__`, text signature and doc metadata, NotImplemented result
+  for functions and non-functions, method-wrapper repr/str shape, and arity/keyword
+  errors without depending on concrete address values.
 - `RUNTIME_BUILTINS` also includes `cpython_object_getstate_direct_subset` with
   direct CPython output parity in
   `cpython_object_getstate_direct_diff_subset`, covering CPython's inherited

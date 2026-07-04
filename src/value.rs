@@ -1977,6 +1977,22 @@ fn format_function_method_wrapper(function: &Value, receiver: &Value) -> Option<
             "<method-wrapper '__ne__' of function object at 0x{:x}>",
             Rc::as_ptr(identity) as usize
         )),
+        "function.__lt__" => Some(format!(
+            "<method-wrapper '__lt__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        "function.__le__" => Some(format!(
+            "<method-wrapper '__le__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        "function.__gt__" => Some(format!(
+            "<method-wrapper '__gt__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
+        "function.__ge__" => Some(format!(
+            "<method-wrapper '__ge__' of function object at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        )),
         _ => None,
     }
 }

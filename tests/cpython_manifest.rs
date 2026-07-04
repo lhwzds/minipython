@@ -35366,6 +35366,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_format_wrapper_subset",
             "cpython_function_hash_wrapper_subset",
             "cpython_function_rich_compare_wrapper_subset",
+            "cpython_function_order_compare_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35463,6 +35464,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_format_wrapper_diff_subset",
         "cpython_function_hash_wrapper_diff_subset",
         "cpython_function_rich_compare_wrapper_diff_subset",
+        "cpython_function_order_compare_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42198,6 +42200,122 @@ fn function_rich_compare_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function rich-compare wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_order_compare_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_order_compare_wrapper_subset";
+    let diff_name = "cpython_function_order_compare_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "def g():",
+        "for attr in ['__lt__', '__le__', '__gt__', '__ge__']",
+        "wrapper = getattr(f, attr)",
+        "wrapper_rendered = repr(wrapper)",
+        "attr in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "getattr(wrapper, '__module__', 'MISSING')",
+        "wrapper.__text_signature__",
+        "('self', f)",
+        "('different', g)",
+        "('non-function', 1)",
+        "value is NotImplemented",
+        "wrapper_rendered.startswith(\"<method-wrapper '\" + attr + \"' of function object at 0x\")",
+        "wrapper.__module__",
+        "('missing', lambda wrapper=wrapper: wrapper())",
+        "('extra', lambda wrapper=wrapper: wrapper(f, 1))",
+        "('keyword', lambda wrapper=wrapper: wrapper(value=f))",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function ordering wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__lt__ True method-wrapper method-wrapper\"",
+        "\"__lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)\"",
+        "\"__lt__ self True NotImplemented NotImplementedType\"",
+        "\"__lt__ module AttributeError 'method-wrapper' object has no attribute '__module__'",
+        "\"__lt__ missing TypeError expected 1 argument, got 0",
+        "\"__lt__ extra TypeError expected 1 argument, got 2",
+        "\"__lt__ keyword TypeError wrapper __lt__() takes no keyword arguments",
+        "\"__le__ True method-wrapper method-wrapper\"",
+        "\"__le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)\"",
+        "\"__le__ self True NotImplemented NotImplementedType\"",
+        "\"__le__ keyword TypeError wrapper __le__() takes no keyword arguments",
+        "\"__gt__ True method-wrapper method-wrapper\"",
+        "\"__gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)\"",
+        "\"__gt__ self True NotImplemented NotImplementedType\"",
+        "\"__gt__ keyword TypeError wrapper __gt__() takes no keyword arguments",
+        "\"__ge__ True method-wrapper method-wrapper\"",
+        "\"__ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)\"",
+        "\"__ge__ self True NotImplemented NotImplementedType\"",
+        "\"__ge__ keyword TypeError wrapper __ge__() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function ordering wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<method-wrapper '__lt__' of function object at 0x{:x}>\"",
+        "\"<method-wrapper '__le__' of function object at 0x{:x}>\"",
+        "\"<method-wrapper '__gt__' of function object at 0x{:x}>\"",
+        "\"<method-wrapper '__ge__' of function object at 0x{:x}>\"",
+        "Value::Builtin(format!(\"function.{name}\"))",
+        "function_order_compare_wrapper_name(&name)",
+        "function_order_compare_wrapper_name(&function_name)",
+        "fn function_order_compare_wrapper_name(",
+        "\"function.__lt__\"",
+        "\"function.__le__\"",
+        "\"function.__gt__\"",
+        "\"function.__ge__\"",
+        "function_method_wrapper_missing_module_name(name)",
+        "function_order_compare_wrapper_name(name)",
+        "wrapper {method}() takes no keyword arguments",
+        "expected 1 argument, got {}",
+        "Ok(Value::NotImplemented)",
+        "Return self<value.",
+        "Return self<=value.",
+        "Return self>value.",
+        "Return self>=value.",
+        "($self, value, /)",
+        "| \"function.__lt__\"",
+        "| \"function.__le__\"",
+        "| \"function.__gt__\"",
+        "| \"function.__ge__\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function ordering wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function ordering wrapper metadata",
+            "method-wrapper",
+            "NotImplemented result",
+            "without depending on concrete address values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function ordering wrapper docs must contain `{required}`"
             );
         }
     }

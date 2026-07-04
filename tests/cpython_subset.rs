@@ -29175,6 +29175,83 @@ for attr in ['__eq__', '__ne__']:
     );
 }
 
+// Adapted from CPython public function-object ordering wrapper behavior.
+// This pins `__lt__` / `__le__` / `__gt__` / `__ge__` metadata and
+// NotImplemented results without depending on concrete address values.
+#[test]
+fn cpython_function_order_compare_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+def g():
+    pass
+for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
+    wrapper = getattr(f, attr)
+    wrapper_rendered = repr(wrapper)
+    print(attr, attr in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+    print(attr, wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, getattr(wrapper, '__module__', 'MISSING'), wrapper.__text_signature__)
+    for label, other in [('self', f), ('different', g), ('non-function', 1)]:
+        value = wrapper(other)
+        print(attr, label, value is NotImplemented, value, type(value).__name__)
+    print(attr, wrapper_rendered.startswith("<method-wrapper '" + attr + "' of function object at 0x"), wrapper_rendered.endswith('>'), str(wrapper) == wrapper_rendered)
+    try:
+        wrapper.__module__
+    except AttributeError as error:
+        print(attr, 'module', type(error).__name__, str(error), error.args)
+    for label, call in [
+        ('missing', lambda wrapper=wrapper: wrapper()),
+        ('extra', lambda wrapper=wrapper: wrapper(f, 1)),
+        ('keyword', lambda wrapper=wrapper: wrapper(value=f)),
+    ]:
+        try:
+            call()
+        except TypeError as error:
+            print(attr, label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "__lt__ True method-wrapper method-wrapper",
+            "__lt__ True __lt__ object.__lt__ Return self<value. MISSING ($self, value, /)",
+            "__lt__ self True NotImplemented NotImplementedType",
+            "__lt__ different True NotImplemented NotImplementedType",
+            "__lt__ non-function True NotImplemented NotImplementedType",
+            "__lt__ True True True",
+            "__lt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__lt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__lt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__lt__ keyword TypeError wrapper __lt__() takes no keyword arguments ('wrapper __lt__() takes no keyword arguments',)",
+            "__le__ True method-wrapper method-wrapper",
+            "__le__ True __le__ object.__le__ Return self<=value. MISSING ($self, value, /)",
+            "__le__ self True NotImplemented NotImplementedType",
+            "__le__ different True NotImplemented NotImplementedType",
+            "__le__ non-function True NotImplemented NotImplementedType",
+            "__le__ True True True",
+            "__le__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__le__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__le__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__le__ keyword TypeError wrapper __le__() takes no keyword arguments ('wrapper __le__() takes no keyword arguments',)",
+            "__gt__ True method-wrapper method-wrapper",
+            "__gt__ True __gt__ object.__gt__ Return self>value. MISSING ($self, value, /)",
+            "__gt__ self True NotImplemented NotImplementedType",
+            "__gt__ different True NotImplemented NotImplementedType",
+            "__gt__ non-function True NotImplemented NotImplementedType",
+            "__gt__ True True True",
+            "__gt__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__gt__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__gt__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__gt__ keyword TypeError wrapper __gt__() takes no keyword arguments ('wrapper __gt__() takes no keyword arguments',)",
+            "__ge__ True method-wrapper method-wrapper",
+            "__ge__ True __ge__ object.__ge__ Return self>=value. MISSING ($self, value, /)",
+            "__ge__ self True NotImplemented NotImplementedType",
+            "__ge__ different True NotImplemented NotImplementedType",
+            "__ge__ non-function True NotImplemented NotImplementedType",
+            "__ge__ True True True",
+            "__ge__ module AttributeError 'method-wrapper' object has no attribute '__module__' (\"'method-wrapper' object has no attribute '__module__'\",)",
+            "__ge__ missing TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "__ge__ extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "__ge__ keyword TypeError wrapper __ge__() takes no keyword arguments ('wrapper __ge__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.
