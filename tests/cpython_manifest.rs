@@ -600,12 +600,110 @@ fn tuple_subclass_repr_direct_docs_cover_core_runtime() {
             subset_name,
             "tuple subclass direct `__repr__`",
             "`tuple.__repr__` wrapper behavior",
-            "without adding `tuple.__str__` or full wrapper-descriptor metadata",
+            "without adding full wrapper-descriptor metadata",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
                 document.contains(required),
                 "tuple subclass repr direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn tuple_inherited_str_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_str_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_str_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited str direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited str direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "class Custom:",
+        "(1, 'x').__str__()",
+        "left.__str__()",
+        "tuple.__str__((1, 'x'))",
+        "tuple.__str__(left)",
+        "tuple.__str__([1, 2])",
+        "tuple.__str__(Custom())",
+        "hasattr(left, '__str__')",
+        "'__str__' in dir(left)",
+        "'__str__' in dir(T)",
+        "'__str__' in dir(tuple)",
+        "type(tuple.__str__).__name__",
+        "tuple.__str__ is object.__str__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited str direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str-exact str (1, 'x')\"",
+        "\"str-sub str (1, 'x')\"",
+        "\"type-str-exact str (1, 'x')\"",
+        "\"type-str-sub str (1, 'x')\"",
+        "\"type-str-list str [1, 2]\"",
+        "\"type-str-custom str custom-repr\"",
+        "\"visible True True True True wrapper_descriptor True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited str direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__str__\""),
+        "tuple dir block must expose inherited `__str__`"
+    );
+
+    for required in [
+        "Value::Tuple(items) if name == \"__str__\"",
+        "function: Box::new(Value::Builtin(\"object.__str__\".to_string()))",
+        "function_name == \"tuple\" && name == \"__str__\"",
+        "Ok(Value::Builtin(\"object.__str__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__str__\"",
+        "self.call_object_str(args)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited str direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__str__`",
+            "`tuple.__str__ is object.__str__`",
+            "non-tuple direct receiver support",
+            "without adding tuple-specific `__str__` or full wrapper-descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited str direct docs must contain `{required}`"
             );
         }
     }

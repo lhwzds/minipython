@@ -54807,6 +54807,46 @@ fn cpython_tuple_subclass_repr_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __str__ inheritance. This pins the
+// inherited object.__str__ wrapper for tuple without making it a tuple-specific
+// sequence method.
+#[test]
+fn cpython_tuple_inherited_str_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "class Custom:\n",
+            "    def __repr__(self):\n",
+            "        return 'custom-repr'\n",
+            "for label, expr in [\n",
+            "    ('str-exact', lambda: (1, 'x').__str__()),\n",
+            "    ('str-sub', lambda: left.__str__()),\n",
+            "    ('type-str-exact', lambda: tuple.__str__((1, 'x'))),\n",
+            "    ('type-str-sub', lambda: tuple.__str__(left)),\n",
+            "    ('type-str-list', lambda: tuple.__str__([1, 2])),\n",
+            "    ('type-str-custom', lambda: tuple.__str__(Custom())),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "print('visible', hasattr(left, '__str__'), '__str__' in dir(left), '__str__' in dir(T), '__str__' in dir(tuple), type(tuple.__str__).__name__, tuple.__str__ is object.__str__)",
+        ),
+        &[
+            "str-exact str (1, 'x')",
+            "str-sub str (1, 'x')",
+            "type-str-exact str (1, 'x')",
+            "type-str-sub str (1, 'x')",
+            "type-str-list str [1, 2]",
+            "type-str-custom str custom-repr",
+            "visible True True True True wrapper_descriptor True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
 // ValueError message behavior for supported instance calls.
 #[test]

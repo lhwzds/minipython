@@ -70,7 +70,13 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_tuple_subclass_repr_direct_subset` and
   `cpython_tuple_subclass_repr_direct_diff_subset` for tuple subclass direct `__repr__`,
   `tuple.__repr__` wrapper behavior for exact and tuple-subclass receivers and
-  non-tuple receiver TypeError text, without adding `tuple.__str__` or full wrapper-descriptor metadata,
+  non-tuple receiver TypeError text, without adding full wrapper-descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_inherited_str_direct_subset` and
+  `cpython_tuple_inherited_str_direct_diff_subset` for tuple inherited `__str__`,
+  exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
+  tuple and non-tuple receivers, non-tuple direct receiver support through `object.__str__`,
+  `tuple.__str__ is object.__str__`, and wrapper descriptor visibility, without adding tuple-specific `__str__` or full wrapper-descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_list_subclass_new_storage_subset` and
   `cpython_list_subclass_new_storage_diff_subset` for list subclass `__new__` storage,

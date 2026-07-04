@@ -18203,6 +18203,34 @@ print('visible', hasattr(left, '__repr__'), '__repr__' in dir(left), '__repr__' 
 }
 
 #[test]
+fn cpython_tuple_inherited_str_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __str__ wrapper behavior",
+        name: "tuple-inherited-str-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+class Custom:
+    def __repr__(self):
+        return 'custom-repr'
+for label, expr in [
+    ('str-exact', lambda: (1, 'x').__str__()),
+    ('str-sub', lambda: left.__str__()),
+    ('type-str-exact', lambda: tuple.__str__((1, 'x'))),
+    ('type-str-sub', lambda: tuple.__str__(left)),
+    ('type-str-list', lambda: tuple.__str__([1, 2])),
+    ('type-str-custom', lambda: tuple.__str__(Custom())),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+print('visible', hasattr(left, '__str__'), '__str__' in dir(left), '__str__' in dir(T), '__str__' in dir(tuple), type(tuple.__str__).__name__, tuple.__str__ is object.__str__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
