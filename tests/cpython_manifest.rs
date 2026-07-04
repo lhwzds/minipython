@@ -35373,6 +35373,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_init_subclass_wrapper_subset",
             "cpython_function_subclasshook_wrapper_subset",
             "cpython_function_getstate_wrapper_subset",
+            "cpython_function_dir_wrapper_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35477,6 +35478,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_init_subclass_wrapper_diff_subset",
         "cpython_function_subclasshook_wrapper_diff_subset",
         "cpython_function_getstate_wrapper_diff_subset",
+        "cpython_function_dir_wrapper_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -42942,6 +42944,102 @@ fn function_getstate_wrapper_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __getstate__ wrapper docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_dir_wrapper_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_dir_wrapper_subset";
+    let diff_name = "cpython_function_dir_wrapper_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "wrapper = f.__dir__",
+        "'__dir__' in dir(f)",
+        "type(wrapper).__name__",
+        "wrapper.__class__.__name__",
+        "wrapper.__self__ is f",
+        "wrapper.__name__",
+        "wrapper.__qualname__",
+        "wrapper.__doc__",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "result = wrapper()",
+        "isinstance(result, list)",
+        "'__name__' in result",
+        "'__globals__' in result",
+        "'__getstate__' in result",
+        "sorted(result) == dir(f)",
+        "('extra', lambda: wrapper(1))",
+        "('keyword', lambda: wrapper(x=1))",
+        "('direct', lambda: object.__dir__(f))",
+        "f.__dict__['__dir__'] = 'shadow-dir'",
+        "'__dir__' in object.__dir__(f)",
+        "del f.__dict__['__dir__']",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __dir__ wrapper subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True builtin_function_or_method builtin_function_or_method\"",
+        "\"True __dir__ function.__dir__ Default dir() implementation. None ($self, /)\"",
+        "\"list True True True True True True\"",
+        "\"sorted-eq True\"",
+        "\"extra TypeError function.__dir__() takes no arguments (1 given)",
+        "\"keyword TypeError function.__dir__() takes no keyword arguments",
+        "\"direct list True True True True True\"",
+        "\"shadow builtin_function_or_method shadow-dir shadow-dir True\"",
+        "\"unshadow builtin_function_or_method False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __dir__ wrapper subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"<built-in method __dir__ of function object at 0x{:x}>\"",
+        "Value::Function { .. }",
+        "name == \"function.__dir__\"",
+        "self.call_function_dir(args, keywords)",
+        "fn call_function_dir(",
+        "\"function.__dir__\".to_string()",
+        "function.__dir__() takes no keyword arguments",
+        "function.__dir__() takes no arguments",
+        "function.__dir__",
+        "Default dir() implementation.",
+        "($self, /)",
+        "\"__dir__\"",
+        "default_dir_names_value(receiver.clone())?",
+        "sorted_name_list(",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function __dir__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __dir__ wrapper metadata",
+            "returned name-list membership",
+            "object.__dir__ direct list",
+            "custom attribute shadowing",
+            "builtin_function_or_method",
+            "without depending on complete CPython name-list order",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __dir__ wrapper docs must contain `{required}`"
             );
         }
     }

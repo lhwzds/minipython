@@ -14304,6 +14304,40 @@ print('unshadow', type(f.__getstate__).__name__, '__getstate__' in f.__dict__)"#
 }
 
 #[test]
+fn cpython_function_dir_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public function __dir__ wrapper subset",
+        name: "function-dir-wrapper",
+        source: r#"def f():
+    pass
+wrapper = f.__dir__
+print('__dir__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+result = wrapper()
+print(type(result).__name__, isinstance(result, list), '__dir__' in result, '__name__' in result, '__globals__' in result, '__getstate__' in result, '__call__' in result)
+print('sorted-eq', sorted(result) == dir(f))
+for label, call in [
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+    ('direct', lambda: object.__dir__(f)),
+]:
+    try:
+        value = call()
+        if isinstance(value, list):
+            print(label, type(value).__name__, '__dir__' in value, '__name__' in value, '__globals__' in value, '__getstate__' in value, '__call__' in value)
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__dir__).__name__
+f.__dict__['__dir__'] = 'shadow-dir'
+print('shadow', base, f.__dir__, f.__dict__['__dir__'], '__dir__' in object.__dir__(f))
+del f.__dict__['__dir__']
+print('unshadow', type(f.__dir__).__name__, '__dir__' in f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",

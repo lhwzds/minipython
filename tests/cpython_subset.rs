@@ -29553,6 +29553,53 @@ print('unshadow', type(f.__getstate__).__name__, '__getstate__' in f.__dict__)"#
     );
 }
 
+// Adapted from CPython public function-object `__dir__` wrapper behavior. This
+// pins builtin wrapper metadata, default name-list membership, direct
+// object.__dir__ list compatibility, and custom attribute shadowing without
+// depending on the complete CPython name-list order.
+#[test]
+fn cpython_function_dir_wrapper_subset() {
+    assert_output(
+        r#"def f():
+    pass
+wrapper = f.__dir__
+print('__dir__' in dir(f), type(wrapper).__name__, wrapper.__class__.__name__)
+print(wrapper.__self__ is f, wrapper.__name__, wrapper.__qualname__, wrapper.__doc__, wrapper.__module__, wrapper.__text_signature__)
+result = wrapper()
+print(type(result).__name__, isinstance(result, list), '__dir__' in result, '__name__' in result, '__globals__' in result, '__getstate__' in result, '__call__' in result)
+print('sorted-eq', sorted(result) == dir(f))
+for label, call in [
+    ('extra', lambda: wrapper(1)),
+    ('keyword', lambda: wrapper(x=1)),
+    ('direct', lambda: object.__dir__(f)),
+]:
+    try:
+        value = call()
+        if isinstance(value, list):
+            print(label, type(value).__name__, '__dir__' in value, '__name__' in value, '__globals__' in value, '__getstate__' in value, '__call__' in value)
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+base = type(f.__dir__).__name__
+f.__dict__['__dir__'] = 'shadow-dir'
+print('shadow', base, f.__dir__, f.__dict__['__dir__'], '__dir__' in object.__dir__(f))
+del f.__dict__['__dir__']
+print('unshadow', type(f.__dir__).__name__, '__dir__' in f.__dict__)"#,
+        &[
+            "True builtin_function_or_method builtin_function_or_method",
+            "True __dir__ function.__dir__ Default dir() implementation. None ($self, /)",
+            "list True True True True True True",
+            "sorted-eq True",
+            "extra TypeError function.__dir__() takes no arguments (1 given) ('function.__dir__() takes no arguments (1 given)',)",
+            "keyword TypeError function.__dir__() takes no keyword arguments ('function.__dir__() takes no keyword arguments',)",
+            "direct list True True True True True",
+            "shadow builtin_function_or_method shadow-dir shadow-dir True",
+            "unshadow builtin_function_or_method False",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

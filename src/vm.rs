@@ -10175,6 +10175,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__getstate__" => {
                 self.call_function_getstate(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__dir__" => {
+                self.call_function_dir(args, keywords)
+            }
             Value::Builtin(name) if name == "function.__init_subclass__" => {
                 self.call_function_init_subclass(args, keywords)
             }
@@ -18199,6 +18202,36 @@ impl Vm {
             ));
         }
         Ok(Value::None)
+    }
+
+    fn call_function_dir(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: function.__dir__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        };
+        if !matches!(receiver, Value::Function { .. }) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a function object".to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: function.__dir__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        Ok(sorted_name_list(
+            self.default_dir_names_value(receiver.clone())?,
+        ))
     }
 
     fn call_function_init_subclass(
@@ -51842,6 +51875,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                     "__annotations__",
                     "__call__",
                     "__delattr__",
+                    "__dir__",
                     "__doc__",
                     "__eq__",
                     "__format__",
@@ -57869,6 +57903,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
+        "__dir__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin("function.__dir__".to_string())),
+            receiver: Box::new(function.clone()),
+            identity: Rc::new(()),
+        }),
         "__init_subclass__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("function.__init_subclass__".to_string())),
             receiver: Box::new(Value::Builtin("function".to_string())),
@@ -59394,7 +59433,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
     if name == "__dir__"
         && !matches!(
             &object,
-            Value::Instance { .. } | Value::Class { .. } | Value::BoundMethod { .. }
+            Value::Instance { .. }
+                | Value::Class { .. }
+                | Value::Function { .. }
+                | Value::BoundMethod { .. }
         )
         && !matches!(&object, Value::Builtin(builtin) if builtin == "object")
     {
@@ -61910,6 +61952,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__init_subclass__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -63944,6 +63991,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "function.__getstate__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__dir__" =>
+        {
+            Ok(Value::String("function.__dir__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "function.__dir__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__dir__" => {
+            Ok(Value::String("Default dir() implementation.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__dir__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
         }
