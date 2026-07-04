@@ -4357,6 +4357,8 @@ const CLASS_BASES_ATTR: &str = "\0class_bases";
 const TYPED_DICT_CLASS_ATTR: &str = "\0minipython_typed_dict_class";
 const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
 const FUNCTION_DICT_SOURCE_ATTR: &str = "\0function_dict_source";
+const FUNCTION_DEFAULTS_ATTR: &str = "\0function_defaults";
+const FUNCTION_KWDEFAULTS_ATTR: &str = "\0function_kwdefaults";
 
 fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Scope, String> {
     let entries = match namespace {
@@ -4600,8 +4602,8 @@ fn call_function_type_constructor(
                 .cloned()
                 .unwrap_or(Value::None),
         );
-        attrs.insert("__defaults__".to_string(), argdefs);
-        attrs.insert("__kwdefaults__".to_string(), kwdefaults);
+        attrs.insert(FUNCTION_DEFAULTS_ATTR.to_string(), argdefs);
+        attrs.insert(FUNCTION_KWDEFAULTS_ATTR.to_string(), kwdefaults);
     }
 
     let identity = Rc::new(());
@@ -6036,6 +6038,17 @@ impl Vm {
                         FUNCTION_QUALNAME_ATTR.to_string(),
                         Value::String(nested_qualname(self.qualname_prefix.as_deref(), &name)),
                     );
+                    {
+                        let mut attrs = function_attrs.borrow_mut();
+                        attrs.insert(
+                            FUNCTION_DEFAULTS_ATTR.to_string(),
+                            function_defaults_value(&defaults),
+                        );
+                        attrs.insert(
+                            FUNCTION_KWDEFAULTS_ATTR.to_string(),
+                            function_keyword_defaults_value(&keyword_defaults),
+                        );
+                    }
                     self.write_register(
                         dst,
                         Value::Function {
@@ -11275,16 +11288,20 @@ impl Vm {
             } => {
                 let function_qualname =
                     function_qualname_string(&name, &attrs, owner_class.as_deref());
+                let call_defaults =
+                    function_call_default_bindings(&attrs, &positional_only, &params, &defaults)?;
+                let call_keyword_defaults =
+                    function_call_keyword_default_bindings(&attrs, &keyword_defaults)?;
                 self.call_function(
                     name,
                     function_qualname,
                     type_params,
                     positional_only,
                     params,
-                    defaults,
+                    call_defaults,
                     vararg,
                     keyword_only,
-                    keyword_defaults,
+                    call_keyword_defaults,
                     kwarg,
                     closure,
                     body,
@@ -51603,6 +51620,109 @@ fn delete_function_custom_attribute(attrs: &Scope, name: &str) -> Result<(), Str
     }
 }
 
+fn function_defaults_metadata_value(attrs: &Scope, defaults: &[(String, Value)]) -> Value {
+    attrs
+        .borrow()
+        .get(FUNCTION_DEFAULTS_ATTR)
+        .cloned()
+        .unwrap_or_else(|| function_defaults_value(defaults))
+}
+
+fn function_keyword_defaults_metadata_value(
+    attrs: &Scope,
+    keyword_defaults: &[(String, Value)],
+) -> Value {
+    attrs
+        .borrow()
+        .get(FUNCTION_KWDEFAULTS_ATTR)
+        .cloned()
+        .unwrap_or_else(|| function_keyword_defaults_value(keyword_defaults))
+}
+
+fn set_function_defaults_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::Tuple(_) | Value::None) {
+        return Err("TypeError: __defaults__ must be set to a tuple object".to_string());
+    }
+    attrs
+        .borrow_mut()
+        .insert(FUNCTION_DEFAULTS_ATTR.to_string(), value);
+    Ok(())
+}
+
+fn set_function_keyword_defaults_metadata(attrs: &Scope, value: Value) -> Result<(), String> {
+    if !matches!(value, Value::None) && function_dict_replacement_entries(&value).is_none() {
+        return Err("TypeError: __kwdefaults__ must be set to a dict object".to_string());
+    }
+    attrs
+        .borrow_mut()
+        .insert(FUNCTION_KWDEFAULTS_ATTR.to_string(), value);
+    Ok(())
+}
+
+fn function_default_bindings_from_metadata(
+    positional_only: &[String],
+    params: &[String],
+    defaults: &Value,
+) -> Result<Vec<(String, Value)>, String> {
+    let Value::Tuple(values) = defaults else {
+        return match defaults {
+            Value::None => Ok(Vec::new()),
+            _ => Err("TypeError: __defaults__ must be set to a tuple object".to_string()),
+        };
+    };
+    let positional_params = positional_only
+        .iter()
+        .chain(params.iter())
+        .cloned()
+        .collect::<Vec<_>>();
+    let used_defaults = values.len().min(positional_params.len());
+    let param_start = positional_params.len().saturating_sub(used_defaults);
+    let value_start = values.len().saturating_sub(used_defaults);
+    Ok(positional_params[param_start..]
+        .iter()
+        .cloned()
+        .zip(values[value_start..].iter().cloned())
+        .collect())
+}
+
+fn function_keyword_default_bindings_from_metadata(
+    keyword_defaults: &Value,
+) -> Result<Vec<(String, Value)>, String> {
+    match keyword_defaults {
+        Value::None => Ok(Vec::new()),
+        value => {
+            let Some(entries) = function_dict_replacement_entries(value) else {
+                return Err("TypeError: __kwdefaults__ must be set to a dict object".to_string());
+            };
+            Ok(entries
+                .borrow()
+                .iter()
+                .filter_map(|(key, value)| {
+                    value_as_string(key).map(|key| (key.to_string(), value.clone()))
+                })
+                .collect())
+        }
+    }
+}
+
+fn function_call_default_bindings(
+    attrs: &Scope,
+    positional_only: &[String],
+    params: &[String],
+    defaults: &[(String, Value)],
+) -> Result<Vec<(String, Value)>, String> {
+    let metadata = function_defaults_metadata_value(attrs, defaults);
+    function_default_bindings_from_metadata(positional_only, params, &metadata)
+}
+
+fn function_call_keyword_default_bindings(
+    attrs: &Scope,
+    keyword_defaults: &[(String, Value)],
+) -> Result<Vec<(String, Value)>, String> {
+    let metadata = function_keyword_defaults_metadata_value(attrs, keyword_defaults);
+    function_keyword_default_bindings_from_metadata(&metadata)
+}
+
 fn dict_to_scope_with_mapping_source(entries: &DictRef, source_field: &str) -> Scope {
     let scope = dict_to_scope(entries);
     scope
@@ -57959,16 +58079,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         "__globals__" => Ok(Value::ScopeDict(globals.clone())),
         "__builtins__" => Ok(function_builtins_value(globals)),
         "__class__" => Ok(Value::Builtin("function".to_string())),
-        "__defaults__" => Ok(attrs
-            .borrow()
-            .get("__defaults__")
-            .cloned()
-            .unwrap_or_else(|| function_defaults_value(defaults))),
-        "__kwdefaults__" => Ok(attrs
-            .borrow()
-            .get("__kwdefaults__")
-            .cloned()
-            .unwrap_or_else(|| function_keyword_defaults_value(keyword_defaults))),
+        "__defaults__" => Ok(function_defaults_metadata_value(attrs, defaults)),
+        "__kwdefaults__" => Ok(function_keyword_defaults_metadata_value(
+            attrs,
+            keyword_defaults,
+        )),
         "__closure__" => Ok(function_closure_value(body, closure)),
         "__dict__" => Ok(function_dict_value(attrs)),
         "__type_params__" => Ok(type_params_attr_value(attrs, type_params.clone())),
@@ -65656,6 +65771,12 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             if name == "__dict__" {
                 return set_function_dict(&attrs, value);
             }
+            if name == "__defaults__" {
+                return set_function_defaults_metadata(&attrs, value);
+            }
+            if name == "__kwdefaults__" {
+                return set_function_keyword_defaults_metadata(&attrs, value);
+            }
             if name == "__name__" {
                 match value {
                     value @ Value::String(_) => {
@@ -66125,6 +66246,12 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
             if name == "__dict__" {
                 return Err("TypeError: cannot delete __dict__".to_string());
+            }
+            if name == "__defaults__" {
+                return set_function_defaults_metadata(&attrs, Value::None);
+            }
+            if name == "__kwdefaults__" {
+                return set_function_keyword_defaults_metadata(&attrs, Value::None);
             }
             delete_function_custom_attribute(&attrs, name)
         }

@@ -35375,6 +35375,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_getstate_wrapper_subset",
             "cpython_function_dir_wrapper_subset",
             "cpython_function_dict_assignment_subset",
+            "cpython_function_defaults_kwdefaults_assignment_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_bool_instance_doc_attribute_subset",
@@ -35481,6 +35482,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_getstate_wrapper_diff_subset",
         "cpython_function_dir_wrapper_diff_subset",
         "cpython_function_dict_assignment_diff_subset",
+        "cpython_function_defaults_kwdefaults_assignment_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
@@ -43148,6 +43150,106 @@ fn function_dict_assignment_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function __dict__ assignment docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_defaults_kwdefaults_assignment_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_defaults_kwdefaults_assignment_subset";
+    let diff_name = "cpython_function_defaults_kwdefaults_assignment_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f(a, b=2, *, c=3):",
+        "f.__defaults__ is f.__defaults__",
+        "f.__kwdefaults__ is f.__kwdefaults__",
+        "f.__defaults__ = defaults",
+        "f.__defaults__ = None",
+        "del f.__defaults__",
+        "f.__kwdefaults__ = kw",
+        "kw['c'] = 31",
+        "f.__kwdefaults__ = None",
+        "del f.__kwdefaults__",
+        "dict-clean",
+        "type(error).__name__",
+        "error.args",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function __defaults__ / __kwdefaults__ assignment subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial True True (2,) {'c': 3} (1, 2, 3)\"",
+        "\"set-defaults True (20,) (1, 20, 3)\"",
+        "\"defaults-none-call TypeError\"",
+        "\"defaults-restore (1, 22, 3)\"",
+        "\"defaults-list TypeError __defaults__ must be set to a tuple object",
+        "\"defaults-dict TypeError __defaults__ must be set to a tuple object",
+        "\"del-defaults True\"",
+        "\"set-kw True {'c': 30} (1, 23, 30)\"",
+        "\"kw-live (1, 23, 31)\"",
+        "\"kw-none-call TypeError\"",
+        "\"kw-restore (1, 23, 32)\"",
+        "\"kw-list TypeError __kwdefaults__ must be set to a dict object",
+        "\"kw-tuple TypeError __kwdefaults__ must be set to a dict object",
+        "\"del-kw True\"",
+        "\"dict-clean {}\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function __defaults__ / __kwdefaults__ assignment subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_DEFAULTS_ATTR",
+        "const FUNCTION_KWDEFAULTS_ATTR",
+        "fn function_defaults_metadata_value(",
+        "fn function_keyword_defaults_metadata_value(",
+        "fn set_function_defaults_metadata(",
+        "fn set_function_keyword_defaults_metadata(",
+        "fn function_default_bindings_from_metadata(",
+        "fn function_keyword_default_bindings_from_metadata(",
+        "fn function_call_default_bindings(",
+        "fn function_call_keyword_default_bindings(",
+        "FUNCTION_DEFAULTS_ATTR.to_string()",
+        "FUNCTION_KWDEFAULTS_ATTR.to_string()",
+        "function_call_default_bindings(&attrs",
+        "function_call_keyword_default_bindings(&attrs",
+        "\"__defaults__\" => Ok(function_defaults_metadata_value(attrs, defaults))",
+        "\"__kwdefaults__\" => Ok(function_keyword_defaults_metadata_value(",
+        "return set_function_defaults_metadata(&attrs, value)",
+        "return set_function_keyword_defaults_metadata(&attrs, value)",
+        "set_function_defaults_metadata(&attrs, Value::None)",
+        "set_function_keyword_defaults_metadata(&attrs, Value::None)",
+        "__defaults__ must be set to a tuple object",
+        "__kwdefaults__ must be set to a dict object",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function __defaults__ / __kwdefaults__ assignment implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function __defaults__ / __kwdefaults__ assignment",
+            "metadata identity",
+            "call-binding mutation",
+            "live keyword-default dict mutation",
+            "without depending on exact missing-argument TypeError text",
+            "without expanding host IO",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function __defaults__ / __kwdefaults__ assignment docs must contain `{required}`"
             );
         }
     }

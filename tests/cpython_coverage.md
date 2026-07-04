@@ -694,6 +694,7 @@ Recent runtime migration notes:
   `cpython_function_getstate_wrapper_diff_subset`,
   `cpython_function_dir_wrapper_diff_subset`,
   `cpython_function_dict_assignment_diff_subset`,
+  `cpython_function_defaults_kwdefaults_assignment_diff_subset`,
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
@@ -7520,6 +7521,10 @@ without adding general custom encoder/decoder class support.
   `cpython_function_dict_assignment_diff_subset`, covering function __dict__ assignment,
   dict replacement identity, live external dict mutation, dict subclass replacement, custom attribute visibility through `dir()`, non-dict
   assignment TypeError paths, and cannot delete __dict__ errors without expanding pickle or host IO.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_defaults_kwdefaults_assignment_subset` with direct CPython
+  output parity in `cpython_function_defaults_kwdefaults_assignment_diff_subset`,
+  covering function __defaults__ / __kwdefaults__ assignment, metadata identity, call-binding mutation, live keyword-default dict mutation, type errors, and deletion to None without depending on exact missing-argument TypeError text and without expanding host IO.
 - `RUNTIME_BUILTINS` also includes `cpython_object_getstate_direct_subset` with
   direct CPython output parity in
   `cpython_object_getstate_direct_diff_subset`, covering CPython's inherited

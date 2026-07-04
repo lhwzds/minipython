@@ -29658,6 +29658,77 @@ print('reset', f.__dict__)"#,
     );
 }
 
+// Adapted from CPython public function-object `__defaults__` / `__kwdefaults__`
+// assignment behavior. This pins metadata identity, call-binding mutation,
+// live keyword-default dict mutation, type errors, and deletion to None without
+// depending on exact missing-argument TypeError text.
+#[test]
+fn cpython_function_defaults_kwdefaults_assignment_subset() {
+    assert_output(
+        r#"def f(a, b=2, *, c=3):
+    return a, b, c
+
+print('initial', f.__defaults__ is f.__defaults__, f.__kwdefaults__ is f.__kwdefaults__, f.__defaults__, f.__kwdefaults__, f(1))
+defaults = (20,)
+f.__defaults__ = defaults
+print('set-defaults', f.__defaults__ is defaults, f.__defaults__, f(1))
+f.__defaults__ = None
+try:
+    print('defaults-none-call', f(1))
+except Exception as error:
+    print('defaults-none-call', type(error).__name__)
+f.__defaults__ = (22,)
+print('defaults-restore', f(1))
+for label, value in [('defaults-list', [1]), ('defaults-dict', {})]:
+    try:
+        f.__defaults__ = value
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+del f.__defaults__
+print('del-defaults', f.__defaults__ is None)
+f.__defaults__ = (23,)
+kw = {'c': 30}
+f.__kwdefaults__ = kw
+print('set-kw', f.__kwdefaults__ is kw, f.__kwdefaults__, f(1))
+kw['c'] = 31
+print('kw-live', f(1))
+f.__kwdefaults__ = None
+try:
+    print('kw-none-call', f(1))
+except Exception as error:
+    print('kw-none-call', type(error).__name__)
+f.__kwdefaults__ = {'c': 32}
+print('kw-restore', f(1))
+for label, value in [('kw-list', []), ('kw-tuple', ())]:
+    try:
+        f.__kwdefaults__ = value
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+del f.__kwdefaults__
+print('del-kw', f.__kwdefaults__ is None)
+print('dict-clean', f.__dict__)"#,
+        &[
+            "initial True True (2,) {'c': 3} (1, 2, 3)",
+            "set-defaults True (20,) (1, 20, 3)",
+            "defaults-none-call TypeError",
+            "defaults-restore (1, 22, 3)",
+            "defaults-list TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "defaults-dict TypeError __defaults__ must be set to a tuple object ('__defaults__ must be set to a tuple object',)",
+            "del-defaults True",
+            "set-kw True {'c': 30} (1, 23, 30)",
+            "kw-live (1, 23, 31)",
+            "kw-none-call TypeError",
+            "kw-restore (1, 23, 32)",
+            "kw-list TypeError __kwdefaults__ must be set to a dict object ('__kwdefaults__ must be set to a dict object',)",
+            "kw-tuple TypeError __kwdefaults__ must be set to a dict object ('__kwdefaults__ must be set to a dict object',)",
+            "del-kw True",
+            "dict-clean {}",
+        ],
+    );
+}
+
 // Adapted from CPython public `object.__getstate__` behavior. This pins the
 // default pure-memory no-state object result without promoting pickle support
 // or CPython object-layout state extraction.

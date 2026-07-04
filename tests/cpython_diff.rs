@@ -14380,6 +14380,58 @@ print('reset', f.__dict__)"#,
 }
 
 #[test]
+fn cpython_function_defaults_kwdefaults_assignment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_funcattrs.py public function defaults and kwdefaults assignment subset",
+        name: "function-defaults-kwdefaults-assignment",
+        source: r#"def f(a, b=2, *, c=3):
+    return a, b, c
+
+print('initial', f.__defaults__ is f.__defaults__, f.__kwdefaults__ is f.__kwdefaults__, f.__defaults__, f.__kwdefaults__, f(1))
+defaults = (20,)
+f.__defaults__ = defaults
+print('set-defaults', f.__defaults__ is defaults, f.__defaults__, f(1))
+f.__defaults__ = None
+try:
+    print('defaults-none-call', f(1))
+except Exception as error:
+    print('defaults-none-call', type(error).__name__)
+f.__defaults__ = (22,)
+print('defaults-restore', f(1))
+for label, value in [('defaults-list', [1]), ('defaults-dict', {})]:
+    try:
+        f.__defaults__ = value
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+del f.__defaults__
+print('del-defaults', f.__defaults__ is None)
+f.__defaults__ = (23,)
+kw = {'c': 30}
+f.__kwdefaults__ = kw
+print('set-kw', f.__kwdefaults__ is kw, f.__kwdefaults__, f(1))
+kw['c'] = 31
+print('kw-live', f(1))
+f.__kwdefaults__ = None
+try:
+    print('kw-none-call', f(1))
+except Exception as error:
+    print('kw-none-call', type(error).__name__)
+f.__kwdefaults__ = {'c': 32}
+print('kw-restore', f(1))
+for label, value in [('kw-list', []), ('kw-tuple', ())]:
+    try:
+        f.__kwdefaults__ = value
+        print(label, 'OK')
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+del f.__kwdefaults__
+print('del-kw', f.__kwdefaults__ is None)
+print('dict-clean', f.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__getstate__ descriptor subset",
