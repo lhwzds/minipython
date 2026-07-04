@@ -50396,6 +50396,23 @@ fn cpython_type_typeparams_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::TestType public
+// __type_params__ deletion behavior. The deletion TypeError uses the current
+// public class name and preserves any assigned override.
+#[test]
+fn cpython_type_typeparams_delete_error_name_subset() {
+    assert_output(
+        "class A:\n    pass\nA.__name__ = 'Renamed'\nprint('initial', A.__type_params__, '__type_params__' in A.__dict__)\nA.__type_params__ = 1\nprint('assigned', A.__type_params__, '__type_params__' in A.__dict__)\ntry:\n    del A.__type_params__\nexcept TypeError as error:\n    print('delete-custom', error.__class__.__name__, str(error), error.args == (str(error),), A.__type_params__, '__type_params__' in A.__dict__)\nprint('final', A.__type_params__, '__type_params__' in A.__dict__)\nclass B[T]:\n    pass\nB.__type_params__ = 'custom'\ntry:\n    del B.__type_params__\nexcept TypeError as error:\n    print('delete-generic', error.__class__.__name__, str(error), error.args == (str(error),), B.__type_params__)",
+        &[
+            "initial () False",
+            "assigned 1 True",
+            "delete-custom TypeError cannot delete '__type_params__' attribute of immutable type 'Renamed' True 1 True",
+            "final 1 True",
+            "delete-generic TypeError cannot delete '__type_params__' attribute of immutable type 'B' True custom",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::TestType public type-parameter
 // metadata behavior. Ordinary non-generic classes do not expose
 // __parameters__ unless user code assigns it, while generic classes still do.

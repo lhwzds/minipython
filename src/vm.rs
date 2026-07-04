@@ -65129,15 +65129,14 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
             if matches!(
                 name,
-                "__name__" | "__qualname__" | "__module__" | "__doc__" | "__bases__"
+                "__name__"
+                    | "__qualname__"
+                    | "__module__"
+                    | "__doc__"
+                    | "__bases__"
+                    | "__type_params__"
             ) {
                 return Err(class_metadata_delete_error(&class_name, &attrs, name));
-            }
-            if name == "__type_params__" {
-                return Err(
-                    "TypeError: cannot delete '__type_params__' attribute of immutable type"
-                        .to_string(),
-                );
             }
             if attrs.borrow_mut().remove(name).is_some() {
                 Ok(())

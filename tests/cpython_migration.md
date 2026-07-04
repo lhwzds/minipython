@@ -9881,6 +9881,9 @@ Completed in the type builtin pass:
 - Added `cpython_type_typeparams_subset`, adapted from
   `TestType::test_type_typeparams`, covering generic class `__type_params__`,
   assignment override, and delete rejection that preserves the override.
+- Added `cpython_type_typeparams_delete_error_name_subset`, backed by
+  `cpython_type_typeparams_delete_error_name_diff_subset`, covering type `__type_params__` deletion TypeError behavior
+  that uses the current public class name and preserves the assigned override.
 - Added `cpython_type_parameters_missing_for_nongeneric_subset`, backed by
   `cpython_type_parameters_missing_for_nongeneric_diff_subset`, covering
   ordinary class `__parameters__` absence after default construction and

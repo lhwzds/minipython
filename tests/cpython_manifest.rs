@@ -7276,6 +7276,11 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             "delattr(A, name)",
         ),
         (
+            "cpython_type_typeparams_delete_error_name_diff_subset",
+            "cpython_type_typeparams_delete_error_name_subset",
+            "del A.__type_params__",
+        ),
+        (
             "cpython_type_doc_and_firstlineno_diff_subset",
             "cpython_type_doc_and_firstlineno_subset",
             "A.__firstlineno__ = 43",
@@ -7302,6 +7307,71 @@ fn cpython_test_type_name_doc_diff_evidence_is_documented() {
             assert!(
                 document.contains(diff_name) && document.contains(subset_name),
                 "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_type_typeparams_delete_error_name_has_cpython_evidence() {
+    let subset_name = "cpython_type_typeparams_delete_error_name_subset";
+    let diff_name = "cpython_type_typeparams_delete_error_name_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "A.__name__ = 'Renamed'",
+        "A.__type_params__ = 1",
+        "del A.__type_params__",
+        "class B[T]:",
+        "B.__type_params__ = 'custom'",
+        "del B.__type_params__",
+        "error.args == (str(error),)",
+        "'__type_params__' in A.__dict__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "type __type_params__ delete error subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"initial () False\"",
+        "\"assigned 1 True\"",
+        "\"delete-custom TypeError cannot delete '__type_params__' attribute of immutable type 'Renamed' True 1 True\"",
+        "\"final 1 True\"",
+        "\"delete-generic TypeError cannot delete '__type_params__' attribute of immutable type 'B' True custom\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "type __type_params__ delete error subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn class_metadata_delete_error(",
+        "class_public_name(class_name, attrs)",
+        "cannot delete '{name}' attribute of immutable type '{public_name}'",
+        "\"__type_params__\"",
+        "return Err(class_metadata_delete_error(&class_name, &attrs, name));",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM type __type_params__ delete error implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            subset_name,
+            diff_name,
+            "type `__type_params__` deletion TypeError",
+            "uses the current public class name",
+            "preserves the assigned override",
+        ] {
+            assert!(
+                document.contains(required),
+                "type __type_params__ delete error docs must contain `{required}`"
             );
         }
     }
@@ -7476,7 +7546,11 @@ fn cpython_type_bases_delete_error_has_cpython_evidence() {
         "fn class_metadata_delete_error(",
         "class_public_name(class_name, attrs)",
         "cannot delete '{name}' attribute of immutable type '{public_name}'",
-        "\"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\" | \"__bases__\"",
+        "\"__name__\"",
+        "\"__qualname__\"",
+        "\"__module__\"",
+        "\"__doc__\"",
+        "\"__bases__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -7815,7 +7889,12 @@ fn cpython_type_metadata_delete_errors_has_cpython_evidence() {
         "fn class_metadata_delete_error(",
         "class_name_value(class_name, attrs)",
         "cannot delete '{name}' attribute of immutable type '{public_name}'",
-        "\"__name__\" | \"__qualname__\" | \"__module__\" | \"__doc__\" | \"__bases__\"",
+        "\"__name__\"",
+        "\"__qualname__\"",
+        "\"__module__\"",
+        "\"__doc__\"",
+        "\"__bases__\"",
+        "\"__type_params__\"",
         "return Err(class_metadata_delete_error(&class_name, &attrs, name));",
     ] {
         assert!(

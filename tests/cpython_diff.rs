@@ -16082,6 +16082,32 @@ print('default-values', B.__name__, B.__qualname__, B.__module__, B.__doc__)"#,
 }
 
 #[test]
+fn cpython_type_typeparams_delete_error_name_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType public __type_params__ delete error subset",
+        name: "type-typeparams-delete-error-name",
+        source: r#"class A:
+    pass
+A.__name__ = 'Renamed'
+print('initial', A.__type_params__, '__type_params__' in A.__dict__)
+A.__type_params__ = 1
+print('assigned', A.__type_params__, '__type_params__' in A.__dict__)
+try:
+    del A.__type_params__
+except TypeError as error:
+    print('delete-custom', error.__class__.__name__, str(error), error.args == (str(error),), A.__type_params__, '__type_params__' in A.__dict__)
+print('final', A.__type_params__, '__type_params__' in A.__dict__)
+class B[T]:
+    pass
+B.__type_params__ = 'custom'
+try:
+    del B.__type_params__
+except TypeError as error:
+    print('delete-generic', error.__class__.__name__, str(error), error.args == (str(error),), B.__type_params__)"#,
+    });
+}
+
+#[test]
 fn cpython_type_doc_and_firstlineno_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestType::test_type_doc / ::test_type_firstlineno public subset",
