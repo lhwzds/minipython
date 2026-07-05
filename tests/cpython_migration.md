@@ -121,6 +121,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   type direct calls, without adding `object.__class_getitem__` or GenericAlias
   support, without widening host IO, network, process, C ABI, or full stdlib
   scope.
+- Added `cpython_io_bytesio_type_not_subscriptable_subset` and
+  `cpython_io_bytesio_type_not_subscriptable_diff_subset` for
+  `io.BytesIO[int]` rejection with `type '_io.BytesIO' is not subscriptable`
+  and absent type `__class_getitem__` visibility, without adding `io.BytesIO.__class_getitem__`
+  or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,

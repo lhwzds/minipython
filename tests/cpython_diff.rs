@@ -13875,6 +13875,26 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_io_bytesio_type_not_subscriptable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public io.BytesIO type subscription rejection",
+        name: "io-bytesio-type-not-subscriptable",
+        source: r#"import io
+typ = io.BytesIO
+for label, expr in [
+    ('hasattr-type', lambda: hasattr(typ, '__class_getitem__')),
+    ('dir-type', lambda: '__class_getitem__' in dir(typ)),
+    ('subscript-int', lambda: typ[int]),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_list_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py public list instance __doc__ attribute subset",

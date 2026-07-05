@@ -110,6 +110,11 @@ Recent runtime migration notes:
   type direct calls, without adding `object.__class_getitem__` or GenericAlias
   support, without widening host IO, network, process, C ABI, or full stdlib
   scope.
+- `cpython_io_bytesio_type_not_subscriptable_subset`, backed by
+  `cpython_io_bytesio_type_not_subscriptable_diff_subset`, now pins
+  `io.BytesIO[int]` rejection with `type '_io.BytesIO' is not subscriptable`
+  and absent type `__class_getitem__` visibility, without adding `io.BytesIO.__class_getitem__`
+  or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -4887,7 +4892,11 @@ without adding general custom encoder/decoder class support.
   `cpython_io_bytesio_state_method_descriptor_subset` covers the
   `io.BytesIO.__getstate__` / `io.BytesIO.__setstate__` state method descriptors,
   including descriptor type visibility, unbound calls, wrong-receiver descriptor `TypeError`,
-  and missing-receiver keyword behavior. Real files,
+  and missing-receiver keyword behavior. `cpython_io_bytesio_type_not_subscriptable_diff_subset` /
+  `cpython_io_bytesio_type_not_subscriptable_subset` covers `io.BytesIO[int]`
+  rejection with `type '_io.BytesIO' is not subscriptable` and absent type
+  `__class_getitem__` visibility, without adding `io.BytesIO.__class_getitem__`
+  or GenericAlias support. Real files,
   buffering layers, text I/O, file descriptors, and OS-backed stream semantics
   remain outside the sandbox `io.BytesIO` subset.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
