@@ -47493,6 +47493,101 @@ fn module_type_not_subscriptable_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn super_type_not_subscriptable_subset_has_focused_diff_evidence() {
+    let diff_name = "cpython_super_type_not_subscriptable_diff_subset";
+    let subset_name = "cpython_super_type_not_subscriptable_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "super type subscription rejection CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "super type subscription rejection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class Base:",
+        "class Child(Base):",
+        "return super()",
+        "typ = super",
+        "inst = Child().probe()",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ.__class_getitem__(int)",
+        "inst.__class_getitem__(int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "super type subscription rejection diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (False, False, False, False)\"",
+        "\"subscript-int TypeError type 'super' is not subscriptable",
+        "\"call-int AttributeError type object 'super' has no attribute '__class_getitem__'",
+        "\"inst-call AttributeError 'super' object has no attribute '__class_getitem__'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super type subscription rejection subset output must pin `{required}`"
+        );
+    }
+
+    let load_subscript_body = VM_SOURCE
+        .split("fn load_subscript(object: Value, index: Value) -> Result<Value, String>")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn generic_alias_args(index: Value) -> Vec<Value>")
+                .next()
+        })
+        .expect("load_subscript implementation must be extractable");
+    let super_guard = load_subscript_body
+        .find("Value::Builtin(name) if name == \"super\"")
+        .expect("super subscript rejection guard must exist");
+    let class_like_guard = load_subscript_body
+        .find("Value::Builtin(name) if is_class_like_builtin(&name)")
+        .expect("class-like builtin GenericAlias guard must exist");
+    assert!(
+        super_guard < class_like_guard,
+        "super subscript rejection must run before the generic class-like builtin alias guard"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"super\"",
+        "type 'super' is not subscriptable",
+        "Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super type subscription rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`super[int]`",
+            "type 'super' is not subscriptable",
+            "without adding `super.__class_getitem__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "super type subscription rejection docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_list_attribute_assignment_errors_subset(",
