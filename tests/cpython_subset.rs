@@ -69505,6 +69505,52 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString iteration behavior. This keeps the
+// supported surface to sequence-style `__iter__` without promoting full
+// string-method proxying or CPython's exact generator implementation shape.
+#[test]
+fn cpython_collections_userstring_iter_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def render(values):
+    return [(type(value).__name__, repr(value), str(value), isinstance(value, UserString), repr(value.data)) for value in values]
+cases = [
+    ('iter-list', lambda: list(u)),
+    ('method-list', lambda: list(u.__iter__())),
+    ('type-method-list', lambda: list(UserString.__iter__(u))),
+    ('type-keyword-list', lambda: list(UserString.__iter__(self=u))),
+    ('empty-list', lambda: list(UserString(''))),
+    ('bad-receiver', lambda: list(UserString.__iter__('abc'))),
+    ('method-extra', lambda: u.__iter__(1)),
+    ('method-badkw', lambda: u.__iter__(x=1)),
+    ('method-multi', lambda: u.__iter__(self=u)),
+    ('type-noargs', lambda: UserString.__iter__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        if isinstance(value, list):
+            print(label, render(value))
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "iter-list [('UserString', \"'a'\", 'a', True, \"'a'\"), ('UserString', \"'b'\", 'b', True, \"'b'\"), ('UserString', \"'é'\", 'é', True, \"'é'\")]",
+            "method-list [('UserString', \"'a'\", 'a', True, \"'a'\"), ('UserString', \"'b'\", 'b', True, \"'b'\"), ('UserString', \"'é'\", 'é', True, \"'é'\")]",
+            "type-method-list [('UserString', \"'a'\", 'a', True, \"'a'\"), ('UserString', \"'b'\", 'b', True, \"'b'\"), ('UserString', \"'é'\", 'é', True, \"'é'\")]",
+            "type-keyword-list [('UserString', \"'a'\", 'a', True, \"'a'\"), ('UserString', \"'b'\", 'b', True, \"'b'\"), ('UserString', \"'é'\", 'é', True, \"'é'\")]",
+            "empty-list []",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-extra TypeError Sequence.__iter__() takes 1 positional argument but 2 were given ('Sequence.__iter__() takes 1 positional argument but 2 were given',)",
+            "method-badkw TypeError Sequence.__iter__() got an unexpected keyword argument 'x' (\"Sequence.__iter__() got an unexpected keyword argument 'x'\",)",
+            "method-multi TypeError Sequence.__iter__() got multiple values for argument 'self' (\"Sequence.__iter__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError Sequence.__iter__() missing 1 required positional argument: 'self' (\"Sequence.__iter__() missing 1 required positional argument: 'self'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

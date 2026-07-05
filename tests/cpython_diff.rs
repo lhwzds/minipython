@@ -25882,6 +25882,39 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_iter_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString iteration behavior",
+        name: "collections-userstring-iter",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def render(values):
+    return [(type(value).__name__, repr(value), str(value), isinstance(value, UserString), repr(value.data)) for value in values]
+cases = [
+    ('iter-list', lambda: list(u)),
+    ('method-list', lambda: list(u.__iter__())),
+    ('type-method-list', lambda: list(UserString.__iter__(u))),
+    ('type-keyword-list', lambda: list(UserString.__iter__(self=u))),
+    ('empty-list', lambda: list(UserString(''))),
+    ('bad-receiver', lambda: list(UserString.__iter__('abc'))),
+    ('method-extra', lambda: u.__iter__(1)),
+    ('method-badkw', lambda: u.__iter__(x=1)),
+    ('method-multi', lambda: u.__iter__(self=u)),
+    ('type-noargs', lambda: UserString.__iter__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        if isinstance(value, list):
+            print(label, render(value))
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

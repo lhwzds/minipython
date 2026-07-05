@@ -10399,6 +10399,9 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("array.array.") => {
                 self.call_array_array_method(&name, args, keywords)
             }
+            Value::Builtin(name) if name.starts_with("UserString.") => {
+                self.call_user_string_method(&name, args, keywords)
+            }
             Value::Builtin(name) if is_iterator_protocol_method(&name) => {
                 reject_method_keywords(&name, &keywords)?;
 
@@ -10409,9 +10412,6 @@ impl Vm {
             }
             Value::Builtin(name) if name.starts_with("UserList.") => {
                 self.call_user_list_method(&name, args, keywords)
-            }
-            Value::Builtin(name) if name.starts_with("UserString.") => {
-                self.call_user_string_method(&name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("deque.") => {
                 self.call_deque_method(&name, args, keywords)
@@ -35531,6 +35531,42 @@ impl Vm {
                     char_value,
                 )?))
             }
+            "__iter__" => {
+                if args.len() > 1 {
+                    return Err(format!(
+                        "TypeError: Sequence.__iter__() takes 1 positional argument but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                for (name, value) in keywords {
+                    if name != "self" {
+                        return Err(format!(
+                            "TypeError: Sequence.__iter__() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if receiver.is_some() {
+                        return Err(
+                            "TypeError: Sequence.__iter__() got multiple values for argument 'self'"
+                                .to_string(),
+                        );
+                    }
+                    receiver = Some(value);
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        "TypeError: Sequence.__iter__() missing 1 required positional argument: 'self'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { data, .. } = receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(&receiver)
+                    ));
+                };
+                user_string_iter_value(&data.borrow())
+            }
             "__getitem__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56001,7 +56037,7 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 }
 
 fn is_builtin_user_string_type_method(name: &str) -> bool {
-    matches!(name, "__contains__" | "__getitem__")
+    matches!(name, "__contains__" | "__getitem__" | "__iter__")
 }
 
 fn float_subclass_float(value: &Value) -> Option<Rc<f64>> {
@@ -61618,7 +61654,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__contains__" | "__getitem__" => Ok(Value::BoundMethod {
+                "__contains__" | "__getitem__" | "__iter__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
@@ -88398,6 +88434,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 index: 0,
             }))
         }
+        Value::UserString { data, .. } => user_string_iter_value(&data.borrow()),
         Value::Bytes(value) => Ok(shared_iterator(Value::BytesIterator {
             bytes: value.as_ref().clone(),
             index: 0,
@@ -89596,6 +89633,14 @@ fn user_string_contains_value(haystack: &str, needle: Value) -> Result<bool, Str
         }
     };
     Ok(haystack.contains(&needle))
+}
+
+fn user_string_iter_value(value: &str) -> Result<Value, String> {
+    let mut items = Vec::with_capacity(value.chars().count());
+    for ch in value.chars() {
+        items.push(user_string_value(ch.to_string())?);
+    }
+    Ok(list_iterator_from_values(items))
 }
 
 fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, String> {

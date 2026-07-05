@@ -26517,6 +26517,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_basic_construction_subset",
             "cpython_collections_userstring_getitem_slice_subset",
             "cpython_collections_userstring_contains_subset",
+            "cpython_collections_userstring_iter_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29017,8 +29018,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "name != \"char\"",
         "UserString.__contains__() missing 1 required positional argument: 'char'",
         "UserString.__contains__() got multiple values for argument 'char'",
-        "matches!(name, \"__contains__\" | \"__getitem__\")",
-        "\"__contains__\" | \"__getitem__\" => Ok(Value::BoundMethod",
+        "matches!(name, \"__contains__\" | \"__getitem__\" | \"__iter__\")",
+        "\"__contains__\" | \"__getitem__\" | \"__iter__\" => Ok(Value::BoundMethod",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29040,6 +29041,92 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString contains docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_iter_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString iteration"
+    );
+    let userstring_iter_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_iter_diff_subset",
+    );
+    let userstring_iter_subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_collections_userstring_iter_subset");
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "def render(values):",
+        "list(u)",
+        "list(u.__iter__())",
+        "list(UserString.__iter__(u))",
+        "list(UserString.__iter__(self=u))",
+        "list(UserString(''))",
+        "UserString.__iter__('abc')",
+        "u.__iter__(1)",
+        "u.__iter__(x=1)",
+        "u.__iter__(self=u)",
+        "UserString.__iter__()",
+        "isinstance(value, UserString)",
+        "repr(value.data)",
+    ] {
+        assert!(
+            userstring_iter_diff_body.contains(required)
+                && userstring_iter_subset_body.contains(required),
+            "UserString iter diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"iter-list [('UserString', \\\"'a'\\\", 'a', True, \\\"'a'\\\")",
+        "\"method-list [('UserString', \\\"'a'\\\", 'a', True, \\\"'a'\\\")",
+        "\"type-method-list [('UserString', \\\"'a'\\\", 'a', True, \\\"'a'\\\")",
+        "\"type-keyword-list [('UserString', \\\"'a'\\\", 'a', True, \\\"'a'\\\")",
+        "\"empty-list []\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-extra TypeError Sequence.__iter__() takes 1 positional argument but 2 were given",
+        "\"method-badkw TypeError Sequence.__iter__() got an unexpected keyword argument 'x'",
+        "\"method-multi TypeError Sequence.__iter__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError Sequence.__iter__() missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            userstring_iter_subset_body.contains(required),
+            "UserString iter subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserString { data, .. } => user_string_iter_value(&data.borrow())",
+        "fn user_string_iter_value(value: &str) -> Result<Value, String>",
+        "items.push(user_string_value(ch.to_string())?)",
+        "Ok(list_iterator_from_values(items))",
+        "name != \"self\"",
+        "Sequence.__iter__() missing 1 required positional argument: 'self'",
+        "Sequence.__iter__() got multiple values for argument 'self'",
+        "Sequence.__iter__() got an unexpected keyword argument",
+        "matches!(name, \"__contains__\" | \"__getitem__\" | \"__iter__\")",
+        "\"__contains__\" | \"__getitem__\" | \"__iter__\" => Ok(Value::BoundMethod",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString iter implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_iter_subset",
+            "cpython_collections_userstring_iter_diff_subset",
+            "`UserString` iteration",
+            "`iter()`",
+            "`__iter__`",
+            "`UserString` wrapper",
+            "`self=` keyword binding",
+            "`Sequence.__iter__()`",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString iter docs must contain `{required}`"
             );
         }
     }
