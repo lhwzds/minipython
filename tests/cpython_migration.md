@@ -86,6 +86,14 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `method_descriptor` visibility, positive integer shape rather than exact CPython allocation size,
   without adding CPython allocator/object-layout parity or full descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_inherited_getattribute_direct_subset` and
+  `cpython_tuple_inherited_getattribute_direct_diff_subset` for tuple inherited `__getattribute__`,
+  exact and tuple-subclass class lookup, direct `tuple.__getattribute__`
+  dispatch for tuple and non-tuple receivers, non-tuple direct receiver support
+  through `object.__getattribute__`, `tuple.__getattribute__ is object.__getattribute__`,
+  `wrapper_descriptor` visibility, and missing-attribute and name-type error propagation,
+  without adding custom getattribute hooks or full descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_tuple_inherited_str_direct_subset` and
   `cpython_tuple_inherited_str_direct_diff_subset` for tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

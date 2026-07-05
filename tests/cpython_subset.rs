@@ -54890,6 +54890,47 @@ fn cpython_tuple_inherited_sizeof_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __getattribute__ inheritance. This pins the
+// inherited object.__getattribute__ wrapper descriptor without adding custom
+// getattribute hooks or full descriptor metadata.
+#[test]
+fn cpython_tuple_inherited_getattribute_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('getattr-exact-class', lambda: (1, 'x').__getattribute__('__class__') is tuple),\n",
+            "    ('getattr-sub-class', lambda: left.__getattribute__('__class__') is T),\n",
+            "    ('type-getattr-exact-class', lambda: tuple.__getattribute__((1, 'x'), '__class__') is tuple),\n",
+            "    ('type-getattr-sub-class', lambda: tuple.__getattribute__(left, '__class__') is T),\n",
+            "    ('type-getattr-list-class', lambda: tuple.__getattribute__([1, 2], '__class__') is list),\n",
+            "    ('getattr-missing', lambda: (1,).__getattribute__('missing')),\n",
+            "    ('getattr-name-type', lambda: (1,).__getattribute__(1)),\n",
+            "    ('getattr-keyword', lambda: (1,).__getattribute__(name='__class__')),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), error.args)\n",
+            "print('visible', hasattr(left, '__getattribute__'), '__getattribute__' in dir(left), '__getattribute__' in dir(T), '__getattribute__' in dir(tuple), type(tuple.__getattribute__).__name__, tuple.__getattribute__ is object.__getattribute__, type(object.__getattribute__).__name__)",
+        ),
+        &[
+            "getattr-exact-class bool True",
+            "getattr-sub-class bool True",
+            "type-getattr-exact-class bool True",
+            "type-getattr-sub-class bool True",
+            "type-getattr-list-class bool True",
+            "getattr-missing AttributeError 'tuple' object has no attribute 'missing' (\"'tuple' object has no attribute 'missing'\",)",
+            "getattr-name-type TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "getattr-keyword TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
+            "visible True True True True wrapper_descriptor True wrapper_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple __str__ inheritance. This pins the
 // inherited object.__str__ wrapper for tuple without making it a tuple-specific
 // sequence method.

@@ -835,6 +835,116 @@ fn tuple_inherited_sizeof_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_getattribute_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_getattribute_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_getattribute_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited getattribute direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited getattribute direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__getattribute__('__class__')",
+        "left.__getattribute__('__class__')",
+        "tuple.__getattribute__((1, 'x'), '__class__')",
+        "tuple.__getattribute__(left, '__class__')",
+        "tuple.__getattribute__([1, 2], '__class__')",
+        "(1,).__getattribute__('missing')",
+        "(1,).__getattribute__(1)",
+        "(1,).__getattribute__(name='__class__')",
+        "hasattr(left, '__getattribute__')",
+        "'__getattribute__' in dir(left)",
+        "'__getattribute__' in dir(T)",
+        "'__getattribute__' in dir(tuple)",
+        "type(tuple.__getattribute__).__name__",
+        "tuple.__getattribute__ is object.__getattribute__",
+        "type(object.__getattribute__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited getattribute direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"getattr-exact-class bool True\"",
+        "\"getattr-sub-class bool True\"",
+        "\"type-getattr-exact-class bool True\"",
+        "\"type-getattr-sub-class bool True\"",
+        "\"type-getattr-list-class bool True\"",
+        "\"getattr-missing AttributeError 'tuple' object has no attribute 'missing'",
+        "\"getattr-name-type TypeError attribute name must be string, not 'int'",
+        "\"getattr-keyword TypeError wrapper __getattribute__() takes no keyword arguments",
+        "\"visible True True True True wrapper_descriptor True wrapper_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited getattribute direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__getattribute__\""),
+        "tuple dir block must expose inherited `__getattribute__`"
+    );
+
+    for required in [
+        "Value::Tuple(items) if name == \"__getattribute__\"",
+        "object_getattribute_bound_method(Value::Tuple(items))",
+        "function_name == \"tuple\" && name == \"__getattribute__\"",
+        "Ok(Value::Builtin(\"object.__getattribute__\".to_string()))",
+        "fn object_getattribute_bound_method(",
+        "Value::Builtin(\"object.__getattribute__\".to_string())",
+        "Value::Builtin(name) if name == \"object.__getattribute__\"",
+        "self.call_object_getattribute(args)",
+        "if name == \"__getattribute__\"",
+        "return Ok(object_getattribute_bound_method(instance));",
+        "attribute_name_arg(name)?",
+        "| \"__getattribute__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited getattribute direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__getattribute__`",
+            "`tuple.__getattribute__ is object.__getattribute__`",
+            "non-tuple direct receiver support",
+            "wrapper_descriptor",
+            "missing-attribute and name-type error propagation",
+            "without adding custom getattribute hooks or full descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited getattribute direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_inherited_str_direct_docs_cover_core_runtime() {
     let diff_name = "cpython_tuple_inherited_str_direct_diff_subset";
     let subset_name = "cpython_tuple_inherited_str_direct_subset";

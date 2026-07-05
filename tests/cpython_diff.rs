@@ -18259,6 +18259,33 @@ print('visible', hasattr(left, '__sizeof__'), '__sizeof__' in dir(left), '__size
 }
 
 #[test]
+fn cpython_tuple_inherited_getattribute_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __getattribute__ wrapper descriptor behavior",
+        name: "tuple-inherited-getattribute-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('getattr-exact-class', lambda: (1, 'x').__getattribute__('__class__') is tuple),
+    ('getattr-sub-class', lambda: left.__getattribute__('__class__') is T),
+    ('type-getattr-exact-class', lambda: tuple.__getattribute__((1, 'x'), '__class__') is tuple),
+    ('type-getattr-sub-class', lambda: tuple.__getattribute__(left, '__class__') is T),
+    ('type-getattr-list-class', lambda: tuple.__getattribute__([1, 2], '__class__') is list),
+    ('getattr-missing', lambda: (1,).__getattribute__('missing')),
+    ('getattr-name-type', lambda: (1,).__getattribute__(1)),
+    ('getattr-keyword', lambda: (1,).__getattribute__(name='__class__')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__getattribute__'), '__getattribute__' in dir(left), '__getattribute__' in dir(T), '__getattribute__' in dir(tuple), type(tuple.__getattribute__).__name__, tuple.__getattribute__ is object.__getattribute__, type(object.__getattribute__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_inherited_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple inherited __str__ wrapper behavior",
