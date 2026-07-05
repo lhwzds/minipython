@@ -41,6 +41,12 @@ MiniPython's Rust runtime and local pure-memory shims. A standard-library
 addition is accepted only when this file records its supported surface, excluded
 surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 
+- Added `cpython_int_type_not_subscriptable_subset` and
+  `cpython_int_type_not_subscriptable_diff_subset` for `int[int]` rejection
+  with `type 'int' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `int.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_str_type_not_subscriptable_subset` and
   `cpython_str_type_not_subscriptable_diff_subset` for `str[int]` rejection
   with `type 'str' is not subscriptable`, absent type and instance
