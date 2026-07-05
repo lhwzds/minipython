@@ -26681,6 +26681,47 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_zfill_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString zfill method behavior",
+        name: "collections-userstring-zfill-method",
+        source: r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('123')
+methods = ['zfill']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for spec in [2, 3, 4, 5, 0, -1, True, False, Width(5), BadIndex(), '4', 10**100, -10**100]:
+    print('value', type(spec).__name__, show(lambda spec=spec: u.zfill(spec)))
+for text in ['+123', '-123', '', '34']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.zfill(5)), show(lambda v=v: v.zfill(2)))
+print('keywords', show(lambda: u.zfill(width=5)), show(lambda: UserString.zfill(self=u, width=5)))
+print('type', show(lambda: UserString.zfill(u, 5)))
+print('errors', [
+    show(lambda: UserString.zfill('123', 5)),
+    show(lambda: u.zfill()),
+    show(lambda: u.zfill(5, 0)),
+    show(lambda: u.zfill(5, width=6)),
+    show(lambda: u.zfill(self=u)),
+    show(lambda: UserString.zfill()),
+    show(lambda: UserString.zfill(width=5)),
+    show(lambda: UserString.zfill(self=u)),
+    show(lambda: UserString.zfill(receiver=u, width=5)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

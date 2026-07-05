@@ -35889,6 +35889,10 @@ impl Vm {
                 let (receiver, sep) = user_string_partition_arguments(method, &args, keywords)?;
                 user_string_partition_value(&receiver, &sep, method == "partition", method)
             }
+            "zfill" => {
+                let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
+                self.user_string_zfill_value(&receiver, width)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -36083,6 +36087,19 @@ impl Vm {
         let count = self.sequence_repeat_count_operator(count)?;
         let count = repeat_count_from_integer_value(count)?;
         user_string_value(repeat_string(text, count)?)
+    }
+
+    fn user_string_zfill_value(&mut self, receiver: &Value, width: Value) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let width = self.index_integer_value(width)?;
+        let width = user_string_zfill_width(width)?;
+        let text = data.borrow();
+        user_string_value(string_zfill_text(&text, width))
     }
 
     fn user_string_concat_value(
@@ -56673,6 +56690,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "removesuffix"
             | "partition"
             | "rpartition"
+            | "zfill"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62316,6 +62334,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "strip" | "lstrip" | "rstrip"
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
+                | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90910,6 +90929,98 @@ fn user_string_partition_value(
     let after_index = index + sep_text.len();
     let after = Value::String(text[after_index..].to_string());
     Ok(tuple_value(vec![before, sep.clone(), after]))
+}
+
+fn user_string_zfill_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut width = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "width" => {
+                if width.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'width'"
+                    ));
+                }
+                width = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let Some(receiver) = receiver else {
+        return Err(if width.is_some() {
+            format!(
+                "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+            )
+        } else {
+            format!(
+                "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'width'"
+            )
+        });
+    };
+    let Some(width) = width else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'width'"
+        ));
+    };
+    Ok((receiver, width))
+}
+
+fn user_string_zfill_width(width: Value) -> Result<usize, String> {
+    match width {
+        Value::Number(value) if value <= 0 => Ok(0),
+        Value::Number(value) => usize::try_from(value)
+            .map_err(|_| "OverflowError: Python int too large to convert to C ssize_t".to_string()),
+        Value::BigInt(value) if value.is_negative() => {
+            Err("OverflowError: Python int too large to convert to C ssize_t".to_string())
+        }
+        Value::BigInt(value) => value.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(&value)
+        )),
+    }
+}
+
+fn string_zfill_text(receiver: &str, width: usize) -> String {
+    let length = receiver.chars().count();
+    if width <= length {
+        return receiver.to_string();
+    }
+
+    let zeros = "0".repeat(width - length);
+    if let Some(sign) = receiver.chars().next()
+        && matches!(sign, '+' | '-')
+    {
+        let rest: String = receiver.chars().skip(1).collect();
+        return format!("{sign}{zeros}{rest}");
+    }
+
+    format!("{zeros}{receiver}")
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

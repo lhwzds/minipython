@@ -70858,6 +70858,71 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString zfill method.
+#[test]
+fn cpython_collections_userstring_zfill_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('123')
+methods = ['zfill']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for spec in [2, 3, 4, 5, 0, -1, True, False, Width(5), BadIndex(), '4', 10**100, -10**100]:
+    print('value', type(spec).__name__, show(lambda spec=spec: u.zfill(spec)))
+for text in ['+123', '-123', '', '34']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.zfill(5)), show(lambda v=v: v.zfill(2)))
+print('keywords', show(lambda: u.zfill(width=5)), show(lambda: UserString.zfill(self=u, width=5)))
+print('type', show(lambda: UserString.zfill(u, 5)))
+print('errors', [
+    show(lambda: UserString.zfill('123', 5)),
+    show(lambda: u.zfill()),
+    show(lambda: u.zfill(5, 0)),
+    show(lambda: u.zfill(5, width=6)),
+    show(lambda: u.zfill(self=u)),
+    show(lambda: UserString.zfill()),
+    show(lambda: UserString.zfill(width=5)),
+    show(lambda: UserString.zfill(self=u)),
+    show(lambda: UserString.zfill(receiver=u, width=5)),
+])"#,
+        &[
+            "visible [('zfill', True, True)]",
+            "value int UserString:'123':'123'",
+            "value int UserString:'123':'123'",
+            "value int UserString:'0123':'0123'",
+            "value int UserString:'00123':'00123'",
+            "value int UserString:'123':'123'",
+            "value int UserString:'123':'123'",
+            "value bool UserString:'123':'123'",
+            "value bool UserString:'123':'123'",
+            "index-called 5",
+            "value Width UserString:'00123':'00123'",
+            "bad-index-called",
+            "value BadIndex TypeError:__index__ returned non-int (type str)",
+            "value str TypeError:'str' object cannot be interpreted as an integer",
+            "value int OverflowError:Python int too large to convert to C ssize_t",
+            "value int OverflowError:Python int too large to convert to C ssize_t",
+            "text '+123' UserString:'+0123':'+0123' UserString:'+123':'+123'",
+            "text '-123' UserString:'-0123':'-0123' UserString:'-123':'-123'",
+            "text '' UserString:'00000':'00000' UserString:'00':'00'",
+            "text '34' UserString:'00034':'00034' UserString:'34':'34'",
+            "keywords UserString:'00123':'00123' UserString:'00123':'00123'",
+            "type UserString:'00123':'00123'",
+            "errors [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.zfill() missing 1 required positional argument: 'width'\", 'TypeError:UserString.zfill() takes 2 positional arguments but 3 were given', \"TypeError:UserString.zfill() got multiple values for argument 'width'\", \"TypeError:UserString.zfill() got multiple values for argument 'self'\", \"TypeError:UserString.zfill() missing 2 required positional arguments: 'self' and 'width'\", \"TypeError:UserString.zfill() missing 1 required positional argument: 'self'\", \"TypeError:UserString.zfill() missing 1 required positional argument: 'width'\", \"TypeError:UserString.zfill() got an unexpected keyword argument 'receiver'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

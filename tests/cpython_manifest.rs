@@ -26534,6 +26534,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_strip_methods_subset",
             "cpython_collections_userstring_remove_affix_methods_subset",
             "cpython_collections_userstring_partition_methods_subset",
+            "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -31026,6 +31027,115 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString partition docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_zfill_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString zfill"
+    );
+    let userstring_zfill_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_zfill_method_diff_subset",
+    );
+    let userstring_zfill_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_zfill_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Width:",
+        "def __index__(self): print('index-called', self.value); return self.value",
+        "class BadIndex:",
+        "return 'x'",
+        "u = UserString('123')",
+        "methods = ['zfill']",
+        "hasattr(UserString, name)",
+        "getattr(value, 'data', None)",
+        "10**100",
+        "-10**100",
+        "v = UserString(text)",
+        "u.zfill(width=5)",
+        "UserString.zfill(self=u, width=5)",
+        "UserString.zfill(u, 5)",
+        "UserString.zfill('123', 5)",
+        "u.zfill()",
+        "u.zfill(5, 0)",
+        "u.zfill(5, width=6)",
+        "u.zfill(self=u)",
+        "UserString.zfill(receiver=u, width=5)",
+    ] {
+        assert!(
+            userstring_zfill_method_diff_body.contains(required)
+                && userstring_zfill_method_subset_body.contains(required),
+            "UserString zfill diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible [('zfill', True, True)]",
+        "value int UserString:'0123':'0123'",
+        "value int UserString:'00123':'00123'",
+        "value bool UserString:'123':'123'",
+        "index-called 5",
+        "bad-index-called",
+        "value BadIndex TypeError:__index__ returned non-int (type str)",
+        "value str TypeError:'str' object cannot be interpreted as an integer",
+        "value int OverflowError:Python int too large to convert to C ssize_t",
+        "text '+123' UserString:'+0123':'+0123' UserString:'+123':'+123'",
+        "text '-123' UserString:'-0123':'-0123' UserString:'-123':'-123'",
+        "text '' UserString:'00000':'00000' UserString:'00':'00'",
+        "keywords UserString:'00123':'00123' UserString:'00123':'00123'",
+        "type UserString:'00123':'00123'",
+        "AttributeError:'str' object has no attribute 'data'",
+        "TypeError:UserString.zfill() got multiple values for argument 'width'",
+        "TypeError:UserString.zfill() missing 2 required positional arguments: 'self' and 'width'",
+    ] {
+        assert!(
+            userstring_zfill_method_subset_body.contains(required),
+            "UserString zfill subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"zfill\" => {",
+        "fn user_string_zfill_value(",
+        "fn user_string_zfill_arguments(",
+        "fn user_string_zfill_width(",
+        "fn string_zfill_text(",
+        "user_string_zfill_arguments(method, &args, keywords)",
+        "self.user_string_zfill_value(&receiver, width)",
+        "self.index_integer_value(width)?",
+        "user_string_zfill_width(width)?",
+        "user_string_value(string_zfill_text(&text, width))",
+        "UserString.{method}() takes 2 positional arguments",
+        "got multiple values for argument 'width'",
+        "missing 2 required positional arguments: 'self' and 'width'",
+        "Python int too large to convert to C ssize_t",
+        "matches!(sign, '+' | '-')",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString zfill implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_zfill_method_subset",
+            "cpython_collections_userstring_zfill_method_diff_subset",
+            "`UserString.zfill`",
+            "UserString result wrapping",
+            "sign-aware zero padding",
+            "`width=` keyword binding",
+            "bool and negative width handling",
+            "`__index__` dispatch",
+            "oversized integer",
+            "`OverflowError`",
+            "bad receiver",
+            "without implementing full UserString alignment methods",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString zfill docs must contain `{required}`"
             );
         }
     }
