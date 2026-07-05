@@ -24016,6 +24016,9 @@ impl Vm {
             Value::String(value) | Value::IdentityString { value, .. } => {
                 parse_float_string(&value, repr_string(&value))
             }
+            Value::UserString { data, .. } => {
+                parse_float_string(&data.borrow(), repr_string(&data.borrow()))
+            }
             Value::Bytes(value) => float_value_from_bytes_like_text(&value, repr_bytes(&value)),
             Value::ByteArray(value) => {
                 let bytes = value.borrow();
@@ -35800,6 +35803,10 @@ impl Vm {
             "__int__" => {
                 let receiver = user_string_self_argument(method, &args, keywords)?;
                 user_string_int_value(&receiver)
+            }
+            "__float__" => {
+                let receiver = user_string_self_argument(method, &args, keywords)?;
+                user_string_float_value(&receiver)
             }
             "__repr__" | "__str__" => {
                 if args.len() > 1 {
@@ -54764,6 +54771,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "UserString" {
         names.push("__class_getitem__".to_string());
+        names.push("__float__".to_string());
         names.push("__int__".to_string());
     }
     names
@@ -57029,6 +57037,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__contains__"
             | "__getitem__"
             | "__hash__"
+            | "__float__"
             | "__int__"
             | "__eq__"
             | "__iter__"
@@ -62740,6 +62749,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "ljust"
                 | "rjust"
                 | "zfill"
+                | "__float__"
                 | "__int__"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -90872,6 +90882,16 @@ fn user_string_int_value(receiver: &Value) -> Result<Value, String> {
         ));
     };
     parse_int_string_base(&data.borrow(), 10)
+}
+
+fn user_string_float_value(receiver: &Value) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    parse_float_string(&data.borrow(), repr_string(&data.borrow()))
 }
 
 fn user_string_self_argument(

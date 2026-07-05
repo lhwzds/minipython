@@ -26046,6 +26046,39 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_float_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString float conversion method behavior",
+        name: "collections-userstring-float-method",
+        source: r#"from collections import UserString
+u = UserString('1.25')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__float__'), hasattr(u, '__float__'), '__float__' in dir(UserString), '__float__' in dir(u))
+for label, expr in [
+    ('float-value', lambda: float(u)),
+    ('type-method', lambda: UserString.__float__(u)),
+    ('bound', lambda: u.__float__()),
+    ('plus', lambda: float(UserString('+1.5'))),
+    ('spaces', lambda: float(UserString('  7.25  '))),
+    ('nan', lambda: float(UserString('nan'))),
+    ('inf', lambda: float(UserString('-inf'))),
+    ('bad-str', lambda: float(UserString('x'))),
+    ('bad-receiver', lambda: UserString.__float__('1.25')),
+    ('noargs', lambda: UserString.__float__()),
+    ('extra', lambda: UserString.__float__(u, 1)),
+    ('keyword', lambda: UserString.__float__(self=u)),
+    ('badkw', lambda: UserString.__float__(receiver=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

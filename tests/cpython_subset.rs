@@ -69749,6 +69749,56 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString float conversion method. This pins the
+// pure-memory `__float__` path without promoting file, process, or full stdlib
+// behavior.
+#[test]
+fn cpython_collections_userstring_float_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('1.25')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__float__'), hasattr(u, '__float__'), '__float__' in dir(UserString), '__float__' in dir(u))
+for label, expr in [
+    ('float-value', lambda: float(u)),
+    ('type-method', lambda: UserString.__float__(u)),
+    ('bound', lambda: u.__float__()),
+    ('plus', lambda: float(UserString('+1.5'))),
+    ('spaces', lambda: float(UserString('  7.25  '))),
+    ('nan', lambda: float(UserString('nan'))),
+    ('inf', lambda: float(UserString('-inf'))),
+    ('bad-str', lambda: float(UserString('x'))),
+    ('bad-receiver', lambda: UserString.__float__('1.25')),
+    ('noargs', lambda: UserString.__float__()),
+    ('extra', lambda: UserString.__float__(u, 1)),
+    ('keyword', lambda: UserString.__float__(self=u)),
+    ('badkw', lambda: UserString.__float__(receiver=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True",
+            "float-value float 1.25",
+            "type-method float 1.25",
+            "bound float 1.25",
+            "plus float 1.5",
+            "spaces float 7.25",
+            "nan float nan",
+            "inf float -inf",
+            "bad-str ValueError could not convert string to float: 'x' (\"could not convert string to float: 'x'\",)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "noargs TypeError UserString.__float__() missing 1 required positional argument: 'self' (\"UserString.__float__() missing 1 required positional argument: 'self'\",)",
+            "extra TypeError UserString.__float__() takes 1 positional argument but 2 were given ('UserString.__float__() takes 1 positional argument but 2 were given',)",
+            "keyword float 1.25",
+            "badkw TypeError UserString.__float__() got an unexpected keyword argument 'receiver' (\"UserString.__float__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

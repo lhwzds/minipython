@@ -26522,6 +26522,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_hash_method_subset",
             "cpython_collections_userstring_int_method_subset",
+            "cpython_collections_userstring_float_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -29532,6 +29533,99 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString int-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_float_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __float__"
+    );
+    let userstring_float_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_float_method_diff_subset",
+    );
+    let userstring_float_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_float_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('1.25')",
+        "hasattr(UserString, '__float__')",
+        "hasattr(u, '__float__')",
+        "'__float__' in dir(UserString)",
+        "'__float__' in dir(u)",
+        "float(u)",
+        "UserString.__float__(u)",
+        "u.__float__()",
+        "float(UserString('+1.5'))",
+        "float(UserString('  7.25  '))",
+        "float(UserString('nan'))",
+        "float(UserString('-inf'))",
+        "float(UserString('x'))",
+        "UserString.__float__('1.25')",
+        "UserString.__float__()",
+        "UserString.__float__(u, 1)",
+        "UserString.__float__(self=u)",
+        "UserString.__float__(receiver=u)",
+    ] {
+        assert!(
+            userstring_float_method_diff_body.contains(required)
+                && userstring_float_method_subset_body.contains(required),
+            "UserString float-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"float-value float 1.25\"",
+        "\"type-method float 1.25\"",
+        "\"bound float 1.25\"",
+        "\"plus float 1.5\"",
+        "\"spaces float 7.25\"",
+        "\"nan float nan\"",
+        "\"inf float -inf\"",
+        "\"bad-str ValueError could not convert string to float: 'x'",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"noargs TypeError UserString.__float__() missing 1 required positional argument: 'self'",
+        "\"extra TypeError UserString.__float__() takes 1 positional argument but 2 were given",
+        "\"keyword float 1.25\"",
+        "\"badkw TypeError UserString.__float__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_float_method_subset_body.contains(required),
+            "UserString float-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__float__\".to_string())",
+        "parse_float_string(&data.borrow(), repr_string(&data.borrow()))",
+        "fn user_string_float_value(receiver: &Value) -> Result<Value, String>",
+        "user_string_self_argument(method, &args, keywords)?",
+        "\"__float__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString float-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_float_method_subset",
+            "cpython_collections_userstring_float_method_diff_subset",
+            "`UserString.__float__`",
+            "`float(UserString(...))`",
+            "type and instance visibility",
+            "`dir(UserString)` discoverability",
+            "direct and bound method calls",
+            "signed, whitespace-padded, nan, and infinity strings",
+            "CPython `UserString.__float__` TypeError/ValueError text",
+            "without broadening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString float-method docs must contain `{required}`"
             );
         }
     }
