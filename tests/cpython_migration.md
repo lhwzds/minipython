@@ -89,6 +89,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `__class_getitem__` visibility, and CPython AttributeError shape for direct
   calls, without adding `range.__class_getitem__` or GenericAlias support,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_slice_type_not_subscriptable_subset` and
+  `cpython_slice_type_not_subscriptable_diff_subset` for `slice[int]` rejection
+  with `type 'slice' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `slice.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
