@@ -24140,6 +24140,10 @@ impl Vm {
                 let (real, imag) = parse_complex_string(&value)?;
                 Ok(ComplexParts::new(real, imag))
             }
+            Value::UserString { data, .. } => {
+                let (real, imag) = parse_complex_string(&data.borrow())?;
+                Ok(ComplexParts::new(real, imag))
+            }
             value => self.complex_parts_from_numeric(value, true, |value| {
                 format!(
                     "TypeError: complex() argument must be a string or a number, not {}",
@@ -24206,6 +24210,17 @@ impl Vm {
                 let mut parts = ComplexParts::new(real, imag);
                 parts.complex_compatible_type = complex_compatible_type;
                 Ok(parts)
+            }
+            Value::UserString { data, .. } => {
+                if allow_complex_protocol {
+                    let (real, imag) = parse_complex_string(&data.borrow())?;
+                    Ok(ComplexParts::new(real, imag))
+                } else {
+                    match parse_float_string(&data.borrow(), repr_string(&data.borrow()))? {
+                        Value::Float(value) => Ok(ComplexParts::new(*value, 0.0)),
+                        _ => unreachable!("parse_float_string returns a float"),
+                    }
+                }
             }
             value => {
                 if let Some(method) = instance_special_method(&value, "__float__") {
@@ -35807,6 +35822,10 @@ impl Vm {
             "__float__" => {
                 let receiver = user_string_self_argument(method, &args, keywords)?;
                 user_string_float_value(&receiver)
+            }
+            "__complex__" => {
+                let receiver = user_string_self_argument(method, &args, keywords)?;
+                user_string_complex_value(&receiver)
             }
             "__repr__" | "__str__" => {
                 if args.len() > 1 {
@@ -54771,6 +54790,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "UserString" {
         names.push("__class_getitem__".to_string());
+        names.push("__complex__".to_string());
         names.push("__float__".to_string());
         names.push("__int__".to_string());
     }
@@ -57035,6 +57055,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
         name,
         "__add__"
             | "__contains__"
+            | "__complex__"
             | "__getitem__"
             | "__hash__"
             | "__float__"
@@ -62749,6 +62770,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "ljust"
                 | "rjust"
                 | "zfill"
+                | "__complex__"
                 | "__float__"
                 | "__int__"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
@@ -90892,6 +90914,17 @@ fn user_string_float_value(receiver: &Value) -> Result<Value, String> {
         ));
     };
     parse_float_string(&data.borrow(), repr_string(&data.borrow()))
+}
+
+fn user_string_complex_value(receiver: &Value) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let (real, imag) = parse_complex_string(&data.borrow())?;
+    Ok(complex_value(real, imag))
 }
 
 fn user_string_self_argument(

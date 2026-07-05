@@ -69799,6 +69799,70 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString complex conversion method. This pins the
+// pure-memory `__complex__` and `complex(UserString(...))` paths without
+// promoting file, process, or full stdlib behavior.
+#[test]
+fn cpython_collections_userstring_complex_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('1+2j')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__complex__'), hasattr(u, '__complex__'), '__complex__' in dir(UserString), '__complex__' in dir(u))
+for label, expr in [
+    ('complex-value', lambda: complex(u)),
+    ('type-method', lambda: UserString.__complex__(u)),
+    ('bound', lambda: u.__complex__()),
+    ('real', lambda: complex(UserString('1.25'))),
+    ('plus', lambda: complex(UserString('+1.5'))),
+    ('spaces', lambda: complex(UserString('  7.25  '))),
+    ('imag', lambda: complex(UserString('-3j'))),
+    ('nan', lambda: complex(UserString('nan'))),
+    ('infj', lambda: complex(UserString('-infj'))),
+    ('imag-userstring-int', lambda: complex(1, UserString('2'))),
+    ('imag-userstring-float', lambda: complex(1, UserString('2.5'))),
+    ('both-userstring', lambda: complex(UserString('1'), UserString('2'))),
+    ('real-complex-string-with-imag', lambda: complex(UserString('1+2j'), 3)),
+    ('bad-str', lambda: complex(UserString('x'))),
+    ('two-args', lambda: complex(UserString('1'), 2)),
+    ('bad-receiver', lambda: UserString.__complex__('1+2j')),
+    ('noargs', lambda: UserString.__complex__()),
+    ('extra', lambda: UserString.__complex__(u, 1)),
+    ('keyword', lambda: UserString.__complex__(self=u)),
+    ('badkw', lambda: UserString.__complex__(receiver=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True",
+            "complex-value complex (1+2j)",
+            "type-method complex (1+2j)",
+            "bound complex (1+2j)",
+            "real complex (1.25+0j)",
+            "plus complex (1.5+0j)",
+            "spaces complex (7.25+0j)",
+            "imag complex -3j",
+            "nan complex (nan+0j)",
+            "infj complex -infj",
+            "imag-userstring-int complex (1+2j)",
+            "imag-userstring-float complex (1+2.5j)",
+            "both-userstring complex (1+2j)",
+            "real-complex-string-with-imag complex (1+5j)",
+            "bad-str ValueError complex() arg is a malformed string ('complex() arg is a malformed string',)",
+            "two-args complex (1+2j)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "noargs TypeError UserString.__complex__() missing 1 required positional argument: 'self' (\"UserString.__complex__() missing 1 required positional argument: 'self'\",)",
+            "extra TypeError UserString.__complex__() takes 1 positional argument but 2 were given ('UserString.__complex__() takes 1 positional argument but 2 were given',)",
+            "keyword complex (1+2j)",
+            "badkw TypeError UserString.__complex__() got an unexpected keyword argument 'receiver' (\"UserString.__complex__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

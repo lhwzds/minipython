@@ -26079,6 +26079,46 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_complex_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString complex conversion method behavior",
+        name: "collections-userstring-complex-method",
+        source: r#"from collections import UserString
+u = UserString('1+2j')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__complex__'), hasattr(u, '__complex__'), '__complex__' in dir(UserString), '__complex__' in dir(u))
+for label, expr in [
+    ('complex-value', lambda: complex(u)),
+    ('type-method', lambda: UserString.__complex__(u)),
+    ('bound', lambda: u.__complex__()),
+    ('real', lambda: complex(UserString('1.25'))),
+    ('plus', lambda: complex(UserString('+1.5'))),
+    ('spaces', lambda: complex(UserString('  7.25  '))),
+    ('imag', lambda: complex(UserString('-3j'))),
+    ('nan', lambda: complex(UserString('nan'))),
+    ('infj', lambda: complex(UserString('-infj'))),
+    ('imag-userstring-int', lambda: complex(1, UserString('2'))),
+    ('imag-userstring-float', lambda: complex(1, UserString('2.5'))),
+    ('both-userstring', lambda: complex(UserString('1'), UserString('2'))),
+    ('real-complex-string-with-imag', lambda: complex(UserString('1+2j'), 3)),
+    ('bad-str', lambda: complex(UserString('x'))),
+    ('two-args', lambda: complex(UserString('1'), 2)),
+    ('bad-receiver', lambda: UserString.__complex__('1+2j')),
+    ('noargs', lambda: UserString.__complex__()),
+    ('extra', lambda: UserString.__complex__(u, 1)),
+    ('keyword', lambda: UserString.__complex__(self=u)),
+    ('badkw', lambda: UserString.__complex__(receiver=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",
