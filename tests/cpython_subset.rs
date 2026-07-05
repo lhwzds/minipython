@@ -69701,6 +69701,90 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString equality method dispatch. This keeps the
+// supported surface to `==` and direct `__eq__` calls without promoting the
+// remaining rich-comparison or string-method proxy surface.
+#[test]
+fn cpython_collections_userstring_eq_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+cases = [
+    ('expr-str-hit', lambda: u == 'abé'),
+    ('expr-str-miss', lambda: u == 'ab'),
+    ('expr-str-left-hit', lambda: 'abé' == u),
+    ('expr-userstring-hit', lambda: u == UserString('abé')),
+    ('expr-userstring-miss', lambda: u == UserString('ab')),
+    ('expr-int', lambda: u == 1),
+    ('expr-strlike', lambda: u == S()),
+    ('method-str-hit', lambda: u.__eq__('abé')),
+    ('method-str-miss', lambda: u.__eq__('ab')),
+    ('method-userstring-hit', lambda: u.__eq__(UserString('abé'))),
+    ('method-userstring-miss', lambda: u.__eq__(UserString('ab'))),
+    ('method-int', lambda: u.__eq__(1)),
+    ('method-strlike', lambda: u.__eq__(S())),
+    ('method-stringkw', lambda: u.__eq__(string='abé')),
+    ('type-method', lambda: UserString.__eq__(u, 'abé')),
+    ('type-method-userstring', lambda: UserString.__eq__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__eq__(u, string='abé')),
+    ('type-self-stringkw', lambda: UserString.__eq__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__eq__('abé', 'abé')),
+    ('method-noargs', lambda: u.__eq__()),
+    ('method-extra', lambda: u.__eq__('a', 'b')),
+    ('method-badkw', lambda: u.__eq__(value='a')),
+    ('method-otherkw', lambda: u.__eq__(other='a')),
+    ('method-multi-string', lambda: u.__eq__('a', string='b')),
+    ('bound-self-only', lambda: u.__eq__(self=u)),
+    ('type-noargs', lambda: UserString.__eq__()),
+    ('type-string-only', lambda: UserString.__eq__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__eq__(self=u)),
+    ('type-multi-self', lambda: UserString.__eq__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__eq__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "expr-str-hit bool True",
+            "expr-str-miss bool False",
+            "expr-str-left-hit bool True",
+            "expr-userstring-hit bool True",
+            "expr-userstring-miss bool False",
+            "expr-int bool False",
+            "expr-strlike bool False",
+            "method-str-hit bool True",
+            "method-str-miss bool False",
+            "method-userstring-hit bool True",
+            "method-userstring-miss bool False",
+            "method-int bool False",
+            "method-strlike bool False",
+            "method-stringkw bool True",
+            "type-method bool True",
+            "type-method-userstring bool True",
+            "type-stringkw bool True",
+            "type-self-stringkw bool True",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-noargs TypeError UserString.__eq__() missing 1 required positional argument: 'string' (\"UserString.__eq__() missing 1 required positional argument: 'string'\",)",
+            "method-extra TypeError UserString.__eq__() takes 2 positional arguments but 3 were given ('UserString.__eq__() takes 2 positional arguments but 3 were given',)",
+            "method-badkw TypeError UserString.__eq__() got an unexpected keyword argument 'value' (\"UserString.__eq__() got an unexpected keyword argument 'value'\",)",
+            "method-otherkw TypeError UserString.__eq__() got an unexpected keyword argument 'other' (\"UserString.__eq__() got an unexpected keyword argument 'other'\",)",
+            "method-multi-string TypeError UserString.__eq__() got multiple values for argument 'string' (\"UserString.__eq__() got multiple values for argument 'string'\",)",
+            "bound-self-only TypeError UserString.__eq__() got multiple values for argument 'self' (\"UserString.__eq__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__eq__() missing 2 required positional arguments: 'self' and 'string' (\"UserString.__eq__() missing 2 required positional arguments: 'self' and 'string'\",)",
+            "type-string-only TypeError UserString.__eq__() missing 1 required positional argument: 'self' (\"UserString.__eq__() missing 1 required positional argument: 'self'\",)",
+            "type-self-only-kw TypeError UserString.__eq__() missing 1 required positional argument: 'string' (\"UserString.__eq__() missing 1 required positional argument: 'string'\",)",
+            "type-multi-self TypeError UserString.__eq__() got multiple values for argument 'self' (\"UserString.__eq__() got multiple values for argument 'self'\",)",
+            "type-badkw-self TypeError UserString.__eq__() got an unexpected keyword argument 'receiver' (\"UserString.__eq__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

@@ -26521,6 +26521,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_len_method_subset",
             "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_hash_method_subset",
+            "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29410,6 +29411,129 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString hash-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_eq_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __eq__"
+    );
+    let userstring_eq_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_eq_method_diff_subset",
+    );
+    let userstring_eq_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_eq_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S:",
+        "u == 'abé'",
+        "'abé' == u",
+        "u == UserString('abé')",
+        "u == 1",
+        "u == S()",
+        "u.__eq__('abé')",
+        "u.__eq__(UserString('abé'))",
+        "u.__eq__(1)",
+        "u.__eq__(S())",
+        "u.__eq__(string='abé')",
+        "UserString.__eq__(u, 'abé')",
+        "UserString.__eq__(u, UserString('abé'))",
+        "UserString.__eq__(u, string='abé')",
+        "UserString.__eq__(self=u, string='abé')",
+        "UserString.__eq__('abé', 'abé')",
+        "u.__eq__()",
+        "u.__eq__('a', 'b')",
+        "u.__eq__(value='a')",
+        "u.__eq__(other='a')",
+        "u.__eq__('a', string='b')",
+        "u.__eq__(self=u)",
+        "UserString.__eq__()",
+        "UserString.__eq__(string='abé')",
+        "UserString.__eq__(self=u)",
+        "UserString.__eq__(u, self=u, string='abé')",
+        "UserString.__eq__(receiver=u, string='abé')",
+    ] {
+        assert!(
+            userstring_eq_method_diff_body.contains(required)
+                && userstring_eq_method_subset_body.contains(required),
+            "UserString eq-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"expr-str-hit bool True\"",
+        "\"expr-str-miss bool False\"",
+        "\"expr-str-left-hit bool True\"",
+        "\"expr-userstring-hit bool True\"",
+        "\"expr-userstring-miss bool False\"",
+        "\"expr-int bool False\"",
+        "\"expr-strlike bool False\"",
+        "\"method-str-hit bool True\"",
+        "\"method-userstring-hit bool True\"",
+        "\"method-int bool False\"",
+        "\"method-stringkw bool True\"",
+        "\"type-method bool True\"",
+        "\"type-self-stringkw bool True\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__eq__() missing 1 required positional argument: 'string'",
+        "\"method-extra TypeError UserString.__eq__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__eq__() got an unexpected keyword argument 'value'",
+        "\"method-otherkw TypeError UserString.__eq__() got an unexpected keyword argument 'other'",
+        "\"method-multi-string TypeError UserString.__eq__() got multiple values for argument 'string'",
+        "\"bound-self-only TypeError UserString.__eq__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__eq__() missing 2 required positional arguments: 'self' and 'string'",
+        "\"type-string-only TypeError UserString.__eq__() missing 1 required positional argument: 'self'",
+        "\"type-self-only-kw TypeError UserString.__eq__() missing 1 required positional argument: 'string'",
+        "\"type-multi-self TypeError UserString.__eq__() got multiple values for argument 'self'",
+        "\"type-badkw-self TypeError UserString.__eq__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_eq_method_subset_body.contains(required),
+            "UserString eq-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "UserString.__eq__() takes 2 positional arguments but",
+        "UserString.__eq__() got an unexpected keyword argument",
+        "UserString.__eq__() got multiple values for argument 'self'",
+        "UserString.__eq__() got multiple values for argument 'string'",
+        "UserString.__eq__() missing 2 required positional arguments: 'self' and 'string'",
+        "UserString.__eq__() missing 1 required positional argument: 'self'",
+        "UserString.__eq__() missing 1 required positional argument: 'string'",
+        "user_string_equal_value(",
+        "fn user_string_equal_value(left: &str, right: &Value) -> bool",
+        "fn user_string_rich_equal_values(left: &Value, right: &Value) -> Option<bool>",
+        "user_string_rich_equal_values(left, right)",
+        "Value::UserString { data, .. } => left == data.borrow().as_str()",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__eq__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString eq-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_eq_method_subset",
+            "cpython_collections_userstring_eq_method_diff_subset",
+            "`UserString.__eq__`",
+            "`==` expression",
+            "`string=` keyword binding",
+            "`self=` keyword binding",
+            "non-string operands",
+            "bad receiver",
+            "without implementing `UserString.__ne__`",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString eq-method docs must contain `{required}`"
             );
         }
     }

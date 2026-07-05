@@ -33294,6 +33294,10 @@ impl Vm {
             return Ok(value);
         }
 
+        if let Some(value) = user_string_rich_equal_values(left, right) {
+            return Ok(value);
+        }
+
         if let Some(message) = bytes_comparison_warning_message(left, right) {
             self.emit_bytes_comparison_warning(message)?;
         }
@@ -35486,6 +35490,69 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
+            "__eq__" => {
+                if args.len() > 2 {
+                    return Err(format!(
+                        "TypeError: UserString.__eq__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                let mut string = args.get(1).cloned();
+                for (name, value) in keywords {
+                    match name.as_str() {
+                        "self" => {
+                            if receiver.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__eq__() got multiple values for argument 'self'"
+                                        .to_string(),
+                                );
+                            }
+                            receiver = Some(value);
+                        }
+                        "string" => {
+                            if string.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__eq__() got multiple values for argument 'string'"
+                                        .to_string(),
+                                );
+                            }
+                            string = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: UserString.__eq__() got an unexpected keyword argument '{name}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        if string.is_some() {
+                            "TypeError: UserString.__eq__() missing 1 required positional argument: 'self'"
+                        } else {
+                            "TypeError: UserString.__eq__() missing 2 required positional arguments: 'self' and 'string'"
+                        }
+                        .to_string(),
+                    );
+                };
+                let Some(string) = string else {
+                    return Err(
+                        "TypeError: UserString.__eq__() missing 1 required positional argument: 'string'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { data, .. } = &receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(&receiver)
+                    ));
+                };
+                Ok(Value::Bool(user_string_equal_value(
+                    &data.borrow(),
+                    &string,
+                )))
+            }
             "__hash__" => {
                 if args.len() > 1 {
                     return Err(format!(
@@ -56155,6 +56222,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
         "__contains__"
             | "__getitem__"
             | "__hash__"
+            | "__eq__"
             | "__iter__"
             | "__len__"
             | "__repr__"
@@ -61776,8 +61844,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__contains__" | "__getitem__" | "__hash__" | "__iter__" | "__len__"
-                | "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                "__contains__" | "__eq__" | "__getitem__" | "__hash__" | "__iter__"
+                | "__len__" | "__repr__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
@@ -89756,6 +89824,31 @@ fn user_string_contains_value(haystack: &str, needle: Value) -> Result<bool, Str
         }
     };
     Ok(haystack.contains(&needle))
+}
+
+fn user_string_equal_value(left: &str, right: &Value) -> bool {
+    match right {
+        Value::String(value) | Value::IdentityString { value, .. } => left == value,
+        Value::UserString { data, .. } => left == data.borrow().as_str(),
+        value if str_subclass_string(value).is_some() => {
+            left == str_subclass_string(value)
+                .expect("str subclass storage exists after guard")
+                .as_str()
+        }
+        _ => false,
+    }
+}
+
+fn user_string_rich_equal_values(left: &Value, right: &Value) -> Option<bool> {
+    match (left, right) {
+        (Value::UserString { data, .. }, value) => {
+            Some(user_string_equal_value(&data.borrow(), value))
+        }
+        (value, Value::UserString { data, .. }) => {
+            Some(user_string_equal_value(&data.borrow(), value))
+        }
+        _ => None,
+    }
 }
 
 fn user_string_iter_value(value: &str) -> Result<Value, String> {

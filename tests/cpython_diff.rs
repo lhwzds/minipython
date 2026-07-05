@@ -26014,6 +26014,57 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_eq_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString equality method behavior",
+        name: "collections-userstring-eq-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+cases = [
+    ('expr-str-hit', lambda: u == 'abé'),
+    ('expr-str-miss', lambda: u == 'ab'),
+    ('expr-str-left-hit', lambda: 'abé' == u),
+    ('expr-userstring-hit', lambda: u == UserString('abé')),
+    ('expr-userstring-miss', lambda: u == UserString('ab')),
+    ('expr-int', lambda: u == 1),
+    ('expr-strlike', lambda: u == S()),
+    ('method-str-hit', lambda: u.__eq__('abé')),
+    ('method-str-miss', lambda: u.__eq__('ab')),
+    ('method-userstring-hit', lambda: u.__eq__(UserString('abé'))),
+    ('method-userstring-miss', lambda: u.__eq__(UserString('ab'))),
+    ('method-int', lambda: u.__eq__(1)),
+    ('method-strlike', lambda: u.__eq__(S())),
+    ('method-stringkw', lambda: u.__eq__(string='abé')),
+    ('type-method', lambda: UserString.__eq__(u, 'abé')),
+    ('type-method-userstring', lambda: UserString.__eq__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__eq__(u, string='abé')),
+    ('type-self-stringkw', lambda: UserString.__eq__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__eq__('abé', 'abé')),
+    ('method-noargs', lambda: u.__eq__()),
+    ('method-extra', lambda: u.__eq__('a', 'b')),
+    ('method-badkw', lambda: u.__eq__(value='a')),
+    ('method-otherkw', lambda: u.__eq__(other='a')),
+    ('method-multi-string', lambda: u.__eq__('a', string='b')),
+    ('bound-self-only', lambda: u.__eq__(self=u)),
+    ('type-noargs', lambda: UserString.__eq__()),
+    ('type-string-only', lambda: UserString.__eq__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__eq__(self=u)),
+    ('type-multi-self', lambda: UserString.__eq__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__eq__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
