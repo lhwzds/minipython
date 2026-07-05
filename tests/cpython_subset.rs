@@ -69969,6 +69969,48 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString inherited object.__sizeof__ method.
+// This pins descriptor binding and TypeError text without depending on
+// CPython allocation sizes or object-layout internals.
+#[test]
+fn cpython_collections_userstring_inherited_sizeof_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, isinstance(value, int), value > 0)
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__sizeof__'), hasattr(u, '__sizeof__'), '__sizeof__' in dir(UserString), '__sizeof__' in dir(u), UserString.__sizeof__ is object.__sizeof__, type(UserString.__sizeof__).__name__, type(u.__sizeof__).__name__)
+for label, expr in [
+    ('bound', lambda: u.__sizeof__()),
+    ('object-direct', lambda: object.__sizeof__(u)),
+    ('type-direct', lambda: UserString.__sizeof__(u)),
+    ('bad-receiver', lambda: UserString.__sizeof__('abé')),
+    ('int-receiver', lambda: UserString.__sizeof__(1)),
+    ('noargs', lambda: UserString.__sizeof__()),
+    ('extra', lambda: UserString.__sizeof__(u, 1)),
+    ('badkw', lambda: UserString.__sizeof__(u, x=1)),
+    ('keyword-only', lambda: UserString.__sizeof__(self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True method_descriptor builtin_function_or_method",
+            "bound int True True",
+            "object-direct int True True",
+            "type-direct int True True",
+            "bad-receiver int True True",
+            "int-receiver int True True",
+            "noargs TypeError unbound method object.__sizeof__() needs an argument ('unbound method object.__sizeof__() needs an argument',)",
+            "extra TypeError object.__sizeof__() takes no arguments (1 given) ('object.__sizeof__() takes no arguments (1 given)',)",
+            "badkw TypeError object.__sizeof__() takes no keyword arguments ('object.__sizeof__() takes no keyword arguments',)",
+            "keyword-only TypeError unbound method object.__sizeof__() needs an argument ('unbound method object.__sizeof__() needs an argument',)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

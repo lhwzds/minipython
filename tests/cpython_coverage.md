@@ -250,6 +250,15 @@ Recent runtime migration notes:
   rejection, str-subclass format specs, and CPython `object.__format__`
   TypeError text, without widening host IO, network, process, C ABI, or full
   stdlib scope.
+- `cpython_collections_userstring_inherited_sizeof_method_subset`, backed by
+  `cpython_collections_userstring_inherited_sizeof_method_diff_subset`, now
+  pins `UserString.__sizeof__` as inherited `object.__sizeof__`, including
+  type and instance visibility, `dir(UserString)` discoverability,
+  `UserString.__sizeof__ is object.__sizeof__`, `method_descriptor` metadata,
+  direct and bound method calls, bad receiver support, and CPython `object.__sizeof__` TypeError text,
+  without depending on CPython allocation sizes or object-layout internals and
+  without widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -1574,6 +1583,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_complex_method_diff_subset`,
   `cpython_collections_userstring_getnewargs_method_diff_subset`,
   `cpython_collections_userstring_dunder_format_method_diff_subset`,
+  `cpython_collections_userstring_inherited_sizeof_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
@@ -7502,6 +7512,15 @@ without adding general custom encoder/decoder class support.
   calls, bad receiver support, non-empty format-spec rejection, str-subclass
   format specs, and CPython `object.__format__` TypeError text, without
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_sizeof_method_diff_subset` and
+  `cpython_collections_userstring_inherited_sizeof_method_subset`, covering
+  `UserString.__sizeof__` as inherited `object.__sizeof__`, type and instance
+  visibility, `dir(UserString)` discoverability, `UserString.__sizeof__ is
+  object.__sizeof__`, `method_descriptor` metadata, direct and bound method
+  calls, bad receiver support, and CPython `object.__sizeof__` TypeError text,
+  without depending on CPython allocation sizes or object-layout internals and
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

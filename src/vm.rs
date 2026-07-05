@@ -16689,7 +16689,26 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let mut duplicate_keyword = None;
+        let mut seen_keywords: Vec<String> = Vec::new();
+        for (keyword, _) in &keywords {
+            if seen_keywords.iter().any(|seen| seen == keyword) {
+                duplicate_keyword.get_or_insert(keyword.clone());
+                continue;
+            }
+            seen_keywords.push(keyword.clone());
+        }
+        if let Some(keyword) = duplicate_keyword {
+            return Err(format!(
+                "TypeError: object.__sizeof__() got multiple values for keyword argument '{keyword}'"
+            ));
+        }
         if !keywords.is_empty() {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: unbound method object.__sizeof__() needs an argument".to_string(),
+                );
+            }
             return Err("TypeError: object.__sizeof__() takes no keyword arguments".to_string());
         }
 
@@ -54862,6 +54881,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
         names.push("__rmod__".to_string());
+        names.push("__sizeof__".to_string());
     }
     names
 }
@@ -62813,6 +62833,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
+                "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -64763,6 +64784,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__sizeof__" => {
+            Ok(Value::Builtin("object.__sizeof__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__rmul__" => {
             Ok(Value::Builtin("UserString.__mul__".to_string()))

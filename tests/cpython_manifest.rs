@@ -26526,6 +26526,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_complex_method_subset",
             "cpython_collections_userstring_getnewargs_method_subset",
             "cpython_collections_userstring_dunder_format_method_subset",
+            "cpython_collections_userstring_inherited_sizeof_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -29937,6 +29938,99 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString format-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_sizeof_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __sizeof__"
+    );
+    let userstring_sizeof_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_sizeof_method_diff_subset",
+    );
+    let userstring_sizeof_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_sizeof_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hasattr(UserString, '__sizeof__')",
+        "hasattr(u, '__sizeof__')",
+        "'__sizeof__' in dir(UserString)",
+        "'__sizeof__' in dir(u)",
+        "UserString.__sizeof__ is object.__sizeof__",
+        "type(UserString.__sizeof__).__name__",
+        "type(u.__sizeof__).__name__",
+        "u.__sizeof__()",
+        "object.__sizeof__(u)",
+        "UserString.__sizeof__(u)",
+        "UserString.__sizeof__('abé')",
+        "UserString.__sizeof__(1)",
+        "UserString.__sizeof__()",
+        "UserString.__sizeof__(u, 1)",
+        "UserString.__sizeof__(u, x=1)",
+        "UserString.__sizeof__(self=u)",
+    ] {
+        assert!(
+            userstring_sizeof_method_diff_body.contains(required)
+                && userstring_sizeof_method_subset_body.contains(required),
+            "UserString sizeof-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True method_descriptor builtin_function_or_method\"",
+        "\"bound int True True\"",
+        "\"object-direct int True True\"",
+        "\"type-direct int True True\"",
+        "\"bad-receiver int True True\"",
+        "\"int-receiver int True True\"",
+        "\"noargs TypeError unbound method object.__sizeof__() needs an argument",
+        "\"extra TypeError object.__sizeof__() takes no arguments (1 given)",
+        "\"badkw TypeError object.__sizeof__() takes no keyword arguments",
+        "\"keyword-only TypeError unbound method object.__sizeof__() needs an argument",
+    ] {
+        assert!(
+            userstring_sizeof_method_subset_body.contains(required),
+            "UserString sizeof-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__sizeof__\".to_string())",
+        "function_name == \"UserString\" && name == \"__sizeof__\"",
+        "Ok(Value::Builtin(\"object.__sizeof__\".to_string()))",
+        "object_sizeof_bound_method(Value::UserString { data, attrs })",
+        "Value::Builtin(name) if name == \"object.__sizeof__\"",
+        "self.call_object_sizeof(args, keywords)",
+        "fn call_object_sizeof(",
+        "\"TypeError: unbound method object.__sizeof__() needs an argument\"",
+        "\"TypeError: object.__sizeof__() takes no arguments",
+        "\"TypeError: object.__sizeof__() takes no keyword arguments\"",
+        "\"TypeError: object.__sizeof__() got multiple values for keyword argument",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString sizeof-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_sizeof_method_subset",
+            "cpython_collections_userstring_inherited_sizeof_method_diff_subset",
+            "`UserString.__sizeof__`",
+            "inherited `object.__sizeof__`",
+            "`UserString.__sizeof__ is object.__sizeof__`",
+            "method_descriptor",
+            "bad receiver support",
+            "CPython `object.__sizeof__` TypeError text",
+            "without depending on CPython allocation sizes or object-layout internals",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString sizeof-method docs must contain `{required}`"
             );
         }
     }

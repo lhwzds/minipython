@@ -26189,6 +26189,35 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_sizeof_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__sizeof__ behavior",
+        name: "collections-userstring-inherited-sizeof-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, isinstance(value, int), value > 0)
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__sizeof__'), hasattr(u, '__sizeof__'), '__sizeof__' in dir(UserString), '__sizeof__' in dir(u), UserString.__sizeof__ is object.__sizeof__, type(UserString.__sizeof__).__name__, type(u.__sizeof__).__name__)
+for label, expr in [
+    ('bound', lambda: u.__sizeof__()),
+    ('object-direct', lambda: object.__sizeof__(u)),
+    ('type-direct', lambda: UserString.__sizeof__(u)),
+    ('bad-receiver', lambda: UserString.__sizeof__('abé')),
+    ('int-receiver', lambda: UserString.__sizeof__(1)),
+    ('noargs', lambda: UserString.__sizeof__()),
+    ('extra', lambda: UserString.__sizeof__(u, 1)),
+    ('badkw', lambda: UserString.__sizeof__(u, x=1)),
+    ('keyword-only', lambda: UserString.__sizeof__(self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",
