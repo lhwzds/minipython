@@ -52077,7 +52077,7 @@ fn cpython_type_parameters_missing_for_nongeneric_subset() {
 #[test]
 fn cpython_type_namespace_order_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\nrecursive = OrderedDict()\nrecursive['self'] = recursive\nprint(repr(recursive), recursive.__repr__(), str(recursive))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nfk = OrderedDict.fromkeys(['b', 'a'], 3)\nifk = od.fromkeys(['x', 'y'])\nprint(type(fk).__name__, repr(fk), list(fk.items()))\nprint(type(ifk).__name__, repr(ifk), list(ifk.items()))\ncopy = od.copy()\ntcopy = OrderedDict.copy(od)\nprint(type(copy).__name__, repr(copy), copy == od, copy is od)\nprint(type(tcopy).__name__, repr(tcopy), tcopy == od, tcopy is od)\nother = OrderedDict([('b', 2), ('a', 1)])\nplain = {'b': 2, 'a': 1}\nprint(od.__eq__(other), od.__ne__(other), OrderedDict.__eq__(od, other), OrderedDict.__ne__(od, other))\nprint(od.__eq__(plain), od.__ne__(plain), OrderedDict.__eq__(od, []), OrderedDict.__ne__(od, []))\nunion = od | {'c': 3}\nrunion = {'z': 0} | od\ndunion = OrderedDict.__or__(od, {'d': 4})\nprint(type(union).__name__, repr(union), list(union.items()))\nprint(type(runion).__name__, repr(runion), list(runion.items()))\nprint(type(dunion).__name__, repr(dunion), OrderedDict.__or__(od, []))\nmut = OrderedDict([('a', 1)])\nret = mut.__ior__({'b': 2})\nmut |= {'c': 3}\nprint(type(ret).__name__, ret is mut, list(mut.items()))\nfor args in [(), (False,)]:\n    sample = OrderedDict([('a', 1), ('b', 2)])\n    print(sample.popitem(*args), list(sample.items()))\nsample = OrderedDict([('a', 1), ('b', 2)])\nprint(sample.popitem(last=False), list(sample.items()))\nprint(list(od.__reversed__()), list(OrderedDict.__reversed__(od)))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\nrecursive = OrderedDict()\nrecursive['self'] = recursive\nprint(repr(recursive), recursive.__repr__(), str(recursive))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nprint('class-getitem-visible', hasattr(OrderedDict, '__class_getitem__'), '__class_getitem__' in dir(OrderedDict), type(OrderedDict.__class_getitem__).__name__)\nprint('class-getitem-instance-visible', hasattr(od, '__class_getitem__'), '__class_getitem__' in dir(od))\nalias = OrderedDict.__class_getitem__(int)\nprint('class-getitem-direct', repr(alias), alias == OrderedDict[int], alias.__origin__ is OrderedDict, alias.__args__)\nalias = od.__class_getitem__(int)\nprint('class-getitem-instance', repr(alias), alias == OrderedDict[int], alias.__origin__ is OrderedDict)\nalias = OrderedDict.__class_getitem__((str, int))\nprint('class-getitem-tuple', repr(alias), alias == OrderedDict[str, int], alias.__args__)\nfor label, thunk in [\n    ('class-getitem-noargs', lambda: OrderedDict.__class_getitem__()),\n    ('class-getitem-extra', lambda: OrderedDict.__class_getitem__(int, str)),\n    ('class-getitem-keyword', lambda: OrderedDict.__class_getitem__(item=int)),\n]:\n    try:\n        thunk()\n    except Exception as error:\n        print(label, type(error).__name__, str(error), getattr(error, 'args', None))\nfk = OrderedDict.fromkeys(['b', 'a'], 3)\nifk = od.fromkeys(['x', 'y'])\nprint(type(fk).__name__, repr(fk), list(fk.items()))\nprint(type(ifk).__name__, repr(ifk), list(ifk.items()))\ncopy = od.copy()\ntcopy = OrderedDict.copy(od)\nprint(type(copy).__name__, repr(copy), copy == od, copy is od)\nprint(type(tcopy).__name__, repr(tcopy), tcopy == od, tcopy is od)\nother = OrderedDict([('b', 2), ('a', 1)])\nplain = {'b': 2, 'a': 1}\nprint(od.__eq__(other), od.__ne__(other), OrderedDict.__eq__(od, other), OrderedDict.__ne__(od, other))\nprint(od.__eq__(plain), od.__ne__(plain), OrderedDict.__eq__(od, []), OrderedDict.__ne__(od, []))\nunion = od | {'c': 3}\nrunion = {'z': 0} | od\ndunion = OrderedDict.__or__(od, {'d': 4})\nprint(type(union).__name__, repr(union), list(union.items()))\nprint(type(runion).__name__, repr(runion), list(runion.items()))\nprint(type(dunion).__name__, repr(dunion), OrderedDict.__or__(od, []))\nmut = OrderedDict([('a', 1)])\nret = mut.__ior__({'b': 2})\nmut |= {'c': 3}\nprint(type(ret).__name__, ret is mut, list(mut.items()))\nfor args in [(), (False,)]:\n    sample = OrderedDict([('a', 1), ('b', 2)])\n    print(sample.popitem(*args), list(sample.items()))\nsample = OrderedDict([('a', 1), ('b', 2)])\nprint(sample.popitem(last=False), list(sample.items()))\nprint(list(od.__reversed__()), list(OrderedDict.__reversed__(od)))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'fromkeys' in dir(OrderedDict), '__class_getitem__' in dir(OrderedDict), 'move_to_end' in dir(od), '__class_getitem__' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))",
         &[
             "collections OrderedDict str True",
             "str True",
@@ -52086,6 +52086,14 @@ fn cpython_type_namespace_order_subset() {
             "OrderedDict({'self': ...}) OrderedDict({'self': ...}) OrderedDict({'self': ...})",
             "TypeError",
             "collections.OrderedDict[str, int] True collections",
+            "class-getitem-visible True True builtin_function_or_method",
+            "class-getitem-instance-visible True True",
+            "class-getitem-direct collections.OrderedDict[int] True True (<class 'int'>,)",
+            "class-getitem-instance collections.OrderedDict[int] True True",
+            "class-getitem-tuple collections.OrderedDict[str, int] True (<class 'str'>, <class 'int'>)",
+            "class-getitem-noargs TypeError OrderedDict.__class_getitem__() takes exactly one argument (0 given) ('OrderedDict.__class_getitem__() takes exactly one argument (0 given)',)",
+            "class-getitem-extra TypeError OrderedDict.__class_getitem__() takes exactly one argument (2 given) ('OrderedDict.__class_getitem__() takes exactly one argument (2 given)',)",
+            "class-getitem-keyword TypeError OrderedDict.__class_getitem__() takes no keyword arguments ('OrderedDict.__class_getitem__() takes no keyword arguments',)",
             "OrderedDict OrderedDict({'b': 3, 'a': 3}) [('b', 3), ('a', 3)]",
             "OrderedDict OrderedDict({'x': None, 'y': None}) [('x', None), ('y', None)]",
             "OrderedDict OrderedDict({'a': 1, 'b': 2}) True False",
@@ -52103,7 +52111,47 @@ fn cpython_type_namespace_order_subset() {
             "[('b', 2), ('a', 1)]",
             "[('b', 2), ('a', 1)]",
             "True",
-            "OrderedDict True True True True True True True True True True False",
+            "OrderedDict True True True True True True True True True True True True False",
+        ],
+    );
+}
+
+// Mirrors CPython public collections.OrderedDict __class_getitem__ behavior.
+// This pins GenericAlias origin/args, direct type calls, and exact instance
+// lookup without expanding the OrderedDict sandbox surface beyond pure-memory
+// mapping behavior.
+#[test]
+fn cpython_ordered_dict_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+typ = OrderedDict
+inst = OrderedDict()
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "visible-inst tuple (True, True)",
+            "subscript-int tuple ('GenericAlias', 'collections.OrderedDict[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'collections.OrderedDict[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('collections.OrderedDict[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "call-noargs TypeError OrderedDict.__class_getitem__() takes exactly one argument (0 given) ('OrderedDict.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError OrderedDict.__class_getitem__() takes exactly one argument (2 given) ('OrderedDict.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError OrderedDict.__class_getitem__() takes no keyword arguments ('OrderedDict.__class_getitem__() takes no keyword arguments',)",
         ],
     );
 }

@@ -31032,6 +31032,33 @@ print(repr(OrderedDict.__or__(pair, {'d': 4})))"#,
 }
 
 #[test]
+fn cpython_ordered_dict_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.OrderedDict __class_getitem__ GenericAlias behavior",
+        name: "ordered-dict-class-getitem-generic-alias",
+        source: r#"from collections import OrderedDict
+typ = OrderedDict
+inst = OrderedDict()
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ordered_dict.py OrderedDict public direct base metadata subset",
@@ -33534,6 +33561,23 @@ except TypeError as error:
     print(error.__class__.__name__)
 alias = OrderedDict[str, int]
 print(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)
+print('class-getitem-visible', hasattr(OrderedDict, '__class_getitem__'), '__class_getitem__' in dir(OrderedDict), type(OrderedDict.__class_getitem__).__name__)
+print('class-getitem-instance-visible', hasattr(od, '__class_getitem__'), '__class_getitem__' in dir(od))
+alias = OrderedDict.__class_getitem__(int)
+print('class-getitem-direct', repr(alias), alias == OrderedDict[int], alias.__origin__ is OrderedDict, alias.__args__)
+alias = od.__class_getitem__(int)
+print('class-getitem-instance', repr(alias), alias == OrderedDict[int], alias.__origin__ is OrderedDict)
+alias = OrderedDict.__class_getitem__((str, int))
+print('class-getitem-tuple', repr(alias), alias == OrderedDict[str, int], alias.__args__)
+for label, thunk in [
+    ('class-getitem-noargs', lambda: OrderedDict.__class_getitem__()),
+    ('class-getitem-extra', lambda: OrderedDict.__class_getitem__(int, str)),
+    ('class-getitem-keyword', lambda: OrderedDict.__class_getitem__(item=int)),
+]:
+    try:
+        thunk()
+    except Exception as error:
+        print(label, type(error).__name__, str(error), getattr(error, 'args', None))
 fk = OrderedDict.fromkeys(['b', 'a'], 3)
 ifk = od.fromkeys(['x', 'y'])
 print(type(fk).__name__, repr(fk), list(fk.items()))
@@ -33591,7 +33635,7 @@ C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'fromkeys' in dir(OrderedDict), '__class_getitem__' in dir(OrderedDict), 'move_to_end' in dir(od), '__class_getitem__' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_ordered_dict.py public constructor/update subset",

@@ -40363,6 +40363,115 @@ fn ordered_dict_modern_repr_has_focused_diff_evidence() {
 }
 
 #[test]
+fn ordered_dict_class_getitem_generic_alias_docs_cover_runtime() {
+    let diff_name = "cpython_ordered_dict_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_ordered_dict_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "OrderedDict class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "OrderedDict class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from collections import OrderedDict",
+        "typ = OrderedDict",
+        "inst = OrderedDict()",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "OrderedDict class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.OrderedDict[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.OrderedDict[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.OrderedDict[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"call-noargs TypeError OrderedDict.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError OrderedDict.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError OrderedDict.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "OrderedDict class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let ordered_dict_dir_start = VM_SOURCE
+        .find("\"OrderedDict\" => &[")
+        .expect("OrderedDict dir block must exist");
+    let ordered_dict_dir_tail = &VM_SOURCE[ordered_dict_dir_start..];
+    let ordered_dict_dir_end = ordered_dict_dir_tail
+        .find("],\n        \"Counter\"")
+        .expect("OrderedDict dir block must end before Counter block");
+    let ordered_dict_dir_block = &ordered_dict_dir_tail[..ordered_dict_dir_end];
+    assert!(
+        ordered_dict_dir_block.contains("\"__class_getitem__\""),
+        "OrderedDict dir block must expose `__class_getitem__`"
+    );
+
+    for required in [
+        "Value::OrderedDict(entries) => match name",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"OrderedDict\".to_string()",
+        "function_name == \"OrderedDict\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "OrderedDict class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "OrderedDict `__class_getitem__`",
+            "`OrderedDict.__class_getitem__(int) == OrderedDict[int]`",
+            "exact OrderedDict instance lookup",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full OrderedDict runtime surface",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "OrderedDict class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn ordered_dict_type_base_metadata_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

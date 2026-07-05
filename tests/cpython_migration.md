@@ -152,6 +152,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   exact deque instance lookup, GenericAlias origin/args, and keyword and
   arity error propagation, without adding full GenericAlias repr parity or host IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_ordered_dict_class_getitem_generic_alias_subset` and
+  `cpython_ordered_dict_class_getitem_generic_alias_diff_subset` for
+  OrderedDict `__class_getitem__`, `OrderedDict.__class_getitem__(int) == OrderedDict[int]`,
+  exact OrderedDict instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full OrderedDict runtime surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -14827,6 +14833,9 @@ Completed in the CPython collections manifest expansion pass:
   helpers, including missing-key deletion through direct `__delitem__()` and
   subscript deletion preserving `KeyError.args[0]`,
   `copy()` preserving `OrderedDict`, type/instance `fromkeys()`,
+  OrderedDict `__class_getitem__`,
+  `OrderedDict.__class_getitem__(int) == OrderedDict[int]`, exact OrderedDict instance lookup,
+  GenericAlias origin/args, keyword and arity error propagation,
   `popitem(last=...)`, direct equality methods, and mapping union
   operators that preserve `OrderedDict` result type/order and in-place
   identity.

@@ -140,6 +140,12 @@ Recent runtime migration notes:
   exact deque instance lookup, GenericAlias origin/args, and keyword and
   arity error propagation, without adding full GenericAlias repr parity or host IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_ordered_dict_class_getitem_generic_alias_subset`, backed by
+  `cpython_ordered_dict_class_getitem_generic_alias_diff_subset`, now pins
+  OrderedDict `__class_getitem__`, `OrderedDict.__class_getitem__(int) == OrderedDict[int]`,
+  exact OrderedDict instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full OrderedDict runtime surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -7254,7 +7260,10 @@ without adding general custom encoder/decoder class support.
   `__contains__()`, key iteration, direct `__iter__()`, `__len__()`,
   `__getitem__()`, `__setitem__()`, item deletion, missing-key deletion via
   direct `__delitem__()` and subscript deletion preserving `KeyError.args[0]`,
-  and `clear()` while preserving ordered storage.
+  `clear()`, and OrderedDict `__class_getitem__` with
+  `OrderedDict.__class_getitem__(int) == OrderedDict[int]`, exact OrderedDict
+  instance lookup, GenericAlias origin/args, and keyword and arity error
+  propagation while preserving ordered storage.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by
   `cpython_program_output_parity_smoke_diff_subset` through the

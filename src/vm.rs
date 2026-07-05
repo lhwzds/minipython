@@ -53035,6 +53035,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "values",
         ],
         "OrderedDict" => &[
+            "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__eq__",
@@ -61438,6 +61439,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .to_string(),
             )),
             "fromkeys" => Ok(Value::Builtin("OrderedDict.fromkeys".to_string())),
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "OrderedDict".to_string(),
+            ))),
             "__format__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("object.__format__".to_string())),
                 receiver: Box::new(Value::OrderedDict(entries)),
@@ -62785,6 +62789,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "OrderedDict" && name == "fromkeys" => {
             Ok(Value::Builtin("OrderedDict.fromkeys".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "OrderedDict" && name == "__class_getitem__" =>
+        {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "defaultdict" && name == "fromkeys" => {
             Ok(Value::Builtin("defaultdict.fromkeys".to_string()))
