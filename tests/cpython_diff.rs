@@ -26337,6 +26337,50 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_mod_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString old-style percent formatting method behavior",
+        name: "collections-userstring-mod-methods",
+        source: r#"from collections import UserString
+u = UserString('%s:%r:%d')
+def show(label, expr):
+    try:
+        value = expr()
+        if isinstance(value, UserString):
+            print(label, type(value).__name__, repr(value.data), str(value))
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__mod__'), hasattr(u, '__mod__'), '__mod__' in dir(UserString), '__mod__' in dir(u), hasattr(UserString, '__rmod__'), hasattr(u, '__rmod__'), '__rmod__' in dir(UserString), '__rmod__' in dir(u))
+for label, expr in [
+    ('operator-tuple', lambda: u % ('x', 'y', 3)),
+    ('method-tuple', lambda: u.__mod__(('x', 'y', 3))),
+    ('type-method-tuple', lambda: UserString.__mod__(u, ('x', 'y', 3))),
+    ('mapping', lambda: UserString('%(name)s/%(n)d') % {'name': 'ann', 'n': 5}),
+    ('userstring-arg', lambda: UserString('%s') % UserString('zz')),
+    ('str-left', lambda: '%s' % UserString('aa')),
+    ('rmod-method', lambda: UserString('aa').__rmod__('%s')),
+    ('type-rmod', lambda: UserString.__rmod__(UserString('aa'), '%s')),
+    ('rmod-str-receiver', lambda: UserString.__rmod__('aa', '%s')),
+    ('rmod-template', lambda: UserString.__rmod__(self=UserString('aa'), template='%s')),
+    ('bad-format', lambda: UserString('%d') % 'x'),
+    ('bad-receiver', lambda: UserString.__mod__('%s', 'x')),
+    ('mod-noargs', lambda: UserString.__mod__()),
+    ('mod-extra', lambda: UserString.__mod__(u, 1, 2)),
+    ('mod-keyword', lambda: UserString.__mod__(self=UserString('%s'), args='q')),
+    ('mod-badkw', lambda: UserString.__mod__(u, value='q')),
+    ('rmod-noargs', lambda: UserString.__rmod__()),
+    ('rmod-extra', lambda: UserString.__rmod__(u, '%s', 1)),
+    ('rmod-badkw', lambda: UserString.__rmod__(u, value='%s')),
+    ('rmod-multi-self', lambda: UserString.__rmod__('%s', self=u)),
+    ('rmod-multi-template', lambda: UserString.__rmod__(u, '%s', template='%r')),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_mul_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString repetition method behavior",

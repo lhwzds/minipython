@@ -35952,6 +35952,16 @@ impl Vm {
                     user_string_format_map_arguments(method, &args, keywords)?;
                 self.user_string_format_map_value(&receiver, mapping)
             }
+            "__mod__" => {
+                let (receiver, format_args) =
+                    user_string_binary_arguments(method, &args, keywords, "args")?;
+                self.user_string_mod_value(&receiver, format_args)
+            }
+            "__rmod__" => {
+                let (receiver, template) =
+                    user_string_binary_arguments(method, &args, keywords, "template")?;
+                self.user_string_rmod_value(&receiver, template)
+            }
             "encode" => {
                 let (receiver, encoding, errors) =
                     user_string_encode_arguments(method, &args, keywords)?;
@@ -36322,6 +36332,34 @@ impl Vm {
         };
         self.render_str_format(&data.borrow(), &[], &[], Some(&mapping))
             .map(Value::String)
+    }
+
+    fn user_string_mod_value(&mut self, receiver: &Value, args: Value) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let format = data.borrow().clone();
+        percent_format_string(Some(self), &format, args).and_then(user_string_value)
+    }
+
+    fn user_string_rmod_value(
+        &mut self,
+        receiver: &Value,
+        template: Value,
+    ) -> Result<Value, String> {
+        let format = str_value_for_vm(Some(self), &template)?;
+        let rendered = percent_format_string(Some(self), &format, receiver.clone())?;
+        match receiver {
+            Value::UserString { .. } => user_string_value(rendered),
+            Value::String(_) | Value::IdentityString { .. } => Ok(Value::String(rendered)),
+            value => Err(format!(
+                "TypeError: UserString.__rmod__() unsupported receiver type '{}'",
+                type_name(value)
+            )),
+        }
     }
 
     fn user_string_encode_value(
@@ -54793,6 +54831,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__complex__".to_string());
         names.push("__float__".to_string());
         names.push("__int__".to_string());
+        names.push("__mod__".to_string());
+        names.push("__rmod__".to_string());
     }
     names
 }
@@ -57065,6 +57105,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__len__"
             | "__lt__"
             | "__le__"
+            | "__mod__"
             | "__gt__"
             | "__ge__"
             | "lower"
@@ -57116,6 +57157,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__mul__"
             | "__repr__"
             | "__radd__"
+            | "__rmod__"
             | "__rmul__"
             | "__str__"
     )
@@ -62773,7 +62815,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "__complex__"
                 | "__float__"
                 | "__int__"
-                | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
+                | "__mod__"
+                | "__mul__" | "__repr__" | "__radd__" | "__rmod__" | "__str__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                         receiver: Box::new(Value::UserString { data, attrs }),
@@ -92018,6 +92061,58 @@ fn user_string_rjust_arguments(
     user_string_center_arguments(method, args, keywords)
 }
 
+fn user_string_binary_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+    second_name: &str,
+) -> Result<(Value, Value), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut second = args.get(1).cloned();
+    for (name, value) in keywords {
+        if name == "self" {
+            if receiver.is_some() {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                ));
+            }
+            receiver = Some(value);
+        } else if name == second_name {
+            if second.is_some() {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got multiple values for argument '{second_name}'"
+                ));
+            }
+            second = Some(value);
+        } else {
+            return Err(format!(
+                "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+            ));
+        }
+    }
+
+    let mut missing = Vec::new();
+    if receiver.is_none() {
+        missing.push("self");
+    }
+    if second.is_none() {
+        missing.push(second_name);
+    }
+    if !missing.is_empty() {
+        return Err(user_string_method_missing_required(method, &missing));
+    }
+    Ok((
+        receiver.expect("missing receiver handled above"),
+        second.expect("missing second argument handled above"),
+    ))
+}
+
 fn user_string_method_missing_required(method: &str, names: &[&str]) -> String {
     let arguments = match names {
         [name] => format!("'{name}'"),
@@ -94668,6 +94763,10 @@ fn modulo_values_impl(vm: Option<&mut Vm>, left: Value, right: Value) -> Result<
     match left {
         Value::String(format) | Value::IdentityString { value: format, .. } => {
             return percent_format_string(vm, &format, right).map(Value::String);
+        }
+        Value::UserString { data, .. } => {
+            let format = data.borrow().clone();
+            return percent_format_string(vm, &format, right).and_then(user_string_value);
         }
         Value::Bytes(format) => {
             return percent_format_bytes(vm, &format, right, BytesResultKind::Bytes);

@@ -267,6 +267,13 @@ Recent runtime migration notes:
   diagnostics, without preserving UserString subclass result types, full
   UserString string-method proxying, or widening host IO, network, process, C
   ABI, or full stdlib scope.
+- `cpython_collections_userstring_mod_methods_subset`, backed by
+  `cpython_collections_userstring_mod_methods_diff_subset`, now pins
+  `UserString.__mod__`, `UserString.__rmod__`, and the `%` expression for
+  old-style percent formatting, including mapping format arguments,
+  `args=` and `template=` keyword binding, `str` left operands, and CPython UserString percent-format TypeError text, without implementing full
+  UserString string-method proxying or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_collections_userstring_mul_method_subset`, backed by
   `cpython_collections_userstring_mul_method_diff_subset`, now pins
   `UserString.__mul__`, the `UserString.__rmul__` alias, `*` expression
@@ -1554,6 +1561,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
   `cpython_collections_userstring_radd_method_diff_subset`,
+  `cpython_collections_userstring_mod_methods_diff_subset`,
   `cpython_collections_userstring_mul_method_diff_subset`,
   `cpython_collections_userstring_order_methods_diff_subset`,
   `cpython_collections_userstring_case_transform_methods_diff_subset`,
@@ -7492,6 +7500,14 @@ without adding general custom encoder/decoder class support.
   UserString concatenation, `other=` keyword binding, right operand `str()`
   coercion, `__str__` non-string result errors, and bad receiver diagnostics,
   without preserving UserString subclass result types or full UserString
+  string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_mod_methods_diff_subset` and
+  `cpython_collections_userstring_mod_methods_subset`, covering
+  `UserString.__mod__`, `UserString.__rmod__`, and the `%` expression for
+  old-style percent formatting, mapping format arguments, `args=` and
+  `template=` keyword binding, `str` left operands, and CPython UserString
+  percent-format TypeError text, without implementing full UserString
   string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_mul_method_diff_subset` and

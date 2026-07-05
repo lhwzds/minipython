@@ -70211,6 +70211,75 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString old-style percent-formatting dispatch.
+// This covers `__mod__`, `__rmod__`, and `%` while reusing the sandbox-safe
+// in-memory string formatting engine.
+#[test]
+fn cpython_collections_userstring_mod_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('%s:%r:%d')
+def show(label, expr):
+    try:
+        value = expr()
+        if isinstance(value, UserString):
+            print(label, type(value).__name__, repr(value.data), str(value))
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__mod__'), hasattr(u, '__mod__'), '__mod__' in dir(UserString), '__mod__' in dir(u), hasattr(UserString, '__rmod__'), hasattr(u, '__rmod__'), '__rmod__' in dir(UserString), '__rmod__' in dir(u))
+for label, expr in [
+    ('operator-tuple', lambda: u % ('x', 'y', 3)),
+    ('method-tuple', lambda: u.__mod__(('x', 'y', 3))),
+    ('type-method-tuple', lambda: UserString.__mod__(u, ('x', 'y', 3))),
+    ('mapping', lambda: UserString('%(name)s/%(n)d') % {'name': 'ann', 'n': 5}),
+    ('userstring-arg', lambda: UserString('%s') % UserString('zz')),
+    ('str-left', lambda: '%s' % UserString('aa')),
+    ('rmod-method', lambda: UserString('aa').__rmod__('%s')),
+    ('type-rmod', lambda: UserString.__rmod__(UserString('aa'), '%s')),
+    ('rmod-str-receiver', lambda: UserString.__rmod__('aa', '%s')),
+    ('rmod-template', lambda: UserString.__rmod__(self=UserString('aa'), template='%s')),
+    ('bad-format', lambda: UserString('%d') % 'x'),
+    ('bad-receiver', lambda: UserString.__mod__('%s', 'x')),
+    ('mod-noargs', lambda: UserString.__mod__()),
+    ('mod-extra', lambda: UserString.__mod__(u, 1, 2)),
+    ('mod-keyword', lambda: UserString.__mod__(self=UserString('%s'), args='q')),
+    ('mod-badkw', lambda: UserString.__mod__(u, value='q')),
+    ('rmod-noargs', lambda: UserString.__rmod__()),
+    ('rmod-extra', lambda: UserString.__rmod__(u, '%s', 1)),
+    ('rmod-badkw', lambda: UserString.__rmod__(u, value='%s')),
+    ('rmod-multi-self', lambda: UserString.__rmod__('%s', self=u)),
+    ('rmod-multi-template', lambda: UserString.__rmod__(u, '%s', template='%r')),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True True True True",
+            "operator-tuple UserString \"x:'y':3\" x:'y':3",
+            "method-tuple UserString \"x:'y':3\" x:'y':3",
+            "type-method-tuple UserString \"x:'y':3\" x:'y':3",
+            "mapping UserString 'ann/5' ann/5",
+            "userstring-arg UserString 'zz' zz",
+            "str-left str 'aa'",
+            "rmod-method UserString 'aa' aa",
+            "type-rmod UserString 'aa' aa",
+            "rmod-str-receiver str 'aa'",
+            "rmod-template UserString 'aa' aa",
+            "bad-format TypeError %d format: a real number is required, not str ('%d format: a real number is required, not str',)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "mod-noargs TypeError UserString.__mod__() missing 2 required positional arguments: 'self' and 'args' (\"UserString.__mod__() missing 2 required positional arguments: 'self' and 'args'\",)",
+            "mod-extra TypeError UserString.__mod__() takes 2 positional arguments but 3 were given ('UserString.__mod__() takes 2 positional arguments but 3 were given',)",
+            "mod-keyword UserString 'q' q",
+            "mod-badkw TypeError UserString.__mod__() got an unexpected keyword argument 'value' (\"UserString.__mod__() got an unexpected keyword argument 'value'\",)",
+            "rmod-noargs TypeError UserString.__rmod__() missing 2 required positional arguments: 'self' and 'template' (\"UserString.__rmod__() missing 2 required positional arguments: 'self' and 'template'\",)",
+            "rmod-extra TypeError UserString.__rmod__() takes 2 positional arguments but 3 were given ('UserString.__rmod__() takes 2 positional arguments but 3 were given',)",
+            "rmod-badkw TypeError UserString.__rmod__() got an unexpected keyword argument 'value' (\"UserString.__rmod__() got an unexpected keyword argument 'value'\",)",
+            "rmod-multi-self TypeError UserString.__rmod__() got multiple values for argument 'self' (\"UserString.__rmod__() got multiple values for argument 'self'\",)",
+            "rmod-multi-template TypeError UserString.__rmod__() got multiple values for argument 'template' (\"UserString.__rmod__() got multiple values for argument 'template'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString repetition dispatch. `__rmul__` is an
 // alias of `__mul__`, so both public names share the same error text.
 #[test]

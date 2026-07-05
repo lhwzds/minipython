@@ -26528,6 +26528,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
             "cpython_collections_userstring_radd_method_subset",
+            "cpython_collections_userstring_mod_methods_subset",
             "cpython_collections_userstring_mul_method_subset",
             "cpython_collections_userstring_order_methods_subset",
             "cpython_collections_userstring_case_transform_methods_subset",
@@ -30238,6 +30239,130 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString radd-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_mod_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString percent-formatting methods"
+    );
+    let userstring_mod_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_mod_methods_diff_subset",
+    );
+    let userstring_mod_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_mod_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('%s:%r:%d')",
+        "hasattr(UserString, '__mod__')",
+        "hasattr(u, '__mod__')",
+        "'__mod__' in dir(UserString)",
+        "'__mod__' in dir(u)",
+        "hasattr(UserString, '__rmod__')",
+        "hasattr(u, '__rmod__')",
+        "'__rmod__' in dir(UserString)",
+        "'__rmod__' in dir(u)",
+        "u % ('x', 'y', 3)",
+        "u.__mod__(('x', 'y', 3))",
+        "UserString.__mod__(u, ('x', 'y', 3))",
+        "UserString('%(name)s/%(n)d') % {'name': 'ann', 'n': 5}",
+        "UserString('%s') % UserString('zz')",
+        "'%s' % UserString('aa')",
+        "UserString('aa').__rmod__('%s')",
+        "UserString.__rmod__(UserString('aa'), '%s')",
+        "UserString.__rmod__('aa', '%s')",
+        "UserString.__rmod__(self=UserString('aa'), template='%s')",
+        "UserString('%d') % 'x'",
+        "UserString.__mod__('%s', 'x')",
+        "UserString.__mod__()",
+        "UserString.__mod__(u, 1, 2)",
+        "UserString.__mod__(self=UserString('%s'), args='q')",
+        "UserString.__mod__(u, value='q')",
+        "UserString.__rmod__()",
+        "UserString.__rmod__(u, '%s', 1)",
+        "UserString.__rmod__(u, value='%s')",
+        "UserString.__rmod__('%s', self=u)",
+        "UserString.__rmod__(u, '%s', template='%r')",
+    ] {
+        assert!(
+            userstring_mod_methods_diff_body.contains(required)
+                && userstring_mod_methods_subset_body.contains(required),
+            "UserString percent-formatting diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True True True True\"",
+        "\"operator-tuple UserString \\\"x:'y':3\\\" x:'y':3\"",
+        "\"method-tuple UserString \\\"x:'y':3\\\" x:'y':3\"",
+        "\"type-method-tuple UserString \\\"x:'y':3\\\" x:'y':3\"",
+        "\"mapping UserString 'ann/5' ann/5\"",
+        "\"userstring-arg UserString 'zz' zz\"",
+        "\"str-left str 'aa'\"",
+        "\"rmod-method UserString 'aa' aa\"",
+        "\"type-rmod UserString 'aa' aa\"",
+        "\"rmod-str-receiver str 'aa'\"",
+        "\"rmod-template UserString 'aa' aa\"",
+        "\"bad-format TypeError %d format: a real number is required, not str",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"mod-noargs TypeError UserString.__mod__() missing 2 required positional arguments: 'self' and 'args'",
+        "\"mod-extra TypeError UserString.__mod__() takes 2 positional arguments but 3 were given",
+        "\"mod-keyword UserString 'q' q\"",
+        "\"mod-badkw TypeError UserString.__mod__() got an unexpected keyword argument 'value'",
+        "\"rmod-noargs TypeError UserString.__rmod__() missing 2 required positional arguments: 'self' and 'template'",
+        "\"rmod-extra TypeError UserString.__rmod__() takes 2 positional arguments but 3 were given",
+        "\"rmod-badkw TypeError UserString.__rmod__() got an unexpected keyword argument 'value'",
+        "\"rmod-multi-self TypeError UserString.__rmod__() got multiple values for argument 'self'",
+        "\"rmod-multi-template TypeError UserString.__rmod__() got multiple values for argument 'template'",
+    ] {
+        assert!(
+            userstring_mod_methods_subset_body.contains(required),
+            "UserString percent-formatting subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__mod__\".to_string())",
+        "names.push(\"__rmod__\".to_string())",
+        "return percent_format_string(vm, &format, right).and_then(user_string_value);",
+        "user_string_binary_arguments(method, &args, keywords, \"args\")",
+        "user_string_binary_arguments(method, &args, keywords, \"template\")",
+        "fn user_string_mod_value(&mut self, receiver: &Value, args: Value) -> Result<Value, String>",
+        "fn user_string_rmod_value(",
+        "fn user_string_binary_arguments(",
+        "percent_format_string(Some(self), &format, args).and_then(user_string_value)",
+        "str_value_for_vm(Some(self), &template)?",
+        "Value::String(_) | Value::IdentityString { .. } => Ok(Value::String(rendered))",
+        "\"__mod__\"",
+        "\"__rmod__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+        "UserString.{method}() takes 2 positional arguments but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString percent-formatting implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_mod_methods_subset",
+            "cpython_collections_userstring_mod_methods_diff_subset",
+            "`UserString.__mod__`",
+            "`UserString.__rmod__`",
+            "`%` expression",
+            "old-style percent formatting",
+            "mapping format arguments",
+            "`args=` and `template=` keyword binding",
+            "CPython UserString percent-format TypeError text",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString percent-formatting docs must contain `{required}`"
             );
         }
     }
