@@ -15033,7 +15033,8 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&class_bases, "deque")
+                    if class_bases_include_builtin(&class_bases, "defaultdict")
+                        || class_bases_include_builtin(&class_bases, "deque")
                         || class_bases_include_builtin(&class_bases, "OrderedDict")
                         || class_bases_include_builtin(&class_bases, "Counter")
                         || class_bases_include_builtin(&class_bases, "tuple")
@@ -15350,7 +15351,8 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&bases, "deque")
+                    if class_bases_include_builtin(&bases, "defaultdict")
+                        || class_bases_include_builtin(&bases, "deque")
                         || class_bases_include_builtin(&bases, "OrderedDict")
                         || class_bases_include_builtin(&bases, "Counter")
                         || class_bases_include_builtin(&bases, "tuple")

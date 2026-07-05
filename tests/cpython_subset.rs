@@ -71485,10 +71485,15 @@ alias = defaultdict().__class_getitem__(int)
 print('class-getitem-instance', repr(alias), alias == defaultdict[int], alias.__origin__ is defaultdict)
 alias = defaultdict.__class_getitem__((str, int))
 print('class-getitem-tuple', repr(alias), alias.__origin__ is defaultdict, alias.__args__ == (str, int))
+class C(defaultdict):
+    pass
+print('class-getitem-type-sub', hasattr(C, '__class_getitem__'), '__class_getitem__' in dir(C), type(C.__class_getitem__).__name__, type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)
+print('class-getitem-inst-sub', hasattr(C(), '__class_getitem__'), '__class_getitem__' in dir(C()), type(C().__class_getitem__(str)).__name__, C().__class_getitem__(str).__origin__ is C, C().__class_getitem__(str).__args__)
 for label, thunk in [
     ('class-getitem-noargs', lambda: defaultdict.__class_getitem__()),
     ('class-getitem-extra', lambda: defaultdict.__class_getitem__(int, str)),
     ('class-getitem-keyword', lambda: defaultdict.__class_getitem__(item=int)),
+    ('class-getitem-sub-keyword', lambda: C.__class_getitem__(item=int)),
 ]:
     try:
         thunk()
@@ -71563,9 +71568,12 @@ except Exception as error:
             "class-getitem-direct collections.defaultdict[int] True True",
             "class-getitem-instance collections.defaultdict[int] True True",
             "class-getitem-tuple collections.defaultdict[str, int] True True",
+            "class-getitem-type-sub True True builtin_function_or_method GenericAlias True (<class 'int'>,)",
+            "class-getitem-inst-sub True True GenericAlias True (<class 'str'>,)",
             "class-getitem-noargs TypeError defaultdict.__class_getitem__() takes exactly one argument (0 given) ('defaultdict.__class_getitem__() takes exactly one argument (0 given)',)",
             "class-getitem-extra TypeError defaultdict.__class_getitem__() takes exactly one argument (2 given) ('defaultdict.__class_getitem__() takes exactly one argument (2 given)',)",
             "class-getitem-keyword TypeError defaultdict.__class_getitem__() takes no keyword arguments ('defaultdict.__class_getitem__() takes no keyword arguments',)",
+            "class-getitem-sub-keyword TypeError C.__class_getitem__() takes no keyword arguments ('C.__class_getitem__() takes no keyword arguments',)",
             "type-init-descriptor wrapper_descriptor <slot wrapper '__init__' of 'collections.defaultdict' objects>",
             "type-dict-init True wrapper_descriptor <slot wrapper '__init__' of 'collections.defaultdict' objects> True",
             "init-before defaultdict(<class 'list'>, {'ia': [1], 'ib': [2]}) True",
