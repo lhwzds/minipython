@@ -69605,6 +69605,51 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public inherited Sequence.__reversed__ behavior for
+// UserString without pinning CPython's generator object implementation shape.
+#[test]
+fn cpython_collections_userstring_reversed_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, '__iter__') and type(value).__name__ not in ('str', 'UserString', 'list', 'tuple'):
+            value = list(value)
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__reversed__'), hasattr(u, '__reversed__'), '__reversed__' in dir(UserString), '__reversed__' in dir(u), callable(UserString.__reversed__), callable(u.__reversed__))
+for label, expr in [
+    ('builtin-reversed', lambda: reversed(u)),
+    ('bound', lambda: u.__reversed__()),
+    ('type', lambda: UserString.__reversed__(u)),
+    ('type-selfkw', lambda: UserString.__reversed__(self=u)),
+    ('bad-receiver', lambda: UserString.__reversed__('abc')),
+    ('extra', lambda: UserString.__reversed__(u, 1)),
+    ('badkw', lambda: UserString.__reversed__(u, receiver=u)),
+    ('multi-self', lambda: UserString.__reversed__(u, self=u)),
+    ('noargs', lambda: UserString.__reversed__()),
+    ('self-only-kw', lambda: UserString.__reversed__(self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True True",
+            "builtin-reversed list ['é', 'b', 'a']",
+            "bound list ['é', 'b', 'a']",
+            "type list ['é', 'b', 'a']",
+            "type-selfkw list ['é', 'b', 'a']",
+            "bad-receiver list ['c', 'b', 'a']",
+            "extra TypeError Sequence.__reversed__() takes 1 positional argument but 2 were given ('Sequence.__reversed__() takes 1 positional argument but 2 were given',)",
+            "badkw TypeError Sequence.__reversed__() got an unexpected keyword argument 'receiver' (\"Sequence.__reversed__() got an unexpected keyword argument 'receiver'\",)",
+            "multi-self TypeError Sequence.__reversed__() got multiple values for argument 'self' (\"Sequence.__reversed__() got multiple values for argument 'self'\",)",
+            "noargs TypeError Sequence.__reversed__() missing 1 required positional argument: 'self' (\"Sequence.__reversed__() missing 1 required positional argument: 'self'\",)",
+            "self-only-kw list ['é', 'b', 'a']",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString length method dispatch. This keeps the
 // supported surface to direct `__len__` calls without promoting full
 // string-method proxying.

@@ -26519,6 +26519,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_getitem_slice_subset",
             "cpython_collections_userstring_contains_subset",
             "cpython_collections_userstring_iter_subset",
+            "cpython_collections_userstring_reversed_method_subset",
             "cpython_collections_userstring_len_method_subset",
             "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_hash_method_subset",
@@ -29278,6 +29279,100 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString iter docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_reversed_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __reversed__"
+    );
+    let userstring_reversed_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_reversed_method_diff_subset",
+    );
+    let userstring_reversed_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_reversed_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hasattr(UserString, '__reversed__')",
+        "hasattr(u, '__reversed__')",
+        "'__reversed__' in dir(UserString)",
+        "'__reversed__' in dir(u)",
+        "callable(UserString.__reversed__)",
+        "callable(u.__reversed__)",
+        "reversed(u)",
+        "u.__reversed__()",
+        "UserString.__reversed__(u)",
+        "UserString.__reversed__(self=u)",
+        "UserString.__reversed__('abc')",
+        "UserString.__reversed__(u, 1)",
+        "UserString.__reversed__(u, receiver=u)",
+        "UserString.__reversed__(u, self=u)",
+        "UserString.__reversed__()",
+    ] {
+        assert!(
+            userstring_reversed_method_diff_body.contains(required)
+                && userstring_reversed_method_subset_body.contains(required),
+            "UserString reversed-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True True\"",
+        "\"builtin-reversed list ['é', 'b', 'a']\"",
+        "\"bound list ['é', 'b', 'a']\"",
+        "\"type list ['é', 'b', 'a']\"",
+        "\"type-selfkw list ['é', 'b', 'a']\"",
+        "\"bad-receiver list ['c', 'b', 'a']\"",
+        "\"extra TypeError Sequence.__reversed__() takes 1 positional argument but 2 were given",
+        "\"badkw TypeError Sequence.__reversed__() got an unexpected keyword argument 'receiver'",
+        "\"multi-self TypeError Sequence.__reversed__() got multiple values for argument 'self'",
+        "\"noargs TypeError Sequence.__reversed__() missing 1 required positional argument: 'self'",
+        "\"self-only-kw list ['é', 'b', 'a']\"",
+    ] {
+        assert!(
+            userstring_reversed_method_subset_body.contains(required),
+            "UserString reversed-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__reversed__\".to_string())",
+        "function_name == \"UserString\" && name == \"__reversed__\"",
+        "Ok(Value::Builtin(\"Sequence.__reversed__\".to_string()))",
+        "\"__reversed__\" => {",
+        "sequence_abc_bind_reversed_self_arg",
+        "Value::String(_) | Value::UserString { .. }",
+        "reversed_value(receiver)",
+        "Value::UserString { data, .. } => Ok(shared_iterator(Value::ReverseIterator",
+        "Sequence.__reversed__() takes 1 positional argument",
+        "Sequence.__reversed__() got an unexpected keyword argument",
+        "Sequence.__reversed__() got multiple values for argument 'self'",
+        "Sequence.__reversed__() missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString reversed-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_reversed_method_subset",
+            "cpython_collections_userstring_reversed_method_diff_subset",
+            "`UserString.__reversed__`",
+            "`reversed(UserString(...))`",
+            "inherited `Sequence.__reversed__`",
+            "`self=` keyword binding",
+            "str receiver reverse behavior",
+            "CPython `Sequence.__reversed__` arity/keyword TypeErrors",
+            "without pinning CPython generator object implementation shape",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString reversed-method docs must contain `{required}`"
             );
         }
     }

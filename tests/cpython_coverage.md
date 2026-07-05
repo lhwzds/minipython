@@ -206,6 +206,12 @@ Recent runtime migration notes:
   receiver errors, and `Sequence.__iter__()` arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_reversed_method_subset`, backed by
+  `cpython_collections_userstring_reversed_method_diff_subset`, now pins
+  `UserString.__reversed__` and `reversed(UserString(...))` inherited `Sequence.__reversed__`
+  behavior, including visibility, bound and type-object calls, `self=` keyword
+  binding, str receiver reverse behavior, and CPython `Sequence.__reversed__` arity/keyword TypeErrors,
+  without pinning CPython generator object implementation shape and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_len_method_subset`, backed by
   `cpython_collections_userstring_len_method_diff_subset`, now pins
   `UserString.__len__` and `len()` Unicode length behavior, including
@@ -1593,6 +1599,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_getitem_slice_diff_subset`,
   `cpython_collections_userstring_contains_diff_subset`,
   `cpython_collections_userstring_iter_diff_subset`,
+  `cpython_collections_userstring_reversed_method_diff_subset`,
   `cpython_collections_userstring_len_method_diff_subset`,
   `cpython_collections_userstring_display_methods_diff_subset`,
   `cpython_collections_userstring_hash_method_diff_subset`,
@@ -7485,6 +7492,12 @@ without adding general custom encoder/decoder class support.
   input, type-object dispatch, `self=` keyword binding, bad receiver errors,
   and `Sequence.__iter__()` arity/keyword TypeErrors, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_reversed_method_diff_subset` and
+  `cpython_collections_userstring_reversed_method_subset`, covering
+  `UserString.__reversed__`, `reversed(UserString(...))`, inherited `Sequence.__reversed__`,
+  `self=` keyword binding, str receiver reverse behavior, and CPython `Sequence.__reversed__` arity/keyword TypeErrors,
+  without pinning CPython generator object implementation shape and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_len_method_diff_subset` and
   `cpython_collections_userstring_len_method_subset`, covering

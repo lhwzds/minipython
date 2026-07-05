@@ -29451,15 +29451,10 @@ impl Vm {
                 Ok(Value::Bool(self.sequence_abc_contains(receiver, value)?))
             }
             "__reversed__" => {
-                if !keywords.is_empty() {
-                    return Err("__reversed__() does not accept keyword arguments".to_string());
+                let receiver = sequence_abc_bind_reversed_self_arg(args, keywords)?;
+                if matches!(receiver, Value::String(_) | Value::UserString { .. }) {
+                    return reversed_value(receiver);
                 }
-                let [receiver] = args.as_slice() else {
-                    return Err(format!(
-                        "__reversed__() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
-                };
                 let len = self.sequence_abc_len_i64(receiver.clone())?;
                 Ok(shared_iterator(Value::SequenceReverseIterator {
                     object: Box::new(receiver.clone()),
@@ -36203,6 +36198,10 @@ impl Vm {
                     ));
                 };
                 user_string_iter_value(&data.borrow())
+            }
+            "__reversed__" => {
+                let receiver = sequence_abc_bind_reversed_self_arg(args, keywords)?;
+                reversed_value(receiver)
             }
             "__len__" => {
                 if args.len() > 1 {
@@ -54953,6 +54952,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__init__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
+        names.push("__reversed__".to_string());
         names.push("__rmod__".to_string());
         names.push("__sizeof__".to_string());
     }
@@ -59034,6 +59034,37 @@ fn sequence_abc_bind_one_value_arg(
     Ok((receiver, value))
 }
 
+fn sequence_abc_bind_reversed_self_arg(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if args.len() > 1 {
+        return Err(format!(
+            "TypeError: Sequence.__reversed__() takes 1 positional argument but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.into_iter().next();
+    for (name, value) in keywords {
+        if name != "self" {
+            return Err(format!(
+                "TypeError: Sequence.__reversed__() got an unexpected keyword argument '{name}'"
+            ));
+        }
+        if receiver.is_some() {
+            return Err(
+                "TypeError: Sequence.__reversed__() got multiple values for argument 'self'"
+                    .to_string(),
+            );
+        }
+        receiver = Some(value);
+    }
+    receiver.ok_or_else(|| {
+        "TypeError: Sequence.__reversed__() missing 1 required positional argument: 'self'"
+            .to_string()
+    })
+}
+
 fn sequence_abc_bind_index_args(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
@@ -62922,6 +62953,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
+                "__reversed__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("Sequence.__reversed__".to_string())),
+                    receiver: Box::new(Value::UserString { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
                 | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
                 | "lower" | "upper" | "capitalize" | "casefold" | "swapcase" | "title"
@@ -64874,6 +64910,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__rmul__" => {
             Ok(Value::Builtin("UserString.__mul__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserString" && name == "__reversed__" =>
+        {
+            Ok(Value::Builtin("Sequence.__reversed__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "UserString" && is_builtin_user_string_type_method(name) =>
@@ -77708,6 +77749,14 @@ fn reversed_value(value: Value) -> Result<Value, String> {
         })),
         Value::String(value) => Ok(shared_iterator(Value::ReverseIterator {
             items: value
+                .chars()
+                .map(|ch| Value::String(ch.to_string()))
+                .collect(),
+            index: 0,
+        })),
+        Value::UserString { data, .. } => Ok(shared_iterator(Value::ReverseIterator {
+            items: data
+                .borrow()
                 .chars()
                 .map(|ch| Value::String(ch.to_string()))
                 .collect(),

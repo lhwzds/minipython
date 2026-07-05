@@ -25951,6 +25951,38 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_reversed_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public inherited collections.UserString Sequence.__reversed__ behavior",
+        name: "collections-userstring-reversed-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, '__iter__') and type(value).__name__ not in ('str', 'UserString', 'list', 'tuple'):
+            value = list(value)
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__reversed__'), hasattr(u, '__reversed__'), '__reversed__' in dir(UserString), '__reversed__' in dir(u), callable(UserString.__reversed__), callable(u.__reversed__))
+for label, expr in [
+    ('builtin-reversed', lambda: reversed(u)),
+    ('bound', lambda: u.__reversed__()),
+    ('type', lambda: UserString.__reversed__(u)),
+    ('type-selfkw', lambda: UserString.__reversed__(self=u)),
+    ('bad-receiver', lambda: UserString.__reversed__('abc')),
+    ('extra', lambda: UserString.__reversed__(u, 1)),
+    ('badkw', lambda: UserString.__reversed__(u, receiver=u)),
+    ('multi-self', lambda: UserString.__reversed__(u, self=u)),
+    ('noargs', lambda: UserString.__reversed__()),
+    ('self-only-kw', lambda: UserString.__reversed__(self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_len_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString length method behavior",
