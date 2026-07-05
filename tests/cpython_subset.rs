@@ -71174,6 +71174,75 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString ljust method.
+#[test]
+fn cpython_collections_userstring_ljust_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+class S(str): pass
+u = UserString('abc')
+methods = ['ljust']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('wide', (7,)), ('same', (3,)), ('narrow', (2,)), ('even', (8,)), ('fill', (7, '*')), ('true-width', (True,)), ('false-width', (False,)), ('negative', (-1,)), ('index', (Width(7), '.')), ('badindex', (BadIndex(), '.')), ('none-width', (None,)), ('string-width', ('7',)), ('huge', (9223372036854775808,)), ('empty-fill', (7, '')), ('long-fill', (7, '**')), ('none-fill', (7, None)), ('userstring-fill', (7, UserString('*'))), ('str-sub-fill', (7, S('*'))),]:
+    print('value', label, show(lambda spec=spec: u.ljust(*spec)))
+emoji = chr(0x1f600)
+print('unicode-fill', u.ljust(6, emoji).data == 'abc' + emoji + emoji + emoji)
+print('keywords', show(lambda: u.ljust(width=7)), show(lambda: u.ljust(width=7, fillchar='*')), show(lambda: UserString.ljust(self=u, width=7, fillchar='*')))
+print('type', show(lambda: UserString.ljust(u, 7, '*')))
+print('errors', [
+    show(lambda: UserString.ljust('abc', 7)),
+    show(lambda: UserString.ljust(1, 7, '*', '-')),
+    show(lambda: u.ljust()),
+    show(lambda: u.ljust(7, '*', '-')),
+    show(lambda: u.ljust(7, width=8)),
+    show(lambda: u.ljust(7, fillchar='*', width=7)),
+    show(lambda: u.ljust(self=u, width=7)),
+    show(lambda: UserString.ljust()),
+    show(lambda: UserString.ljust(width=7)),
+    show(lambda: UserString.ljust(receiver=u, width=7)),
+    show(lambda: UserString.ljust(self=u)),
+])"#,
+        &[
+            "visible [('ljust', True, True)]",
+            "value wide UserString:'abc    ':'abc    '",
+            "value same UserString:'abc':'abc'",
+            "value narrow UserString:'abc':'abc'",
+            "value even UserString:'abc     ':'abc     '",
+            "value fill UserString:'abc****':'abc****'",
+            "value true-width UserString:'abc':'abc'",
+            "value false-width UserString:'abc':'abc'",
+            "value negative UserString:'abc':'abc'",
+            "index-called 7",
+            "value index UserString:'abc....':'abc....'",
+            "bad-index-called",
+            "value badindex TypeError:__index__ returned non-int (type str)",
+            "value none-width TypeError:'NoneType' object cannot be interpreted as an integer",
+            "value string-width TypeError:'str' object cannot be interpreted as an integer",
+            "value huge OverflowError:Python int too large to convert to C ssize_t",
+            "value empty-fill TypeError:The fill character must be exactly one character long",
+            "value long-fill TypeError:The fill character must be exactly one character long",
+            "value none-fill TypeError:The fill character must be a unicode character, not NoneType",
+            "value userstring-fill TypeError:The fill character must be a unicode character, not UserString",
+            "value str-sub-fill UserString:'abc****':'abc****'",
+            "unicode-fill True",
+            "keywords UserString:'abc    ':'abc    ' TypeError:UserString.ljust() got an unexpected keyword argument 'fillchar' TypeError:UserString.ljust() got an unexpected keyword argument 'fillchar'",
+            "type UserString:'abc****':'abc****'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "AttributeError:'int' object has no attribute 'data'", "TypeError:UserString.ljust() missing 1 required positional argument: 'width'", 'TypeError:ljust expected at most 2 arguments, got 3', "TypeError:UserString.ljust() got multiple values for argument 'width'", "TypeError:UserString.ljust() got an unexpected keyword argument 'fillchar'", "TypeError:UserString.ljust() got multiple values for argument 'self'", "TypeError:UserString.ljust() missing 2 required positional arguments: 'self' and 'width'", "TypeError:UserString.ljust() missing 1 required positional argument: 'self'", "TypeError:UserString.ljust() got an unexpected keyword argument 'receiver'", "TypeError:UserString.ljust() missing 1 required positional argument: 'width'"]"#,
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

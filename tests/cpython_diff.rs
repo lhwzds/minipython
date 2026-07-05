@@ -26882,6 +26882,49 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_ljust_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString ljust method behavior",
+        name: "collections-userstring-ljust-method",
+        source: r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+class S(str): pass
+u = UserString('abc')
+methods = ['ljust']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('wide', (7,)), ('same', (3,)), ('narrow', (2,)), ('even', (8,)), ('fill', (7, '*')), ('true-width', (True,)), ('false-width', (False,)), ('negative', (-1,)), ('index', (Width(7), '.')), ('badindex', (BadIndex(), '.')), ('none-width', (None,)), ('string-width', ('7',)), ('huge', (9223372036854775808,)), ('empty-fill', (7, '')), ('long-fill', (7, '**')), ('none-fill', (7, None)), ('userstring-fill', (7, UserString('*'))), ('str-sub-fill', (7, S('*'))),]:
+    print('value', label, show(lambda spec=spec: u.ljust(*spec)))
+emoji = chr(0x1f600)
+print('unicode-fill', u.ljust(6, emoji).data == 'abc' + emoji + emoji + emoji)
+print('keywords', show(lambda: u.ljust(width=7)), show(lambda: u.ljust(width=7, fillchar='*')), show(lambda: UserString.ljust(self=u, width=7, fillchar='*')))
+print('type', show(lambda: UserString.ljust(u, 7, '*')))
+print('errors', [
+    show(lambda: UserString.ljust('abc', 7)),
+    show(lambda: UserString.ljust(1, 7, '*', '-')),
+    show(lambda: u.ljust()),
+    show(lambda: u.ljust(7, '*', '-')),
+    show(lambda: u.ljust(7, width=8)),
+    show(lambda: u.ljust(7, fillchar='*', width=7)),
+    show(lambda: u.ljust(self=u, width=7)),
+    show(lambda: UserString.ljust()),
+    show(lambda: UserString.ljust(width=7)),
+    show(lambda: UserString.ljust(receiver=u, width=7)),
+    show(lambda: UserString.ljust(self=u)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
