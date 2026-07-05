@@ -54986,6 +54986,53 @@ fn cpython_tuple_inherited_setattr_delattr_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __class_getitem__ behavior. This pins
+// GenericAlias origin/args, direct type calls, and instance/subclass lookup
+// without adding full GenericAlias repr parity or classmethod descriptor metadata.
+#[test]
+fn cpython_tuple_class_getitem_generic_alias_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('visible', lambda: (hasattr(tuple, '__class_getitem__'), '__class_getitem__' in dir(tuple), type(tuple.__class_getitem__).__name__)),\n",
+            "    ('subscript-int', lambda: (type(tuple[int]).__name__, str(tuple[int]), tuple[int].__origin__ is tuple, tuple[int].__args__)),\n",
+            "    ('call-int', lambda: (type(tuple.__class_getitem__(int)).__name__, str(tuple.__class_getitem__(int)), tuple.__class_getitem__(int) == tuple[int], tuple.__class_getitem__(int).__origin__ is tuple, tuple.__class_getitem__(int).__args__)),\n",
+            "    ('call-pair', lambda: (str(tuple.__class_getitem__((int, str))), tuple.__class_getitem__((int, str)) == tuple[int, str], tuple.__class_getitem__((int, str)).__args__)),\n",
+            "    ('call-ellipsis', lambda: (tuple.__class_getitem__((int, ...)) == tuple[int, ...], tuple.__class_getitem__((int, ...)).__args__)),\n",
+            "    ('inst-exact', lambda: ((1,).__class_getitem__(int) == tuple[int], (1,).__class_getitem__(int).__origin__ is tuple)),\n",
+            "    ('type-sub', lambda: (type(T.__class_getitem__(int)).__name__, T.__class_getitem__(int).__origin__ is T, T.__class_getitem__(int).__args__)),\n",
+            "    ('inst-sub', lambda: (type(left.__class_getitem__(int)).__name__, left.__class_getitem__(int).__origin__ is T, left.__class_getitem__(int).__args__)),\n",
+            "    ('call-noargs', lambda: tuple.__class_getitem__()),\n",
+            "    ('call-extra', lambda: tuple.__class_getitem__(int, str)),\n",
+            "    ('call-keyword', lambda: tuple.__class_getitem__(item=int)),\n",
+            "    ('type-sub-keyword', lambda: T.__class_getitem__(item=int)),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), error.args)",
+        ),
+        &[
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "subscript-int tuple ('GenericAlias', 'tuple[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'tuple[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('tuple[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "call-ellipsis tuple (True, (<class 'int'>, Ellipsis))",
+            "inst-exact tuple (True, True)",
+            "type-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "call-noargs TypeError tuple.__class_getitem__() takes exactly one argument (0 given) ('tuple.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError tuple.__class_getitem__() takes exactly one argument (2 given) ('tuple.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError tuple.__class_getitem__() takes no keyword arguments ('tuple.__class_getitem__() takes no keyword arguments',)",
+            "type-sub-keyword TypeError T.__class_getitem__() takes no keyword arguments ('T.__class_getitem__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple __str__ inheritance. This pins the
 // inherited object.__str__ wrapper for tuple without making it a tuple-specific
 // sequence method.

@@ -1092,6 +1092,131 @@ fn tuple_inherited_setattr_delattr_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_class_getitem_generic_alias_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_tuple_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "hasattr(tuple, '__class_getitem__')",
+        "'__class_getitem__' in dir(tuple)",
+        "type(tuple.__class_getitem__).__name__",
+        "tuple[int]",
+        "tuple[int].__origin__ is tuple",
+        "tuple[int].__args__",
+        "tuple.__class_getitem__(int)",
+        "tuple.__class_getitem__(int) == tuple[int]",
+        "tuple.__class_getitem__((int, str))",
+        "tuple.__class_getitem__((int, str)) == tuple[int, str]",
+        "tuple.__class_getitem__((int, ...)) == tuple[int, ...]",
+        "(1,).__class_getitem__(int)",
+        "T.__class_getitem__(int)",
+        "T.__class_getitem__(int).__origin__ is T",
+        "left.__class_getitem__(int)",
+        "left.__class_getitem__(int).__origin__ is T",
+        "tuple.__class_getitem__()",
+        "tuple.__class_getitem__(int, str)",
+        "tuple.__class_getitem__(item=int)",
+        "T.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"subscript-int tuple ('GenericAlias', 'tuple[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'tuple[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('tuple[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"call-ellipsis tuple (True, (<class 'int'>, Ellipsis))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"type-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"inst-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"call-noargs TypeError tuple.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError tuple.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError tuple.__class_getitem__() takes no keyword arguments",
+        "\"type-sub-keyword TypeError T.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__class_getitem__\""),
+        "tuple dir block must expose `__class_getitem__`"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"type.__class_getitem__\"",
+        "self.call_type_class_getitem(args, keywords)",
+        "fn call_type_class_getitem(",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+        "Value::Tuple(_) if name == \"__class_getitem__\"",
+        "Value::Builtin(\"tuple\".to_string())",
+        "function_name == \"tuple\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "fn class_getitem_bound_method(",
+        "Value::Builtin(\"type.__class_getitem__\".to_string())",
+        "fn class_getitem_origin_name(",
+        "class_bases_include_builtin(&class_bases, \"tuple\")",
+        "return Ok(class_getitem_bound_method(owner));",
+        "class_bases_include_builtin(&bases, \"tuple\")",
+        "Value::Class { name, attrs, .. }",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple `__class_getitem__`",
+            "`tuple.__class_getitem__(int) == tuple[int]`",
+            "exact tuple instance lookup",
+            "tuple subclass class and instance origin binding",
+            "GenericAlias",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or full classmethod_descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_inherited_str_direct_docs_cover_core_runtime() {
     let diff_name = "cpython_tuple_inherited_str_direct_diff_subset";
     let subset_name = "cpython_tuple_inherited_str_direct_subset";

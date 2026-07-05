@@ -92,6 +92,13 @@ Recent runtime migration notes:
   `wrapper_descriptor` visibility, and name-type and keyword error propagation,
   without adding custom setattr/delattr hooks or full descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_tuple_class_getitem_generic_alias_subset`, backed by
+  `cpython_tuple_class_getitem_generic_alias_diff_subset`, now pins tuple `__class_getitem__`,
+  `tuple.__class_getitem__(int) == tuple[int]`, exact tuple instance lookup,
+  tuple subclass class and instance origin binding, `GenericAlias` origin/args,
+  pair and ellipsis argument normalization through the existing alias model, and
+  keyword and arity error propagation, without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

@@ -10335,6 +10335,9 @@ impl Vm {
                     union_unhashable_count: 0,
                 })
             }
+            Value::Builtin(name) if name == "type.__class_getitem__" => {
+                self.call_type_class_getitem(args, keywords)
+            }
             Value::Builtin(name) if name == "defaultdict.__class_getitem__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -15023,6 +15026,11 @@ impl Vm {
                     return Ok(object_delattr_bound_method(instance));
                 }
 
+                if name == "__class_getitem__" && class_bases_include_builtin(&class_bases, "tuple")
+                {
+                    return Ok(class_getitem_bound_method(owner));
+                }
+
                 if let Some((typ, values)) = namedtuple_subclass_storage(&instance) {
                     let storage = Value::NamedTuple { typ, values };
                     if let Ok(value) = load_attribute(storage, name) {
@@ -15319,6 +15327,10 @@ impl Vm {
                 if let Some(value) = chain_map_subclass_display_class_attribute(owner.clone(), name)
                 {
                     return Ok(value);
+                }
+
+                if name == "__class_getitem__" && class_bases_include_builtin(&bases, "tuple") {
+                    return Ok(class_getitem_bound_method(owner));
                 }
 
                 if name == "__dir__" {
@@ -16744,6 +16756,34 @@ impl Vm {
             return Err(missing_type_attribute_error("type", &name));
         }
         result
+    }
+
+    fn call_type_class_getitem(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((origin, rest)) = args.split_first() else {
+            return Err("TypeError: __class_getitem__() missing type receiver".to_string());
+        };
+        let name = class_getitem_origin_name(origin);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {name}.__class_getitem__() takes no keyword arguments"
+            ));
+        }
+        let [item] = rest else {
+            return Err(format!(
+                "TypeError: {name}.__class_getitem__() takes exactly one argument ({} given)",
+                rest.len()
+            ));
+        };
+
+        Ok(Value::GenericAlias {
+            origin: Box::new(origin.clone()),
+            args: generic_alias_args(item.clone()),
+            union_unhashable_count: 0,
+        })
     }
 
     fn call_object_getstate(
@@ -53232,6 +53272,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "tuple" => &[
             "__add__",
+            "__class_getitem__",
             "__contains__",
             "__delattr__",
             "__eq__",
@@ -61056,6 +61097,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .expect("tuple builtin type doc exists")
                 .to_string(),
         )),
+        Value::Tuple(_) if name == "__class_getitem__" => Ok(class_getitem_bound_method(
+            Value::Builtin("tuple".to_string()),
+        )),
         Value::Tuple(items) if name == "__str__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("object.__str__".to_string())),
             receiver: Box::new(Value::Tuple(items)),
@@ -62951,6 +62995,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__new__" => {
             Ok(Value::Builtin("tuple.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__str__" => {
             Ok(Value::Builtin("object.__str__".to_string()))
@@ -67730,6 +67777,26 @@ fn object_delattr_bound_method(receiver: Value) -> Value {
         function: Box::new(Value::Builtin("object.__delattr__".to_string())),
         receiver: Box::new(receiver),
         identity: Rc::new(()),
+    }
+}
+
+fn class_getitem_bound_method(origin: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("type.__class_getitem__".to_string())),
+        receiver: Box::new(origin),
+        identity: Rc::new(()),
+    }
+}
+
+fn class_getitem_origin_name(origin: &Value) -> String {
+    match origin {
+        Value::Builtin(name) => name.clone(),
+        Value::Class { name, attrs, .. } => match class_name_value(name, attrs) {
+            Value::String(name) | Value::IdentityString { value: name, .. } => name,
+            _ => name.clone(),
+        },
+        Value::NamedTupleType(typ) => typ.name.clone(),
+        value => type_name(value).to_string(),
     }
 }
 

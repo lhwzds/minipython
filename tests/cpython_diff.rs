@@ -18320,6 +18320,36 @@ print('visible-del', hasattr(left, '__delattr__'), '__delattr__' in dir(left), '
 }
 
 #[test]
+fn cpython_tuple_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple __class_getitem__ GenericAlias behavior",
+        name: "tuple-class-getitem-generic-alias",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('visible', lambda: (hasattr(tuple, '__class_getitem__'), '__class_getitem__' in dir(tuple), type(tuple.__class_getitem__).__name__)),
+    ('subscript-int', lambda: (type(tuple[int]).__name__, str(tuple[int]), tuple[int].__origin__ is tuple, tuple[int].__args__)),
+    ('call-int', lambda: (type(tuple.__class_getitem__(int)).__name__, str(tuple.__class_getitem__(int)), tuple.__class_getitem__(int) == tuple[int], tuple.__class_getitem__(int).__origin__ is tuple, tuple.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(tuple.__class_getitem__((int, str))), tuple.__class_getitem__((int, str)) == tuple[int, str], tuple.__class_getitem__((int, str)).__args__)),
+    ('call-ellipsis', lambda: (tuple.__class_getitem__((int, ...)) == tuple[int, ...], tuple.__class_getitem__((int, ...)).__args__)),
+    ('inst-exact', lambda: ((1,).__class_getitem__(int) == tuple[int], (1,).__class_getitem__(int).__origin__ is tuple)),
+    ('type-sub', lambda: (type(T.__class_getitem__(int)).__name__, T.__class_getitem__(int).__origin__ is T, T.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (type(left.__class_getitem__(int)).__name__, left.__class_getitem__(int).__origin__ is T, left.__class_getitem__(int).__args__)),
+    ('call-noargs', lambda: tuple.__class_getitem__()),
+    ('call-extra', lambda: tuple.__class_getitem__(int, str)),
+    ('call-keyword', lambda: tuple.__class_getitem__(item=int)),
+    ('type-sub-keyword', lambda: T.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_inherited_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple inherited __str__ wrapper behavior",
