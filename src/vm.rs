@@ -62698,6 +62698,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
+                "maketrans" => Ok(Value::Builtin("str.maketrans".to_string())),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -64595,6 +64596,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name) if function_name == "str" && name == "maketrans" => {
+            Ok(Value::Builtin("str.maketrans".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__new__" => {
@@ -79860,8 +79864,17 @@ fn call_str_maketrans(args: Vec<Value>) -> Result<Value, String> {
             build_dict(translated_entries)
         }
         [from, to] | [from, to, _] => {
-            let (Some(from), Some(to)) = (value_as_string(from), value_as_string(to)) else {
-                return Err("TypeError: maketrans arguments must be strings".to_string());
+            let Some(from) = value_as_string(from) else {
+                return Err(
+                    "TypeError: first maketrans argument must be a string if there is a second argument"
+                        .to_string(),
+                );
+            };
+            let Some(to) = value_as_string(to) else {
+                return Err(format!(
+                    "TypeError: maketrans() argument 2 must be str, not {}",
+                    type_name(to)
+                ));
             };
             let from_chars = from.chars().collect::<Vec<_>>();
             let to_chars = to.chars().collect::<Vec<_>>();
@@ -79885,7 +79898,10 @@ fn call_str_maketrans(args: Vec<Value>) -> Result<Value, String> {
 
             if let Some(delete) = args.get(2) {
                 let Some(delete) = value_as_string(delete) else {
-                    return Err("TypeError: maketrans deletechars must be a string".to_string());
+                    return Err(format!(
+                        "TypeError: maketrans() argument 3 must be str, not {}",
+                        type_name(delete)
+                    ));
                 };
                 entries.extend(
                     delete
@@ -79912,12 +79928,12 @@ fn maketrans_key(key: &Value) -> Result<Value, String> {
             let mut chars = value.chars();
             let Some(ch) = chars.next() else {
                 return Err(
-                    "ValueError: string keys in translate table must be of length 1".to_string(),
+                    "ValueError: string keys in translatetable must be of length 1".to_string(),
                 );
             };
             if chars.next().is_some() {
                 return Err(
-                    "ValueError: string keys in translate table must be of length 1".to_string(),
+                    "ValueError: string keys in translatetable must be of length 1".to_string(),
                 );
             }
             Ok(Value::Number(ch as u32 as i64))
@@ -79925,10 +79941,7 @@ fn maketrans_key(key: &Value) -> Result<Value, String> {
         Value::Bool(value) => Ok(Value::Number(bool_as_i64(*value))),
         Value::Number(value) => Ok(Value::Number(*value)),
         Value::BigInt(value) => Ok(Value::BigInt(value.clone())),
-        value => Err(format!(
-            "TypeError: keys in translate table must be str or int, not {}",
-            type_name(value)
-        )),
+        _ => Err("TypeError: keys in translate table mustbe strings or integers".to_string()),
     }
 }
 

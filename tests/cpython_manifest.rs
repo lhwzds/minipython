@@ -26541,6 +26541,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_format_map_method_subset",
             "cpython_collections_userstring_encode_method_subset",
             "cpython_collections_userstring_translate_method_subset",
+            "cpython_collections_userstring_maketrans_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31814,6 +31815,102 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString translate docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_maketrans_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString maketrans"
+    );
+    let userstring_maketrans_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_maketrans_method_diff_subset",
+    );
+    let userstring_maketrans_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_maketrans_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abc')",
+        "hasattr(UserString, 'maketrans')",
+        "type(UserString.maketrans).__name__",
+        "UserString.maketrans is str.maketrans",
+        "u.maketrans is str.maketrans",
+        "UserString.maketrans('ab', 'xy')",
+        "u.maketrans('a', 'X')",
+        "UserString.maketrans('ab', 'xy', 'c')",
+        "UserString.maketrans({'a': None, 'b': 'XX', ord('c'): ord('Z')})",
+        "UserString.maketrans()",
+        "u.maketrans()",
+        "UserString.maketrans('abc', 'xy')",
+        "UserString.maketrans(1, 'x')",
+        "UserString.maketrans('a', 1)",
+        "UserString.maketrans('a', 'x', 1)",
+        "UserString.maketrans({'xy': 1})",
+        "UserString.maketrans({(1,): 1})",
+        "UserString.maketrans(x='a')",
+    ] {
+        assert!(
+            userstring_maketrans_method_diff_body.contains(required)
+                && userstring_maketrans_method_subset_body.contains(required),
+            "UserString maketrans diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "attr builtin_function_or_method True builtin_function_or_method True",
+        "value two dict:[(97, 120), (98, 121)]",
+        "value instance dict:[(97, 88)]",
+        "value delete dict:[(97, 120), (98, 121), (99, None)]",
+        "value dict dict:[(97, None), (98, 'XX'), (99, 90)]",
+        "TypeError:maketrans expected at least 1 argument, got 0",
+        "ValueError:the first two maketrans arguments must have equal length",
+        "TypeError:first maketrans argument must be a string if there is a second argument",
+        "TypeError:maketrans() argument 2 must be str, not int",
+        "TypeError:maketrans() argument 3 must be str, not int",
+        "ValueError:string keys in translatetable must be of length 1",
+        "TypeError:keys in translate table mustbe strings or integers",
+        "TypeError:str.maketrans() takes no keyword arguments",
+    ] {
+        assert!(
+            userstring_maketrans_method_subset_body.contains(required),
+            "UserString maketrans subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"maketrans\" => Ok(Value::Builtin(\"str.maketrans\".to_string()))",
+        "function_name == \"UserString\" && name == \"maketrans\"",
+        "call_str_maketrans(args)",
+        "first maketrans argument must be a string if there is a second argument",
+        "maketrans() argument 2 must be str",
+        "maketrans() argument 3 must be str",
+        "string keys in translatetable must be of length 1",
+        "keys in translate table mustbe strings or integers",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString maketrans implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_maketrans_method_subset",
+            "cpython_collections_userstring_maketrans_method_diff_subset",
+            "`UserString.maketrans`",
+            "ordinary `dict` result values",
+            "type and instance visibility",
+            "unbound `str.maketrans` exposure",
+            "two-string and deletechars forms",
+            "dictionary input",
+            "CPython maketrans TypeError/ValueError text",
+            "without binding `self`",
+            "without returning UserString wrappers",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString maketrans docs must contain `{required}`"
             );
         }
     }

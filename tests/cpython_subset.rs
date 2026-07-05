@@ -71291,6 +71291,55 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString maketrans method visibility. CPython
+// exposes `str.maketrans` through both the UserString type and instances, so
+// this does not bind `self` or return UserString wrappers.
+#[test]
+fn cpython_collections_userstring_maketrans_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abc')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+def table(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(sorted(value.items()))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'maketrans'), hasattr(u, 'maketrans'))
+print('attr', type(UserString.maketrans).__name__, UserString.maketrans is str.maketrans, type(u.maketrans).__name__, u.maketrans is str.maketrans)
+print('value two', table(lambda: UserString.maketrans('ab', 'xy')))
+print('value instance', table(lambda: u.maketrans('a', 'X')))
+print('value delete', table(lambda: UserString.maketrans('ab', 'xy', 'c')))
+print('value dict', table(lambda: UserString.maketrans({'a': None, 'b': 'XX', ord('c'): ord('Z')})))
+print('errors', [
+    show(lambda: UserString.maketrans()),
+    show(lambda: u.maketrans()),
+    show(lambda: UserString.maketrans('abc', 'xy')),
+    show(lambda: UserString.maketrans(1, 'x')),
+    show(lambda: UserString.maketrans('a', 1)),
+    show(lambda: UserString.maketrans('a', 'x', 1)),
+    show(lambda: UserString.maketrans({'xy': 1})),
+    show(lambda: UserString.maketrans({(1,): 1})),
+    show(lambda: UserString.maketrans(x='a')),
+])"#,
+        &[
+            "visible True True",
+            "attr builtin_function_or_method True builtin_function_or_method True",
+            "value two dict:[(97, 120), (98, 121)]",
+            "value instance dict:[(97, 88)]",
+            "value delete dict:[(97, 120), (98, 121), (99, None)]",
+            "value dict dict:[(97, None), (98, 'XX'), (99, 90)]",
+            r#"errors ['TypeError:maketrans expected at least 1 argument, got 0', 'TypeError:maketrans expected at least 1 argument, got 0', 'ValueError:the first two maketrans arguments must have equal length', 'TypeError:first maketrans argument must be a string if there is a second argument', 'TypeError:maketrans() argument 2 must be str, not int', 'TypeError:maketrans() argument 3 must be str, not int', 'ValueError:string keys in translatetable must be of length 1', 'TypeError:keys in translate table mustbe strings or integers', 'TypeError:str.maketrans() takes no keyword arguments']"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {

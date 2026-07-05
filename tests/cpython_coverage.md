@@ -386,6 +386,9 @@ Recent runtime migration notes:
   and out-of-range mapping errors, without arbitrary mapping protocol support,
   full UserString string-method proxying, or widening host IO, network,
   process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_maketrans_method_subset`, backed by
+  `cpython_collections_userstring_maketrans_method_diff_subset`, now pins
+  `UserString.maketrans`, including ordinary `dict` result values, type and instance visibility, unbound `str.maketrans` exposure, two-string and deletechars forms, dictionary input, and CPython maketrans TypeError/ValueError text, without binding `self`, without returning UserString wrappers, or widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1550,6 +1553,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_format_map_method_diff_subset`,
   `cpython_collections_userstring_encode_method_diff_subset`,
   `cpython_collections_userstring_translate_method_diff_subset`,
+  `cpython_collections_userstring_maketrans_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7588,6 +7592,10 @@ without adding general custom encoder/decoder class support.
   `self` binding, bad receiver errors, delegated `str.translate()` arity errors,
   and out-of-range mapping errors, without arbitrary mapping protocol support or
   implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_maketrans_method_diff_subset` and
+  `cpython_collections_userstring_maketrans_method_subset`, covering
+  `UserString.maketrans`, ordinary `dict` result values, type and instance visibility, unbound `str.maketrans` exposure, two-string and deletechars forms, dictionary input, and CPython maketrans TypeError/ValueError text, without binding `self`, without returning UserString wrappers.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_zfill_method_diff_subset` and
   `cpython_collections_userstring_zfill_method_subset`, covering

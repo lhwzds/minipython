@@ -26998,6 +26998,45 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_maketrans_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString maketrans method behavior",
+        name: "collections-userstring-maketrans-method",
+        source: r#"from collections import UserString
+u = UserString('abc')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+def table(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(sorted(value.items()))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'maketrans'), hasattr(u, 'maketrans'))
+print('attr', type(UserString.maketrans).__name__, UserString.maketrans is str.maketrans, type(u.maketrans).__name__, u.maketrans is str.maketrans)
+print('value two', table(lambda: UserString.maketrans('ab', 'xy')))
+print('value instance', table(lambda: u.maketrans('a', 'X')))
+print('value delete', table(lambda: UserString.maketrans('ab', 'xy', 'c')))
+print('value dict', table(lambda: UserString.maketrans({'a': None, 'b': 'XX', ord('c'): ord('Z')})))
+print('errors', [
+    show(lambda: UserString.maketrans()),
+    show(lambda: u.maketrans()),
+    show(lambda: UserString.maketrans('abc', 'xy')),
+    show(lambda: UserString.maketrans(1, 'x')),
+    show(lambda: UserString.maketrans('a', 1)),
+    show(lambda: UserString.maketrans('a', 'x', 1)),
+    show(lambda: UserString.maketrans({'xy': 1})),
+    show(lambda: UserString.maketrans({(1,): 1})),
+    show(lambda: UserString.maketrans(x='a')),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",
