@@ -146,6 +146,11 @@ Recent runtime migration notes:
   exact OrderedDict instance lookup, GenericAlias origin/args, and keyword and
   arity error propagation, without adding full OrderedDict runtime surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_counter_class_getitem_generic_alias_subset`, backed by
+  `cpython_collections_counter_class_getitem_generic_alias_diff_subset`, now pins
+  Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
+  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1154,6 +1159,7 @@ Recent runtime migration notes:
   `cpython_types_float_format_diff_subset`,
   `cpython_collections_counter_basics_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
+  `cpython_collections_counter_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_counter_instance_doc_attribute_diff_subset`,
   `cpython_collections_counter_type_base_metadata_diff_subset`,
   `cpython_collections_counter_type_mro_metadata_diff_subset`,
@@ -1886,6 +1892,12 @@ Recent runtime migration notes:
   positive/negative filtering, multiset arithmetic, and equality with matching
   counts, including direct `Counter.__pos__()` / `Counter.__neg__()` public
   dunder calls.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_class_getitem_generic_alias_diff_subset` and
+  `cpython_collections_counter_class_getitem_generic_alias_subset`, covering
+  Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
+  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - The bundled `collections` module also includes
   `cpython_collections_counter_instance_doc_attribute_diff_subset` and
   `cpython_collections_counter_instance_doc_attribute_subset`, covering

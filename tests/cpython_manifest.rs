@@ -26451,6 +26451,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_module_all_exports_subset",
             "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
+            "cpython_collections_counter_class_getitem_generic_alias_subset",
             "cpython_collections_counter_instance_doc_attribute_subset",
             "cpython_collections_counter_type_base_metadata_subset",
             "cpython_collections_counter_conversions_subset",
@@ -27136,6 +27137,110 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
                 && counter_public_subset_body.contains(required),
             "Counter public diff and subset evidence must cover `{required}`"
         );
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_class_getitem_generic_alias_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter class_getitem behavior"
+    );
+    let counter_class_getitem_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_class_getitem_generic_alias_diff_subset",
+    );
+    let counter_class_getitem_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_class_getitem_generic_alias_subset",
+    );
+    for required in [
+        "from collections import Counter",
+        "typ = Counter",
+        "inst = Counter()",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            counter_class_getitem_diff_body.contains(required)
+                && counter_class_getitem_subset_body.contains(required),
+            "Counter class_getitem GenericAlias diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.Counter[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.Counter[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.Counter[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"call-noargs TypeError Counter.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError Counter.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError Counter.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            counter_class_getitem_subset_body.contains(required),
+            "Counter class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+    let counter_dir_start = VM_SOURCE
+        .find("\"Counter\" => &[")
+        .expect("Counter dir block must exist");
+    let counter_dir_tail = &VM_SOURCE[counter_dir_start..];
+    let counter_dir_end = counter_dir_tail
+        .find("],\n        \"mappingproxy\"")
+        .expect("Counter dir block must end before mappingproxy block");
+    let counter_dir_block = &counter_dir_tail[..counter_dir_end];
+    assert!(
+        counter_dir_block.contains("\"__class_getitem__\""),
+        "Counter dir block must expose `__class_getitem__`"
+    );
+    for required in [
+        "Value::Counter { entries } => match name",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"Counter\".to_string()",
+        "function_name == \"Counter\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "\"Counter\" => \"collections.Counter\".to_string()",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required) || VALUE_SOURCE.contains(required),
+            "Counter class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_counter_class_getitem_generic_alias_subset",
+            "cpython_collections_counter_class_getitem_generic_alias_diff_subset",
+            "Counter `__class_getitem__`",
+            "`Counter.__class_getitem__(int) == Counter[int]`",
+            "exact Counter instance lookup",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full Counter runtime surface",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "Counter class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
     }
     assert!(
         row.diff_evidence

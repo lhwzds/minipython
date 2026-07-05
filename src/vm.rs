@@ -53067,6 +53067,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "Counter" => &[
             "__add__",
             "__and__",
+            "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__eq__",
@@ -61542,6 +61543,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("Counter type doc is defined")
                     .to_string(),
             )),
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "Counter".to_string(),
+            ))),
             "__init__" | "clear" | "copy" | "elements" | "fromkeys" | "get" | "items" | "keys"
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
             | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
@@ -63324,6 +63328,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "Counter" && is_builtin_counter_type_method(name) =>
         {
             Ok(Value::Builtin(format!("Counter.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "Counter" && name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name)
             if function_name == "ChainMap" && is_builtin_chain_map_type_method(name) =>
