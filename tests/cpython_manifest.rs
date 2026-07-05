@@ -26532,6 +26532,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_search_methods_subset",
             "cpython_collections_userstring_prefix_suffix_methods_subset",
             "cpython_collections_userstring_strip_methods_subset",
+            "cpython_collections_userstring_remove_affix_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30051,7 +30052,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "fn user_string_repeat_value(&mut self, receiver: &Value, count: Value)",
+        "fn user_string_repeat_value(",
         "self.user_string_repeat_value(&left, right)",
         "self.user_string_repeat_value(&right, left)",
         "self.user_string_repeat_value(&receiver, count)",
@@ -30791,6 +30792,113 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString strip-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_remove_affix_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString remove-affix methods"
+    );
+    let userstring_remove_affix_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_remove_affix_methods_diff_subset",
+    );
+    let userstring_remove_affix_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_remove_affix_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('bananabandana')",
+        "methods = ['removeprefix', 'removesuffix']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))",
+        "first = 'prefix' if name == 'removeprefix' else 'suffix'",
+        "(UserString('banana'),)",
+        "getattr(u, name)(*spec)",
+        "getattr(u, name)(**{first: 'banana'})",
+        "getattr(UserString, name)(self=u, **{first: 'banana'})",
+        "getattr(UserString, name)(u, 'banana')",
+        "getattr(UserString, name)('bananabandana', 'banana')",
+        "getattr(u, name)()",
+        "getattr(u, name)('banana', 'x')",
+        "getattr(u, name)('banana', **{first: 'x'})",
+        "getattr(u, name)(1)",
+        "getattr(u, name)(self=u)",
+        "getattr(UserString, name)()",
+        "getattr(UserString, name)(receiver=u, **{first: 'banana'})",
+    ] {
+        assert!(
+            userstring_remove_affix_methods_diff_body.contains(required)
+                && userstring_remove_affix_methods_subset_body.contains(required),
+            "UserString remove-affix diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('removeprefix', True, True), ('removesuffix', True, True)]\"",
+        "\"value ('banana',) UserString:'bandana':'bandana'\"",
+        "\"value ('band',) UserString:'bananabandana':'bananabandana'\"",
+        "\"value ('',) UserString:'bananabandana':'bananabandana'\"",
+        "\"keywords TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'prefix'",
+        "TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'self, prefix'",
+        "\"errors removeprefix [\\\"AttributeError:'str' object has no attribute 'data'\\\"",
+        "TypeError:UserString.removeprefix() missing 1 required positional argument: 'prefix'",
+        "TypeError:UserString.removeprefix() takes 2 positional arguments but 3 were given",
+        "TypeError:removeprefix() argument must be str, not int",
+        "TypeError:UserString.removeprefix() missing 2 required positional arguments: 'self' and 'prefix'",
+        "\"value ('ana',) UserString:'bananaband':'bananaband'\"",
+        "\"keywords TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'suffix'",
+        "TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'self, suffix'",
+        "\"type UserString:'bananabandana':'bananabandana'\"",
+        "\"errors removesuffix [\\\"AttributeError:'str' object has no attribute 'data'\\\"",
+        "TypeError:UserString.removesuffix() missing 1 required positional argument: 'suffix'",
+        "TypeError:UserString.removesuffix() takes 2 positional arguments but 3 were given",
+        "TypeError:removesuffix() argument must be str, not int",
+        "TypeError:UserString.removesuffix() missing 2 required positional arguments: 'self' and 'suffix'",
+    ] {
+        assert!(
+            userstring_remove_affix_methods_subset_body.contains(required),
+            "UserString remove-affix subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"removeprefix\" | \"removesuffix\"",
+        "fn user_string_remove_affix_arguments(",
+        "fn user_string_remove_affix_value(",
+        "user_string_remove_affix_arguments(method, &args, keywords)",
+        "user_string_remove_affix_value(&receiver, &affix, method == \"removeprefix\", method)",
+        "got some positional-only arguments passed as keyword arguments",
+        "positional_only.join(\", \")",
+        "UserString.{method}() takes 2 positional arguments",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and '{first_arg_name}'",
+        "{method}() argument must be str, not",
+        "user_string_order_operand(affix)",
+        "text.strip_prefix(&affix).unwrap_or(&text)",
+        "text.strip_suffix(&affix).unwrap_or(&text)",
+        "user_string_value(value.to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString remove-affix implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_remove_affix_methods_subset",
+            "cpython_collections_userstring_remove_affix_methods_diff_subset",
+            "`UserString.removeprefix`",
+            "`UserString.removesuffix`",
+            "positional-only prefix/suffix",
+            "UserString affix coercion",
+            "empty affix",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString remove-affix docs must contain `{required}`"
             );
         }
     }

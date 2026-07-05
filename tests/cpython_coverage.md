@@ -267,8 +267,7 @@ Recent runtime migration notes:
   `UserString.__lt__`, `UserString.__le__`, `UserString.__gt__`, and
   `UserString.__ge__` ordered comparisons, expression dispatch in both operand
   orders, reverse string comparison, `UserString` and str-subclass operands,
-  `string=` keyword binding, bad receiver errors, and CPython string-style
-  TypeErrors for non-string operands, without implementing full UserString
+  `string=` keyword binding, bad receiver errors, and CPython string-style TypeErrors for non-string operands, without implementing full UserString
   string-method proxying or widening host IO, network, process, C ABI, or full
   stdlib scope.
 - `cpython_collections_userstring_case_transform_methods_subset`, backed by
@@ -286,8 +285,7 @@ Recent runtime migration notes:
   `UserString.isspace`, `UserString.isalpha`, `UserString.isalnum`,
   `UserString.isdigit`, `UserString.isdecimal`, `UserString.isnumeric`,
   `UserString.isascii`, `UserString.isidentifier`, and
-  `UserString.isprintable` no-argument predicate methods, including Unicode
-  predicate behavior, type-object dispatch, `self=` keyword binding, bad
+  `UserString.isprintable` no-argument predicate methods, including Unicode predicate behavior, type-object dispatch, `self=` keyword binding, bad
   receiver errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
@@ -303,19 +301,24 @@ Recent runtime migration notes:
 - `cpython_collections_userstring_prefix_suffix_methods_subset`, backed by
   `cpython_collections_userstring_prefix_suffix_methods_diff_subset`, now pins
   `UserString.startswith` and `UserString.endswith`, including
-  `prefix/suffix/start/end` keyword binding, tuple-of-str prefixes and
-  suffixes, empty substring bounds, UserString prefix rejection, bad receiver
+  `prefix/suffix/start/end` keyword binding, tuple-of-str prefixes and suffixes, empty substring bounds, UserString prefix rejection, bad receiver
   errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_strip_methods_subset`, backed by
   `cpython_collections_userstring_strip_methods_diff_subset`, now pins
   `UserString.strip`, `UserString.lstrip`, and `UserString.rstrip`, including
-  default whitespace stripping, explicit strip character sets, `chars=`
-  keyword binding, `None` handling, UserString chars rejection, bad receiver
+  default whitespace stripping, explicit strip character sets, `chars=` keyword binding, `None` handling, UserString chars rejection, bad receiver
   errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_remove_affix_methods_subset`, backed by
+  `cpython_collections_userstring_remove_affix_methods_diff_subset`, now pins
+  `UserString.removeprefix` and `UserString.removesuffix`, including
+  positional-only prefix/suffix handling, empty affix behavior, UserString
+  affix coercion through `.data`, bad receiver errors, and UserString-specific
+  arity/keyword TypeErrors, without implementing full UserString string-method
+  proxying or widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1407,6 +1410,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_search_methods_diff_subset`,
   `cpython_collections_userstring_prefix_suffix_methods_diff_subset`,
   `cpython_collections_userstring_strip_methods_diff_subset`,
+  `cpython_collections_userstring_remove_affix_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7320,8 +7324,7 @@ without adding general custom encoder/decoder class support.
   `UserString.__lt__`, `UserString.__le__`, `UserString.__gt__`, and
   `UserString.__ge__` ordered comparisons, expression dispatch in both operand
   orders, reverse string comparison, `UserString` and str-subclass operands,
-  `string=` keyword binding, bad receiver errors, and CPython string-style
-  TypeErrors for non-string operands, without implementing full UserString
+  `string=` keyword binding, bad receiver errors, and CPython string-style TypeErrors for non-string operands, without implementing full UserString
   string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_case_transform_methods_diff_subset` and
@@ -7356,18 +7359,23 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_prefix_suffix_methods_diff_subset` and
   `cpython_collections_userstring_prefix_suffix_methods_subset`, covering
   `UserString.startswith` and `UserString.endswith`,
-  `prefix/suffix/start/end` keyword binding, tuple-of-str prefixes and
-  suffixes, empty substring bounds, UserString prefix rejection, bad receiver
+  `prefix/suffix/start/end` keyword binding, tuple-of-str prefixes and suffixes, empty substring bounds, UserString prefix rejection, bad receiver
   errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_strip_methods_diff_subset` and
   `cpython_collections_userstring_strip_methods_subset`, covering
   `UserString.strip`, `UserString.lstrip`, and `UserString.rstrip`, default
-  whitespace stripping, explicit strip character sets, `chars=` keyword
-  binding, `None` handling, UserString chars rejection, bad receiver errors,
+  whitespace stripping, explicit strip character sets, `chars=` keyword binding, `None` handling, UserString chars rejection, bad receiver errors,
   and UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_remove_affix_methods_diff_subset` and
+  `cpython_collections_userstring_remove_affix_methods_subset`, covering
+  `UserString.removeprefix` and `UserString.removesuffix`, positional-only
+  prefix/suffix handling, empty affix behavior, UserString affix coercion
+  through `.data`, bad receiver errors, and UserString-specific arity/keyword
+  TypeErrors, without implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

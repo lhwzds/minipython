@@ -35880,6 +35880,11 @@ impl Vm {
                 let (receiver, chars) = user_string_strip_arguments(method, &args, keywords)?;
                 user_string_strip_value(&receiver, chars.as_ref(), method)
             }
+            "removeprefix" | "removesuffix" => {
+                let (receiver, affix) =
+                    user_string_remove_affix_arguments(method, &args, keywords)?;
+                user_string_remove_affix_value(&receiver, &affix, method == "removeprefix", method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56660,6 +56665,8 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "strip"
             | "lstrip"
             | "rstrip"
+            | "removeprefix"
+            | "removesuffix"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62301,6 +62308,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "count" | "find" | "rfind" | "index" | "rindex"
                 | "startswith" | "endswith"
                 | "strip" | "lstrip" | "rstrip"
+                | "removeprefix" | "removesuffix"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90708,6 +90716,81 @@ fn user_string_strip_value(
         }
     };
     user_string_value(stripped)
+}
+
+fn user_string_remove_affix_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    let first_arg_name = if method == "removeprefix" {
+        "prefix"
+    } else {
+        "suffix"
+    };
+    let mut positional_only = Vec::new();
+    if keywords.iter().any(|(name, _)| name == "self") {
+        positional_only.push("self");
+    }
+    if keywords.iter().any(|(name, _)| name == first_arg_name) {
+        positional_only.push(first_arg_name);
+    }
+    if !positional_only.is_empty() {
+        return Err(format!(
+            "TypeError: UserString.{method}() got some positional-only arguments passed as keyword arguments: '{}'",
+            positional_only.join(", ")
+        ));
+    }
+    if let Some((name, _)) = keywords.first() {
+        return Err(format!(
+            "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+        ));
+    }
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    match args {
+        [receiver, affix] => Ok((receiver.clone(), affix.clone())),
+        [_receiver] => Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: '{first_arg_name}'"
+        )),
+        [] => Err(format!(
+            "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and '{first_arg_name}'"
+        )),
+        _ => unreachable!("argument length is bounded above"),
+    }
+}
+
+fn user_string_remove_affix_value(
+    receiver: &Value,
+    affix: &Value,
+    remove_prefix: bool,
+    method: &str,
+) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let Some(affix) = user_string_order_operand(affix) else {
+        return Err(format!(
+            "TypeError: {method}() argument must be str, not {}",
+            type_name(affix)
+        ));
+    };
+    let text = data.borrow();
+    let value = if remove_prefix {
+        text.strip_prefix(&affix).unwrap_or(&text)
+    } else if affix.is_empty() {
+        &text
+    } else {
+        text.strip_suffix(&affix).unwrap_or(&text)
+    };
+    user_string_value(value.to_string())
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

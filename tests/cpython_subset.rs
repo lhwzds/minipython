@@ -70713,6 +70713,70 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString removeprefix/removesuffix methods.
+#[test]
+fn cpython_collections_userstring_remove_affix_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('bananabandana')
+methods = ['removeprefix', 'removesuffix']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('banana',),
+    ('band',),
+    ('ana',),
+    ('',),
+    (UserString('banana'),),
+]
+for name in methods:
+    first = 'prefix' if name == 'removeprefix' else 'suffix'
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name, first=first: getattr(u, name)(**{first: 'banana'})),
+          show(lambda name=name, first=first: getattr(UserString, name)(self=u, **{first: 'banana'})))
+    print('type', show(lambda name=name: getattr(UserString, name)(u, 'banana')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('bananabandana', 'banana')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('banana', 'x')),
+        show(lambda name=name, first=first: getattr(u, name)('banana', **{first: 'x'})),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)(self=u)),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name, first=first: getattr(UserString, name)(receiver=u, **{first: 'banana'})),
+    ])"#,
+        &[
+            "visible [('removeprefix', True, True), ('removesuffix', True, True)]",
+            "method removeprefix",
+            "value ('banana',) UserString:'bandana':'bandana'",
+            "value ('band',) UserString:'bananabandana':'bananabandana'",
+            "value ('ana',) UserString:'bananabandana':'bananabandana'",
+            "value ('',) UserString:'bananabandana':'bananabandana'",
+            "value ('banana',) UserString:'bandana':'bandana'",
+            "keywords TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'prefix' TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'self, prefix'",
+            "type UserString:'bandana':'bandana'",
+            "errors removeprefix [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.removeprefix() missing 1 required positional argument: 'prefix'\", 'TypeError:UserString.removeprefix() takes 2 positional arguments but 3 were given', \"TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'prefix'\", 'TypeError:removeprefix() argument must be str, not int', \"TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'self'\", \"TypeError:UserString.removeprefix() missing 2 required positional arguments: 'self' and 'prefix'\", \"TypeError:UserString.removeprefix() got some positional-only arguments passed as keyword arguments: 'prefix'\"]",
+            "method removesuffix",
+            "value ('banana',) UserString:'bananabandana':'bananabandana'",
+            "value ('band',) UserString:'bananabandana':'bananabandana'",
+            "value ('ana',) UserString:'bananaband':'bananaband'",
+            "value ('',) UserString:'bananabandana':'bananabandana'",
+            "value ('banana',) UserString:'bananabandana':'bananabandana'",
+            "keywords TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'suffix' TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'self, suffix'",
+            "type UserString:'bananabandana':'bananabandana'",
+            "errors removesuffix [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.removesuffix() missing 1 required positional argument: 'suffix'\", 'TypeError:UserString.removesuffix() takes 2 positional arguments but 3 were given', \"TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'suffix'\", 'TypeError:removesuffix() argument must be str, not int', \"TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'self'\", \"TypeError:UserString.removesuffix() missing 2 required positional arguments: 'self' and 'suffix'\", \"TypeError:UserString.removesuffix() got some positional-only arguments passed as keyword arguments: 'suffix'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]
