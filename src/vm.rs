@@ -35894,6 +35894,10 @@ impl Vm {
                     user_string_split_arguments(method, &args, keywords)?;
                 self.user_string_split_value(&receiver, separator, maxsplit, method)
             }
+            "join" => {
+                let (receiver, seq) = user_string_join_arguments(method, &args, keywords)?;
+                self.user_string_join_value(&receiver, seq)
+            }
             "splitlines" => {
                 let (receiver, keepends) =
                     user_string_splitlines_arguments(method, &args, keywords)?;
@@ -36195,6 +36199,34 @@ impl Vm {
             }),
             _ => unreachable!("index_integer_value returns an integer"),
         }
+    }
+
+    fn user_string_join_value(&mut self, receiver: &Value, seq: Value) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let values = self.collect_iterable_values(seq).map_err(|error| {
+            if error.ends_with(" is not iterable") {
+                "TypeError: can only join an iterable".to_string()
+            } else {
+                error
+            }
+        })?;
+        let mut parts = Vec::with_capacity(values.len());
+        for (index, value) in values.into_iter().enumerate() {
+            if let Some(part) = user_string_join_part(&value) {
+                parts.push(part);
+            } else {
+                return Err(format!(
+                    "TypeError: sequence item {index}: expected str instance, {} found",
+                    type_name(&value)
+                ));
+            }
+        }
+        Ok(Value::String(parts.join(&data.borrow())))
     }
 
     fn user_string_expandtabs_value(
@@ -56931,6 +56963,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rpartition"
             | "split"
             | "rsplit"
+            | "join"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62582,6 +62615,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
                 | "split" | "rsplit"
+                | "join"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"
@@ -91260,6 +91294,68 @@ fn user_string_split_separator(separator: Option<Value>) -> Result<Option<String
             "TypeError: must be str or None, not {}",
             type_name(&value)
         )),
+    }
+}
+
+fn user_string_join_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut seq = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "seq" => {
+                if seq.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'seq'"
+                    ));
+                }
+                seq = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    match (receiver, seq) {
+        (Some(receiver), Some(seq)) => Ok((receiver, seq)),
+        (None, Some(_)) => Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        )),
+        (Some(_), None) => Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'seq'"
+        )),
+        (None, None) => Err(format!(
+            "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'seq'"
+        )),
+    }
+}
+
+fn user_string_join_part(value: &Value) -> Option<String> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => Some(value.clone()),
+        value if str_subclass_string(value).is_some() => {
+            Some(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
+        _ => None,
     }
 }
 

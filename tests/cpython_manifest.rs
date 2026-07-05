@@ -26536,6 +26536,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_partition_methods_subset",
             "cpython_collections_userstring_split_method_subset",
             "cpython_collections_userstring_rsplit_method_subset",
+            "cpython_collections_userstring_join_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31286,6 +31287,125 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString rsplit docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_join_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString join"
+    );
+    let userstring_join_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_join_method_diff_subset",
+    );
+    let userstring_join_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_join_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class S(str): pass",
+        "class Iter:",
+        "print('iter-called')",
+        "return iter(['a', 'b'])",
+        "class BadIter:",
+        "print('bad-iter-called')",
+        "class NoIter: pass",
+        "u = UserString('-')",
+        "hasattr(UserString, 'join')",
+        "('subclass', [S('a'), S('b')])",
+        "('userstring-item', [UserString('a'), UserString('b')])",
+        "('mixed', ['a', 1])",
+        "('iter', Iter())",
+        "('baditer', BadIter())",
+        "('string', 'ab')",
+        "('none', None)",
+        "u.join(seq=['a','b'])",
+        "UserString.join(self=u, seq=['a','b'])",
+        "UserString.join(u, seq=['a','b'])",
+        "UserString.join(seq=['a'])",
+        "UserString.join(seq=['a'], self=u)",
+        "UserString.join('-', ['a','b'])",
+        "u.join(['a'], seq=['b'])",
+        "u.join(iterable=['a'])",
+        "UserString.join(receiver=u, seq=['a'])",
+    ] {
+        assert!(
+            userstring_join_method_diff_body.contains(required)
+                && userstring_join_method_subset_body.contains(required),
+            "UserString join diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "value list str:'a-b-c'",
+        "value tuple str:'a-b'",
+        "value empty str:''",
+        "value single str:'x'",
+        "value subclass str:'a-b'",
+        "value userstring-item TypeError:sequence item 0: expected str instance, UserString found",
+        "value mixed TypeError:sequence item 1: expected str instance, int found",
+        "iter-called",
+        "value iter str:'a-b'",
+        "bad-iter-called",
+        "value baditer TypeError:sequence item 1: expected str instance, int found",
+        "value string str:'a-b'",
+        "value none TypeError:can only join an iterable",
+        "value noiter TypeError:can only join an iterable",
+        "keywords str:'a-b' str:'a-b' str:'a-b' TypeError:UserString.join() missing 1 required positional argument: 'self' str:'a'",
+        "type str:'a-b'",
+        "AttributeError:'str' object has no attribute 'data'",
+        "AttributeError:'int' object has no attribute 'data'",
+        "TypeError:UserString.join() missing 2 required positional arguments: 'self' and 'seq'",
+        "TypeError:UserString.join() missing 1 required positional argument: 'seq'",
+        "TypeError:UserString.join() takes 2 positional arguments but 3 were given",
+        "TypeError:UserString.join() got multiple values for argument 'seq'",
+        "TypeError:UserString.join() got multiple values for argument 'self'",
+        "TypeError:UserString.join() got an unexpected keyword argument 'iterable'",
+        "TypeError:UserString.join() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_join_method_subset_body.contains(required),
+            "UserString join subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"join\" => {",
+        "fn user_string_join_value(",
+        "fn user_string_join_arguments(",
+        "fn user_string_join_part(",
+        "user_string_join_arguments(method, &args, keywords)",
+        "self.user_string_join_value(&receiver, seq)",
+        "self.collect_iterable_values(seq).map_err",
+        "TypeError: can only join an iterable",
+        "sequence item {index}: expected str instance",
+        "parts.join(&data.borrow())",
+        "got multiple values for argument 'seq'",
+        "missing 2 required positional arguments: 'self' and 'seq'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString join implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_join_method_subset",
+            "cpython_collections_userstring_join_method_diff_subset",
+            "`UserString.join`",
+            "ordinary `str` result values",
+            "`seq=` keyword binding",
+            "iterable collection",
+            "`str` subclass item handling",
+            "UserString item rejection",
+            "non-iterable `can only join an iterable`",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString join docs must contain `{required}`"
             );
         }
     }

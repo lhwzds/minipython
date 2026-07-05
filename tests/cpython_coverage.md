@@ -346,6 +346,14 @@ Recent runtime migration notes:
   UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying or widening host IO, network, process, C
   ABI, or full stdlib scope.
+- `cpython_collections_userstring_join_method_subset`, backed by
+  `cpython_collections_userstring_join_method_diff_subset`, now pins
+  `UserString.join`, including ordinary `str` result values, iterable
+  collection, `seq=` keyword binding, `str` subclass item handling,
+  UserString item rejection, non-iterable `can only join an iterable` errors, bad receiver
+  errors, and UserString-specific arity/keyword TypeErrors, without
+  implementing full UserString string-method proxying or widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1505,6 +1513,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_partition_methods_diff_subset`,
   `cpython_collections_userstring_split_method_diff_subset`,
   `cpython_collections_userstring_rsplit_method_diff_subset`,
+  `cpython_collections_userstring_join_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7504,6 +7513,14 @@ without adding general custom encoder/decoder class support.
   handling, UserString separator rejection, bad receiver errors, and
   UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_join_method_diff_subset` and
+  `cpython_collections_userstring_join_method_subset`, covering
+  `UserString.join`, ordinary `str` result values, iterable collection,
+  `seq=` keyword binding, `str` subclass item handling, UserString item rejection,
+  non-iterable `can only join an iterable` errors, bad receiver
+  errors, and UserString-specific arity/keyword TypeErrors, without
+  implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_zfill_method_diff_subset` and
   `cpython_collections_userstring_zfill_method_subset`, covering

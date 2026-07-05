@@ -26773,6 +26773,67 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_join_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString join method behavior",
+        name: "collections-userstring-join-method",
+        source: r#"from collections import UserString
+class S(str): pass
+class Iter:
+    def __iter__(self):
+        print('iter-called')
+        return iter(['a', 'b'])
+class BadIter:
+    def __iter__(self):
+        print('bad-iter-called')
+        return iter(['a', 1])
+class NoIter: pass
+u = UserString('-')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'join'), hasattr(u, 'join'))
+for label, seq in [
+    ('list', ['a','b','c']),
+    ('tuple', ('a','b')),
+    ('empty', []),
+    ('single', ['x']),
+    ('subclass', [S('a'), S('b')]),
+    ('userstring-item', [UserString('a'), UserString('b')]),
+    ('mixed', ['a', 1]),
+    ('iter', Iter()),
+    ('baditer', BadIter()),
+    ('string', 'ab'),
+    ('none', None),
+    ('noiter', NoIter()),
+]:
+    print('value', label, show(lambda seq=seq: u.join(seq)))
+print('keywords',
+      show(lambda: u.join(seq=['a','b'])),
+      show(lambda: UserString.join(self=u, seq=['a','b'])),
+      show(lambda: UserString.join(u, seq=['a','b'])),
+      show(lambda: UserString.join(seq=['a'])),
+      show(lambda: UserString.join(seq=['a'], self=u)))
+print('type', show(lambda: UserString.join(u, ['a','b'])))
+print('errors', [
+    show(lambda: UserString.join('-', ['a','b'])),
+    show(lambda: UserString.join(1, ['a','b'])),
+    show(lambda: UserString.join()),
+    show(lambda: UserString.join(u)),
+    show(lambda: u.join()),
+    show(lambda: u.join(['a'], ['b'])),
+    show(lambda: u.join(['a'], seq=['b'])),
+    show(lambda: u.join(self=u)),
+    show(lambda: u.join(iterable=['a'])),
+    show(lambda: UserString.join(receiver=u, seq=['a'])),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

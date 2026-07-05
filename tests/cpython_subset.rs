@@ -71004,6 +71004,86 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString join method.
+#[test]
+fn cpython_collections_userstring_join_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class S(str): pass
+class Iter:
+    def __iter__(self):
+        print('iter-called')
+        return iter(['a', 'b'])
+class BadIter:
+    def __iter__(self):
+        print('bad-iter-called')
+        return iter(['a', 1])
+class NoIter: pass
+u = UserString('-')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'join'), hasattr(u, 'join'))
+for label, seq in [
+    ('list', ['a','b','c']),
+    ('tuple', ('a','b')),
+    ('empty', []),
+    ('single', ['x']),
+    ('subclass', [S('a'), S('b')]),
+    ('userstring-item', [UserString('a'), UserString('b')]),
+    ('mixed', ['a', 1]),
+    ('iter', Iter()),
+    ('baditer', BadIter()),
+    ('string', 'ab'),
+    ('none', None),
+    ('noiter', NoIter()),
+]:
+    print('value', label, show(lambda seq=seq: u.join(seq)))
+print('keywords',
+      show(lambda: u.join(seq=['a','b'])),
+      show(lambda: UserString.join(self=u, seq=['a','b'])),
+      show(lambda: UserString.join(u, seq=['a','b'])),
+      show(lambda: UserString.join(seq=['a'])),
+      show(lambda: UserString.join(seq=['a'], self=u)))
+print('type', show(lambda: UserString.join(u, ['a','b'])))
+print('errors', [
+    show(lambda: UserString.join('-', ['a','b'])),
+    show(lambda: UserString.join(1, ['a','b'])),
+    show(lambda: UserString.join()),
+    show(lambda: UserString.join(u)),
+    show(lambda: u.join()),
+    show(lambda: u.join(['a'], ['b'])),
+    show(lambda: u.join(['a'], seq=['b'])),
+    show(lambda: u.join(self=u)),
+    show(lambda: u.join(iterable=['a'])),
+    show(lambda: UserString.join(receiver=u, seq=['a'])),
+])"#,
+        &[
+            "visible True True",
+            "value list str:'a-b-c'",
+            "value tuple str:'a-b'",
+            "value empty str:''",
+            "value single str:'x'",
+            "value subclass str:'a-b'",
+            "value userstring-item TypeError:sequence item 0: expected str instance, UserString found",
+            "value mixed TypeError:sequence item 1: expected str instance, int found",
+            "iter-called",
+            "value iter str:'a-b'",
+            "bad-iter-called",
+            "value baditer TypeError:sequence item 1: expected str instance, int found",
+            "value string str:'a-b'",
+            "value none TypeError:can only join an iterable",
+            "value noiter TypeError:can only join an iterable",
+            "keywords str:'a-b' str:'a-b' str:'a-b' TypeError:UserString.join() missing 1 required positional argument: 'self' str:'a'",
+            "type str:'a-b'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "AttributeError:'int' object has no attribute 'data'", "TypeError:UserString.join() missing 2 required positional arguments: 'self' and 'seq'", "TypeError:UserString.join() missing 1 required positional argument: 'seq'", "TypeError:UserString.join() missing 1 required positional argument: 'seq'", 'TypeError:UserString.join() takes 2 positional arguments but 3 were given', "TypeError:UserString.join() got multiple values for argument 'seq'", "TypeError:UserString.join() got multiple values for argument 'self'", "TypeError:UserString.join() got an unexpected keyword argument 'iterable'", "TypeError:UserString.join() got an unexpected keyword argument 'receiver'"]"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {
