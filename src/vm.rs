@@ -89472,6 +89472,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::Builtin(name) if name == "bool" => {
             Err("type 'bool' is not subscriptable".to_string())
         }
+        Value::Builtin(name) if name == "float" => {
+            Err("type 'float' is not subscriptable".to_string())
+        }
         Value::Builtin(name) if name == "str" => Err("type 'str' is not subscriptable".to_string()),
         Value::Builtin(name) if name == "bytes" => {
             Err("type 'bytes' is not subscriptable".to_string())
