@@ -10134,7 +10134,27 @@ impl Vm {
                 self.call_object_delattr(args)
             }
             Value::Builtin(name) if name == "object.__format__" => {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
+                    return Err(format!(
+                        "TypeError: object.__format__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
                 if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method object.__format__() needs an argument"
+                                .to_string(),
+                        );
+                    }
                     return Err(
                         "TypeError: object.__format__() takes no keyword arguments".to_string()
                     );
@@ -16793,7 +16813,7 @@ impl Vm {
     fn call_object_format(&mut self, args: Vec<Value>) -> Result<String, String> {
         match args.as_slice() {
             [value, format_spec] => {
-                let format_spec = format_spec_string(format_spec, "object.__format__()")?;
+                let format_spec = dunder_format_spec_string(format_spec)?;
                 if format_spec.is_empty() {
                     self.str_value(value)
                 } else {
@@ -16803,9 +16823,12 @@ impl Vm {
                     ))
                 }
             }
+            [] => {
+                Err("TypeError: unbound method object.__format__() needs an argument".to_string())
+            }
             values => Err(format!(
-                "object.__format__ expected 2 arguments, got {}",
-                values.len()
+                "TypeError: object.__format__() takes exactly one argument ({} given)",
+                method_arg_count(values)
             )),
         }
     }
@@ -54834,6 +54857,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__class_getitem__".to_string());
         names.push("__complex__".to_string());
         names.push("__float__".to_string());
+        names.push("__format__".to_string());
         names.push("__getnewargs__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
@@ -62784,6 +62808,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     "UserString".to_string(),
                 ))),
                 "maketrans" => Ok(Value::Builtin("str.maketrans".to_string())),
+                "__format__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("object.__format__".to_string())),
+                    receiver: Box::new(Value::UserString { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -64731,6 +64760,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__ne__" => {
             Ok(Value::Builtin("object.__ne__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__rmul__" => {
             Ok(Value::Builtin("UserString.__mul__".to_string()))

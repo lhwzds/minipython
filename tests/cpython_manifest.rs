@@ -26525,6 +26525,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_float_method_subset",
             "cpython_collections_userstring_complex_method_subset",
             "cpython_collections_userstring_getnewargs_method_subset",
+            "cpython_collections_userstring_dunder_format_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -29825,6 +29826,117 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString getnewargs-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_dunder_format_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __format__"
+    );
+    let userstring_format_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_dunder_format_method_diff_subset",
+    );
+    let userstring_format_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_dunder_format_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S(str):",
+        "hasattr(UserString, '__format__')",
+        "hasattr(u, '__format__')",
+        "'__format__' in dir(UserString)",
+        "'__format__' in dir(u)",
+        "UserString.__format__ is object.__format__",
+        "type(UserString.__format__).__name__",
+        "type(u.__format__).__name__",
+        "format(u, '')",
+        "u.__format__('')",
+        "UserString.__format__(u, '')",
+        "UserString.__format__(u, S(''))",
+        "format(u, 'x')",
+        "u.__format__('x')",
+        "UserString.__format__(u, 'x')",
+        "UserString.__format__('abé', '')",
+        "UserString.__format__('abé', 'x')",
+        "UserString.__format__(1, '')",
+        "UserString.__format__(1, 'x')",
+        "UserString.__format__(u, 1)",
+        "u.__format__(1)",
+        "UserString.__format__()",
+        "UserString.__format__(u)",
+        "UserString.__format__(u, '', 1)",
+        "UserString.__format__(u, spec='')",
+        "UserString.__format__(self=u, format_spec='')",
+        "UserString.__format__(u, self=u, format_spec='')",
+    ] {
+        assert!(
+            userstring_format_method_diff_body.contains(required)
+                && userstring_format_method_subset_body.contains(required),
+            "UserString format-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True method_descriptor builtin_function_or_method\"",
+        "\"format-empty str 'abé'\"",
+        "\"bound-empty str 'abé'\"",
+        "\"type-empty str 'abé'\"",
+        "\"type-sub-spec str 'abé'\"",
+        "\"nonempty TypeError unsupported format string passed to UserString.__format__",
+        "\"bound-nonempty TypeError unsupported format string passed to UserString.__format__",
+        "\"type-nonempty TypeError unsupported format string passed to UserString.__format__",
+        "\"bad-receiver str 'abé'\"",
+        "\"bad-receiver-nonempty TypeError unsupported format string passed to str.__format__",
+        "\"int-receiver-empty str '1'\"",
+        "\"int-receiver-nonempty TypeError unsupported format string passed to int.__format__",
+        "\"spec-int TypeError __format__() argument must be str, not int",
+        "\"bound-spec-int TypeError __format__() argument must be str, not int",
+        "\"noargs TypeError unbound method object.__format__() needs an argument",
+        "\"self-only TypeError object.__format__() takes exactly one argument (0 given)",
+        "\"extra TypeError object.__format__() takes exactly one argument (2 given)",
+        "\"badkw TypeError object.__format__() takes no keyword arguments",
+        "\"keyword-only TypeError unbound method object.__format__() needs an argument",
+        "\"multi-self TypeError object.__format__() takes no keyword arguments",
+    ] {
+        assert!(
+            userstring_format_method_subset_body.contains(required),
+            "UserString format-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__format__\".to_string())",
+        "function_name == \"UserString\" && name == \"__format__\"",
+        "Ok(Value::Builtin(\"object.__format__\".to_string()))",
+        "function: Box::new(Value::Builtin(\"object.__format__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__format__\"",
+        "dunder_format_spec_string(format_spec)?",
+        "object_format_error_type_name(value)",
+        "\"TypeError: unbound method object.__format__() needs an argument\"",
+        "\"TypeError: object.__format__() takes exactly one argument",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString format-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_dunder_format_method_subset",
+            "cpython_collections_userstring_dunder_format_method_diff_subset",
+            "`UserString.__format__`",
+            "inherited `object.__format__`",
+            "`UserString.__format__ is object.__format__`",
+            "method_descriptor",
+            "bad receiver support",
+            "CPython `object.__format__` TypeError text",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString format-method docs must contain `{required}`"
             );
         }
     }

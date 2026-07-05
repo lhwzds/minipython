@@ -51477,7 +51477,7 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
     );
     assert_error(
         "print(object().__format__(3))",
-        "runtime error: TypeError: object.__format__() argument 2 must be str, not int",
+        "runtime error: TypeError: __format__() argument must be str, not int",
     );
     assert_output(
         "for value in [object(), None]:\n    try:\n        object().__format__(value)\n    except TypeError as error:\n        print(error.__class__.__name__)",
@@ -69901,6 +69901,70 @@ for label, expr in [
             "extra TypeError UserString.__getnewargs__() takes 1 positional argument but 2 were given ('UserString.__getnewargs__() takes 1 positional argument but 2 were given',)",
             "badkw TypeError UserString.__getnewargs__() got an unexpected keyword argument 'receiver' (\"UserString.__getnewargs__() got an unexpected keyword argument 'receiver'\",)",
             "multi-self TypeError UserString.__getnewargs__() got multiple values for argument 'self' (\"UserString.__getnewargs__() got multiple values for argument 'self'\",)",
+        ],
+    );
+}
+
+// Mirrors CPython's public UserString inherited object.__format__ method.
+// This pins pure-memory formatting dispatch and descriptor binding without
+// broadening into pickle, host I/O, or full stdlib behavior.
+#[test]
+fn cpython_collections_userstring_dunder_format_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class S(str):
+    pass
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__format__'), hasattr(u, '__format__'), '__format__' in dir(UserString), '__format__' in dir(u), UserString.__format__ is object.__format__, type(UserString.__format__).__name__, type(u.__format__).__name__)
+for label, expr in [
+    ('format-empty', lambda: format(u, '')),
+    ('bound-empty', lambda: u.__format__('')),
+    ('type-empty', lambda: UserString.__format__(u, '')),
+    ('type-sub-spec', lambda: UserString.__format__(u, S(''))),
+    ('nonempty', lambda: format(u, 'x')),
+    ('bound-nonempty', lambda: u.__format__('x')),
+    ('type-nonempty', lambda: UserString.__format__(u, 'x')),
+    ('bad-receiver', lambda: UserString.__format__('abé', '')),
+    ('bad-receiver-nonempty', lambda: UserString.__format__('abé', 'x')),
+    ('int-receiver-empty', lambda: UserString.__format__(1, '')),
+    ('int-receiver-nonempty', lambda: UserString.__format__(1, 'x')),
+    ('spec-int', lambda: UserString.__format__(u, 1)),
+    ('bound-spec-int', lambda: u.__format__(1)),
+    ('noargs', lambda: UserString.__format__()),
+    ('self-only', lambda: UserString.__format__(u)),
+    ('extra', lambda: UserString.__format__(u, '', 1)),
+    ('badkw', lambda: UserString.__format__(u, spec='')),
+    ('keyword-only', lambda: UserString.__format__(self=u, format_spec='')),
+    ('multi-self', lambda: UserString.__format__(u, self=u, format_spec='')),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True method_descriptor builtin_function_or_method",
+            "format-empty str 'abé'",
+            "bound-empty str 'abé'",
+            "type-empty str 'abé'",
+            "type-sub-spec str 'abé'",
+            "nonempty TypeError unsupported format string passed to UserString.__format__ ('unsupported format string passed to UserString.__format__',)",
+            "bound-nonempty TypeError unsupported format string passed to UserString.__format__ ('unsupported format string passed to UserString.__format__',)",
+            "type-nonempty TypeError unsupported format string passed to UserString.__format__ ('unsupported format string passed to UserString.__format__',)",
+            "bad-receiver str 'abé'",
+            "bad-receiver-nonempty TypeError unsupported format string passed to str.__format__ ('unsupported format string passed to str.__format__',)",
+            "int-receiver-empty str '1'",
+            "int-receiver-nonempty TypeError unsupported format string passed to int.__format__ ('unsupported format string passed to int.__format__',)",
+            "spec-int TypeError __format__() argument must be str, not int ('__format__() argument must be str, not int',)",
+            "bound-spec-int TypeError __format__() argument must be str, not int ('__format__() argument must be str, not int',)",
+            "noargs TypeError unbound method object.__format__() needs an argument ('unbound method object.__format__() needs an argument',)",
+            "self-only TypeError object.__format__() takes exactly one argument (0 given) ('object.__format__() takes exactly one argument (0 given)',)",
+            "extra TypeError object.__format__() takes exactly one argument (2 given) ('object.__format__() takes exactly one argument (2 given)',)",
+            "badkw TypeError object.__format__() takes no keyword arguments ('object.__format__() takes no keyword arguments',)",
+            "keyword-only TypeError unbound method object.__format__() needs an argument ('unbound method object.__format__() needs an argument',)",
+            "multi-self TypeError object.__format__() takes no keyword arguments ('object.__format__() takes no keyword arguments',)",
         ],
     );
 }

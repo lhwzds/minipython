@@ -26148,6 +26148,47 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_dunder_format_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__format__ behavior",
+        name: "collections-userstring-format-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class S(str):
+    pass
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__format__'), hasattr(u, '__format__'), '__format__' in dir(UserString), '__format__' in dir(u), UserString.__format__ is object.__format__, type(UserString.__format__).__name__, type(u.__format__).__name__)
+for label, expr in [
+    ('format-empty', lambda: format(u, '')),
+    ('bound-empty', lambda: u.__format__('')),
+    ('type-empty', lambda: UserString.__format__(u, '')),
+    ('type-sub-spec', lambda: UserString.__format__(u, S(''))),
+    ('nonempty', lambda: format(u, 'x')),
+    ('bound-nonempty', lambda: u.__format__('x')),
+    ('type-nonempty', lambda: UserString.__format__(u, 'x')),
+    ('bad-receiver', lambda: UserString.__format__('abé', '')),
+    ('bad-receiver-nonempty', lambda: UserString.__format__('abé', 'x')),
+    ('int-receiver-empty', lambda: UserString.__format__(1, '')),
+    ('int-receiver-nonempty', lambda: UserString.__format__(1, 'x')),
+    ('spec-int', lambda: UserString.__format__(u, 1)),
+    ('bound-spec-int', lambda: u.__format__(1)),
+    ('noargs', lambda: UserString.__format__()),
+    ('self-only', lambda: UserString.__format__(u)),
+    ('extra', lambda: UserString.__format__(u, '', 1)),
+    ('badkw', lambda: UserString.__format__(u, spec='')),
+    ('keyword-only', lambda: UserString.__format__(self=u, format_spec='')),
+    ('multi-self', lambda: UserString.__format__(u, self=u, format_spec='')),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",
