@@ -35914,6 +35914,11 @@ impl Vm {
                     user_string_ljust_arguments(method, &args, keywords)?;
                 self.user_string_ljust_value(&receiver, width, fillchar, too_many_args)
             }
+            "rjust" => {
+                let (receiver, width, fillchar, too_many_args) =
+                    user_string_rjust_arguments(method, &args, keywords)?;
+                self.user_string_rjust_value(&receiver, width, fillchar, too_many_args)
+            }
             "zfill" => {
                 let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
                 self.user_string_zfill_value(&receiver, width)
@@ -36263,6 +36268,34 @@ impl Vm {
         };
         let text = data.borrow();
         user_string_value(user_string_ljust_text(&text, width, fill))
+    }
+
+    fn user_string_rjust_value(
+        &mut self,
+        receiver: &Value,
+        width: Value,
+        fillchar: Option<Value>,
+        too_many_args: Option<usize>,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        if let Some(count) = too_many_args {
+            return Err(format!(
+                "TypeError: rjust expected at most 2 arguments, got {count}"
+            ));
+        }
+        let width = self.index_integer_value(width)?;
+        let width = user_string_center_width(width)?;
+        let fill = match fillchar {
+            Some(value) => user_string_center_fill_character(&value)?,
+            None => ' ',
+        };
+        let text = data.borrow();
+        user_string_value(user_string_rjust_text(&text, width, fill))
     }
 
     fn user_string_concat_value(
@@ -56858,6 +56891,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "replace"
             | "center"
             | "ljust"
+            | "rjust"
             | "zfill"
             | "__mul__"
             | "__repr__"
@@ -62507,6 +62541,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "replace"
                 | "center"
                 | "ljust"
+                | "rjust"
                 | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -91394,6 +91429,14 @@ fn user_string_ljust_arguments(
     user_string_center_arguments(method, args, keywords)
 }
 
+fn user_string_rjust_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value, Option<Value>, Option<usize>), String> {
+    user_string_center_arguments(method, args, keywords)
+}
+
 fn user_string_method_missing_required(method: &str, names: &[&str]) -> String {
     let arguments = match names {
         [name] => format!("'{name}'"),
@@ -91497,6 +91540,15 @@ fn user_string_ljust_text(receiver: &str, width: usize, fill: char) -> String {
     }
     let padding = width - length;
     format!("{}{}", receiver, fill.to_string().repeat(padding))
+}
+
+fn user_string_rjust_text(receiver: &str, width: usize, fill: char) -> String {
+    let length = receiver.chars().count();
+    if width <= length {
+        return receiver.to_string();
+    }
+    let padding = width - length;
+    format!("{}{}", fill.to_string().repeat(padding), receiver)
 }
 
 fn string_zfill_text(receiver: &str, width: usize) -> String {
