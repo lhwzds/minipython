@@ -69874,7 +69874,7 @@ for label, expr in cases:
 }
 
 // Mirrors CPython's public UserString left-concatenation method dispatch. This
-// covers `__add__`, `+`, and the `+=` fallback without promoting `__radd__`,
+// covers `__add__`, `+`, and the `+=` fallback without promoting
 // multiplication, subclass-preserving results, or full string-method proxying.
 #[test]
 fn cpython_collections_userstring_add_method_subset() {
@@ -69958,6 +69958,93 @@ for label, expr in cases:
             "type-self-only-kw TypeError UserString.__add__() missing 1 required positional argument: 'other' (\"UserString.__add__() missing 1 required positional argument: 'other'\",)",
             "type-multi-self TypeError UserString.__add__() got multiple values for argument 'self' (\"UserString.__add__() got multiple values for argument 'self'\",)",
             "type-badkw-self TypeError UserString.__add__() got an unexpected keyword argument 'receiver' (\"UserString.__add__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
+// Mirrors CPython's public UserString reflected concatenation dispatch. This
+// covers `__radd__` and right-side `+` without promoting multiplication,
+// subclass-preserving results, or full string-method proxying.
+#[test]
+fn cpython_collections_userstring_radd_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'ZZ'
+class BadStr:
+    def __str__(self):
+        return 1
+class T(str):
+    pass
+def show(label, value):
+    print(label, type(value).__name__, repr(value), value.data)
+print('visible', hasattr(UserString, '__radd__'), hasattr(u, '__radd__'))
+cases = [
+    ('expr-str', lambda: 'x' + u),
+    ('expr-userstring', lambda: UserString('x') + u),
+    ('expr-str-subclass', lambda: T('x') + u),
+    ('method-str', lambda: u.__radd__('x')),
+    ('method-userstring', lambda: u.__radd__(UserString('x'))),
+    ('method-int', lambda: u.__radd__(1)),
+    ('method-strlike', lambda: u.__radd__(S())),
+    ('method-list', lambda: u.__radd__([1, 2])),
+    ('method-none', lambda: u.__radd__(None)),
+    ('method-bytes', lambda: u.__radd__(b'b')),
+    ('method-otherkw', lambda: u.__radd__(other='x')),
+    ('type-method', lambda: UserString.__radd__(u, 'x')),
+    ('type-keyword', lambda: UserString.__radd__(u, other='x')),
+    ('type-self-keyword', lambda: UserString.__radd__(self=u, other='x')),
+    ('expr-bad-str', lambda: BadStr() + u),
+    ('method-bad-str', lambda: u.__radd__(BadStr())),
+    ('bad-receiver', lambda: UserString.__radd__('abé', 'x')),
+    ('method-noargs', lambda: u.__radd__()),
+    ('method-extra', lambda: u.__radd__('x', 'y')),
+    ('method-badkw', lambda: u.__radd__(value='x')),
+    ('method-multi-other', lambda: u.__radd__('x', other='y')),
+    ('bound-self-only', lambda: u.__radd__(self=u)),
+    ('type-noargs', lambda: UserString.__radd__()),
+    ('type-other-only', lambda: UserString.__radd__(other='x')),
+    ('type-self-only-kw', lambda: UserString.__radd__(self=u)),
+    ('type-multi-self', lambda: UserString.__radd__(u, self=u, other='x')),
+    ('type-badkw-self', lambda: UserString.__radd__(receiver=u, other='x')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        show(label, value)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "visible True True",
+            "expr-str UserString 'xabé' xabé",
+            "expr-userstring UserString 'xabé' xabé",
+            "expr-str-subclass UserString 'xabé' xabé",
+            "method-str UserString 'xabé' xabé",
+            "method-userstring UserString 'xabé' xabé",
+            "method-int UserString '1abé' 1abé",
+            "method-strlike UserString 'ZZabé' ZZabé",
+            "method-list UserString '[1, 2]abé' [1, 2]abé",
+            "method-none UserString 'Noneabé' Noneabé",
+            "method-bytes UserString \"b'b'abé\" b'b'abé",
+            "method-otherkw UserString 'xabé' xabé",
+            "type-method UserString 'xabé' xabé",
+            "type-keyword UserString 'xabé' xabé",
+            "type-self-keyword UserString 'xabé' xabé",
+            "expr-bad-str TypeError __str__ returned non-string (type int) ('__str__ returned non-string (type int)',)",
+            "method-bad-str TypeError __str__ returned non-string (type int) ('__str__ returned non-string (type int)',)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-noargs TypeError UserString.__radd__() missing 1 required positional argument: 'other' (\"UserString.__radd__() missing 1 required positional argument: 'other'\",)",
+            "method-extra TypeError UserString.__radd__() takes 2 positional arguments but 3 were given ('UserString.__radd__() takes 2 positional arguments but 3 were given',)",
+            "method-badkw TypeError UserString.__radd__() got an unexpected keyword argument 'value' (\"UserString.__radd__() got an unexpected keyword argument 'value'\",)",
+            "method-multi-other TypeError UserString.__radd__() got multiple values for argument 'other' (\"UserString.__radd__() got multiple values for argument 'other'\",)",
+            "bound-self-only TypeError UserString.__radd__() got multiple values for argument 'self' (\"UserString.__radd__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__radd__() missing 2 required positional arguments: 'self' and 'other' (\"UserString.__radd__() missing 2 required positional arguments: 'self' and 'other'\",)",
+            "type-other-only TypeError UserString.__radd__() missing 1 required positional argument: 'self' (\"UserString.__radd__() missing 1 required positional argument: 'self'\",)",
+            "type-self-only-kw TypeError UserString.__radd__() missing 1 required positional argument: 'other' (\"UserString.__radd__() missing 1 required positional argument: 'other'\",)",
+            "type-multi-self TypeError UserString.__radd__() got multiple values for argument 'self' (\"UserString.__radd__() got multiple values for argument 'self'\",)",
+            "type-badkw-self TypeError UserString.__radd__() got an unexpected keyword argument 'receiver' (\"UserString.__radd__() got an unexpected keyword argument 'receiver'\",)",
         ],
     );
 }

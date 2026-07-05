@@ -32045,6 +32045,10 @@ impl Vm {
             }
         }
 
+        if matches!(right, Value::UserString { .. }) {
+            return self.user_string_radd_value(&right, &left);
+        }
+
         if array_array_storage(&left).is_some() {
             return self.array_array_concat_value(&left, &right, "append");
         }
@@ -35508,10 +35512,10 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
-            "__add__" => {
+            "__add__" | "__radd__" => {
                 if args.len() > 2 {
                     return Err(format!(
-                        "TypeError: UserString.__add__() takes 2 positional arguments but {} were given",
+                        "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
                         args.len()
                     ));
                 }
@@ -35521,46 +35525,48 @@ impl Vm {
                     match name.as_str() {
                         "self" => {
                             if receiver.is_some() {
-                                return Err(
-                                    "TypeError: UserString.__add__() got multiple values for argument 'self'"
-                                        .to_string(),
-                                );
+                                return Err(format!(
+                                    "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                                ));
                             }
                             receiver = Some(value);
                         }
                         "other" => {
                             if other.is_some() {
-                                return Err(
-                                    "TypeError: UserString.__add__() got multiple values for argument 'other'"
-                                        .to_string(),
-                                );
+                                return Err(format!(
+                                    "TypeError: UserString.{method}() got multiple values for argument 'other'"
+                                ));
                             }
                             other = Some(value);
                         }
                         _ => {
                             return Err(format!(
-                                "TypeError: UserString.__add__() got an unexpected keyword argument '{name}'"
+                                "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
                             ));
                         }
                     }
                 }
                 let Some(receiver) = receiver else {
-                    return Err(
-                        if other.is_some() {
-                            "TypeError: UserString.__add__() missing 1 required positional argument: 'self'"
-                        } else {
-                            "TypeError: UserString.__add__() missing 2 required positional arguments: 'self' and 'other'"
-                        }
-                        .to_string(),
-                    );
+                    return Err(if other.is_some() {
+                        format!(
+                            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+                        )
+                    } else {
+                        format!(
+                            "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'other'"
+                        )
+                    });
                 };
                 let Some(other) = other else {
-                    return Err(
-                        "TypeError: UserString.__add__() missing 1 required positional argument: 'other'"
-                            .to_string(),
-                    );
+                    return Err(format!(
+                        "TypeError: UserString.{method}() missing 1 required positional argument: 'other'"
+                    ));
                 };
-                self.user_string_add_value(&receiver, &other)
+                if method == "__radd__" {
+                    self.user_string_radd_value(&receiver, &other)
+                } else {
+                    self.user_string_add_value(&receiver, &other)
+                }
             }
             "__eq__" => {
                 if args.len() > 2 {
@@ -35872,15 +35878,32 @@ impl Vm {
     }
 
     fn user_string_add_value(&mut self, receiver: &Value, other: &Value) -> Result<Value, String> {
+        self.user_string_concat_value(receiver, other, false)
+    }
+
+    fn user_string_radd_value(&mut self, receiver: &Value, other: &Value) -> Result<Value, String> {
+        self.user_string_concat_value(receiver, other, true)
+    }
+
+    fn user_string_concat_value(
+        &mut self,
+        receiver: &Value,
+        other: &Value,
+        reverse: bool,
+    ) -> Result<Value, String> {
         let Value::UserString { data, .. } = receiver else {
             return Err(format!(
                 "AttributeError: '{}' object has no attribute 'data'",
                 type_name(receiver)
             ));
         };
-        let left = data.borrow().clone();
-        let right = self.str_value(other)?;
-        user_string_value(format!("{left}{right}"))
+        let receiver_text = data.borrow().clone();
+        let other_text = self.str_value(other)?;
+        if reverse {
+            user_string_value(format!("{other_text}{receiver_text}"))
+        } else {
+            user_string_value(format!("{receiver_text}{other_text}"))
+        }
     }
 
     fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
@@ -56311,6 +56334,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__iter__"
             | "__len__"
             | "__repr__"
+            | "__radd__"
             | "__str__"
     )
 }
@@ -61935,11 +61959,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 }),
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
-                | "__iter__" | "__len__" | "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                | "__iter__" | "__len__" | "__repr__" | "__radd__" | "__str__" => {
+                    Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
-                }),
+                    })
+                }
                 _ => Err(format!(
                     "AttributeError: UserString has no attribute '{name}'"
                 )),

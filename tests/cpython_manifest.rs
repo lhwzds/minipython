@@ -26524,6 +26524,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
+            "cpython_collections_userstring_radd_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29749,16 +29750,17 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "fn user_string_add_value(&mut self, receiver: &Value, other: &Value)",
         "self.user_string_add_value(&left, &right)",
         "self.user_string_add_value(&receiver, &other)",
-        "let right = self.str_value(other)?",
-        "user_string_value(format!(\"{left}{right}\"))",
+        "fn user_string_concat_value(",
+        "let other_text = self.str_value(other)?",
+        "user_string_value(format!(\"{receiver_text}{other_text}\"))",
         "\"__add__\"",
-        "UserString.__add__() takes 2 positional arguments but",
-        "UserString.__add__() got an unexpected keyword argument",
-        "UserString.__add__() got multiple values for argument 'self'",
-        "UserString.__add__() got multiple values for argument 'other'",
-        "UserString.__add__() missing 2 required positional arguments: 'self' and 'other'",
-        "UserString.__add__() missing 1 required positional argument: 'self'",
-        "UserString.__add__() missing 1 required positional argument: 'other'",
+        "UserString.{method}() takes 2 positional arguments but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() got multiple values for argument 'other'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and 'other'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'other'",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29776,14 +29778,143 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`str()` coercion",
             "`__str__` non-string result",
             "bad receiver",
-            "without implementing `UserString.__radd__`",
             "`UserString.__mul__`",
-            "without preserving UserString subclass result types",
+            "UserString subclass result types",
             "without implementing full UserString string-method proxying",
         ] {
             assert!(
                 document.contains(required),
                 "UserString add-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_radd_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __radd__"
+    );
+    let userstring_radd_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_radd_method_diff_subset",
+    );
+    let userstring_radd_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_radd_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S:",
+        "class BadStr:",
+        "class T(str):",
+        "def show(label, value):",
+        "hasattr(UserString, '__radd__')",
+        "hasattr(u, '__radd__')",
+        "'x' + u",
+        "UserString('x') + u",
+        "T('x') + u",
+        "u.__radd__('x')",
+        "u.__radd__(UserString('x'))",
+        "u.__radd__(1)",
+        "u.__radd__(S())",
+        "u.__radd__([1, 2])",
+        "u.__radd__(None)",
+        "u.__radd__(b'b')",
+        "u.__radd__(other='x')",
+        "UserString.__radd__(u, 'x')",
+        "UserString.__radd__(u, other='x')",
+        "UserString.__radd__(self=u, other='x')",
+        "BadStr() + u",
+        "u.__radd__(BadStr())",
+        "UserString.__radd__('abé', 'x')",
+        "u.__radd__()",
+        "u.__radd__('x', 'y')",
+        "u.__radd__(value='x')",
+        "u.__radd__('x', other='y')",
+        "u.__radd__(self=u)",
+        "UserString.__radd__()",
+        "UserString.__radd__(other='x')",
+        "UserString.__radd__(self=u)",
+        "UserString.__radd__(u, self=u, other='x')",
+        "UserString.__radd__(receiver=u, other='x')",
+    ] {
+        assert!(
+            userstring_radd_method_diff_body.contains(required)
+                && userstring_radd_method_subset_body.contains(required),
+            "UserString radd-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True\"",
+        "\"expr-str UserString 'xabé' xabé\"",
+        "\"expr-userstring UserString 'xabé' xabé\"",
+        "\"expr-str-subclass UserString 'xabé' xabé\"",
+        "\"method-str UserString 'xabé' xabé\"",
+        "\"method-userstring UserString 'xabé' xabé\"",
+        "\"method-int UserString '1abé' 1abé\"",
+        "\"method-strlike UserString 'ZZabé' ZZabé\"",
+        "\"method-list UserString '[1, 2]abé' [1, 2]abé\"",
+        "\"method-none UserString 'Noneabé' Noneabé\"",
+        "\"method-bytes UserString \\\"b'b'abé\\\" b'b'abé\"",
+        "\"method-otherkw UserString 'xabé' xabé\"",
+        "\"type-method UserString 'xabé' xabé\"",
+        "\"type-self-keyword UserString 'xabé' xabé\"",
+        "\"expr-bad-str TypeError __str__ returned non-string (type int)",
+        "\"method-bad-str TypeError __str__ returned non-string (type int)",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__radd__() missing 1 required positional argument: 'other'",
+        "\"method-extra TypeError UserString.__radd__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__radd__() got an unexpected keyword argument 'value'",
+        "\"method-multi-other TypeError UserString.__radd__() got multiple values for argument 'other'",
+        "\"bound-self-only TypeError UserString.__radd__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__radd__() missing 2 required positional arguments: 'self' and 'other'",
+        "\"type-other-only TypeError UserString.__radd__() missing 1 required positional argument: 'self'",
+        "\"type-self-only-kw TypeError UserString.__radd__() missing 1 required positional argument: 'other'",
+        "\"type-multi-self TypeError UserString.__radd__() got multiple values for argument 'self'",
+        "\"type-badkw-self TypeError UserString.__radd__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_radd_method_subset_body.contains(required),
+            "UserString radd-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_radd_value(&mut self, receiver: &Value, other: &Value)",
+        "self.user_string_radd_value(&right, &left)",
+        "self.user_string_radd_value(&receiver, &other)",
+        "fn user_string_concat_value(",
+        "user_string_value(format!(\"{other_text}{receiver_text}\"))",
+        "\"__radd__\"",
+        "UserString.{method}() takes 2 positional arguments but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() got multiple values for argument 'other'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and 'other'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'other'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString radd-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_radd_method_subset",
+            "cpython_collections_userstring_radd_method_diff_subset",
+            "`UserString.__radd__`",
+            "right-side `+` expression",
+            "`other=` keyword binding",
+            "`str()` coercion",
+            "`__str__` non-string result",
+            "bad receiver",
+            "`UserString.__mul__`",
+            "UserString subclass result types",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString radd-method docs must contain `{required}`"
             );
         }
     }
