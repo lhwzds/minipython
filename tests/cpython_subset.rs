@@ -28337,6 +28337,33 @@ print('read', b.hex(), b.split(b'a'))"#,
     );
 }
 
+// Mirrors CPython's public `bytes` type subscription rejection. MiniPython keeps
+// bytes as a concrete sequence type, not a GenericAlias origin.
+#[test]
+fn cpython_bytes_type_not_subscriptable_subset() {
+    assert_output(
+        r#"typ = bytes
+inst = b'ab'
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: typ[int]),
+    ('call-int', lambda: typ.__class_getitem__(int)),
+    ('inst-call', lambda: inst.__class_getitem__(int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (False, False, False, False)",
+            "subscript-int TypeError type 'bytes' is not subscriptable (\"type 'bytes' is not subscriptable\",)",
+            "call-int AttributeError type object 'bytes' has no attribute '__class_getitem__' (\"type object 'bytes' has no attribute '__class_getitem__'\",)",
+            "inst-call AttributeError 'bytes' object has no attribute '__class_getitem__' (\"'bytes' object has no attribute '__class_getitem__'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `bytes` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]

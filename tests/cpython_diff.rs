@@ -13543,6 +13543,27 @@ print('read', b.hex(), b.split(b'a'))"#,
 }
 
 #[test]
+fn cpython_bytes_type_not_subscriptable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public bytes type subscription rejection",
+        name: "bytes-type-not-subscriptable",
+        source: r#"typ = bytes
+inst = b'ab'
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: typ[int]),
+    ('call-int', lambda: typ.__class_getitem__(int)),
+    ('inst-call', lambda: inst.__class_getitem__(int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py public bytes instance __doc__ attribute subset",
