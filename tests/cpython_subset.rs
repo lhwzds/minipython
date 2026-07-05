@@ -29157,6 +29157,45 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython public array.array __class_getitem__ behavior. This pins
+// GenericAlias origin/args, direct type calls, and exact instance lookup without
+// adding broader array module behavior.
+#[test]
+fn cpython_array_array_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"import array
+typ = array.array
+inst = array.array('i')
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "visible-inst tuple (True, True)",
+            "subscript-int tuple ('GenericAlias', 'array.array[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'array.array[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('array.array[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "call-noargs TypeError array.__class_getitem__() takes exactly one argument (0 given) ('array.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError array.__class_getitem__() takes exactly one argument (2 given) ('array.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError array.__class_getitem__() takes no keyword arguments ('array.__class_getitem__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Mirrors CPython's inherited public `object.__getstate__` behavior for
 // memoryview instances without promoting pickle support or CPython buffer
 // lifetime internals.

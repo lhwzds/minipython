@@ -14139,6 +14139,33 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_array_array_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public array.array __class_getitem__ GenericAlias behavior",
+        name: "array-array-class-getitem-generic-alias",
+        source: r#"import array
+typ = array.array
+inst = array.array('i')
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_getstate_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public inherited object.__getstate__ behavior for memoryview instances",

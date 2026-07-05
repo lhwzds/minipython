@@ -140,6 +140,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `type 'UnsupportedOperation' is not subscriptable`, while preserving
   `BaseExceptionGroup[int]` and `ExceptionGroup[int]` GenericAlias behavior,
   without adding `BaseException.__class_getitem__` or widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_array_array_class_getitem_generic_alias_subset` and
+  `cpython_array_array_class_getitem_generic_alias_diff_subset` for array.array
+  `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
+  exact array.array instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full GenericAlias repr parity or host file IO,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -3190,6 +3196,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   inherited storage-backed methods, subclass-specific `repr()`, direct
   `array.array.__new__` allocation and subtype rejection, plus CPython's
   base-array `copy.copy()` result for array subclasses.
+- Added `cpython_array_array_class_getitem_generic_alias_subset` and
+  `cpython_array_array_class_getitem_generic_alias_diff_subset`, covering
+  array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
+  exact array.array instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation without adding full GenericAlias repr parity or host file IO.
 - Added `cpython_array_one_byte_public_sequence_subset` and
   `cpython_array_one_byte_public_sequence_diff_subset`, extending the same
   first-pass `array.array('B')` / `array.array('b')` storage to the public array

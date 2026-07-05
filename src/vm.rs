@@ -53219,6 +53219,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "array.array" => &[
             "__add__",
+            "__class_getitem__",
             "__contains__",
             "__copy__",
             "__deepcopy__",
@@ -56587,6 +56588,9 @@ fn array_array_attribute(receiver: Value, name: &str) -> Result<Option<Value>, S
     }
 
     match name {
+        "__class_getitem__" => Ok(Some(class_getitem_bound_method(Value::Builtin(
+            "array.array".to_string(),
+        )))),
         "typecode" => Ok(Some(Value::String(
             array_array_typecode(&receiver).unwrap_or_else(|| "B".to_string()),
         ))),
@@ -63069,6 +63073,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name)
+            if function_name == "array.array" && name == "__class_getitem__" =>
+        {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
             if matches!(function_name.as_str(), "staticmethod" | "classmethod")
                 && name == "__class_getitem__" =>
         {
@@ -67889,6 +67898,7 @@ fn generic_alias_bound_method(origin: Value) -> Value {
 
 fn class_getitem_origin_name(origin: &Value) -> String {
     match origin {
+        Value::Builtin(name) if name == "array.array" => "array".to_string(),
         Value::Builtin(name) => name.clone(),
         Value::Class { name, attrs, .. } => match class_name_value(name, attrs) {
             Value::String(name) | Value::IdentityString { value: name, .. } => name,

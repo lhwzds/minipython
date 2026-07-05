@@ -48813,6 +48813,116 @@ fn memoryview_class_getitem_generic_alias_docs_cover_core_runtime() {
 }
 
 #[test]
+fn array_array_class_getitem_generic_alias_docs_cover_runtime() {
+    let diff_name = "cpython_array_array_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_array_array_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "array.array class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "array.array class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "import array",
+        "typ = array.array",
+        "inst = array.array('i')",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "array.array class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'array.array[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'array.array[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('array.array[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"call-noargs TypeError array.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError array.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError array.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "array.array class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let array_dir_start = VM_SOURCE
+        .find("\"array.array\" => &[")
+        .expect("array.array dir block must exist");
+    let array_dir_tail = &VM_SOURCE[array_dir_start..];
+    let array_dir_end = array_dir_tail
+        .find("],\n        \"deque\"")
+        .expect("array.array dir block must end before deque block");
+    let array_dir_block = &array_dir_tail[..array_dir_end];
+    assert!(
+        array_dir_block.contains("\"__class_getitem__\""),
+        "array.array dir block must expose `__class_getitem__`"
+    );
+
+    for required in [
+        "function_name == \"array.array\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "array_array_attribute(receiver: Value, name: &str)",
+        "\"__class_getitem__\" => Ok(Some(class_getitem_bound_method(Value::Builtin(",
+        "\"array.array\".to_string()",
+        "Value::Builtin(name) if name == \"array.array\" => \"array\".to_string()",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "array.array class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "array.array `__class_getitem__`",
+            "`array.array.__class_getitem__(int) == array.array[int]`",
+            "exact array.array instance lookup",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or host file IO",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "array.array class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn memoryview_instance_doc_attribute_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_memoryview_instance_doc_attribute_subset(",

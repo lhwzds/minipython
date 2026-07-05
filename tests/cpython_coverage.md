@@ -128,6 +128,12 @@ Recent runtime migration notes:
   `type 'UnsupportedOperation' is not subscriptable`, while preserving
   `BaseExceptionGroup[int]` and `ExceptionGroup[int]` GenericAlias behavior,
   without adding `BaseException.__class_getitem__` or widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_array_array_class_getitem_generic_alias_subset`, backed by
+  `cpython_array_array_class_getitem_generic_alias_diff_subset`, now pins
+  array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
+  exact array.array instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full GenericAlias repr parity or host file IO,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -8029,6 +8035,12 @@ without adding general custom encoder/decoder class support.
   storage-backed methods, subclass-specific `repr()`, `isinstance()` /
   `issubclass()` relationships, direct `array.array.__new__` allocation, and
   copy behavior that returns a base array copy.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_array_array_class_getitem_generic_alias_subset`, backed by
+  `cpython_array_array_class_getitem_generic_alias_diff_subset`, covering
+  array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
+  exact array.array instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full GenericAlias repr parity or host file IO.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_sequence_subset`, covering the supported
   public `array.array('B')` / `array.array('b')` sequence and bytes surface:
