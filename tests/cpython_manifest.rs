@@ -26531,6 +26531,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_predicate_methods_subset",
             "cpython_collections_userstring_search_methods_subset",
             "cpython_collections_userstring_prefix_suffix_methods_subset",
+            "cpython_collections_userstring_strip_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30679,6 +30680,117 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString prefix/suffix-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_strip_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString strip methods"
+    );
+    let userstring_strip_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_strip_methods_diff_subset",
+    );
+    let userstring_strip_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_strip_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('  banana  ')",
+        "methods = ['strip', 'lstrip', 'rstrip']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))",
+        "(None,)",
+        "(' ba',)",
+        "(UserString(' '),)",
+        "getattr(u, name)(*spec)",
+        "getattr(u, name)(chars=' ba')",
+        "getattr(UserString, name)(self=u)",
+        "getattr(UserString, name)(self=u, chars=' ')",
+        "getattr(UserString, name)(u)",
+        "getattr(UserString, name)(u, ' ')",
+        "getattr(UserString, name)('  banana  ')",
+        "getattr(u, name)(1)",
+        "getattr(u, name)(' ', 'x')",
+        "getattr(u, name)(chars=' ', extra='x')",
+        "getattr(u, name)(' ', chars='x')",
+        "getattr(u, name)(self=u)",
+        "getattr(UserString, name)(receiver=u)",
+    ] {
+        assert!(
+            userstring_strip_methods_diff_body.contains(required)
+                && userstring_strip_methods_subset_body.contains(required),
+            "UserString strip-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('strip', True, True), ('lstrip', True, True), ('rstrip', True, True)]\"",
+        "\"value () UserString:'banana':'banana'\"",
+        "\"value (None,) UserString:'banana':'banana'\"",
+        "\"value (' ba',) UserString:'nan':'nan'\"",
+        "\"value ('an',) UserString:'  banana  ':'  banana  '\"",
+        "\"value (' ',) TypeError:strip arg must be None or str\"",
+        "\"keywords UserString:'nan':'nan' UserString:'banana':'banana' UserString:'banana':'banana'\"",
+        "\"type UserString:'banana':'banana' UserString:'banana':'banana'\"",
+        "\"errors strip [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:strip arg must be None or str'",
+        "TypeError:UserString.strip() takes from 1 to 2 positional arguments but 3 were given",
+        "TypeError:UserString.strip() got multiple values for argument 'chars'",
+        "\"value () UserString:'banana  ':'banana  '\"",
+        "\"value (' ba',) UserString:'nana  ':'nana  '\"",
+        "\"errors lstrip [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:lstrip arg must be None or str'",
+        "TypeError:UserString.lstrip() got an unexpected keyword argument 'receiver'",
+        "\"value () UserString:'  banana':'  banana'\"",
+        "\"value (' ba',) UserString:'  banan':'  banan'\"",
+        "\"errors rstrip [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:rstrip arg must be None or str'",
+        "TypeError:UserString.rstrip() got multiple values for argument 'self'",
+    ] {
+        assert!(
+            userstring_strip_methods_subset_body.contains(required),
+            "UserString strip-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"strip\" | \"lstrip\" | \"rstrip\"",
+        "fn user_string_strip_arguments(",
+        "fn user_string_strip_value(",
+        "user_string_strip_arguments(method, &args, keywords)",
+        "user_string_strip_value(&receiver, chars.as_ref(), method)",
+        "UserString.{method}() takes from 1 to 2 positional arguments",
+        "UserString.{method}() got multiple values for argument 'chars'",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "TypeError: {method} arg must be None or str",
+        "let strip_left = method != \"rstrip\"",
+        "let strip_right = method != \"lstrip\"",
+        "string_strip_by(&text, strip_left, strip_right",
+        "str_subclass_string(value)",
+        "user_string_value(stripped)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString strip-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_strip_methods_subset",
+            "cpython_collections_userstring_strip_methods_diff_subset",
+            "`UserString.strip`",
+            "`UserString.lstrip`",
+            "`UserString.rstrip`",
+            "`chars=` keyword binding",
+            "default whitespace stripping",
+            "explicit strip character sets",
+            "UserString chars rejection",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString strip-method docs must contain `{required}`"
             );
         }
     }

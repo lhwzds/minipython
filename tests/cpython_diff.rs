@@ -26534,6 +26534,52 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_strip_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString strip/lstrip/rstrip method behavior",
+        name: "collections-userstring-strip-methods",
+        source: r#"from collections import UserString
+u = UserString('  banana  ')
+methods = ['strip', 'lstrip', 'rstrip']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    (),
+    (None,),
+    (' ',),
+    (' ba',),
+    ('an',),
+    ('',),
+    (UserString(' '),),
+]
+for name in methods:
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)(chars=' ba')),
+          show(lambda name=name: getattr(UserString, name)(self=u)),
+          show(lambda name=name: getattr(UserString, name)(self=u, chars=' ')))
+    print('type', show(lambda name=name: getattr(UserString, name)(u)), show(lambda name=name: getattr(UserString, name)(u, ' ')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('  banana  ')),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)(' ', 'x')),
+        show(lambda name=name: getattr(u, name)(chars=' ', extra='x')),
+        show(lambda name=name: getattr(u, name)(' ', chars='x')),
+        show(lambda name=name: getattr(u, name)(self=u)),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name: getattr(UserString, name)(receiver=u)),
+    ])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

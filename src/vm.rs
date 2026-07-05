@@ -35876,6 +35876,10 @@ impl Vm {
                     method,
                 )
             }
+            "strip" | "lstrip" | "rstrip" => {
+                let (receiver, chars) = user_string_strip_arguments(method, &args, keywords)?;
+                user_string_strip_value(&receiver, chars.as_ref(), method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56653,6 +56657,9 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rindex"
             | "startswith"
             | "endswith"
+            | "strip"
+            | "lstrip"
+            | "rstrip"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62293,6 +62300,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "isprintable"
                 | "count" | "find" | "rfind" | "index" | "rindex"
                 | "startswith" | "endswith"
+                | "strip" | "lstrip" | "rstrip"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90612,6 +90620,94 @@ fn user_string_prefix_suffix_values(value: &Value, method: &str) -> Result<Vec<S
             type_name(value)
         )),
     }
+}
+
+fn user_string_strip_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Option<Value>), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 1 to 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+
+    let mut receiver = args.first().cloned();
+    let mut chars = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "chars" => {
+                if chars.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'chars'"
+                    ));
+                }
+                chars = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+
+    let Some(receiver) = receiver else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        ));
+    };
+    Ok((receiver, chars))
+}
+
+fn user_string_strip_value(
+    receiver: &Value,
+    chars: Option<&Value>,
+    method: &str,
+) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+
+    let text = data.borrow();
+    let strip_left = method != "rstrip";
+    let strip_right = method != "lstrip";
+    let stripped = match chars {
+        None | Some(Value::None) => {
+            string_strip_by(&text, strip_left, strip_right, |ch| ch.is_whitespace())
+        }
+        Some(Value::String(chars)) | Some(Value::IdentityString { value: chars, .. }) => {
+            let strip_chars = chars.chars().collect::<Vec<_>>();
+            string_strip_by(&text, strip_left, strip_right, |ch| {
+                strip_chars.contains(&ch)
+            })
+        }
+        Some(value) if str_subclass_string(value).is_some() => {
+            let chars =
+                str_subclass_string(value).expect("str subclass storage exists after guard");
+            let strip_chars = chars.chars().collect::<Vec<_>>();
+            string_strip_by(&text, strip_left, strip_right, |ch| {
+                strip_chars.contains(&ch)
+            })
+        }
+        Some(_) => {
+            return Err(format!("TypeError: {method} arg must be None or str"));
+        }
+    };
+    user_string_value(stripped)
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

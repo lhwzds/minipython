@@ -70632,6 +70632,87 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString strip/lstrip/rstrip methods.
+#[test]
+fn cpython_collections_userstring_strip_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('  banana  ')
+methods = ['strip', 'lstrip', 'rstrip']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    (),
+    (None,),
+    (' ',),
+    (' ba',),
+    ('an',),
+    ('',),
+    (UserString(' '),),
+]
+for name in methods:
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)(chars=' ba')),
+          show(lambda name=name: getattr(UserString, name)(self=u)),
+          show(lambda name=name: getattr(UserString, name)(self=u, chars=' ')))
+    print('type', show(lambda name=name: getattr(UserString, name)(u)), show(lambda name=name: getattr(UserString, name)(u, ' ')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('  banana  ')),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)(' ', 'x')),
+        show(lambda name=name: getattr(u, name)(chars=' ', extra='x')),
+        show(lambda name=name: getattr(u, name)(' ', chars='x')),
+        show(lambda name=name: getattr(u, name)(self=u)),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name: getattr(UserString, name)(receiver=u)),
+    ])"#,
+        &[
+            "visible [('strip', True, True), ('lstrip', True, True), ('rstrip', True, True)]",
+            "method strip",
+            "value () UserString:'banana':'banana'",
+            "value (None,) UserString:'banana':'banana'",
+            "value (' ',) UserString:'banana':'banana'",
+            "value (' ba',) UserString:'nan':'nan'",
+            "value ('an',) UserString:'  banana  ':'  banana  '",
+            "value ('',) UserString:'  banana  ':'  banana  '",
+            "value (' ',) TypeError:strip arg must be None or str",
+            "keywords UserString:'nan':'nan' UserString:'banana':'banana' UserString:'banana':'banana'",
+            "type UserString:'banana':'banana' UserString:'banana':'banana'",
+            "errors strip [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:strip arg must be None or str', 'TypeError:UserString.strip() takes from 1 to 2 positional arguments but 3 were given', \"TypeError:UserString.strip() got an unexpected keyword argument 'extra'\", \"TypeError:UserString.strip() got multiple values for argument 'chars'\", \"TypeError:UserString.strip() got multiple values for argument 'self'\", \"TypeError:UserString.strip() missing 1 required positional argument: 'self'\", \"TypeError:UserString.strip() got an unexpected keyword argument 'receiver'\"]",
+            "method lstrip",
+            "value () UserString:'banana  ':'banana  '",
+            "value (None,) UserString:'banana  ':'banana  '",
+            "value (' ',) UserString:'banana  ':'banana  '",
+            "value (' ba',) UserString:'nana  ':'nana  '",
+            "value ('an',) UserString:'  banana  ':'  banana  '",
+            "value ('',) UserString:'  banana  ':'  banana  '",
+            "value (' ',) TypeError:lstrip arg must be None or str",
+            "keywords UserString:'nana  ':'nana  ' UserString:'banana  ':'banana  ' UserString:'banana  ':'banana  '",
+            "type UserString:'banana  ':'banana  ' UserString:'banana  ':'banana  '",
+            "errors lstrip [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:lstrip arg must be None or str', 'TypeError:UserString.lstrip() takes from 1 to 2 positional arguments but 3 were given', \"TypeError:UserString.lstrip() got an unexpected keyword argument 'extra'\", \"TypeError:UserString.lstrip() got multiple values for argument 'chars'\", \"TypeError:UserString.lstrip() got multiple values for argument 'self'\", \"TypeError:UserString.lstrip() missing 1 required positional argument: 'self'\", \"TypeError:UserString.lstrip() got an unexpected keyword argument 'receiver'\"]",
+            "method rstrip",
+            "value () UserString:'  banana':'  banana'",
+            "value (None,) UserString:'  banana':'  banana'",
+            "value (' ',) UserString:'  banana':'  banana'",
+            "value (' ba',) UserString:'  banan':'  banan'",
+            "value ('an',) UserString:'  banana  ':'  banana  '",
+            "value ('',) UserString:'  banana  ':'  banana  '",
+            "value (' ',) TypeError:rstrip arg must be None or str",
+            "keywords UserString:'  banan':'  banan' UserString:'  banana':'  banana' UserString:'  banana':'  banana'",
+            "type UserString:'  banana':'  banana' UserString:'  banana':'  banana'",
+            "errors rstrip [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:rstrip arg must be None or str', 'TypeError:UserString.rstrip() takes from 1 to 2 positional arguments but 3 were given', \"TypeError:UserString.rstrip() got an unexpected keyword argument 'extra'\", \"TypeError:UserString.rstrip() got multiple values for argument 'chars'\", \"TypeError:UserString.rstrip() got multiple values for argument 'self'\", \"TypeError:UserString.rstrip() missing 1 required positional argument: 'self'\", \"TypeError:UserString.rstrip() got an unexpected keyword argument 'receiver'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]
