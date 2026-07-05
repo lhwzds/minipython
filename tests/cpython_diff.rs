@@ -26118,6 +26118,64 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_add_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString left concatenation method behavior",
+        name: "collections-userstring-add-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'ZZ'
+class BadStr:
+    def __str__(self):
+        return 1
+class T(str):
+    pass
+def show(label, value):
+    print(label, type(value).__name__, repr(value), value.data)
+print('visible', hasattr(UserString, '__add__'), hasattr(u, '__add__'), hasattr(UserString, '__iadd__'))
+v = UserString('abé')
+v += 'x'
+show('iadd-str', v)
+cases = [
+    ('expr-str', lambda: u + 'x'),
+    ('expr-userstring', lambda: u + UserString('x')),
+    ('expr-str-subclass', lambda: u + T('x')),
+    ('expr-int', lambda: u + 1),
+    ('expr-strlike', lambda: u + S()),
+    ('expr-list', lambda: u + [1, 2]),
+    ('expr-none', lambda: u + None),
+    ('expr-bytes', lambda: u + b'b'),
+    ('method-str', lambda: u.__add__('x')),
+    ('method-userstring', lambda: u.__add__(UserString('x'))),
+    ('method-otherkw', lambda: u.__add__(other='x')),
+    ('type-method', lambda: UserString.__add__(u, 'x')),
+    ('type-keyword', lambda: UserString.__add__(u, other='x')),
+    ('type-self-keyword', lambda: UserString.__add__(self=u, other='x')),
+    ('expr-bad-str', lambda: u + BadStr()),
+    ('bad-receiver', lambda: UserString.__add__('abé', 'x')),
+    ('method-noargs', lambda: u.__add__()),
+    ('method-extra', lambda: u.__add__('x', 'y')),
+    ('method-badkw', lambda: u.__add__(value='x')),
+    ('method-multi-other', lambda: u.__add__('x', other='y')),
+    ('bound-self-only', lambda: u.__add__(self=u)),
+    ('type-noargs', lambda: UserString.__add__()),
+    ('type-other-only', lambda: UserString.__add__(other='x')),
+    ('type-self-only-kw', lambda: UserString.__add__(self=u)),
+    ('type-multi-self', lambda: UserString.__add__(u, self=u, other='x')),
+    ('type-badkw-self', lambda: UserString.__add__(receiver=u, other='x')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        show(label, value)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

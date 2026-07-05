@@ -26523,6 +26523,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_hash_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
+            "cpython_collections_userstring_add_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29651,6 +29652,138 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString ne-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_add_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __add__"
+    );
+    let userstring_add_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_add_method_diff_subset",
+    );
+    let userstring_add_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_add_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S:",
+        "class BadStr:",
+        "class T(str):",
+        "def show(label, value):",
+        "hasattr(UserString, '__add__')",
+        "hasattr(u, '__add__')",
+        "hasattr(UserString, '__iadd__')",
+        "v += 'x'",
+        "u + 'x'",
+        "u + UserString('x')",
+        "u + T('x')",
+        "u + 1",
+        "u + S()",
+        "u + [1, 2]",
+        "u + None",
+        "u + b'b'",
+        "u.__add__('x')",
+        "u.__add__(UserString('x'))",
+        "u.__add__(other='x')",
+        "UserString.__add__(u, 'x')",
+        "UserString.__add__(u, other='x')",
+        "UserString.__add__(self=u, other='x')",
+        "u + BadStr()",
+        "UserString.__add__('abé', 'x')",
+        "u.__add__()",
+        "u.__add__('x', 'y')",
+        "u.__add__(value='x')",
+        "u.__add__('x', other='y')",
+        "u.__add__(self=u)",
+        "UserString.__add__()",
+        "UserString.__add__(other='x')",
+        "UserString.__add__(self=u)",
+        "UserString.__add__(u, self=u, other='x')",
+        "UserString.__add__(receiver=u, other='x')",
+    ] {
+        assert!(
+            userstring_add_method_diff_body.contains(required)
+                && userstring_add_method_subset_body.contains(required),
+            "UserString add-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True False\"",
+        "\"iadd-str UserString 'abéx' abéx\"",
+        "\"expr-str UserString 'abéx' abéx\"",
+        "\"expr-userstring UserString 'abéx' abéx\"",
+        "\"expr-str-subclass UserString 'abéx' abéx\"",
+        "\"expr-int UserString 'abé1' abé1\"",
+        "\"expr-strlike UserString 'abéZZ' abéZZ\"",
+        "\"expr-list UserString 'abé[1, 2]' abé[1, 2]\"",
+        "\"expr-none UserString 'abéNone' abéNone\"",
+        "\"expr-bytes UserString \\\"abéb'b'\\\" abéb'b'\"",
+        "\"method-str UserString 'abéx' abéx\"",
+        "\"method-otherkw UserString 'abéx' abéx\"",
+        "\"type-method UserString 'abéx' abéx\"",
+        "\"type-self-keyword UserString 'abéx' abéx\"",
+        "\"expr-bad-str TypeError __str__ returned non-string (type int)",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__add__() missing 1 required positional argument: 'other'",
+        "\"method-extra TypeError UserString.__add__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__add__() got an unexpected keyword argument 'value'",
+        "\"method-multi-other TypeError UserString.__add__() got multiple values for argument 'other'",
+        "\"bound-self-only TypeError UserString.__add__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__add__() missing 2 required positional arguments: 'self' and 'other'",
+        "\"type-other-only TypeError UserString.__add__() missing 1 required positional argument: 'self'",
+        "\"type-self-only-kw TypeError UserString.__add__() missing 1 required positional argument: 'other'",
+        "\"type-multi-self TypeError UserString.__add__() got multiple values for argument 'self'",
+        "\"type-badkw-self TypeError UserString.__add__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_add_method_subset_body.contains(required),
+            "UserString add-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_add_value(&mut self, receiver: &Value, other: &Value)",
+        "self.user_string_add_value(&left, &right)",
+        "self.user_string_add_value(&receiver, &other)",
+        "let right = self.str_value(other)?",
+        "user_string_value(format!(\"{left}{right}\"))",
+        "\"__add__\"",
+        "UserString.__add__() takes 2 positional arguments but",
+        "UserString.__add__() got an unexpected keyword argument",
+        "UserString.__add__() got multiple values for argument 'self'",
+        "UserString.__add__() got multiple values for argument 'other'",
+        "UserString.__add__() missing 2 required positional arguments: 'self' and 'other'",
+        "UserString.__add__() missing 1 required positional argument: 'self'",
+        "UserString.__add__() missing 1 required positional argument: 'other'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString add-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_add_method_subset",
+            "cpython_collections_userstring_add_method_diff_subset",
+            "`UserString.__add__`",
+            "`+` expression",
+            "`+=` fallback",
+            "`other=` keyword binding",
+            "`str()` coercion",
+            "`__str__` non-string result",
+            "bad receiver",
+            "without implementing `UserString.__radd__`",
+            "`UserString.__mul__`",
+            "without preserving UserString subclass result types",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString add-method docs must contain `{required}`"
             );
         }
     }

@@ -14698,6 +14698,10 @@ impl Vm {
             return Ok(left);
         }
 
+        if matches!(left, Value::UserString { .. }) {
+            return self.user_string_add_value(&left, &right);
+        }
+
         in_place_add_values(left, right)
     }
 
@@ -32030,6 +32034,10 @@ impl Vm {
             }
         }
 
+        if matches!(left, Value::UserString { .. }) {
+            return self.user_string_add_value(&left, &right);
+        }
+
         if let Some(method) = instance_special_method(&right, "__radd__") {
             let result = self.call_value(method, vec![left.clone()])?;
             if !matches!(result, Value::NotImplemented) {
@@ -35500,6 +35508,60 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
+            "__add__" => {
+                if args.len() > 2 {
+                    return Err(format!(
+                        "TypeError: UserString.__add__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                let mut other = args.get(1).cloned();
+                for (name, value) in keywords {
+                    match name.as_str() {
+                        "self" => {
+                            if receiver.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__add__() got multiple values for argument 'self'"
+                                        .to_string(),
+                                );
+                            }
+                            receiver = Some(value);
+                        }
+                        "other" => {
+                            if other.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__add__() got multiple values for argument 'other'"
+                                        .to_string(),
+                                );
+                            }
+                            other = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: UserString.__add__() got an unexpected keyword argument '{name}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        if other.is_some() {
+                            "TypeError: UserString.__add__() missing 1 required positional argument: 'self'"
+                        } else {
+                            "TypeError: UserString.__add__() missing 2 required positional arguments: 'self' and 'other'"
+                        }
+                        .to_string(),
+                    );
+                };
+                let Some(other) = other else {
+                    return Err(
+                        "TypeError: UserString.__add__() missing 1 required positional argument: 'other'"
+                            .to_string(),
+                    );
+                };
+                self.user_string_add_value(&receiver, &other)
+            }
             "__eq__" => {
                 if args.len() > 2 {
                     return Err(format!(
@@ -35807,6 +35869,18 @@ impl Vm {
             }
             _ => unreachable!("UserString method dispatch filters unsupported methods"),
         }
+    }
+
+    fn user_string_add_value(&mut self, receiver: &Value, other: &Value) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let left = data.borrow().clone();
+        let right = self.str_value(other)?;
+        user_string_value(format!("{left}{right}"))
     }
 
     fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
@@ -56229,7 +56303,8 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 fn is_builtin_user_string_type_method(name: &str) -> bool {
     matches!(
         name,
-        "__contains__"
+        "__add__"
+            | "__contains__"
             | "__getitem__"
             | "__hash__"
             | "__eq__"
@@ -61859,8 +61934,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
-                "__contains__" | "__eq__" | "__getitem__" | "__hash__" | "__iter__"
-                | "__len__" | "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
+                | "__iter__" | "__len__" | "__repr__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
