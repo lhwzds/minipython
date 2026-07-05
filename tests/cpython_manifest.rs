@@ -26503,6 +26503,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_new_builtins_globals_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
+            "cpython_collections_userdict_class_getitem_generic_alias_subset",
             "cpython_collections_userdict_instance_doc_attribute_subset",
             "cpython_collections_userdict_type_doc_attribute_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
@@ -28208,6 +28209,106 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("fn raise_key_error_empty("),
         "UserDict empty popitem must be backed by a no-arg KeyError helper"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_class_getitem_generic_alias_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict class_getitem behavior"
+    );
+    let userdict_class_getitem_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_class_getitem_generic_alias_diff_subset",
+    );
+    let userdict_class_getitem_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_class_getitem_generic_alias_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "typ = UserDict",
+        "inst = UserDict({'a': 1})",
+        "class C(UserDict):",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "C.__class_getitem__(int)",
+        "C.__class_getitem__(int).__origin__ is C",
+        "C({'b': 2}).__class_getitem__(str)",
+        "C({'b': 2}).__class_getitem__(str).__origin__ is C",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            userdict_class_getitem_diff_body.contains(required)
+                && userdict_class_getitem_subset_body.contains(required),
+            "UserDict class_getitem GenericAlias diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible tuple (True, True)\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.UserDict[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.UserDict[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.UserDict[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"type-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"inst-sub tuple ('GenericAlias', True, (<class 'str'>,))\"",
+        "\"call-noargs TypeError GenericAlias expected 2 arguments, got 1",
+        "\"call-extra TypeError GenericAlias expected 2 arguments, got 3",
+        "\"call-keyword TypeError GenericAlias() takes no keyword arguments",
+    ] {
+        assert!(
+            userdict_class_getitem_subset_body.contains(required),
+            "UserDict class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"UserDict\" => \"collections.UserDict\".to_string()",
+        "Value::UserDict { data, attrs } =>",
+        "\"__class_getitem__\" => Ok(generic_alias_bound_method(Value::Builtin(",
+        "\"UserDict\".to_string()",
+        "function_name == \"UserDict\" && name == \"__class_getitem__\"",
+        "generic_alias_bound_method(Value::Builtin(function_name))",
+        "\"UserDict\" => &[",
+        "class_bases_include_builtin(&class_bases, \"UserDict\")",
+        "class_bases_include_builtin(&bases, \"UserDict\")",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required) || VALUE_SOURCE.contains(required),
+            "UserDict class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_class_getitem_generic_alias_subset",
+            "cpython_collections_userdict_class_getitem_generic_alias_diff_subset",
+            "UserDict `__class_getitem__`",
+            "`UserDict.__class_getitem__(int) == UserDict[int]`",
+            "exact UserDict instance lookup",
+            "inherited UserDict subclass lookup",
+            "GenericAlias origin/args",
+            "GenericAlias arity and keyword error propagation",
+            "without adding new UserDict mapping-method surface",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_userdict_instance_doc_attribute_diff_subset"),

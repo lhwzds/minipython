@@ -157,6 +157,12 @@ Recent runtime migration notes:
   exact ChainMap instance lookup, inherited ChainMap subclass lookup, GenericAlias origin/args,
   and GenericAlias arity and keyword error propagation, without adding new ChainMap mapping-method surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userdict_class_getitem_generic_alias_subset`, backed by
+  `cpython_collections_userdict_class_getitem_generic_alias_diff_subset`, now pins
+  UserDict `__class_getitem__`, `UserDict.__class_getitem__(int) == UserDict[int]`,
+  exact UserDict instance lookup, inherited UserDict subclass lookup, GenericAlias origin/args,
+  and GenericAlias arity and keyword error propagation, without adding new UserDict mapping-method surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1219,6 +1225,7 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
+  `cpython_collections_userdict_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userdict_instance_doc_attribute_diff_subset`,
   `cpython_collections_userdict_type_doc_attribute_diff_subset`,
   `cpython_collections_userdict_type_base_metadata_diff_subset`,
@@ -2190,6 +2197,13 @@ Recent runtime migration notes:
   `UserDict.get(obj, key)`, and exact/subclass missing-key deletion preserving
   the original key in `KeyError.args[0]`, plus exact/direct/subclass empty
   `popitem()` no-arg `KeyError`, with direct output parity evidence.
+- The bundled `collections` module also includes
+  `cpython_collections_userdict_class_getitem_generic_alias_diff_subset` and
+  `cpython_collections_userdict_class_getitem_generic_alias_subset`, covering
+  UserDict `__class_getitem__`, `UserDict.__class_getitem__(int) == UserDict[int]`,
+  exact UserDict instance lookup, inherited UserDict subclass lookup, GenericAlias origin/args,
+  and GenericAlias arity and keyword error propagation, without adding new UserDict mapping-method surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - The bundled `collections` module also includes
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
   CPython public `UserList` method subset, including direct display,
@@ -6994,6 +7008,13 @@ without adding general custom encoder/decoder class support.
   containment, `get()`, `.data`, direct display/empty-format methods, recursive
   display, class-level direct public method calls, `.copy()`, and `copy.copy()`
   with shallow instance-attribute copying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_class_getitem_generic_alias_diff_subset` and
+  `cpython_collections_userdict_class_getitem_generic_alias_subset`, covering
+  UserDict `__class_getitem__`, `UserDict.__class_getitem__(int) == UserDict[int]`,
+  exact UserDict instance lookup, inherited UserDict subclass lookup, GenericAlias origin/args,
+  and GenericAlias arity and keyword error propagation, without adding new UserDict mapping-method surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_instance_doc_attribute_diff_subset` and
   `cpython_collections_userdict_instance_doc_attribute_subset`, covering

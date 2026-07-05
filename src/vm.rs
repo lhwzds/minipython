@@ -15029,6 +15029,7 @@ impl Vm {
                 if name == "__class_getitem__" {
                     if class_bases_include_builtin(&class_bases, "UserList")
                         || class_bases_include_builtin(&class_bases, "ChainMap")
+                        || class_bases_include_builtin(&class_bases, "UserDict")
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
@@ -15342,6 +15343,7 @@ impl Vm {
                 if name == "__class_getitem__" {
                     if class_bases_include_builtin(&bases, "UserList")
                         || class_bases_include_builtin(&bases, "ChainMap")
+                        || class_bases_include_builtin(&bases, "UserDict")
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
@@ -61578,6 +61580,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "__doc__" => Ok(Value::None),
+                "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
+                    "UserDict".to_string(),
+                ))),
                 "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
                 | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
                 | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__"
@@ -63271,6 +63276,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserDict" && is_builtin_user_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserDict.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "UserDict" && name == "__class_getitem__" => {
+            Ok(generic_alias_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "deque" && name == "maxlen" => {
             Ok(Value::Builtin("deque.maxlen.getset_descriptor".to_string()))
