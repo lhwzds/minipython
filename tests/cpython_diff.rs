@@ -25981,6 +25981,39 @@ for label, expr, expected in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_hash_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString hash method behavior",
+        name: "collections-userstring-hash-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('hash-builtin', lambda: hash(u)),
+    ('method', lambda: u.__hash__()),
+    ('type-method', lambda: UserString.__hash__(u)),
+    ('type-keyword', lambda: UserString.__hash__(self=u)),
+    ('empty', lambda: UserString('').__hash__()),
+    ('eq-data-builtin', lambda: hash(u) == hash(u.data)),
+    ('eq-data-method', lambda: u.__hash__() == hash(u.data)),
+    ('bad-receiver', lambda: UserString.__hash__('abc')),
+    ('method-extra', lambda: u.__hash__(1)),
+    ('method-badkw', lambda: u.__hash__(x=1)),
+    ('method-multi', lambda: u.__hash__(self=u)),
+    ('type-noargs', lambda: UserString.__hash__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        if isinstance(value, bool):
+            print(label, type(value).__name__, value)
+        else:
+            print(label, type(value).__name__, isinstance(value, int), value != -1)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

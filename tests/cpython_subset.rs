@@ -69653,6 +69653,54 @@ for label, expr, expected in cases:
     );
 }
 
+// Mirrors CPython's public UserString hash method dispatch. This keeps the
+// supported surface to direct `__hash__` calls without promoting full
+// string-method proxying or pinning process-randomized hash integers.
+#[test]
+fn cpython_collections_userstring_hash_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('hash-builtin', lambda: hash(u)),
+    ('method', lambda: u.__hash__()),
+    ('type-method', lambda: UserString.__hash__(u)),
+    ('type-keyword', lambda: UserString.__hash__(self=u)),
+    ('empty', lambda: UserString('').__hash__()),
+    ('eq-data-builtin', lambda: hash(u) == hash(u.data)),
+    ('eq-data-method', lambda: u.__hash__() == hash(u.data)),
+    ('bad-receiver', lambda: UserString.__hash__('abc')),
+    ('method-extra', lambda: u.__hash__(1)),
+    ('method-badkw', lambda: u.__hash__(x=1)),
+    ('method-multi', lambda: u.__hash__(self=u)),
+    ('type-noargs', lambda: UserString.__hash__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        if isinstance(value, bool):
+            print(label, type(value).__name__, value)
+        else:
+            print(label, type(value).__name__, isinstance(value, int), value != -1)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "hash-builtin int True True",
+            "method int True True",
+            "type-method int True True",
+            "type-keyword int True True",
+            "empty int True True",
+            "eq-data-builtin bool True",
+            "eq-data-method bool True",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-extra TypeError UserString.__hash__() takes 1 positional argument but 2 were given ('UserString.__hash__() takes 1 positional argument but 2 were given',)",
+            "method-badkw TypeError UserString.__hash__() got an unexpected keyword argument 'x' (\"UserString.__hash__() got an unexpected keyword argument 'x'\",)",
+            "method-multi TypeError UserString.__hash__() got multiple values for argument 'self' (\"UserString.__hash__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__hash__() missing 1 required positional argument: 'self' (\"UserString.__hash__() missing 1 required positional argument: 'self'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

@@ -26520,6 +26520,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_iter_subset",
             "cpython_collections_userstring_len_method_subset",
             "cpython_collections_userstring_display_methods_subset",
+            "cpython_collections_userstring_hash_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29318,6 +29319,97 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString display-methods docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_hash_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __hash__"
+    );
+    let userstring_hash_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_hash_method_diff_subset",
+    );
+    let userstring_hash_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_hash_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hash(u)",
+        "u.__hash__()",
+        "UserString.__hash__(u)",
+        "UserString.__hash__(self=u)",
+        "UserString('').__hash__()",
+        "hash(u) == hash(u.data)",
+        "u.__hash__() == hash(u.data)",
+        "UserString.__hash__('abc')",
+        "u.__hash__(1)",
+        "u.__hash__(x=1)",
+        "u.__hash__(self=u)",
+        "UserString.__hash__()",
+        "isinstance(value, int)",
+        "value != -1",
+    ] {
+        assert!(
+            userstring_hash_method_diff_body.contains(required)
+                && userstring_hash_method_subset_body.contains(required),
+            "UserString hash-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"hash-builtin int True True\"",
+        "\"method int True True\"",
+        "\"type-method int True True\"",
+        "\"type-keyword int True True\"",
+        "\"empty int True True\"",
+        "\"eq-data-builtin bool True\"",
+        "\"eq-data-method bool True\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-extra TypeError UserString.__hash__() takes 1 positional argument but 2 were given",
+        "\"method-badkw TypeError UserString.__hash__() got an unexpected keyword argument 'x'",
+        "\"method-multi TypeError UserString.__hash__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__hash__() missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            userstring_hash_method_subset_body.contains(required),
+            "UserString hash-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "UserString.__hash__() takes 1 positional argument but",
+        "UserString.__hash__() got an unexpected keyword argument",
+        "UserString.__hash__() got multiple values for argument 'self'",
+        "UserString.__hash__() missing 1 required positional argument: 'self'",
+        "let Value::UserString { .. } = &receiver",
+        "hash_value(&receiver)",
+        "Value::UserString { data, .. } => hash_bytes_like(data.borrow().as_bytes(), hasher)",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__hash__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString hash-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_hash_method_subset",
+            "cpython_collections_userstring_hash_method_diff_subset",
+            "`UserString.__hash__`",
+            "`hash()`",
+            "`.data` hash equivalence",
+            "`self=` keyword binding",
+            "process-randomized hash integers",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString hash-method docs must contain `{required}`"
             );
         }
     }

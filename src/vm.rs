@@ -35486,6 +35486,42 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
+            "__hash__" => {
+                if args.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.__hash__() takes 1 positional argument but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                for (name, value) in keywords {
+                    if name != "self" {
+                        return Err(format!(
+                            "TypeError: UserString.__hash__() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if receiver.is_some() {
+                        return Err(
+                            "TypeError: UserString.__hash__() got multiple values for argument 'self'"
+                                .to_string(),
+                        );
+                    }
+                    receiver = Some(value);
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        "TypeError: UserString.__hash__() missing 1 required positional argument: 'self'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { .. } = &receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(&receiver)
+                    ));
+                };
+                hash_value(&receiver)
+            }
             "__repr__" | "__str__" => {
                 if args.len() > 1 {
                     return Err(format!(
@@ -56116,7 +56152,13 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 fn is_builtin_user_string_type_method(name: &str) -> bool {
     matches!(
         name,
-        "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__str__"
+        "__contains__"
+            | "__getitem__"
+            | "__hash__"
+            | "__iter__"
+            | "__len__"
+            | "__repr__"
+            | "__str__"
     )
 }
 
@@ -61734,8 +61776,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__repr__"
-                | "__str__" => Ok(Value::BoundMethod {
+                "__contains__" | "__getitem__" | "__hash__" | "__iter__" | "__len__"
+                | "__repr__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),

@@ -213,6 +213,14 @@ Recent runtime migration notes:
   strings, bad receiver errors, and UserString-specific arity/keyword
   TypeErrors, without implementing full UserString string-method proxying or
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_hash_method_subset`, backed by
+  `cpython_collections_userstring_hash_method_diff_subset`, now pins
+  `UserString.__hash__` and `hash()` behavior, including `.data` hash
+  equivalence, type-object dispatch, `self=` keyword binding, empty strings,
+  bad receiver errors, UserString-specific arity/keyword TypeErrors, and
+  stable checks that avoid pinning process-randomized hash integers, without
+  implementing full UserString string-method proxying or widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1292,6 +1300,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_iter_diff_subset`,
   `cpython_collections_userstring_len_method_diff_subset`,
   `cpython_collections_userstring_display_methods_diff_subset`,
+  `cpython_collections_userstring_hash_method_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7150,6 +7159,14 @@ without adding general custom encoder/decoder class support.
   behavior, type-object dispatch, `self=` keyword binding, empty strings, bad
   receiver errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_hash_method_diff_subset` and
+  `cpython_collections_userstring_hash_method_subset`, covering
+  `UserString.__hash__` and `hash()` behavior, `.data` hash equivalence,
+  type-object dispatch, `self=` keyword binding, empty strings, bad receiver
+  errors, UserString-specific arity/keyword TypeErrors, and stable checks that
+  avoid pinning process-randomized hash integers, without implementing full
+  UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering
