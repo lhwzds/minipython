@@ -26065,6 +26065,59 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_ne_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__ne__ behavior",
+        name: "collections-userstring-ne-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+print('visible', hasattr(UserString, '__ne__'), UserString.__ne__ is object.__ne__, type(UserString.__ne__).__name__)
+print('reverse-object', object.__ne__('abé', u) is NotImplemented)
+cases = [
+    ('expr-str-hit', lambda: u != 'abé'),
+    ('expr-str-miss', lambda: u != 'ab'),
+    ('expr-str-left-hit', lambda: 'abé' != u),
+    ('expr-userstring-hit', lambda: u != UserString('abé')),
+    ('expr-userstring-miss', lambda: u != UserString('ab')),
+    ('expr-int', lambda: u != 1),
+    ('expr-strlike', lambda: u != S()),
+    ('method-str-hit', lambda: u.__ne__('abé')),
+    ('method-str-miss', lambda: u.__ne__('ab')),
+    ('method-userstring-hit', lambda: u.__ne__(UserString('abé'))),
+    ('method-userstring-miss', lambda: u.__ne__(UserString('ab'))),
+    ('method-int', lambda: u.__ne__(1)),
+    ('method-strlike', lambda: u.__ne__(S())),
+    ('method-stringkw', lambda: u.__ne__(string='abé')),
+    ('type-method', lambda: UserString.__ne__(u, 'abé')),
+    ('type-method-userstring', lambda: UserString.__ne__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__ne__(u, string='abé')),
+    ('type-self-stringkw', lambda: UserString.__ne__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__ne__('abé', 'abé')),
+    ('method-noargs', lambda: u.__ne__()),
+    ('method-extra', lambda: u.__ne__('a', 'b')),
+    ('method-badkw', lambda: u.__ne__(value='a')),
+    ('method-otherkw', lambda: u.__ne__(other='a')),
+    ('method-multi-string', lambda: u.__ne__('a', string='b')),
+    ('bound-self-only', lambda: u.__ne__(self=u)),
+    ('type-noargs', lambda: UserString.__ne__()),
+    ('type-string-only', lambda: UserString.__ne__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__ne__(self=u)),
+    ('type-multi-self', lambda: UserString.__ne__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__ne__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

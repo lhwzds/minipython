@@ -226,9 +226,17 @@ Recent runtime migration notes:
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
   and non-string operands, including reverse string comparison, `string=` keyword
   binding, type-object `self=` keyword binding, bad receiver errors,
-  and UserString-specific arity/keyword TypeErrors, without implementing `UserString.__ne__`,
-  ordered comparisons, full UserString string-method
-  proxying, or widening host IO, network, process, C ABI, or full stdlib scope.
+  and UserString-specific arity/keyword TypeErrors, without implementing
+  ordered comparisons, full UserString string-method proxying, or widening host
+  IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_ne_method_subset`, backed by
+  `cpython_collections_userstring_ne_method_diff_subset`, now pins the inherited
+  `object.__ne__` wrapper exposed as `UserString.__ne__` and `!=` expression behavior for
+  string, `UserString`, and non-string operands, including reverse object-wrapper
+  `NotImplemented`, no keyword arguments, bad receiver behavior, and
+  descriptor-style missing-receiver errors, without implementing ordered
+  comparisons, full UserString string-method proxying, or widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1310,6 +1318,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_display_methods_diff_subset`,
   `cpython_collections_userstring_hash_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
+  `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7182,9 +7191,16 @@ without adding general custom encoder/decoder class support.
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
   and non-string operands, reverse string comparison, `string=` keyword binding,
   type-object `self=` keyword binding, bad receiver errors, and
-  UserString-specific arity/keyword TypeErrors, without implementing `UserString.__ne__`,
-  ordered comparisons, or full UserString string-method
-  proxying.
+  UserString-specific arity/keyword TypeErrors, without implementing ordered
+  comparisons or full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_ne_method_diff_subset` and
+  `cpython_collections_userstring_ne_method_subset`, covering the inherited
+  `object.__ne__` wrapper exposed as `UserString.__ne__` and `!=` expression behavior for
+  string, `UserString`, and non-string operands, reverse object-wrapper
+  `NotImplemented`, no keyword arguments, bad receiver behavior, and
+  descriptor-style missing-receiver errors, without implementing ordered
+  comparisons or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

@@ -69785,6 +69785,94 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString inequality method dispatch. `UserString`
+// inherits `object.__ne__`; this pins the wrapper behavior without promoting
+// the remaining rich-comparison or string-method proxy surface.
+#[test]
+fn cpython_collections_userstring_ne_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+print('visible', hasattr(UserString, '__ne__'), UserString.__ne__ is object.__ne__, type(UserString.__ne__).__name__)
+print('reverse-object', object.__ne__('abé', u) is NotImplemented)
+cases = [
+    ('expr-str-hit', lambda: u != 'abé'),
+    ('expr-str-miss', lambda: u != 'ab'),
+    ('expr-str-left-hit', lambda: 'abé' != u),
+    ('expr-userstring-hit', lambda: u != UserString('abé')),
+    ('expr-userstring-miss', lambda: u != UserString('ab')),
+    ('expr-int', lambda: u != 1),
+    ('expr-strlike', lambda: u != S()),
+    ('method-str-hit', lambda: u.__ne__('abé')),
+    ('method-str-miss', lambda: u.__ne__('ab')),
+    ('method-userstring-hit', lambda: u.__ne__(UserString('abé'))),
+    ('method-userstring-miss', lambda: u.__ne__(UserString('ab'))),
+    ('method-int', lambda: u.__ne__(1)),
+    ('method-strlike', lambda: u.__ne__(S())),
+    ('method-stringkw', lambda: u.__ne__(string='abé')),
+    ('type-method', lambda: UserString.__ne__(u, 'abé')),
+    ('type-method-userstring', lambda: UserString.__ne__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__ne__(u, string='abé')),
+    ('type-self-stringkw', lambda: UserString.__ne__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__ne__('abé', 'abé')),
+    ('method-noargs', lambda: u.__ne__()),
+    ('method-extra', lambda: u.__ne__('a', 'b')),
+    ('method-badkw', lambda: u.__ne__(value='a')),
+    ('method-otherkw', lambda: u.__ne__(other='a')),
+    ('method-multi-string', lambda: u.__ne__('a', string='b')),
+    ('bound-self-only', lambda: u.__ne__(self=u)),
+    ('type-noargs', lambda: UserString.__ne__()),
+    ('type-string-only', lambda: UserString.__ne__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__ne__(self=u)),
+    ('type-multi-self', lambda: UserString.__ne__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__ne__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "visible True True wrapper_descriptor",
+            "reverse-object True",
+            "expr-str-hit bool False",
+            "expr-str-miss bool True",
+            "expr-str-left-hit bool False",
+            "expr-userstring-hit bool False",
+            "expr-userstring-miss bool True",
+            "expr-int bool True",
+            "expr-strlike bool True",
+            "method-str-hit bool False",
+            "method-str-miss bool True",
+            "method-userstring-hit bool False",
+            "method-userstring-miss bool True",
+            "method-int bool True",
+            "method-strlike bool True",
+            "method-stringkw TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "type-method bool False",
+            "type-method-userstring bool False",
+            "type-stringkw TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "type-self-stringkw TypeError descriptor '__ne__' of 'object' object needs an argument (\"descriptor '__ne__' of 'object' object needs an argument\",)",
+            "bad-receiver bool False",
+            "method-noargs TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "method-extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "method-badkw TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "method-otherkw TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "method-multi-string TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "bound-self-only TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "type-noargs TypeError descriptor '__ne__' of 'object' object needs an argument (\"descriptor '__ne__' of 'object' object needs an argument\",)",
+            "type-string-only TypeError descriptor '__ne__' of 'object' object needs an argument (\"descriptor '__ne__' of 'object' object needs an argument\",)",
+            "type-self-only-kw TypeError descriptor '__ne__' of 'object' object needs an argument (\"descriptor '__ne__' of 'object' object needs an argument\",)",
+            "type-multi-self TypeError wrapper __ne__() takes no keyword arguments ('wrapper __ne__() takes no keyword arguments',)",
+            "type-badkw-self TypeError descriptor '__ne__' of 'object' object needs an argument (\"descriptor '__ne__' of 'object' object needs an argument\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

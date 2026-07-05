@@ -26522,6 +26522,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_hash_method_subset",
             "cpython_collections_userstring_eq_method_subset",
+            "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29528,12 +29529,128 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`self=` keyword binding",
             "non-string operands",
             "bad receiver",
-            "without implementing `UserString.__ne__`",
+            "ordered comparisons",
             "without implementing full UserString string-method proxying",
         ] {
             assert!(
                 document.contains(required),
                 "UserString eq-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_ne_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __ne__"
+    );
+    let userstring_ne_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_ne_method_diff_subset",
+    );
+    let userstring_ne_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_ne_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S:",
+        "UserString.__ne__ is object.__ne__",
+        "type(UserString.__ne__).__name__",
+        "object.__ne__('abé', u) is NotImplemented",
+        "u != 'abé'",
+        "'abé' != u",
+        "u != UserString('abé')",
+        "u != 1",
+        "u != S()",
+        "u.__ne__('abé')",
+        "u.__ne__(UserString('abé'))",
+        "u.__ne__(1)",
+        "u.__ne__(S())",
+        "u.__ne__(string='abé')",
+        "UserString.__ne__(u, 'abé')",
+        "UserString.__ne__(u, UserString('abé'))",
+        "UserString.__ne__(u, string='abé')",
+        "UserString.__ne__(self=u, string='abé')",
+        "UserString.__ne__('abé', 'abé')",
+        "u.__ne__()",
+        "u.__ne__('a', 'b')",
+        "u.__ne__(value='a')",
+        "u.__ne__(other='a')",
+        "u.__ne__('a', string='b')",
+        "u.__ne__(self=u)",
+        "UserString.__ne__()",
+        "UserString.__ne__(string='abé')",
+        "UserString.__ne__(self=u)",
+        "UserString.__ne__(u, self=u, string='abé')",
+        "UserString.__ne__(receiver=u, string='abé')",
+    ] {
+        assert!(
+            userstring_ne_method_diff_body.contains(required)
+                && userstring_ne_method_subset_body.contains(required),
+            "UserString ne-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True wrapper_descriptor\"",
+        "\"reverse-object True\"",
+        "\"expr-str-hit bool False\"",
+        "\"expr-str-miss bool True\"",
+        "\"expr-str-left-hit bool False\"",
+        "\"expr-userstring-hit bool False\"",
+        "\"expr-userstring-miss bool True\"",
+        "\"expr-int bool True\"",
+        "\"expr-strlike bool True\"",
+        "\"method-str-hit bool False\"",
+        "\"method-userstring-hit bool False\"",
+        "\"method-int bool True\"",
+        "\"method-stringkw TypeError wrapper __ne__() takes no keyword arguments",
+        "\"type-method bool False\"",
+        "\"type-self-stringkw TypeError descriptor '__ne__' of 'object' object needs an argument",
+        "\"bad-receiver bool False\"",
+        "\"method-noargs TypeError expected 1 argument, got 0",
+        "\"method-extra TypeError expected 1 argument, got 2",
+        "\"bound-self-only TypeError wrapper __ne__() takes no keyword arguments",
+        "\"type-noargs TypeError descriptor '__ne__' of 'object' object needs an argument",
+        "\"type-multi-self TypeError wrapper __ne__() takes no keyword arguments",
+        "\"type-badkw-self TypeError descriptor '__ne__' of 'object' object needs an argument",
+    ] {
+        assert!(
+            userstring_ne_method_subset_body.contains(required),
+            "UserString ne-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserString\" && name == \"__ne__\"",
+        "Value::Builtin(\"object.__ne__\".to_string())",
+        "function: Box::new(Value::Builtin(\"object.__ne__\".to_string()))",
+        "if matches!(left, Value::UserString { .. })",
+        "fn call_object_rich_compare(&mut self, name: &str, args: Vec<Value>)",
+        "descriptor '{method}' of 'object' object needs an argument",
+        "wrapper {method}() takes no keyword arguments",
+        "user_string_rich_equal_values(left, right)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString ne-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_ne_method_subset",
+            "cpython_collections_userstring_ne_method_diff_subset",
+            "`UserString.__ne__`",
+            "`!=` expression",
+            "`object.__ne__` wrapper exposed as `UserString.__ne__`",
+            "no keyword arguments",
+            "non-string operands",
+            "bad receiver",
+            "ordered comparisons",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString ne-method docs must contain `{required}`"
             );
         }
     }

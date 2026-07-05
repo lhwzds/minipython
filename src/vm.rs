@@ -10055,9 +10055,14 @@ impl Vm {
                 ) =>
             {
                 if !keywords.is_empty() {
+                    let method = method_display_name(&name);
+                    if args.is_empty() {
+                        return Err(format!(
+                            "TypeError: descriptor '{method}' of 'object' object needs an argument"
+                        ));
+                    }
                     return Err(format!(
-                        "TypeError: wrapper {}() takes no keyword arguments",
-                        method_display_name(&name)
+                        "TypeError: wrapper {method}() takes no keyword arguments"
                     ));
                 }
 
@@ -16669,10 +16674,15 @@ impl Vm {
     }
 
     fn call_object_rich_compare(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
-        let [left, right] = args.as_slice() else {
+        let Some((left, rest)) = args.split_first() else {
+            let method = method_display_name(name);
             return Err(format!(
-                "TypeError: {}() expected 1 argument, got {}",
-                method_display_name(name),
+                "TypeError: descriptor '{method}' of 'object' object needs an argument"
+            ));
+        };
+        let [right] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
                 method_arg_count(&args)
             ));
         };
@@ -61844,6 +61854,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
+                "__ne__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("object.__ne__".to_string())),
+                    receiver: Box::new(Value::UserString { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 "__contains__" | "__eq__" | "__getitem__" | "__hash__" | "__iter__"
                 | "__len__" | "__repr__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -63745,6 +63760,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && name == "__class_getitem__" =>
         {
             Ok(generic_alias_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__ne__" => {
+            Ok(Value::Builtin("object.__ne__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "UserString" && is_builtin_user_string_type_method(name) =>
@@ -94621,6 +94639,9 @@ fn ordered_compare_values(left: Value, right: Value, op: &str) -> Result<Orderin
 }
 
 fn object_direct_ne_uses_rich_equality(left: &Value, right: &Value) -> bool {
+    if matches!(left, Value::UserString { .. }) {
+        return true;
+    }
     object_direct_ne_rich_operand(left) && object_direct_ne_rich_operand(right)
 }
 
