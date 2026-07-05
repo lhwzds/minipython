@@ -70450,6 +70450,110 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString string search/count methods.
+#[test]
+fn cpython_collections_userstring_search_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('banana bandana')
+methods = ['count', 'find', 'rfind', 'index', 'rindex']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('a',),
+    ('ana',),
+    ('na', 3),
+    ('na', 3, 8),
+    ('',),
+    ('', 2, 5),
+    (UserString('ana'),),
+]
+for name in methods:
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)('na', start=3)),
+          show(lambda name=name: getattr(u, name)('na', 3, end=8)),
+          show(lambda name=name: getattr(u, name)(sub='na')))
+    print('type',
+          show(lambda name=name: getattr(UserString, name)(u, 'na')),
+          show(lambda name=name: getattr(UserString, name)(self=u, sub='na')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('banana', 'na')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('na', 1, 2, 3)),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)('zz')),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name: getattr(UserString, name)(receiver=u, sub='na')),
+    ])"#,
+        &[
+            "visible [('count', True, True), ('find', True, True), ('rfind', True, True), ('index', True, True), ('rindex', True, True)]",
+            "method count",
+            "value ('a',) int:6",
+            "value ('ana',) int:2",
+            "value ('na', 3) int:2",
+            "value ('na', 3, 8) int:1",
+            "value ('',) int:15",
+            "value ('', 2, 5) int:4",
+            "value ('ana',) int:2",
+            "keywords int:2 int:1 int:3",
+            "type int:3 int:3",
+            "errors count [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.count() missing 1 required positional argument: 'sub'\", 'TypeError:UserString.count() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:count() argument 1 must be str, not int', 'int:0', \"TypeError:UserString.count() missing 2 required positional arguments: 'self' and 'sub'\", \"TypeError:UserString.count() got an unexpected keyword argument 'receiver'\"]",
+            "method find",
+            "value ('a',) int:1",
+            "value ('ana',) int:1",
+            "value ('na', 3) int:4",
+            "value ('na', 3, 8) int:4",
+            "value ('',) int:0",
+            "value ('', 2, 5) int:2",
+            "value ('ana',) int:1",
+            "keywords int:4 int:4 int:2",
+            "type int:2 int:2",
+            "errors find [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.find() missing 1 required positional argument: 'sub'\", 'TypeError:UserString.find() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:find() argument 1 must be str, not int', 'int:-1', \"TypeError:UserString.find() missing 2 required positional arguments: 'self' and 'sub'\", \"TypeError:UserString.find() got an unexpected keyword argument 'receiver'\"]",
+            "method rfind",
+            "value ('a',) int:13",
+            "value ('ana',) int:11",
+            "value ('na', 3) int:12",
+            "value ('na', 3, 8) int:4",
+            "value ('',) int:14",
+            "value ('', 2, 5) int:5",
+            "value ('ana',) int:11",
+            "keywords int:12 int:4 int:12",
+            "type int:12 int:12",
+            "errors rfind [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.rfind() missing 1 required positional argument: 'sub'\", 'TypeError:UserString.rfind() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:rfind() argument 1 must be str, not int', 'int:-1', \"TypeError:UserString.rfind() missing 2 required positional arguments: 'self' and 'sub'\", \"TypeError:UserString.rfind() got an unexpected keyword argument 'receiver'\"]",
+            "method index",
+            "value ('a',) int:1",
+            "value ('ana',) int:1",
+            "value ('na', 3) int:4",
+            "value ('na', 3, 8) int:4",
+            "value ('',) int:0",
+            "value ('', 2, 5) int:2",
+            "value ('ana',) int:1",
+            "keywords int:4 int:4 int:2",
+            "type int:2 int:2",
+            "errors index [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.index() missing 1 required positional argument: 'sub'\", 'TypeError:UserString.index() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:index() argument 1 must be str, not int', 'ValueError:substring not found', \"TypeError:UserString.index() missing 2 required positional arguments: 'self' and 'sub'\", \"TypeError:UserString.index() got an unexpected keyword argument 'receiver'\"]",
+            "method rindex",
+            "value ('a',) int:13",
+            "value ('ana',) int:11",
+            "value ('na', 3) int:12",
+            "value ('na', 3, 8) int:4",
+            "value ('',) int:14",
+            "value ('', 2, 5) int:5",
+            "value ('ana',) int:11",
+            "keywords int:12 int:4 int:12",
+            "type int:12 int:12",
+            "errors rindex [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.rindex() missing 1 required positional argument: 'sub'\", 'TypeError:UserString.rindex() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:rindex() argument 1 must be str, not int', 'ValueError:substring not found', \"TypeError:UserString.rindex() missing 2 required positional arguments: 'self' and 'sub'\", \"TypeError:UserString.rindex() got an unexpected keyword argument 'receiver'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

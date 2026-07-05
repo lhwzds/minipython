@@ -35859,6 +35859,11 @@ impl Vm {
                 let receiver = user_string_self_argument(method, &args, keywords)?;
                 user_string_predicate_value(&receiver, method)
             }
+            "count" | "find" | "rfind" | "index" | "rindex" => {
+                let (receiver, sub, start, end) =
+                    user_string_search_arguments(method, &args, keywords)?;
+                self.user_string_search_value(&receiver, &sub, start.as_ref(), end.as_ref(), method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -36073,6 +36078,57 @@ impl Vm {
             user_string_value(format!("{other_text}{receiver_text}"))
         } else {
             user_string_value(format!("{receiver_text}{other_text}"))
+        }
+    }
+
+    fn user_string_search_value(
+        &mut self,
+        receiver: &Value,
+        sub: &Value,
+        start: Option<&Value>,
+        end: Option<&Value>,
+        method: &str,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let Some(needle) = user_string_order_operand(sub) else {
+            return Err(format!(
+                "TypeError: {method}() argument 1 must be str, not {}",
+                type_name(sub)
+            ));
+        };
+
+        let text = data.borrow();
+        let len = text.chars().count();
+        let len_i64 = i64::try_from(len).map_err(|_| "string is too large".to_string())?;
+        let start = match start {
+            Some(value) => bytes_bound_argument(self, value, 0, method)?,
+            None => 0,
+        };
+        let end = match end {
+            Some(value) => bytes_bound_argument(self, value, len_i64, method)?,
+            None => len_i64,
+        };
+        let start = normalize_string_start_bound(start, len_i64);
+        let end = normalize_string_stop_bound(end, len_i64);
+
+        match method {
+            "count" => string_count_matches(&text, &needle, start, end).map(Value::Number),
+            "find" | "rfind" | "index" | "rindex" => {
+                let reverse = matches!(method, "rfind" | "rindex");
+                match string_find_index(&text, &needle, start, end, reverse)? {
+                    Some(index) => Ok(Value::Number(index)),
+                    None if matches!(method, "index" | "rindex") => {
+                        Err("ValueError: substring not found".to_string())
+                    }
+                    None => Ok(Value::Number(-1)),
+                }
+            }
+            _ => unreachable!("UserString search method is filtered before dispatch"),
         }
     }
 
@@ -56525,6 +56581,11 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "isascii"
             | "isidentifier"
             | "isprintable"
+            | "count"
+            | "find"
+            | "rfind"
+            | "index"
+            | "rindex"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62163,6 +62224,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "islower" | "isupper" | "istitle" | "isspace" | "isalpha" | "isalnum"
                 | "isdigit" | "isdecimal" | "isnumeric" | "isascii" | "isidentifier"
                 | "isprintable"
+                | "count" | "find" | "rfind" | "index" | "rindex"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90295,6 +90357,84 @@ fn user_string_self_argument(
     receiver.ok_or_else(|| {
         format!("TypeError: UserString.{method}() missing 1 required positional argument: 'self'")
     })
+}
+
+fn user_string_search_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value, Option<Value>, Option<Value>), String> {
+    if args.len() > 4 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 2 to 4 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+
+    let mut receiver = args.first().cloned();
+    let mut sub = args.get(1).cloned();
+    let mut start = args.get(2).cloned();
+    let mut end = args.get(3).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "sub" => {
+                if sub.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'sub'"
+                    ));
+                }
+                sub = Some(value);
+            }
+            "start" => {
+                if start.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'start'"
+                    ));
+                }
+                start = Some(value);
+            }
+            "end" => {
+                if end.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'end'"
+                    ));
+                }
+                end = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+
+    let Some(receiver) = receiver else {
+        return Err(if sub.is_some() {
+            format!(
+                "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+            )
+        } else {
+            format!(
+                "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'sub'"
+            )
+        });
+    };
+    let Some(sub) = sub else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'sub'"
+        ));
+    };
+
+    Ok((receiver, sub, start, end))
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

@@ -291,6 +291,15 @@ Recent runtime migration notes:
   receiver errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_search_methods_subset`, backed by
+  `cpython_collections_userstring_search_methods_diff_subset`, now pins
+  `UserString.count`, `UserString.find`, `UserString.rfind`,
+  `UserString.index`, and `UserString.rindex` search/count methods, including
+  `sub/start/end` keyword binding, empty substring bounds, `UserString` needle
+  values, missing-substring `ValueError` for index/rindex, bad receiver errors,
+  and UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1379,6 +1388,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_order_methods_diff_subset`,
   `cpython_collections_userstring_case_transform_methods_diff_subset`,
   `cpython_collections_userstring_predicate_methods_diff_subset`,
+  `cpython_collections_userstring_search_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7313,6 +7323,15 @@ without adding general custom encoder/decoder class support.
   `UserString.isascii`, `UserString.isidentifier`, and
   `UserString.isprintable` no-argument predicate methods, Unicode predicate
   behavior, type-object dispatch, `self=` keyword binding, bad receiver errors,
+  and UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_search_methods_diff_subset` and
+  `cpython_collections_userstring_search_methods_subset`, covering
+  `UserString.count`, `UserString.find`, `UserString.rfind`,
+  `UserString.index`, and `UserString.rindex` search/count methods,
+  `sub/start/end` keyword binding, empty substring bounds, `UserString` needle
+  values, missing-substring `ValueError` for index/rindex, bad receiver errors,
   and UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes

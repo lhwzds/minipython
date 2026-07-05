@@ -26529,6 +26529,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_order_methods_subset",
             "cpython_collections_userstring_case_transform_methods_subset",
             "cpython_collections_userstring_predicate_methods_subset",
+            "cpython_collections_userstring_search_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30453,6 +30454,115 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString predicate-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_search_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString search/count methods"
+    );
+    let userstring_search_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_search_methods_diff_subset",
+    );
+    let userstring_search_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_search_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('banana bandana')",
+        "methods = ['count', 'find', 'rfind', 'index', 'rindex']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "('na', 3, 8)",
+        "('', 2, 5)",
+        "(UserString('ana'),)",
+        "getattr(u, name)(*spec)",
+        "getattr(u, name)('na', start=3)",
+        "getattr(u, name)('na', 3, end=8)",
+        "getattr(u, name)(sub='na')",
+        "getattr(UserString, name)(u, 'na')",
+        "getattr(UserString, name)(self=u, sub='na')",
+        "getattr(UserString, name)('banana', 'na')",
+        "getattr(u, name)('na', 1, 2, 3)",
+        "getattr(u, name)(1)",
+        "getattr(u, name)('zz')",
+        "getattr(UserString, name)(receiver=u, sub='na')",
+    ] {
+        assert!(
+            userstring_search_methods_diff_body.contains(required)
+                && userstring_search_methods_subset_body.contains(required),
+            "UserString search-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('count', True, True), ('find', True, True), ('rfind', True, True), ('index', True, True), ('rindex', True, True)]\"",
+        "\"value ('a',) int:6\"",
+        "\"value ('ana',) int:2\"",
+        "\"value ('na', 3, 8) int:1\"",
+        "\"value ('',) int:15\"",
+        "\"value ('', 2, 5) int:4\"",
+        "\"keywords int:2 int:1 int:3\"",
+        "\"type int:3 int:3\"",
+        "\"errors count [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.count() missing 1 required positional argument: 'sub'\\\"",
+        "\"errors find [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.find() missing 1 required positional argument: 'sub'\\\"",
+        "\"errors rfind [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.rfind() missing 1 required positional argument: 'sub'\\\"",
+        "\"errors index [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.index() missing 1 required positional argument: 'sub'\\\"",
+        "\"errors rindex [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.rindex() missing 1 required positional argument: 'sub'\\\"",
+        "TypeError:UserString.count() takes from 2 to 4 positional arguments but 5 were given",
+        "TypeError:count() argument 1 must be str, not int",
+        "ValueError:substring not found",
+        "TypeError:UserString.rindex() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_search_methods_subset_body.contains(required),
+            "UserString search-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"count\" | \"find\" | \"rfind\" | \"index\" | \"rindex\"",
+        "fn user_string_search_arguments(",
+        "fn user_string_search_value(",
+        "user_string_search_arguments(method, &args, keywords)",
+        "self.user_string_search_value(&receiver, &sub, start.as_ref(), end.as_ref(), method)",
+        "UserString.{method}() takes from 2 to 4 positional arguments",
+        "UserString.{method}() got multiple values for argument 'sub'",
+        "UserString.{method}() got multiple values for argument 'start'",
+        "UserString.{method}() got multiple values for argument 'end'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and 'sub'",
+        "UserString.{method}() missing 1 required positional argument: 'sub'",
+        "{method}() argument 1 must be str, not",
+        "bytes_bound_argument(self, value, 0, method)",
+        "normalize_string_start_bound(start, len_i64)",
+        "string_count_matches(&text, &needle, start, end)",
+        "string_find_index(&text, &needle, start, end, reverse)",
+        "Err(\"ValueError: substring not found\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString search-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_search_methods_subset",
+            "cpython_collections_userstring_search_methods_diff_subset",
+            "`UserString.count`",
+            "`UserString.find`",
+            "`UserString.rfind`",
+            "`UserString.index`",
+            "`UserString.rindex`",
+            "`sub/start/end` keyword binding",
+            "empty substring",
+            "missing-substring `ValueError`",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString search-method docs must contain `{required}`"
             );
         }
     }

@@ -26437,6 +26437,53 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_search_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString string search/count method behavior",
+        name: "collections-userstring-search-methods",
+        source: r#"from collections import UserString
+u = UserString('banana bandana')
+methods = ['count', 'find', 'rfind', 'index', 'rindex']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('a',),
+    ('ana',),
+    ('na', 3),
+    ('na', 3, 8),
+    ('',),
+    ('', 2, 5),
+    (UserString('ana'),),
+]
+for name in methods:
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)('na', start=3)),
+          show(lambda name=name: getattr(u, name)('na', 3, end=8)),
+          show(lambda name=name: getattr(u, name)(sub='na')))
+    print('type',
+          show(lambda name=name: getattr(UserString, name)(u, 'na')),
+          show(lambda name=name: getattr(UserString, name)(self=u, sub='na')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('banana', 'na')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('na', 1, 2, 3)),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)('zz')),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name: getattr(UserString, name)(receiver=u, sub='na')),
+    ])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
