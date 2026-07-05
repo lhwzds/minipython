@@ -134,6 +134,12 @@ Recent runtime migration notes:
   exact array.array instance lookup, GenericAlias origin/args, and keyword and
   arity error propagation, without adding full GenericAlias repr parity or host file IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_deque_class_getitem_generic_alias_subset`, backed by
+  `cpython_collections_deque_class_getitem_generic_alias_diff_subset`, now pins
+  collections.deque `__class_getitem__`, `collections.deque.__class_getitem__(int) == collections.deque[int]`,
+  exact deque instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full GenericAlias repr parity or host IO,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -820,7 +826,10 @@ Recent runtime migration notes:
   rejection, non-dynamic instance attribute rejection with no-`__dict__`
   wording, type-object immutable-attribute mutation rejection, and constructor
   unexpected-keyword wording,
-  generic-alias repr, direct type-level public method calls, basic `append` /
+  generic-alias repr, `collections.deque` `__class_getitem__`,
+  `collections.deque.__class_getitem__(int) == collections.deque[int]`,
+  exact deque instance lookup, GenericAlias origin/args, keyword and arity error
+  propagation, direct type-level public method calls, basic `append` /
   `appendleft` / `extend` / `extendleft` / `insert` / `remove` / `pop` /
   `popleft` / `count` / `index` / `rotate` / `reverse` / `clear` / `copy`,
   membership, rich comparison between deque instances,

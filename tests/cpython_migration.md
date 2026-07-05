@@ -146,6 +146,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   exact array.array instance lookup, GenericAlias origin/args, and keyword and
   arity error propagation, without adding full GenericAlias repr parity or host file IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_collections_deque_class_getitem_generic_alias_subset` and
+  `cpython_collections_deque_class_getitem_generic_alias_diff_subset` for
+  collections.deque `__class_getitem__`, `collections.deque.__class_getitem__(int) == collections.deque[int]`,
+  exact deque instance lookup, GenericAlias origin/args, and keyword and
+  arity error propagation, without adding full GenericAlias repr parity or host IO,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -12452,7 +12458,10 @@ Completed in the collections ABC mutable-sequence registration pass:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset`; this slice now covers
   pure-memory construction from iterables, `maxlen` truncation and readonly
-  access, iteration, len/bool/repr, and basic `append` / `appendleft` /
+  access, iteration, len/bool/repr, `collections.deque` `__class_getitem__`,
+  `collections.deque.__class_getitem__(int) == collections.deque[int]`,
+  exact deque instance lookup, GenericAlias origin/args, keyword and arity error
+  propagation, and basic `append` / `appendleft` /
   `extend` / `extendleft` / `insert` / `remove` / `pop` / `popleft` /
   `count` / `index` / `rotate` / `reverse` / `clear` / `copy` operations.
   Full deque construction/mutation APIs remain outside the sandbox default

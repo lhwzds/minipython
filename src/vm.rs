@@ -53263,6 +53263,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "deque" => &[
             "__add__",
+            "__class_getitem__",
             "__contains__",
             "__copy__",
             "__delitem__",
@@ -61384,6 +61385,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .unwrap_or(Value::None));
             }
             match name {
+                "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                    "deque".to_string(),
+                ))),
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
                 | "__add__" | "__contains__" | "__copy__" | "__delitem__" | "__eq__" | "__ge__"
@@ -63247,6 +63251,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "deque" && name == "maxlen" => {
             Ok(Value::Builtin("deque.maxlen.getset_descriptor".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "deque" && name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "CellType" && name == "cell_contents" => {
             Ok(Value::Builtin(CELL_CONTENTS_GETSET_DESCRIPTOR.to_string()))
@@ -67361,6 +67368,7 @@ fn is_builtin_deque_type_method(name: &str) -> bool {
             | "reverse"
             | "rotate"
             | "__add__"
+            | "__class_getitem__"
             | "__contains__"
             | "__copy__"
             | "__delitem__"

@@ -48923,6 +48923,116 @@ fn array_array_class_getitem_generic_alias_docs_cover_runtime() {
 }
 
 #[test]
+fn collections_deque_class_getitem_generic_alias_docs_cover_runtime() {
+    let diff_name = "cpython_collections_deque_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_collections_deque_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "collections.deque class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "collections.deque class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "import collections",
+        "typ = collections.deque",
+        "inst = collections.deque()",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "collections.deque class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.deque[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.deque[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.deque[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"call-noargs TypeError deque.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError deque.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError deque.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "collections.deque class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let deque_dir_start = VM_SOURCE
+        .find("\"deque\" => &[")
+        .expect("deque dir block must exist");
+    let deque_dir_tail = &VM_SOURCE[deque_dir_start..];
+    let deque_dir_end = deque_dir_tail
+        .find("],\n        \"tuple\"")
+        .expect("deque dir block must end before tuple block");
+    let deque_dir_block = &deque_dir_tail[..deque_dir_end];
+    assert!(
+        deque_dir_block.contains("\"__class_getitem__\""),
+        "deque dir block must expose `__class_getitem__`"
+    );
+
+    for required in [
+        "Value::Deque { data, maxlen } => {",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"deque\".to_string()",
+        "function_name == \"deque\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "| \"__class_getitem__\"",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "collections.deque class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "collections.deque `__class_getitem__`",
+            "`collections.deque.__class_getitem__(int) == collections.deque[int]`",
+            "exact deque instance lookup",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or host IO",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "collections.deque class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn memoryview_instance_doc_attribute_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_memoryview_instance_doc_attribute_subset(",
