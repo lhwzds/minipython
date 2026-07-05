@@ -26528,6 +26528,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_mul_method_subset",
             "cpython_collections_userstring_order_methods_subset",
             "cpython_collections_userstring_case_transform_methods_subset",
+            "cpython_collections_userstring_predicate_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30339,6 +30340,119 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString case-transform docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_predicate_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString predicate methods"
+    );
+    let userstring_predicate_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_predicate_methods_diff_subset",
+    );
+    let userstring_predicate_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_predicate_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('Abc123')",
+        "samples = [UserString('Abc123'), UserString(''), UserString(' \\t'), UserString('abc_1'), UserString('٣Ⅳé')]",
+        "methods = ['islower','isupper','istitle','isspace','isalpha','isalnum','isdigit','isdecimal','isnumeric','isascii','isidentifier','isprintable']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "getattr(value, name)()",
+        "getattr(UserString, name)(u)",
+        "getattr(UserString, name)(self=u)",
+        "getattr(UserString, name)('Abc123')",
+        "getattr(u, name)('x')",
+        "getattr(u, name)(value='x')",
+        "getattr(u, name)(self=u)",
+        "getattr(UserString, name)()",
+        "getattr(UserString, name)(receiver=u)",
+    ] {
+        assert!(
+            userstring_predicate_methods_diff_body.contains(required)
+                && userstring_predicate_methods_subset_body.contains(required),
+            "UserString predicate-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('islower', True, True), ('isupper', True, True), ('istitle', True, True), ('isspace', True, True), ('isalpha', True, True), ('isalnum', True, True), ('isdigit', True, True), ('isdecimal', True, True), ('isnumeric', True, True), ('isascii', True, True), ('isidentifier', True, True), ('isprintable', True, True)]\"",
+        "\"values islower [False, False, False, True, False]\"",
+        "\"values istitle [True, False, False, False, True]\"",
+        "\"values isspace [False, False, True, False, False]\"",
+        "\"values isalnum [True, False, False, False, True]\"",
+        "\"values isascii [True, True, True, True, False]\"",
+        "\"values isidentifier [True, False, False, True, False]\"",
+        "\"values isprintable [True, True, False, True, True]\"",
+        "\"type isidentifier True True\"",
+        "\"errors islower [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:UserString.islower() takes 1 positional argument but 2 were given'",
+        "\"errors isdecimal [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:UserString.isdecimal() takes 1 positional argument but 2 were given'",
+        "\"errors isprintable [\\\"AttributeError:'str' object has no attribute 'data'\\\", 'TypeError:UserString.isprintable() takes 1 positional argument but 2 were given'",
+        "\"TypeError:UserString.isnumeric() got multiple values for argument 'self'",
+        "\"TypeError:UserString.isascii() missing 1 required positional argument: 'self'",
+        "\"TypeError:UserString.isidentifier() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_predicate_methods_subset_body.contains(required),
+            "UserString predicate-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_self_argument(",
+        "fn user_string_predicate_value(",
+        "user_string_self_argument(method, &args, keywords)",
+        "user_string_predicate_value(&receiver, method)",
+        "UserString.{method}() takes 1 positional argument but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "\"islower\" => string_islower(&text)",
+        "\"isupper\" => string_isupper(&text)",
+        "\"istitle\" => string_istitle(&text)",
+        "\"isspace\" => string_isspace(&text)",
+        "\"isalpha\" => string_isalpha(&text)",
+        "\"isalnum\" => string_isalnum(&text)",
+        "\"isdigit\" => string_isdigit(&text)",
+        "\"isdecimal\" => string_isdecimal(&text)",
+        "\"isnumeric\" => string_isnumeric(&text)",
+        "\"isascii\" => string_isascii(&text)",
+        "\"isidentifier\" => string_isidentifier(&text)",
+        "\"isprintable\" => string_isprintable(&text)",
+        "Ok(Value::Bool(result))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString predicate-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_predicate_methods_subset",
+            "cpython_collections_userstring_predicate_methods_diff_subset",
+            "`UserString.islower`",
+            "`UserString.isupper`",
+            "`UserString.istitle`",
+            "`UserString.isspace`",
+            "`UserString.isalpha`",
+            "`UserString.isalnum`",
+            "`UserString.isdigit`",
+            "`UserString.isdecimal`",
+            "`UserString.isnumeric`",
+            "`UserString.isascii`",
+            "`UserString.isidentifier`",
+            "`UserString.isprintable`",
+            "Unicode predicate behavior",
+            "`self=` keyword binding",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString predicate-method docs must contain `{required}`"
             );
         }
     }

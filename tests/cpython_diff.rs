@@ -26407,6 +26407,36 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_predicate_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString predicate method behavior",
+        name: "collections-userstring-predicate-methods",
+        source: r#"from collections import UserString
+u = UserString('Abc123')
+samples = [UserString('Abc123'), UserString(''), UserString(' \t'), UserString('abc_1'), UserString('٣Ⅳé')]
+methods = ['islower','isupper','istitle','isspace','isalpha','isalnum','isdigit','isdecimal','isnumeric','isascii','isidentifier','isprintable']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def error_text(expr):
+    try:
+        expr()
+        return 'ok'
+    except Exception as e:
+        return type(e).__name__ + ':' + str(e)
+for name in methods:
+    print('values', name, [getattr(value, name)() for value in samples])
+    print('type', name, getattr(UserString, name)(u), getattr(UserString, name)(self=u))
+    print('errors', name, [
+        error_text(lambda name=name: getattr(UserString, name)('Abc123')),
+        error_text(lambda name=name: getattr(u, name)('x')),
+        error_text(lambda name=name: getattr(u, name)(value='x')),
+        error_text(lambda name=name: getattr(u, name)(self=u)),
+        error_text(lambda name=name: getattr(UserString, name)()),
+        error_text(lambda name=name: getattr(UserString, name)(receiver=u)),
+    ])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

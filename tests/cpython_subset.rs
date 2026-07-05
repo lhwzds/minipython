@@ -70382,6 +70382,74 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString no-argument string predicate methods.
+#[test]
+fn cpython_collections_userstring_predicate_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('Abc123')
+samples = [UserString('Abc123'), UserString(''), UserString(' \t'), UserString('abc_1'), UserString('٣Ⅳé')]
+methods = ['islower','isupper','istitle','isspace','isalpha','isalnum','isdigit','isdecimal','isnumeric','isascii','isidentifier','isprintable']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def error_text(expr):
+    try:
+        expr()
+        return 'ok'
+    except Exception as e:
+        return type(e).__name__ + ':' + str(e)
+for name in methods:
+    print('values', name, [getattr(value, name)() for value in samples])
+    print('type', name, getattr(UserString, name)(u), getattr(UserString, name)(self=u))
+    print('errors', name, [
+        error_text(lambda name=name: getattr(UserString, name)('Abc123')),
+        error_text(lambda name=name: getattr(u, name)('x')),
+        error_text(lambda name=name: getattr(u, name)(value='x')),
+        error_text(lambda name=name: getattr(u, name)(self=u)),
+        error_text(lambda name=name: getattr(UserString, name)()),
+        error_text(lambda name=name: getattr(UserString, name)(receiver=u)),
+    ])"#,
+        &[
+            "visible [('islower', True, True), ('isupper', True, True), ('istitle', True, True), ('isspace', True, True), ('isalpha', True, True), ('isalnum', True, True), ('isdigit', True, True), ('isdecimal', True, True), ('isnumeric', True, True), ('isascii', True, True), ('isidentifier', True, True), ('isprintable', True, True)]",
+            "values islower [False, False, False, True, False]",
+            "type islower False False",
+            "errors islower [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.islower() takes 1 positional argument but 2 were given', \"TypeError:UserString.islower() got an unexpected keyword argument 'value'\", \"TypeError:UserString.islower() got multiple values for argument 'self'\", \"TypeError:UserString.islower() missing 1 required positional argument: 'self'\", \"TypeError:UserString.islower() got an unexpected keyword argument 'receiver'\"]",
+            "values isupper [False, False, False, False, False]",
+            "type isupper False False",
+            "errors isupper [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isupper() takes 1 positional argument but 2 were given', \"TypeError:UserString.isupper() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isupper() got multiple values for argument 'self'\", \"TypeError:UserString.isupper() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isupper() got an unexpected keyword argument 'receiver'\"]",
+            "values istitle [True, False, False, False, True]",
+            "type istitle True True",
+            "errors istitle [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.istitle() takes 1 positional argument but 2 were given', \"TypeError:UserString.istitle() got an unexpected keyword argument 'value'\", \"TypeError:UserString.istitle() got multiple values for argument 'self'\", \"TypeError:UserString.istitle() missing 1 required positional argument: 'self'\", \"TypeError:UserString.istitle() got an unexpected keyword argument 'receiver'\"]",
+            "values isspace [False, False, True, False, False]",
+            "type isspace False False",
+            "errors isspace [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isspace() takes 1 positional argument but 2 were given', \"TypeError:UserString.isspace() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isspace() got multiple values for argument 'self'\", \"TypeError:UserString.isspace() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isspace() got an unexpected keyword argument 'receiver'\"]",
+            "values isalpha [False, False, False, False, False]",
+            "type isalpha False False",
+            "errors isalpha [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isalpha() takes 1 positional argument but 2 were given', \"TypeError:UserString.isalpha() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isalpha() got multiple values for argument 'self'\", \"TypeError:UserString.isalpha() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isalpha() got an unexpected keyword argument 'receiver'\"]",
+            "values isalnum [True, False, False, False, True]",
+            "type isalnum True True",
+            "errors isalnum [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isalnum() takes 1 positional argument but 2 were given', \"TypeError:UserString.isalnum() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isalnum() got multiple values for argument 'self'\", \"TypeError:UserString.isalnum() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isalnum() got an unexpected keyword argument 'receiver'\"]",
+            "values isdigit [False, False, False, False, False]",
+            "type isdigit False False",
+            "errors isdigit [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isdigit() takes 1 positional argument but 2 were given', \"TypeError:UserString.isdigit() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isdigit() got multiple values for argument 'self'\", \"TypeError:UserString.isdigit() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isdigit() got an unexpected keyword argument 'receiver'\"]",
+            "values isdecimal [False, False, False, False, False]",
+            "type isdecimal False False",
+            "errors isdecimal [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isdecimal() takes 1 positional argument but 2 were given', \"TypeError:UserString.isdecimal() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isdecimal() got multiple values for argument 'self'\", \"TypeError:UserString.isdecimal() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isdecimal() got an unexpected keyword argument 'receiver'\"]",
+            "values isnumeric [False, False, False, False, False]",
+            "type isnumeric False False",
+            "errors isnumeric [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isnumeric() takes 1 positional argument but 2 were given', \"TypeError:UserString.isnumeric() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isnumeric() got multiple values for argument 'self'\", \"TypeError:UserString.isnumeric() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isnumeric() got an unexpected keyword argument 'receiver'\"]",
+            "values isascii [True, True, True, True, False]",
+            "type isascii True True",
+            "errors isascii [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isascii() takes 1 positional argument but 2 were given', \"TypeError:UserString.isascii() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isascii() got multiple values for argument 'self'\", \"TypeError:UserString.isascii() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isascii() got an unexpected keyword argument 'receiver'\"]",
+            "values isidentifier [True, False, False, True, False]",
+            "type isidentifier True True",
+            "errors isidentifier [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isidentifier() takes 1 positional argument but 2 were given', \"TypeError:UserString.isidentifier() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isidentifier() got multiple values for argument 'self'\", \"TypeError:UserString.isidentifier() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isidentifier() got an unexpected keyword argument 'receiver'\"]",
+            "values isprintable [True, True, False, True, True]",
+            "type isprintable True True",
+            "errors isprintable [\"AttributeError:'str' object has no attribute 'data'\", 'TypeError:UserString.isprintable() takes 1 positional argument but 2 were given', \"TypeError:UserString.isprintable() got an unexpected keyword argument 'value'\", \"TypeError:UserString.isprintable() got multiple values for argument 'self'\", \"TypeError:UserString.isprintable() missing 1 required positional argument: 'self'\", \"TypeError:UserString.isprintable() got an unexpected keyword argument 'receiver'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

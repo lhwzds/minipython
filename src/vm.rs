@@ -35854,6 +35854,11 @@ impl Vm {
                 };
                 user_string_case_transform_value(&receiver, method)
             }
+            "islower" | "isupper" | "istitle" | "isspace" | "isalpha" | "isalnum" | "isdigit"
+            | "isdecimal" | "isnumeric" | "isascii" | "isidentifier" | "isprintable" => {
+                let receiver = user_string_self_argument(method, &args, keywords)?;
+                user_string_predicate_value(&receiver, method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56508,6 +56513,18 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "casefold"
             | "swapcase"
             | "title"
+            | "islower"
+            | "isupper"
+            | "istitle"
+            | "isspace"
+            | "isalpha"
+            | "isalnum"
+            | "isdigit"
+            | "isdecimal"
+            | "isnumeric"
+            | "isascii"
+            | "isidentifier"
+            | "isprintable"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62143,6 +62160,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
                 | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
                 | "lower" | "upper" | "capitalize" | "casefold" | "swapcase" | "title"
+                | "islower" | "isupper" | "istitle" | "isspace" | "isalpha" | "isalnum"
+                | "isdigit" | "isdecimal" | "isnumeric" | "isascii" | "isidentifier"
+                | "isprintable"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90245,6 +90265,62 @@ fn user_string_case_transform_value(receiver: &Value, method: &str) -> Result<Va
         _ => unreachable!("UserString case-transform method is filtered before dispatch"),
     };
     user_string_value(transformed)
+}
+
+fn user_string_self_argument(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if args.len() > 1 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 1 positional argument but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    for (name, value) in keywords {
+        if name != "self" {
+            return Err(format!(
+                "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+            ));
+        }
+        if receiver.is_some() {
+            return Err(format!(
+                "TypeError: UserString.{method}() got multiple values for argument 'self'"
+            ));
+        }
+        receiver = Some(value);
+    }
+    receiver.ok_or_else(|| {
+        format!("TypeError: UserString.{method}() missing 1 required positional argument: 'self'")
+    })
+}
+
+fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let text = data.borrow();
+    let result = match method {
+        "islower" => string_islower(&text),
+        "isupper" => string_isupper(&text),
+        "istitle" => string_istitle(&text),
+        "isspace" => string_isspace(&text),
+        "isalpha" => string_isalpha(&text),
+        "isalnum" => string_isalnum(&text),
+        "isdigit" => string_isdigit(&text),
+        "isdecimal" => string_isdecimal(&text),
+        "isnumeric" => string_isnumeric(&text),
+        "isascii" => string_isascii(&text),
+        "isidentifier" => string_isidentifier(&text),
+        "isprintable" => string_isprintable(&text),
+        _ => unreachable!("UserString predicate method is filtered before dispatch"),
+    };
+    Ok(Value::Bool(result))
 }
 
 fn method_order_operator(method: &str) -> &str {
