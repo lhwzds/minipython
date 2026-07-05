@@ -54931,6 +54931,61 @@ fn cpython_tuple_inherited_getattribute_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __setattr__ / __delattr__ inheritance. This
+// pins object attribute mutation wrappers without adding custom setattr/delattr
+// hooks or full descriptor metadata.
+#[test]
+fn cpython_tuple_inherited_setattr_delattr_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('setattr-exact', lambda: (1, 'x').__setattr__('x', 1)),\n",
+            "    ('setattr-sub', lambda: left.__setattr__('x', 1)),\n",
+            "    ('type-setattr-exact', lambda: tuple.__setattr__((1, 'x'), 'x', 1)),\n",
+            "    ('type-setattr-sub', lambda: tuple.__setattr__(left, 'x', 1)),\n",
+            "    ('type-setattr-list', lambda: tuple.__setattr__([1, 2], 'x', 1)),\n",
+            "    ('setattr-name-type', lambda: (1,).__setattr__(1, 2)),\n",
+            "    ('setattr-keyword', lambda: (1,).__setattr__(name='x', value=1)),\n",
+            "    ('delattr-exact', lambda: (1, 'x').__delattr__('x')),\n",
+            "    ('delattr-sub', lambda: left.__delattr__('x')),\n",
+            "    ('type-delattr-exact', lambda: tuple.__delattr__((1, 'x'), 'x')),\n",
+            "    ('type-delattr-sub', lambda: tuple.__delattr__(left, 'x')),\n",
+            "    ('type-delattr-list', lambda: tuple.__delattr__([1, 2], 'x')),\n",
+            "    ('delattr-name-type', lambda: (1,).__delattr__(1)),\n",
+            "    ('delattr-keyword', lambda: (1,).__delattr__(name='x')),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), error.args)\n",
+            "print('visible-set', hasattr(left, '__setattr__'), '__setattr__' in dir(left), '__setattr__' in dir(T), '__setattr__' in dir(tuple), type(tuple.__setattr__).__name__, tuple.__setattr__ is object.__setattr__, type(object.__setattr__).__name__)\n",
+            "print('visible-del', hasattr(left, '__delattr__'), '__delattr__' in dir(left), '__delattr__' in dir(T), '__delattr__' in dir(tuple), type(tuple.__delattr__).__name__, tuple.__delattr__ is object.__delattr__, type(object.__delattr__).__name__)",
+        ),
+        &[
+            "setattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes (\"'tuple' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "setattr-sub NoneType None",
+            "type-setattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes (\"'tuple' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "type-setattr-sub NoneType None",
+            "type-setattr-list AttributeError 'list' object has no attribute 'x' and no __dict__ for setting new attributes (\"'list' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "setattr-name-type TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "setattr-keyword TypeError wrapper __setattr__() takes no keyword arguments ('wrapper __setattr__() takes no keyword arguments',)",
+            "delattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes (\"'tuple' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "delattr-sub NoneType None",
+            "type-delattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes (\"'tuple' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "type-delattr-sub AttributeError 'T' object has no attribute 'x' (\"'T' object has no attribute 'x'\",)",
+            "type-delattr-list AttributeError 'list' object has no attribute 'x' and no __dict__ for setting new attributes (\"'list' object has no attribute 'x' and no __dict__ for setting new attributes\",)",
+            "delattr-name-type TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "delattr-keyword TypeError wrapper __delattr__() takes no keyword arguments ('wrapper __delattr__() takes no keyword arguments',)",
+            "visible-set True True True True wrapper_descriptor True wrapper_descriptor",
+            "visible-del True True True True wrapper_descriptor True wrapper_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple __str__ inheritance. This pins the
 // inherited object.__str__ wrapper for tuple without making it a tuple-specific
 // sequence method.

@@ -18286,6 +18286,40 @@ print('visible', hasattr(left, '__getattribute__'), '__getattribute__' in dir(le
 }
 
 #[test]
+fn cpython_tuple_inherited_setattr_delattr_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __setattr__ / __delattr__ wrapper descriptor behavior",
+        name: "tuple-inherited-setattr-delattr-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('setattr-exact', lambda: (1, 'x').__setattr__('x', 1)),
+    ('setattr-sub', lambda: left.__setattr__('x', 1)),
+    ('type-setattr-exact', lambda: tuple.__setattr__((1, 'x'), 'x', 1)),
+    ('type-setattr-sub', lambda: tuple.__setattr__(left, 'x', 1)),
+    ('type-setattr-list', lambda: tuple.__setattr__([1, 2], 'x', 1)),
+    ('setattr-name-type', lambda: (1,).__setattr__(1, 2)),
+    ('setattr-keyword', lambda: (1,).__setattr__(name='x', value=1)),
+    ('delattr-exact', lambda: (1, 'x').__delattr__('x')),
+    ('delattr-sub', lambda: left.__delattr__('x')),
+    ('type-delattr-exact', lambda: tuple.__delattr__((1, 'x'), 'x')),
+    ('type-delattr-sub', lambda: tuple.__delattr__(left, 'x')),
+    ('type-delattr-list', lambda: tuple.__delattr__([1, 2], 'x')),
+    ('delattr-name-type', lambda: (1,).__delattr__(1)),
+    ('delattr-keyword', lambda: (1,).__delattr__(name='x')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible-set', hasattr(left, '__setattr__'), '__setattr__' in dir(left), '__setattr__' in dir(T), '__setattr__' in dir(tuple), type(tuple.__setattr__).__name__, tuple.__setattr__ is object.__setattr__, type(object.__setattr__).__name__)
+print('visible-del', hasattr(left, '__delattr__'), '__delattr__' in dir(left), '__delattr__' in dir(T), '__delattr__' in dir(tuple), type(tuple.__delattr__).__name__, tuple.__delattr__ is object.__delattr__, type(object.__delattr__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_inherited_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple inherited __str__ wrapper behavior",

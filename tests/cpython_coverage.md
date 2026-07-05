@@ -83,6 +83,15 @@ Recent runtime migration notes:
   `wrapper_descriptor` visibility, and missing-attribute and name-type error propagation,
   without adding custom getattribute hooks or full descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_tuple_inherited_setattr_delattr_direct_subset`, backed by
+  `cpython_tuple_inherited_setattr_delattr_direct_diff_subset`, now pins tuple inherited `__setattr__` / `__delattr__`,
+  exact tuple no-dict AttributeErrors, tuple subclass attribute mutation, direct
+  `tuple.__setattr__` / `tuple.__delattr__` dispatch for tuple and non-tuple
+  receivers, non-tuple direct receiver support through object mutation wrappers,
+  `tuple.__setattr__ is object.__setattr__`, `tuple.__delattr__ is object.__delattr__`,
+  `wrapper_descriptor` visibility, and name-type and keyword error propagation,
+  without adding custom setattr/delattr hooks or full descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

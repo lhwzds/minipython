@@ -15015,6 +15015,14 @@ impl Vm {
                     return Ok(object_getattribute_bound_method(instance));
                 }
 
+                if name == "__setattr__" {
+                    return Ok(object_setattr_bound_method(instance));
+                }
+
+                if name == "__delattr__" {
+                    return Ok(object_delattr_bound_method(instance));
+                }
+
                 if let Some((typ, values)) = namedtuple_subclass_storage(&instance) {
                     let storage = Value::NamedTuple { typ, values };
                     if let Ok(value) = load_attribute(storage, name) {
@@ -53225,6 +53233,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "tuple" => &[
             "__add__",
             "__contains__",
+            "__delattr__",
             "__eq__",
             "__format__",
             "__ge__",
@@ -53243,6 +53252,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__new__",
             "__repr__",
             "__rmul__",
+            "__setattr__",
             "__sizeof__",
             "__str__",
             "count",
@@ -61059,6 +61069,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Tuple(items) if name == "__getattribute__" => {
             Ok(object_getattribute_bound_method(Value::Tuple(items)))
         }
+        Value::Tuple(items) if name == "__setattr__" => {
+            Ok(object_setattr_bound_method(Value::Tuple(items)))
+        }
+        Value::Tuple(items) if name == "__delattr__" => {
+            Ok(object_delattr_bound_method(Value::Tuple(items)))
+        }
         Value::Tuple(items) if name == "__hash__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("tuple.__hash__".to_string())),
             receiver: Box::new(Value::Tuple(items)),
@@ -62944,6 +62960,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__getattribute__" => {
             Ok(Value::Builtin("object.__getattribute__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__setattr__" => {
+            Ok(Value::Builtin("object.__setattr__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__delattr__" => {
+            Ok(Value::Builtin("object.__delattr__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__hash__" => {
             Ok(Value::Builtin("tuple.__hash__".to_string()))
@@ -67690,6 +67712,22 @@ fn object_dir_bound_method(receiver: Value) -> Value {
 fn object_getattribute_bound_method(receiver: Value) -> Value {
     Value::BoundMethod {
         function: Box::new(Value::Builtin("object.__getattribute__".to_string())),
+        receiver: Box::new(receiver),
+        identity: Rc::new(()),
+    }
+}
+
+fn object_setattr_bound_method(receiver: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("object.__setattr__".to_string())),
+        receiver: Box::new(receiver),
+        identity: Rc::new(()),
+    }
+}
+
+fn object_delattr_bound_method(receiver: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("object.__delattr__".to_string())),
         receiver: Box::new(receiver),
         identity: Rc::new(()),
     }

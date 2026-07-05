@@ -945,6 +945,153 @@ fn tuple_inherited_getattribute_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_setattr_delattr_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_setattr_delattr_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_setattr_delattr_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited setattr/delattr direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited setattr/delattr direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__setattr__('x', 1)",
+        "left.__setattr__('x', 1)",
+        "tuple.__setattr__((1, 'x'), 'x', 1)",
+        "tuple.__setattr__(left, 'x', 1)",
+        "tuple.__setattr__([1, 2], 'x', 1)",
+        "(1,).__setattr__(1, 2)",
+        "(1,).__setattr__(name='x', value=1)",
+        "(1, 'x').__delattr__('x')",
+        "left.__delattr__('x')",
+        "tuple.__delattr__((1, 'x'), 'x')",
+        "tuple.__delattr__(left, 'x')",
+        "tuple.__delattr__([1, 2], 'x')",
+        "(1,).__delattr__(1)",
+        "(1,).__delattr__(name='x')",
+        "hasattr(left, '__setattr__')",
+        "'__setattr__' in dir(left)",
+        "'__setattr__' in dir(T)",
+        "'__setattr__' in dir(tuple)",
+        "type(tuple.__setattr__).__name__",
+        "tuple.__setattr__ is object.__setattr__",
+        "type(object.__setattr__).__name__",
+        "hasattr(left, '__delattr__')",
+        "'__delattr__' in dir(left)",
+        "'__delattr__' in dir(T)",
+        "'__delattr__' in dir(tuple)",
+        "type(tuple.__delattr__).__name__",
+        "tuple.__delattr__ is object.__delattr__",
+        "type(object.__delattr__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited setattr/delattr direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"setattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"setattr-sub NoneType None\"",
+        "\"type-setattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"type-setattr-sub NoneType None\"",
+        "\"type-setattr-list AttributeError 'list' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"setattr-name-type TypeError attribute name must be string, not 'int'",
+        "\"setattr-keyword TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"delattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"delattr-sub NoneType None\"",
+        "\"type-delattr-exact AttributeError 'tuple' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"type-delattr-sub AttributeError 'T' object has no attribute 'x'",
+        "\"type-delattr-list AttributeError 'list' object has no attribute 'x' and no __dict__ for setting new attributes",
+        "\"delattr-name-type TypeError attribute name must be string, not 'int'",
+        "\"delattr-keyword TypeError wrapper __delattr__() takes no keyword arguments",
+        "\"visible-set True True True True wrapper_descriptor True wrapper_descriptor\"",
+        "\"visible-del True True True True wrapper_descriptor True wrapper_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited setattr/delattr direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    for required in ["\"__setattr__\"", "\"__delattr__\""] {
+        assert!(
+            tuple_dir_block.contains(required),
+            "tuple dir block must expose inherited mutation wrapper `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Tuple(items) if name == \"__setattr__\"",
+        "object_setattr_bound_method(Value::Tuple(items))",
+        "Value::Tuple(items) if name == \"__delattr__\"",
+        "object_delattr_bound_method(Value::Tuple(items))",
+        "function_name == \"tuple\" && name == \"__setattr__\"",
+        "Ok(Value::Builtin(\"object.__setattr__\".to_string()))",
+        "function_name == \"tuple\" && name == \"__delattr__\"",
+        "Ok(Value::Builtin(\"object.__delattr__\".to_string()))",
+        "fn object_setattr_bound_method(",
+        "fn object_delattr_bound_method(",
+        "Value::Builtin(\"object.__setattr__\".to_string())",
+        "Value::Builtin(\"object.__delattr__\".to_string())",
+        "Value::Builtin(name) if name == \"object.__setattr__\"",
+        "Value::Builtin(name) if name == \"object.__delattr__\"",
+        "self.call_object_setattr(args)",
+        "self.call_object_delattr(args)",
+        "if name == \"__setattr__\"",
+        "return Ok(object_setattr_bound_method(instance));",
+        "if name == \"__delattr__\"",
+        "return Ok(object_delattr_bound_method(instance));",
+        "attribute_name_arg(name)?",
+        "store_attribute_without_custom_setattr(object.clone(), &name, value.clone())",
+        "delete_attribute_without_custom_delattr(object.clone(), &name)",
+        "| \"__setattr__\"",
+        "| \"__delattr__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited setattr/delattr direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__setattr__` / `__delattr__`",
+            "`tuple.__setattr__ is object.__setattr__`",
+            "`tuple.__delattr__ is object.__delattr__`",
+            "tuple subclass attribute mutation",
+            "non-tuple direct receiver support",
+            "wrapper_descriptor",
+            "name-type and keyword error propagation",
+            "without adding custom setattr/delattr hooks or full descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited setattr/delattr direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_inherited_str_direct_docs_cover_core_runtime() {
     let diff_name = "cpython_tuple_inherited_str_direct_diff_subset";
     let subset_name = "cpython_tuple_inherited_str_direct_subset";
