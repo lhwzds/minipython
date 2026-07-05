@@ -28746,6 +28746,30 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public `object` type subscription rejection without pulling
+// object instance `dir()` behavior into this narrow slice.
+#[test]
+fn cpython_object_type_not_subscriptable_subset() {
+    assert_output(
+        r#"typ = object
+for label, expr in [
+    ('hasattr-type', lambda: hasattr(typ, '__class_getitem__')),
+    ('subscript-int', lambda: typ[int]),
+    ('call-int', lambda: typ.__class_getitem__(int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "hasattr-type bool False",
+            "subscript-int TypeError type 'object' is not subscriptable (\"type 'object' is not subscriptable\",)",
+            "call-int AttributeError type object 'object' has no attribute '__class_getitem__' (\"type object 'object' has no attribute '__class_getitem__'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]
