@@ -46528,6 +46528,98 @@ fn float_type_not_subscriptable_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn complex_type_not_subscriptable_subset_has_focused_diff_evidence() {
+    let diff_name = "cpython_complex_type_not_subscriptable_diff_subset";
+    let subset_name = "cpython_complex_type_not_subscriptable_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "complex type subscription rejection CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "complex type subscription rejection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = complex",
+        "inst = 1+2j",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ.__class_getitem__(int)",
+        "inst.__class_getitem__(int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "complex type subscription rejection diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (False, False, False, False)\"",
+        "\"subscript-int TypeError type 'complex' is not subscriptable",
+        "\"call-int AttributeError type object 'complex' has no attribute '__class_getitem__'",
+        "\"inst-call AttributeError 'complex' object has no attribute '__class_getitem__'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "complex type subscription rejection subset output must pin `{required}`"
+        );
+    }
+
+    let load_subscript_body = VM_SOURCE
+        .split("fn load_subscript(object: Value, index: Value) -> Result<Value, String>")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn generic_alias_args(index: Value) -> Vec<Value>")
+                .next()
+        })
+        .expect("load_subscript implementation must be extractable");
+    let complex_guard = load_subscript_body
+        .find("Value::Builtin(name) if name == \"complex\"")
+        .expect("complex subscript rejection guard must exist");
+    let class_like_guard = load_subscript_body
+        .find("Value::Builtin(name) if is_class_like_builtin(&name)")
+        .expect("class-like builtin GenericAlias guard must exist");
+    assert!(
+        complex_guard < class_like_guard,
+        "complex subscript rejection must run before the generic class-like builtin alias guard"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"complex\"",
+        "type 'complex' is not subscriptable",
+        "Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "complex type subscription rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`complex[int]`",
+            "type 'complex' is not subscriptable",
+            "without adding `complex.__class_getitem__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "complex type subscription rejection docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn str_type_not_subscriptable_subset_has_focused_diff_evidence() {
     let diff_name = "cpython_str_type_not_subscriptable_diff_subset";
     let subset_name = "cpython_str_type_not_subscriptable_subset";

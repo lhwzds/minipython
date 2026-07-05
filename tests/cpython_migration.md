@@ -59,6 +59,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `__class_getitem__` visibility, and CPython AttributeError shape for direct
   calls, without adding `float.__class_getitem__` or GenericAlias support,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_complex_type_not_subscriptable_subset` and
+  `cpython_complex_type_not_subscriptable_diff_subset` for `complex[int]`
+  rejection with `type 'complex' is not subscriptable`, absent type and
+  instance `__class_getitem__` visibility, and CPython AttributeError shape for
+  direct calls, without adding `complex.__class_getitem__` or GenericAlias
+  support, without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_str_type_not_subscriptable_subset` and
   `cpython_str_type_not_subscriptable_diff_subset` for `str[int]` rejection
   with `type 'str' is not subscriptable`, absent type and instance

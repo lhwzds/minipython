@@ -47,6 +47,12 @@ Recent runtime migration notes:
   `__class_getitem__` visibility, and CPython AttributeError shape for direct
   calls, without adding `float.__class_getitem__` or GenericAlias support,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_complex_type_not_subscriptable_subset`, backed by
+  `cpython_complex_type_not_subscriptable_diff_subset`, now pins `complex[int]`
+  rejection with `type 'complex' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `complex.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_str_type_not_subscriptable_subset`, backed by
   `cpython_str_type_not_subscriptable_diff_subset`, now pins `str[int]`
   rejection with `type 'str' is not subscriptable`, absent type and instance
