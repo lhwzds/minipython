@@ -18476,6 +18476,35 @@ print('visible', hasattr(left, '__init__'), '__init__' in dir(left), '__init__' 
 }
 
 #[test]
+fn cpython_list_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public list __class_getitem__ GenericAlias behavior",
+        name: "list-class-getitem-generic-alias",
+        source: r#"class L(list):
+    pass
+left = L([1, 'x'])
+for label, expr in [
+    ('visible', lambda: (hasattr(list, '__class_getitem__'), '__class_getitem__' in dir(list), type(list.__class_getitem__).__name__)),
+    ('subscript-int', lambda: (type(list[int]).__name__, str(list[int]), list[int].__origin__ is list, list[int].__args__)),
+    ('call-int', lambda: (type(list.__class_getitem__(int)).__name__, str(list.__class_getitem__(int)), list.__class_getitem__(int) == list[int], list.__class_getitem__(int).__origin__ is list, list.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(list.__class_getitem__((int, str))), list.__class_getitem__((int, str)) == list[int, str], list.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: ([1].__class_getitem__(int) == list[int], [1].__class_getitem__(int).__origin__ is list)),
+    ('type-sub', lambda: (type(L.__class_getitem__(int)).__name__, L.__class_getitem__(int).__origin__ is L, L.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (type(left.__class_getitem__(int)).__name__, left.__class_getitem__(int).__origin__ is L, left.__class_getitem__(int).__args__)),
+    ('call-noargs', lambda: list.__class_getitem__()),
+    ('call-extra', lambda: list.__class_getitem__(int, str)),
+    ('call-keyword', lambda: list.__class_getitem__(item=int)),
+    ('type-sub-keyword', lambda: L.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
@@ -25120,6 +25149,24 @@ fn cpython_collections_userlist_public_methods_diff_subset() {
         source: r#"from collections import UserList
 from copy import copy
 print(set(dir(UserList)) >= set(dir(list)))
+print('__class_getitem__' in dir(UserList), hasattr(UserList, '__class_getitem__'))
+alias = UserList.__class_getitem__(int)
+print(type(alias).__name__, str(alias), alias.__origin__ is UserList, alias.__args__)
+alias = UserList[int]
+print(type(alias).__name__, str(alias), alias.__origin__ is UserList, alias.__args__)
+print(UserList().__class_getitem__(str).__origin__ is UserList, UserList().__class_getitem__(str).__args__)
+class U(UserList):
+    pass
+print(U.__class_getitem__(int).__origin__ is U, U().__class_getitem__(str).__origin__ is U)
+for label, call in [
+    ('class-getitem-noargs', lambda: UserList.__class_getitem__()),
+    ('class-getitem-extra', lambda: UserList.__class_getitem__(int, str)),
+    ('class-getitem-keyword', lambda: UserList.__class_getitem__(item=int)),
+]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), repr(error.args))
 obj = UserList()
 print(obj.data, type(obj).__name__)
 obj.append(123)

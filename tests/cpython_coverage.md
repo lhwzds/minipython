@@ -99,6 +99,13 @@ Recent runtime migration notes:
   pair and ellipsis argument normalization through the existing alias model, and
   keyword and arity error propagation, without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_list_class_getitem_generic_alias_subset`, backed by
+  `cpython_list_class_getitem_generic_alias_diff_subset`, now pins list `__class_getitem__`,
+  `list.__class_getitem__(int) == list[int]`, exact list instance lookup,
+  list subclass class and instance origin binding, `GenericAlias` origin/args,
+  pair argument normalization through the existing alias model, and keyword and arity error propagation,
+  without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -2010,8 +2017,10 @@ Recent runtime migration notes:
   CPython public `UserList` method subset, including direct display,
   empty-format, recursive display behavior, and sequence arithmetic (`+`,
   reverse `+`, `*`, reverse `*`, `+=`, and `*=`), plus class-level direct
-  public method calls such as `UserList.append(obj, value)`, with direct output
-  parity evidence.
+  public method calls such as `UserList.append(obj, value)`, inherited
+  `UserList.__class_getitem__(int)` / `UserList[int]` GenericAlias behavior
+  including `collections.UserList[int]` display, GenericAlias origin/args, and
+  GenericAlias constructor error shape, with direct output parity evidence.
 - `cpython_collections_userlist_mutating_eq_subset`, backed by
   `cpython_collections_userlist_mutating_eq_diff_subset`, pins UserList mutation during comparison
   for membership, `__contains__`, `count`, `index`, and `remove`: appending
@@ -6844,8 +6853,10 @@ without adding general custom encoder/decoder class support.
   `.data`, list mutation/iteration/length/containment, direct
   display/empty-format methods, recursive display, sequence arithmetic (`+`,
   reverse `+`, `*`, reverse `*`, `+=`, and `*=`), class-level direct public
-  method calls, `.copy()`, and `copy.copy()` with shallow instance-attribute
-  copying.
+  method calls, inherited `UserList.__class_getitem__(int)` / `UserList[int]`
+  GenericAlias behavior including `collections.UserList[int]` display,
+  GenericAlias origin/args, and GenericAlias constructor error shape, `.copy()`,
+  and `copy.copy()` with shallow instance-attribute copying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset` and
   `cpython_collections_userlist_namedtuple_sequence_order_subset`, covering

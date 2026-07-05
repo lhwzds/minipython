@@ -2843,6 +2843,7 @@ fn format_generic_builtin_name(name: &str) -> String {
         "deque" => "collections.deque".to_string(),
         "OrderedDict" => "collections.OrderedDict".to_string(),
         "defaultdict" => "collections.defaultdict".to_string(),
+        "UserList" => "collections.UserList".to_string(),
         _ => name.to_string(),
     }
 }

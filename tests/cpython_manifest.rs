@@ -1704,6 +1704,130 @@ fn tuple_inherited_init_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn list_class_getitem_generic_alias_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_list_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class L(list):",
+        "left = L([1, 'x'])",
+        "hasattr(list, '__class_getitem__')",
+        "'__class_getitem__' in dir(list)",
+        "type(list.__class_getitem__).__name__",
+        "list[int]",
+        "list[int].__origin__ is list",
+        "list[int].__args__",
+        "list.__class_getitem__(int)",
+        "list.__class_getitem__(int) == list[int]",
+        "list.__class_getitem__((int, str))",
+        "list.__class_getitem__((int, str)) == list[int, str]",
+        "[1].__class_getitem__(int)",
+        "L.__class_getitem__(int)",
+        "L.__class_getitem__(int).__origin__ is L",
+        "left.__class_getitem__(int)",
+        "left.__class_getitem__(int).__origin__ is L",
+        "list.__class_getitem__()",
+        "list.__class_getitem__(int, str)",
+        "list.__class_getitem__(item=int)",
+        "L.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method')\"",
+        "\"subscript-int tuple ('GenericAlias', 'list[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'list[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('list[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"type-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"inst-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"call-noargs TypeError list.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError list.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError list.__class_getitem__() takes no keyword arguments",
+        "\"type-sub-keyword TypeError L.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let list_dir_start = VM_SOURCE
+        .find("\"list\" => &[")
+        .expect("list dir block must exist");
+    let list_dir_tail = &VM_SOURCE[list_dir_start..];
+    let list_dir_end = list_dir_tail
+        .find("],\n        \"UserList\"")
+        .expect("list dir block must end before UserList block");
+    let list_dir_block = &list_dir_tail[..list_dir_end];
+
+    assert!(
+        list_dir_block.contains("\"__class_getitem__\""),
+        "list dir block must expose `__class_getitem__`"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"type.__class_getitem__\"",
+        "self.call_type_class_getitem(args, keywords)",
+        "fn call_type_class_getitem(",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+        "Value::List(items) => match name",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"list\".to_string()",
+        "function_name == \"list\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "fn class_getitem_bound_method(",
+        "Value::Builtin(\"type.__class_getitem__\".to_string())",
+        "fn class_getitem_origin_name(",
+        "class_bases_include_builtin(&class_bases, \"list\")",
+        "return Ok(class_getitem_bound_method(owner));",
+        "class_bases_include_builtin(&bases, \"list\")",
+        "Value::Class { name, attrs, .. }",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "list `__class_getitem__`",
+            "`list.__class_getitem__(int) == list[int]`",
+            "exact list instance lookup",
+            "list subclass class and instance origin binding",
+            "GenericAlias",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or full classmethod_descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "list class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_subclass_new_storage_docs_cover_core_runtime() {
     let diff_name = "cpython_list_subclass_new_storage_diff_subset";
     let subset_name = "cpython_list_subclass_new_storage_subset";
@@ -28162,12 +28286,62 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserList.__delitem__(class_obj, 0)",
         "UserList.__eq__(UserList([1]), [1])",
         "UserList.__lt__(UserList([1]), [2])",
+        "__class_getitem__' in dir(UserList)",
+        "UserList.__class_getitem__(int)",
+        "UserList[int]",
+        "UserList().__class_getitem__(str)",
+        "class U(UserList):",
+        "UserList.__class_getitem__()",
+        "UserList.__class_getitem__(int, str)",
+        "UserList.__class_getitem__(item=int)",
     ] {
         assert!(
             userlist_public_diff_body.contains(required)
                 && userlist_public_subset_body.contains(required),
             "UserList public diff and subset evidence must cover `{required}`"
         );
+    }
+    for required in [
+        "\"GenericAlias collections.UserList[int] True (<class 'int'>,)\"",
+        "\"class-getitem-noargs TypeError GenericAlias expected 2 arguments, got 1 ('GenericAlias expected 2 arguments, got 1',)\"",
+        "\"class-getitem-extra TypeError GenericAlias expected 2 arguments, got 3 ('GenericAlias expected 2 arguments, got 3',)\"",
+        "\"class-getitem-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)\"",
+    ] {
+        assert!(
+            userlist_public_subset_body.contains(required),
+            "UserList public subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn generic_alias_bound_method(origin: Value) -> Value",
+        "Value::Builtin(\"GenericAlias\".to_string())",
+        "function_name == \"UserList\" && name == \"__class_getitem__\"",
+        "\"__class_getitem__\" => Ok(generic_alias_bound_method(Value::Builtin(",
+        "class_bases_include_builtin(&class_bases, \"UserList\")",
+        "class_bases_include_builtin(&bases, \"UserList\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList class getitem implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VALUE_SOURCE.contains("\"UserList\" => \"collections.UserList\".to_string()"),
+        "UserList GenericAlias formatting must use the collections-qualified public name"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "`UserList.__class_getitem__(int)`",
+            "`UserList[int]`",
+            "`collections.UserList[int]`",
+            "GenericAlias origin/args",
+            "GenericAlias constructor error shape",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList class-getitem docs must contain `{required}`"
+            );
+        }
     }
     assert!(
         row.diff_evidence

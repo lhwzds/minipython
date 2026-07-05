@@ -15026,9 +15026,15 @@ impl Vm {
                     return Ok(object_delattr_bound_method(instance));
                 }
 
-                if name == "__class_getitem__" && class_bases_include_builtin(&class_bases, "tuple")
-                {
-                    return Ok(class_getitem_bound_method(owner));
+                if name == "__class_getitem__" {
+                    if class_bases_include_builtin(&class_bases, "UserList") {
+                        return Ok(generic_alias_bound_method(owner));
+                    }
+                    if class_bases_include_builtin(&class_bases, "tuple")
+                        || class_bases_include_builtin(&class_bases, "list")
+                    {
+                        return Ok(class_getitem_bound_method(owner));
+                    }
                 }
 
                 if let Some((typ, values)) = namedtuple_subclass_storage(&instance) {
@@ -15329,8 +15335,15 @@ impl Vm {
                     return Ok(value);
                 }
 
-                if name == "__class_getitem__" && class_bases_include_builtin(&bases, "tuple") {
-                    return Ok(class_getitem_bound_method(owner));
+                if name == "__class_getitem__" {
+                    if class_bases_include_builtin(&bases, "UserList") {
+                        return Ok(generic_alias_bound_method(owner));
+                    }
+                    if class_bases_include_builtin(&bases, "tuple")
+                        || class_bases_include_builtin(&bases, "list")
+                    {
+                        return Ok(class_getitem_bound_method(owner));
+                    }
                 }
 
                 if name == "__dir__" {
@@ -52876,6 +52889,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "list" => &[
             "__add__",
+            "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__eq__",
@@ -52903,6 +52917,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "UserList" => &[
             "__add__",
+            "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__eq__",
@@ -61277,6 +61292,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("list builtin type doc exists")
                     .to_string(),
             )),
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "list".to_string(),
+            ))),
             "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
             | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
             | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__setitem__" => {
@@ -61306,6 +61324,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         .expect("UserList type doc is defined")
                         .to_string(),
                 )),
+                "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
+                    "UserList".to_string(),
+                ))),
                 "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
                 | "index" | "insert" | "remove" | "__add__" | "__contains__" | "__delitem__"
                 | "__eq__" | "__format__" | "__getitem__" | "__iadd__" | "__imul__"
@@ -62993,6 +63014,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin(format!("list.{name}")))
         }
+        Value::Builtin(function_name) if function_name == "list" && name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__new__" => {
             Ok(Value::Builtin("tuple.__new__".to_string()))
         }
@@ -63139,6 +63163,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && is_builtin_user_list_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserList.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserList" && name == "__class_getitem__" =>
+        {
+            Ok(generic_alias_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name)
             if function_name == "UserDict" && is_builtin_user_dict_type_method(name) =>
@@ -67783,6 +67812,14 @@ fn object_delattr_bound_method(receiver: Value) -> Value {
 fn class_getitem_bound_method(origin: Value) -> Value {
     Value::BoundMethod {
         function: Box::new(Value::Builtin("type.__class_getitem__".to_string())),
+        receiver: Box::new(origin),
+        identity: Rc::new(()),
+    }
+}
+
+fn generic_alias_bound_method(origin: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("GenericAlias".to_string())),
         receiver: Box::new(origin),
         identity: Rc::new(()),
     }

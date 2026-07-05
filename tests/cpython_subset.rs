@@ -54581,6 +54581,51 @@ fn cpython_list_subclass_core_sequence_subset() {
     );
 }
 
+// Adapted from CPython public list __class_getitem__ behavior. This pins
+// GenericAlias origin/args, direct type calls, and instance/subclass lookup
+// without adding full GenericAlias repr parity or classmethod descriptor metadata.
+#[test]
+fn cpython_list_class_getitem_generic_alias_subset() {
+    assert_output(
+        concat!(
+            "class L(list):\n",
+            "    pass\n",
+            "left = L([1, 'x'])\n",
+            "for label, expr in [\n",
+            "    ('visible', lambda: (hasattr(list, '__class_getitem__'), '__class_getitem__' in dir(list), type(list.__class_getitem__).__name__)),\n",
+            "    ('subscript-int', lambda: (type(list[int]).__name__, str(list[int]), list[int].__origin__ is list, list[int].__args__)),\n",
+            "    ('call-int', lambda: (type(list.__class_getitem__(int)).__name__, str(list.__class_getitem__(int)), list.__class_getitem__(int) == list[int], list.__class_getitem__(int).__origin__ is list, list.__class_getitem__(int).__args__)),\n",
+            "    ('call-pair', lambda: (str(list.__class_getitem__((int, str))), list.__class_getitem__((int, str)) == list[int, str], list.__class_getitem__((int, str)).__args__)),\n",
+            "    ('inst-exact', lambda: ([1].__class_getitem__(int) == list[int], [1].__class_getitem__(int).__origin__ is list)),\n",
+            "    ('type-sub', lambda: (type(L.__class_getitem__(int)).__name__, L.__class_getitem__(int).__origin__ is L, L.__class_getitem__(int).__args__)),\n",
+            "    ('inst-sub', lambda: (type(left.__class_getitem__(int)).__name__, left.__class_getitem__(int).__origin__ is L, left.__class_getitem__(int).__args__)),\n",
+            "    ('call-noargs', lambda: list.__class_getitem__()),\n",
+            "    ('call-extra', lambda: list.__class_getitem__(int, str)),\n",
+            "    ('call-keyword', lambda: list.__class_getitem__(item=int)),\n",
+            "    ('type-sub-keyword', lambda: L.__class_getitem__(item=int)),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, result)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), error.args)",
+        ),
+        &[
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "subscript-int tuple ('GenericAlias', 'list[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'list[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('list[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "type-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "call-noargs TypeError list.__class_getitem__() takes exactly one argument (0 given) ('list.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError list.__class_getitem__() takes exactly one argument (2 given) ('list.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError list.__class_getitem__() takes no keyword arguments ('list.__class_getitem__() takes no keyword arguments',)",
+            "type-sub-keyword TypeError L.__class_getitem__() takes no keyword arguments ('L.__class_getitem__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
@@ -66270,6 +66315,24 @@ fn cpython_collections_userlist_public_methods_subset() {
             "from collections import UserList\n",
             "from copy import copy\n",
             "print(set(dir(UserList)) >= set(dir(list)))\n",
+            "print('__class_getitem__' in dir(UserList), hasattr(UserList, '__class_getitem__'))\n",
+            "alias = UserList.__class_getitem__(int)\n",
+            "print(type(alias).__name__, str(alias), alias.__origin__ is UserList, alias.__args__)\n",
+            "alias = UserList[int]\n",
+            "print(type(alias).__name__, str(alias), alias.__origin__ is UserList, alias.__args__)\n",
+            "print(UserList().__class_getitem__(str).__origin__ is UserList, UserList().__class_getitem__(str).__args__)\n",
+            "class U(UserList):\n",
+            "    pass\n",
+            "print(U.__class_getitem__(int).__origin__ is U, U().__class_getitem__(str).__origin__ is U)\n",
+            "for label, call in [\n",
+            "    ('class-getitem-noargs', lambda: UserList.__class_getitem__()),\n",
+            "    ('class-getitem-extra', lambda: UserList.__class_getitem__(int, str)),\n",
+            "    ('class-getitem-keyword', lambda: UserList.__class_getitem__(item=int)),\n",
+            "]:\n",
+            "    try:\n",
+            "        print(label, call())\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), repr(error.args))\n",
             "obj = UserList()\n",
             "print(obj.data, type(obj).__name__)\n",
             "obj.append(123)\n",
@@ -66332,6 +66395,14 @@ fn cpython_collections_userlist_public_methods_subset() {
         ),
         &[
             "True",
+            "True True",
+            "GenericAlias collections.UserList[int] True (<class 'int'>,)",
+            "GenericAlias collections.UserList[int] True (<class 'int'>,)",
+            "True (<class 'str'>,)",
+            "True True",
+            "class-getitem-noargs TypeError GenericAlias expected 2 arguments, got 1 ('GenericAlias expected 2 arguments, got 1',)",
+            "class-getitem-extra TypeError GenericAlias expected 2 arguments, got 3 ('GenericAlias expected 2 arguments, got 3',)",
+            "class-getitem-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
             "[] UserList",
             "[123] [123] 1 True",
             "[123] [123] [123]",

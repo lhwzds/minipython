@@ -110,6 +110,13 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   pair and ellipsis argument normalization through the existing alias model, and
   keyword and arity error propagation, without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_list_class_getitem_generic_alias_subset` and
+  `cpython_list_class_getitem_generic_alias_diff_subset` for list `__class_getitem__`,
+  `list.__class_getitem__(int) == list[int]`, exact list instance lookup,
+  list subclass class and instance origin binding, `GenericAlias` origin/args,
+  pair argument normalization through the existing alias model, and keyword and arity error propagation,
+  without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_tuple_inherited_str_direct_subset` and
   `cpython_tuple_inherited_str_direct_diff_subset` for tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -14381,8 +14388,10 @@ Completed in the CPython collections manifest expansion pass:
   construction from list/UserList inputs, `.data`, list mutation and iteration,
   direct display/empty-format methods, recursive display, sequence arithmetic
   (`+`, reverse `+`, `*`, reverse `*`, `+=`, and `*=`), class-level direct
-  public method calls, `.copy()`, and `copy.copy()` with shallow
-  instance-attribute copying.
+  public method calls, inherited `UserList.__class_getitem__(int)` /
+  `UserList[int]` GenericAlias behavior including `collections.UserList[int]`
+  display, GenericAlias origin/args, and GenericAlias constructor error shape,
+  `.copy()`, and `copy.copy()` with shallow instance-attribute copying.
 - Added `cpython_collections_userlist_instance_doc_attribute_subset`, backed by
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`, covering
   `UserList` instance `__doc__` lookup for empty and populated UserLists,
