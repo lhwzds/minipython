@@ -89506,6 +89506,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::Builtin(name) if name == "io.BytesIO" => {
             Err("type '_io.BytesIO' is not subscriptable".to_string())
         }
+        Value::Builtin(name) if name == "SimpleNamespace" => {
+            Err("type 'types.SimpleNamespace' is not subscriptable".to_string())
+        }
         Value::Builtin(name) if name == "enumerate" => Ok(Value::GenericAlias {
             origin: Box::new(Value::Builtin(name)),
             args: generic_alias_args(index),

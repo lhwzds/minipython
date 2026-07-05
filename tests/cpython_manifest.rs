@@ -47852,6 +47852,93 @@ fn io_bytesio_type_not_subscriptable_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn types_simple_namespace_type_not_subscriptable_subset_has_focused_diff_evidence() {
+    let diff_name = "cpython_types_simple_namespace_type_not_subscriptable_diff_subset";
+    let subset_name = "cpython_types_simple_namespace_type_not_subscriptable_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types.SimpleNamespace type subscription rejection CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types.SimpleNamespace type subscription rejection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "import types",
+        "typ = types.SimpleNamespace",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "typ[int]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "types.SimpleNamespace type subscription rejection diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"hasattr-type bool False\"",
+        "\"dir-type bool False\"",
+        "\"subscript-int TypeError type 'types.SimpleNamespace' is not subscriptable",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "types.SimpleNamespace type subscription rejection subset output must pin `{required}`"
+        );
+    }
+
+    let load_subscript_body = VM_SOURCE
+        .split("fn load_subscript(object: Value, index: Value) -> Result<Value, String>")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn generic_alias_args(index: Value) -> Vec<Value>")
+                .next()
+        })
+        .expect("load_subscript implementation must be extractable");
+    let simple_namespace_guard = load_subscript_body
+        .find("Value::Builtin(name) if name == \"SimpleNamespace\"")
+        .expect("types.SimpleNamespace subscript rejection guard must exist");
+    let class_like_guard = load_subscript_body
+        .find("Value::Builtin(name) if is_class_like_builtin(&name)")
+        .expect("class-like builtin GenericAlias guard must exist");
+    assert!(
+        simple_namespace_guard < class_like_guard,
+        "types.SimpleNamespace subscript rejection must run before the generic class-like builtin alias guard"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"SimpleNamespace\"",
+        "type 'types.SimpleNamespace' is not subscriptable",
+        "Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types.SimpleNamespace type subscription rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`types.SimpleNamespace[int]`",
+            "type 'types.SimpleNamespace' is not subscriptable",
+            "without adding `types.SimpleNamespace.__class_getitem__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "types.SimpleNamespace type subscription rejection docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_list_attribute_assignment_errors_subset(",

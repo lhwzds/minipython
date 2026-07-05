@@ -28795,6 +28795,31 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public `types.SimpleNamespace` type subscription rejection
+// without turning the supported namespace type into a GenericAlias origin.
+#[test]
+fn cpython_types_simple_namespace_type_not_subscriptable_subset() {
+    assert_output(
+        r#"import types
+typ = types.SimpleNamespace
+for label, expr in [
+    ('hasattr-type', lambda: hasattr(typ, '__class_getitem__')),
+    ('dir-type', lambda: '__class_getitem__' in dir(typ)),
+    ('subscript-int', lambda: typ[int]),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "hasattr-type bool False",
+            "dir-type bool False",
+            "subscript-int TypeError type 'types.SimpleNamespace' is not subscriptable (\"type 'types.SimpleNamespace' is not subscriptable\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]

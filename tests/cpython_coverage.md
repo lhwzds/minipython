@@ -115,6 +115,11 @@ Recent runtime migration notes:
   `io.BytesIO[int]` rejection with `type '_io.BytesIO' is not subscriptable`
   and absent type `__class_getitem__` visibility, without adding `io.BytesIO.__class_getitem__`
   or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_types_simple_namespace_type_not_subscriptable_subset`, backed by
+  `cpython_types_simple_namespace_type_not_subscriptable_diff_subset`, now pins
+  `types.SimpleNamespace[int]` rejection with `type 'types.SimpleNamespace' is not subscriptable`
+  and absent type `__class_getitem__` visibility, without adding `types.SimpleNamespace.__class_getitem__`
+  or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -7487,6 +7492,13 @@ without adding general custom encoder/decoder class support.
   comparison safety. Direct output parity is guarded by
   `cpython_types_simple_namespace_remaining_public_diff_subset`, gated for
   CPython oracles with positional mapping construction.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_simple_namespace_type_not_subscriptable_subset`, covering
+  `types.SimpleNamespace[int]` rejection with
+  `type 'types.SimpleNamespace' is not subscriptable` and absent type
+  `__class_getitem__` visibility, without adding `types.SimpleNamespace.__class_getitem__`
+  or GenericAlias support. Direct output parity is guarded by
+  `cpython_types_simple_namespace_type_not_subscriptable_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_set_and_frozenset_subclass_subset`, covering first-pass CPython
   set/frozenset subclass construction, iteration, membership, `len`, conversion
