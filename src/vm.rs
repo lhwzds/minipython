@@ -15027,7 +15027,9 @@ impl Vm {
                 }
 
                 if name == "__class_getitem__" {
-                    if class_bases_include_builtin(&class_bases, "UserList") {
+                    if class_bases_include_builtin(&class_bases, "UserList")
+                        || class_bases_include_builtin(&class_bases, "ChainMap")
+                    {
                         return Ok(generic_alias_bound_method(owner));
                     }
                     if class_bases_include_builtin(&class_bases, "tuple")
@@ -15338,7 +15340,9 @@ impl Vm {
                 }
 
                 if name == "__class_getitem__" {
-                    if class_bases_include_builtin(&bases, "UserList") {
+                    if class_bases_include_builtin(&bases, "UserList")
+                        || class_bases_include_builtin(&bases, "ChainMap")
+                    {
                         return Ok(generic_alias_bound_method(owner));
                     }
                     if class_bases_include_builtin(&bases, "tuple")
@@ -53304,6 +53308,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "reverse",
             "rotate",
         ],
+        "ChainMap" => &["__class_getitem__"],
         "tuple" => &[
             "__add__",
             "__class_getitem__",
@@ -61887,6 +61892,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("ChainMap type doc is defined")
                     .to_string(),
             )),
+            "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
+                "ChainMap".to_string(),
+            ))),
             "maps" => Ok(list_value(maps.clone())),
             "parents" => chain_map_parents(&maps),
             "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
@@ -63336,6 +63344,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "ChainMap" && is_builtin_chain_map_type_method(name) =>
         {
             Ok(Value::Builtin(format!("ChainMap.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "ChainMap" && name == "__class_getitem__" => {
+            Ok(generic_alias_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "complex" && name == "from_number" => {
             Ok(numeric_from_number_classmethod_value("complex"))

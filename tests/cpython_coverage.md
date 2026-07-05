@@ -151,6 +151,12 @@ Recent runtime migration notes:
   Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
   exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
   without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_chainmap_class_getitem_generic_alias_subset`, backed by
+  `cpython_collections_chainmap_class_getitem_generic_alias_diff_subset`, now pins
+  ChainMap `__class_getitem__`, `ChainMap.__class_getitem__(int) == ChainMap[int]`,
+  exact ChainMap instance lookup, inherited ChainMap subclass lookup, GenericAlias origin/args,
+  and GenericAlias arity and keyword error propagation, without adding new ChainMap mapping-method surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1183,6 +1189,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_methods_diff_subset`,
+  `cpython_collections_chainmap_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_chainmap_instance_doc_attribute_diff_subset`,
   `cpython_collections_chainmap_type_base_metadata_diff_subset`,
   `cpython_collections_chainmap_keyword_error_diff_subset`,
@@ -1990,6 +1997,13 @@ Recent runtime migration notes:
   membership and lookup across child/parent mappings, `get()` defaults,
   first-map mutation, direct display/empty-format methods, `parents`, and
   `new_child()` with a mapping input.
+- The bundled `collections` module also includes
+  `cpython_collections_chainmap_class_getitem_generic_alias_diff_subset` and
+  `cpython_collections_chainmap_class_getitem_generic_alias_subset`, covering
+  ChainMap `__class_getitem__`, `ChainMap.__class_getitem__(int) == ChainMap[int]`,
+  exact ChainMap instance lookup, inherited ChainMap subclass lookup, GenericAlias origin/args,
+  and GenericAlias arity and keyword error propagation, without adding new ChainMap mapping-method surface,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - The bundled `collections` module also includes
   `cpython_collections_chainmap_copy_sharing_diff_subset` and
   `cpython_collections_chainmap_copy_sharing_subset`, covering CPython public

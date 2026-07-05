@@ -26474,6 +26474,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_inplace_operations_subset",
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
+            "cpython_collections_chainmap_class_getitem_generic_alias_subset",
             "cpython_collections_chainmap_instance_doc_attribute_subset",
             "cpython_collections_chainmap_type_base_metadata_subset",
             "cpython_collections_chainmap_keyword_error_subset",
@@ -27440,6 +27441,106 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_class_getitem_generic_alias_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap class_getitem behavior"
+    );
+    let chainmap_class_getitem_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_class_getitem_generic_alias_diff_subset",
+    );
+    let chainmap_class_getitem_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_class_getitem_generic_alias_subset",
+    );
+    for required in [
+        "from collections import ChainMap",
+        "typ = ChainMap",
+        "inst = ChainMap({'a': 1})",
+        "class C(ChainMap):",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "C.__class_getitem__(int)",
+        "C.__class_getitem__(int).__origin__ is C",
+        "C().__class_getitem__(str)",
+        "C().__class_getitem__(str).__origin__ is C",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            chainmap_class_getitem_diff_body.contains(required)
+                && chainmap_class_getitem_subset_body.contains(required),
+            "ChainMap class_getitem GenericAlias diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible tuple (True, True)\"",
+        "\"visible-inst tuple (True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.ChainMap[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.ChainMap[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.ChainMap[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"type-sub tuple ('GenericAlias', True, (<class 'int'>,))\"",
+        "\"inst-sub tuple ('GenericAlias', True, (<class 'str'>,))\"",
+        "\"call-noargs TypeError GenericAlias expected 2 arguments, got 1",
+        "\"call-extra TypeError GenericAlias expected 2 arguments, got 3",
+        "\"call-keyword TypeError GenericAlias() takes no keyword arguments",
+    ] {
+        assert!(
+            chainmap_class_getitem_subset_body.contains(required),
+            "ChainMap class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"ChainMap\" => \"collections.ChainMap\".to_string()",
+        "Value::ChainMap { maps } => match name",
+        "\"__class_getitem__\" => Ok(generic_alias_bound_method(Value::Builtin(",
+        "\"ChainMap\".to_string()",
+        "function_name == \"ChainMap\" && name == \"__class_getitem__\"",
+        "generic_alias_bound_method(Value::Builtin(function_name))",
+        "\"ChainMap\" => &[\"__class_getitem__\"]",
+        "class_bases_include_builtin(&class_bases, \"ChainMap\")",
+        "class_bases_include_builtin(&bases, \"ChainMap\")",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required) || VALUE_SOURCE.contains(required),
+            "ChainMap class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_chainmap_class_getitem_generic_alias_subset",
+            "cpython_collections_chainmap_class_getitem_generic_alias_diff_subset",
+            "ChainMap `__class_getitem__`",
+            "`ChainMap.__class_getitem__(int) == ChainMap[int]`",
+            "exact ChainMap instance lookup",
+            "inherited ChainMap subclass lookup",
+            "GenericAlias origin/args",
+            "GenericAlias arity and keyword error propagation",
+            "without adding new ChainMap mapping-method surface",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "ChainMap class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_chainmap_instance_doc_attribute_diff_subset"),

@@ -24297,6 +24297,37 @@ print(child.maps[0], child.get('d', 'missing'))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.ChainMap __class_getitem__ GenericAlias behavior",
+        name: "collections-chainmap-class-getitem-generic-alias",
+        source: r#"from collections import ChainMap
+typ = ChainMap
+inst = ChainMap({'a': 1})
+class C(ChainMap):
+    pass
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('type-sub', lambda: (type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (type(C().__class_getitem__(str)).__name__, C().__class_getitem__(str).__origin__ is C, C().__class_getitem__(str).__args__)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py ChainMap public instance __doc__ attribute subset",

@@ -68624,6 +68624,51 @@ fn cpython_collections_chainmap_public_methods_subset() {
     );
 }
 
+// Mirrors CPython public collections.ChainMap __class_getitem__ behavior. This
+// pins GenericAlias origin/args, direct type calls, exact instance lookup, and
+// inherited subclass lookup without widening the ChainMap mapping API surface.
+#[test]
+fn cpython_collections_chainmap_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"from collections import ChainMap
+typ = ChainMap
+inst = ChainMap({'a': 1})
+class C(ChainMap):
+    pass
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('type-sub', lambda: (type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (type(C().__class_getitem__(str)).__name__, C().__class_getitem__(str).__origin__ is C, C().__class_getitem__(str).__args__)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (True, True)",
+            "visible-inst tuple (True, True)",
+            "subscript-int tuple ('GenericAlias', 'collections.ChainMap[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'collections.ChainMap[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('collections.ChainMap[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "type-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple ('GenericAlias', True, (<class 'str'>,))",
+            "call-noargs TypeError GenericAlias expected 2 arguments, got 1 ('GenericAlias expected 2 arguments, got 1',)",
+            "call-extra TypeError GenericAlias expected 2 arguments, got 3 ('GenericAlias expected 2 arguments, got 3',)",
+            "call-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `ChainMap` instance `__doc__` type-attribute
 // lookup while leaving full writable instance dictionaries outside this slice.
 #[test]

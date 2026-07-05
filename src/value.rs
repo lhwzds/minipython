@@ -2840,6 +2840,7 @@ fn format_generic_alias_arg(value: &Value) -> String {
 
 fn format_generic_builtin_name(name: &str) -> String {
     match name {
+        "ChainMap" => "collections.ChainMap".to_string(),
         "deque" => "collections.deque".to_string(),
         "OrderedDict" => "collections.OrderedDict".to_string(),
         "Counter" => "collections.Counter".to_string(),
