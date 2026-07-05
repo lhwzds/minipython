@@ -25842,6 +25842,46 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_contains_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString membership behavior",
+        name: "collections-userstring-contains",
+        source: r#"from collections import UserString
+u = UserString('ababa')
+class S:
+    def __str__(self):
+        return 'ba'
+cases = [
+    ('expr-hit', lambda: 'ba' in u),
+    ('expr-miss', lambda: 'zz' in u),
+    ('expr-empty', lambda: '' in u),
+    ('expr-userstring', lambda: UserString('ba') in u),
+    ('expr-int', lambda: 1 in u),
+    ('expr-strlike', lambda: S() in u),
+    ('method-hit', lambda: u.__contains__('ba')),
+    ('method-miss', lambda: u.__contains__('zz')),
+    ('method-userstring', lambda: u.__contains__(UserString('ba'))),
+    ('method-keyword', lambda: u.__contains__(char='ba')),
+    ('type-method', lambda: UserString.__contains__(u, 'ba')),
+    ('type-method-keyword', lambda: UserString.__contains__(u, char='ba')),
+    ('bad-receiver', lambda: UserString.__contains__('ababa', 'ba')),
+    ('method-noargs', lambda: u.__contains__()),
+    ('method-extra', lambda: u.__contains__('a', 'b')),
+    ('method-badkw', lambda: u.__contains__(value='a')),
+    ('method-multi', lambda: u.__contains__('a', char='b')),
+    ('type-noargs', lambda: UserString.__contains__()),
+    ('type-self-only', lambda: UserString.__contains__(u)),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

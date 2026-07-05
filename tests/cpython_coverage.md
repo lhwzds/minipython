@@ -185,6 +185,14 @@ Recent runtime migration notes:
   `__getitem__`, `index=` keyword binding, and string-style TypeError/IndexError
   paths, without implementing full UserString string-method proxying or widening
   host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_contains_subset`, backed by
+  `cpython_collections_userstring_contains_diff_subset`, now pins
+  `UserString` membership through the `in` expression and `__contains__`,
+  including `UserString` needle coercion through `.data`, `char=` keyword
+  binding, type-object dispatch, bad receiver errors, and string-style
+  TypeErrors for non-string needles, without implementing full UserString
+  string-method proxying or widening host IO, network, process, C ABI, or full
+  stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1260,6 +1268,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userstring_basic_construction_diff_subset`,
   `cpython_collections_userstring_getitem_slice_diff_subset`,
+  `cpython_collections_userstring_contains_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7091,6 +7100,13 @@ without adding general custom encoder/decoder class support.
   Unicode slicing, `__index__` dispatch, instance and type-object
   `__getitem__`, `index=` keyword binding, and string-style TypeError/IndexError
   paths, without implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_contains_diff_subset` and
+  `cpython_collections_userstring_contains_subset`, covering `UserString`
+  membership through the `in` expression and `__contains__`, `UserString`
+  needle coercion through `.data`, `char=` keyword binding, type-object
+  dispatch, bad receiver errors, and string-style TypeErrors for non-string
+  needles, without implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

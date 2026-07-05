@@ -35486,6 +35486,51 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
+            "__contains__" => {
+                let Some((receiver, rest)) = args.split_first() else {
+                    return Err(
+                        "TypeError: UserString.__contains__() missing 2 required positional arguments: 'self' and 'char'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { data, .. } = receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(receiver)
+                    ));
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.__contains__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut char_value = rest.first().cloned();
+                for (name, value) in keywords {
+                    if name != "char" {
+                        return Err(format!(
+                            "TypeError: UserString.__contains__() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if char_value.is_some() {
+                        return Err(
+                            "TypeError: UserString.__contains__() got multiple values for argument 'char'"
+                                .to_string(),
+                        );
+                    }
+                    char_value = Some(value);
+                }
+                let Some(char_value) = char_value else {
+                    return Err(
+                        "TypeError: UserString.__contains__() missing 1 required positional argument: 'char'"
+                            .to_string(),
+                    );
+                };
+                Ok(Value::Bool(user_string_contains_value(
+                    &data.borrow(),
+                    char_value,
+                )?))
+            }
             "__getitem__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -55956,7 +56001,7 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 }
 
 fn is_builtin_user_string_type_method(name: &str) -> bool {
-    matches!(name, "__getitem__")
+    matches!(name, "__contains__" | "__getitem__")
 }
 
 fn float_subclass_float(value: &Value) -> Option<Rc<f64>> {
@@ -61573,8 +61618,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__getitem__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin("UserString.__getitem__".to_string())),
+                "__contains__" | "__getitem__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
@@ -89536,6 +89581,23 @@ fn user_string_value(value: String) -> Result<Value, String> {
     })
 }
 
+fn user_string_contains_value(haystack: &str, needle: Value) -> Result<bool, String> {
+    let needle = match needle {
+        Value::String(value) | Value::IdentityString { value, .. } => value,
+        Value::UserString { data, .. } => data.borrow().clone(),
+        value if str_subclass_string(&value).is_some() => {
+            str_subclass_string(&value).expect("str subclass storage exists after guard")
+        }
+        value => {
+            return Err(format!(
+                "TypeError: 'in <string>' requires string as left operand, not {}",
+                type_name(&value)
+            ));
+        }
+    };
+    Ok(haystack.contains(&needle))
+}
+
 fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, String> {
     let mut values = Vec::new();
 
@@ -94468,6 +94530,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 "string membership requires string left operand, got {value}"
             )),
         },
+        Value::UserString { data, .. } => user_string_contains_value(&data.borrow(), needle),
         Value::Bytes(haystack) => match needle {
             Value::Bool(needle) => Ok(haystack.contains(&(bool_as_i64(needle) as u8))),
             Value::Number(needle) if (0..=255).contains(&needle) => {

@@ -26516,6 +26516,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_basic_construction_subset",
             "cpython_collections_userstring_getitem_slice_subset",
+            "cpython_collections_userstring_contains_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -28936,6 +28937,109 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString getitem/slice docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_contains_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString membership"
+    );
+    let userstring_contains_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_contains_diff_subset",
+    );
+    let userstring_contains_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_contains_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('ababa')",
+        "class S:",
+        "'ba' in u",
+        "'zz' in u",
+        "'' in u",
+        "UserString('ba') in u",
+        "1 in u",
+        "S() in u",
+        "u.__contains__('ba')",
+        "u.__contains__(UserString('ba'))",
+        "u.__contains__(char='ba')",
+        "UserString.__contains__(u, 'ba')",
+        "UserString.__contains__(u, char='ba')",
+        "UserString.__contains__('ababa', 'ba')",
+        "u.__contains__()",
+        "u.__contains__('a', 'b')",
+        "u.__contains__(value='a')",
+        "u.__contains__('a', char='b')",
+        "UserString.__contains__()",
+        "UserString.__contains__(u)",
+    ] {
+        assert!(
+            userstring_contains_diff_body.contains(required)
+                && userstring_contains_subset_body.contains(required),
+            "UserString contains diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"expr-hit bool True\"",
+        "\"expr-miss bool False\"",
+        "\"expr-empty bool True\"",
+        "\"expr-userstring bool True\"",
+        "\"expr-int TypeError 'in <string>' requires string as left operand, not int",
+        "\"expr-strlike TypeError 'in <string>' requires string as left operand, not S",
+        "\"method-hit bool True\"",
+        "\"method-miss bool False\"",
+        "\"method-userstring bool True\"",
+        "\"method-keyword bool True\"",
+        "\"type-method bool True\"",
+        "\"type-method-keyword bool True\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__contains__() missing 1 required positional argument: 'char'",
+        "\"method-extra TypeError UserString.__contains__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__contains__() got an unexpected keyword argument 'value'",
+        "\"method-multi TypeError UserString.__contains__() got multiple values for argument 'char'",
+        "\"type-noargs TypeError UserString.__contains__() missing 2 required positional arguments: 'self' and 'char'",
+        "\"type-self-only TypeError UserString.__contains__() missing 1 required positional argument: 'char'",
+    ] {
+        assert!(
+            userstring_contains_subset_body.contains(required),
+            "UserString contains subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserString { data, .. } => user_string_contains_value(&data.borrow(), needle)",
+        "fn user_string_contains_value(haystack: &str, needle: Value) -> Result<bool, String>",
+        "Value::UserString { data, .. } => data.borrow().clone()",
+        "TypeError: 'in <string>' requires string as left operand",
+        "Value::Bool(user_string_contains_value",
+        "name != \"char\"",
+        "UserString.__contains__() missing 1 required positional argument: 'char'",
+        "UserString.__contains__() got multiple values for argument 'char'",
+        "matches!(name, \"__contains__\" | \"__getitem__\")",
+        "\"__contains__\" | \"__getitem__\" => Ok(Value::BoundMethod",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString contains implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_contains_subset",
+            "cpython_collections_userstring_contains_diff_subset",
+            "`UserString` membership",
+            "`in` expression",
+            "`__contains__`",
+            "`UserString` needle",
+            "`char=` keyword binding",
+            "string-style TypeError",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString contains docs must contain `{required}`"
             );
         }
     }

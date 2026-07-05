@@ -69443,6 +69443,68 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString membership behavior. This keeps the
+// supported surface to sequence-style `__contains__` without promoting full
+// string-method proxying.
+#[test]
+fn cpython_collections_userstring_contains_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('ababa')
+class S:
+    def __str__(self):
+        return 'ba'
+cases = [
+    ('expr-hit', lambda: 'ba' in u),
+    ('expr-miss', lambda: 'zz' in u),
+    ('expr-empty', lambda: '' in u),
+    ('expr-userstring', lambda: UserString('ba') in u),
+    ('expr-int', lambda: 1 in u),
+    ('expr-strlike', lambda: S() in u),
+    ('method-hit', lambda: u.__contains__('ba')),
+    ('method-miss', lambda: u.__contains__('zz')),
+    ('method-userstring', lambda: u.__contains__(UserString('ba'))),
+    ('method-keyword', lambda: u.__contains__(char='ba')),
+    ('type-method', lambda: UserString.__contains__(u, 'ba')),
+    ('type-method-keyword', lambda: UserString.__contains__(u, char='ba')),
+    ('bad-receiver', lambda: UserString.__contains__('ababa', 'ba')),
+    ('method-noargs', lambda: u.__contains__()),
+    ('method-extra', lambda: u.__contains__('a', 'b')),
+    ('method-badkw', lambda: u.__contains__(value='a')),
+    ('method-multi', lambda: u.__contains__('a', char='b')),
+    ('type-noargs', lambda: UserString.__contains__()),
+    ('type-self-only', lambda: UserString.__contains__(u)),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "expr-hit bool True",
+            "expr-miss bool False",
+            "expr-empty bool True",
+            "expr-userstring bool True",
+            "expr-int TypeError 'in <string>' requires string as left operand, not int (\"'in <string>' requires string as left operand, not int\",)",
+            "expr-strlike TypeError 'in <string>' requires string as left operand, not S (\"'in <string>' requires string as left operand, not S\",)",
+            "method-hit bool True",
+            "method-miss bool False",
+            "method-userstring bool True",
+            "method-keyword bool True",
+            "type-method bool True",
+            "type-method-keyword bool True",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-noargs TypeError UserString.__contains__() missing 1 required positional argument: 'char' (\"UserString.__contains__() missing 1 required positional argument: 'char'\",)",
+            "method-extra TypeError UserString.__contains__() takes 2 positional arguments but 3 were given ('UserString.__contains__() takes 2 positional arguments but 3 were given',)",
+            "method-badkw TypeError UserString.__contains__() got an unexpected keyword argument 'value' (\"UserString.__contains__() got an unexpected keyword argument 'value'\",)",
+            "method-multi TypeError UserString.__contains__() got multiple values for argument 'char' (\"UserString.__contains__() got multiple values for argument 'char'\",)",
+            "type-noargs TypeError UserString.__contains__() missing 2 required positional arguments: 'self' and 'char' (\"UserString.__contains__() missing 2 required positional arguments: 'self' and 'char'\",)",
+            "type-self-only TypeError UserString.__contains__() missing 1 required positional argument: 'char' (\"UserString.__contains__() missing 1 required positional argument: 'char'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]
