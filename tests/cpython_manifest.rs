@@ -26525,6 +26525,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
             "cpython_collections_userstring_radd_method_subset",
+            "cpython_collections_userstring_mul_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29915,6 +29916,179 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString radd-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_mul_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __mul__"
+    );
+    let userstring_mul_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_mul_method_diff_subset",
+    );
+    let userstring_mul_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_mul_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class I:",
+        "class BadIndex:",
+        "class T(int):",
+        "def show(label, value):",
+        "hasattr(UserString, '__mul__')",
+        "hasattr(UserString, '__rmul__')",
+        "hasattr(u, '__mul__')",
+        "hasattr(u, '__rmul__')",
+        "hasattr(UserString, '__imul__')",
+        "UserString.__rmul__ is UserString.__mul__",
+        "v *= 2",
+        "u * 2",
+        "2 * u",
+        "u * T(2)",
+        "u * I()",
+        "I() * u",
+        "u * 0",
+        "u * -1",
+        "u.__mul__(2)",
+        "u.__mul__(I())",
+        "u.__rmul__(2)",
+        "u.__rmul__(I())",
+        "u.__mul__(n=2)",
+        "u.__rmul__(n=2)",
+        "UserString.__mul__(u, 2)",
+        "UserString.__rmul__(u, 2)",
+        "UserString.__mul__(u, n=2)",
+        "UserString.__rmul__(u, n=2)",
+        "UserString.__mul__(self=u, n=2)",
+        "UserString.__rmul__(self=u, n=2)",
+        "u * 1.5",
+        "1.5 * u",
+        "u * '2'",
+        "u * BadIndex()",
+        "u.__mul__(1.5)",
+        "u.__rmul__(1.5)",
+        "u.__mul__(BadIndex())",
+        "UserString.__mul__('abé', 2)",
+        "UserString.__rmul__('abé', 2)",
+        "u.__mul__()",
+        "u.__rmul__()",
+        "u.__mul__(2, 3)",
+        "u.__rmul__(2, 3)",
+        "u.__mul__(value=2)",
+        "u.__rmul__(value=2)",
+        "u.__mul__(2, n=3)",
+        "u.__rmul__(2, n=3)",
+        "u.__mul__(self=u)",
+        "u.__rmul__(self=u)",
+        "UserString.__mul__()",
+        "UserString.__rmul__()",
+        "UserString.__mul__(n=2)",
+        "UserString.__rmul__(n=2)",
+        "UserString.__mul__(self=u)",
+        "UserString.__rmul__(self=u)",
+        "UserString.__mul__(u, self=u, n=2)",
+        "UserString.__rmul__(u, self=u, n=2)",
+        "UserString.__mul__(receiver=u, n=2)",
+        "UserString.__rmul__(receiver=u, n=2)",
+    ] {
+        assert!(
+            userstring_mul_method_diff_body.contains(required)
+                && userstring_mul_method_subset_body.contains(required),
+            "UserString mul-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True False True\"",
+        "\"imul-int UserString 'abéabé' 'abéabé'\"",
+        "\"expr-int UserString 'abéabé' 'abéabé'\"",
+        "\"expr-rint UserString 'abéabé' 'abéabé'\"",
+        "\"expr-int-subclass UserString 'abéabé' 'abéabé'\"",
+        "\"expr-index UserString 'abéabé' 'abéabé'\"",
+        "\"expr-rindex UserString 'abéabé' 'abéabé'\"",
+        "\"expr-zero UserString '' ''\"",
+        "\"expr-neg UserString '' ''\"",
+        "\"method-rnkw UserString 'abéabé' 'abéabé'\"",
+        "\"type-rself-keyword UserString 'abéabé' 'abéabé'\"",
+        "\"expr-float TypeError can't multiply sequence by non-int of type 'float'",
+        "\"expr-rfloat TypeError can't multiply sequence by non-int of type 'float'",
+        "\"expr-str TypeError can't multiply sequence by non-int of type 'str'",
+        "\"expr-bad-index TypeError __index__ returned non-int (type str)",
+        "\"method-bad-index TypeError __index__ returned non-int (type str)",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"rbad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__mul__() missing 1 required positional argument: 'n'",
+        "\"rmethod-noargs TypeError UserString.__mul__() missing 1 required positional argument: 'n'",
+        "\"method-extra TypeError UserString.__mul__() takes 2 positional arguments but 3 were given",
+        "\"rmethod-extra TypeError UserString.__mul__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__mul__() got an unexpected keyword argument 'value'",
+        "\"rmethod-badkw TypeError UserString.__mul__() got an unexpected keyword argument 'value'",
+        "\"method-multi-n TypeError UserString.__mul__() got multiple values for argument 'n'",
+        "\"rmethod-multi-n TypeError UserString.__mul__() got multiple values for argument 'n'",
+        "\"bound-self-only TypeError UserString.__mul__() got multiple values for argument 'self'",
+        "\"rbound-self-only TypeError UserString.__mul__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'",
+        "\"rtype-noargs TypeError UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'",
+        "\"type-n-only TypeError UserString.__mul__() missing 1 required positional argument: 'self'",
+        "\"rtype-n-only TypeError UserString.__mul__() missing 1 required positional argument: 'self'",
+        "\"type-self-only-kw TypeError UserString.__mul__() missing 1 required positional argument: 'n'",
+        "\"rtype-self-only-kw TypeError UserString.__mul__() missing 1 required positional argument: 'n'",
+        "\"type-multi-self TypeError UserString.__mul__() got multiple values for argument 'self'",
+        "\"rtype-multi-self TypeError UserString.__mul__() got multiple values for argument 'self'",
+        "\"type-badkw-self TypeError UserString.__mul__() got an unexpected keyword argument 'receiver'",
+        "\"rtype-badkw-self TypeError UserString.__mul__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_mul_method_subset_body.contains(required),
+            "UserString mul-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_repeat_value(&mut self, receiver: &Value, count: Value)",
+        "self.user_string_repeat_value(&left, right)",
+        "self.user_string_repeat_value(&right, left)",
+        "self.user_string_repeat_value(&receiver, count)",
+        "let count = self.sequence_repeat_count_operator(count)?",
+        "user_string_value(repeat_string(text, count)?)",
+        "name == \"__rmul__\"",
+        "Value::Builtin(\"UserString.__mul__\".to_string())",
+        "\"__mul__\"",
+        "\"__rmul__\"",
+        "UserString.__mul__() takes 2 positional arguments but",
+        "UserString.__mul__() got an unexpected keyword argument",
+        "UserString.__mul__() got multiple values for argument 'self'",
+        "UserString.__mul__() got multiple values for argument 'n'",
+        "UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'",
+        "UserString.__mul__() missing 1 required positional argument: 'self'",
+        "UserString.__mul__() missing 1 required positional argument: 'n'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString mul-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_mul_method_subset",
+            "cpython_collections_userstring_mul_method_diff_subset",
+            "`UserString.__mul__`",
+            "`UserString.__rmul__`",
+            "`*` expression",
+            "`*=` fallback",
+            "`n=` keyword binding",
+            "`__index__` dispatch",
+            "zero and negative repeat counts",
+            "`UserString.__rmul__ is UserString.__mul__`",
+            "bad receiver",
+            "UserString subclass result types",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString mul-method docs must contain `{required}`"
             );
         }
     }

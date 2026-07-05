@@ -70049,6 +70049,138 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString repetition dispatch. `__rmul__` is an
+// alias of `__mul__`, so both public names share the same error text.
+#[test]
+fn cpython_collections_userstring_mul_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class I:
+    def __index__(self):
+        return 2
+class BadIndex:
+    def __index__(self):
+        return 'x'
+class T(int):
+    pass
+def show(label, value):
+    print(label, type(value).__name__, repr(value), repr(value.data))
+print('visible', hasattr(UserString, '__mul__'), hasattr(UserString, '__rmul__'), hasattr(u, '__mul__'), hasattr(u, '__rmul__'), hasattr(UserString, '__imul__'), UserString.__rmul__ is UserString.__mul__)
+v = UserString('abé')
+v *= 2
+show('imul-int', v)
+cases = [
+    ('expr-int', lambda: u * 2),
+    ('expr-rint', lambda: 2 * u),
+    ('expr-int-subclass', lambda: u * T(2)),
+    ('expr-index', lambda: u * I()),
+    ('expr-rindex', lambda: I() * u),
+    ('expr-zero', lambda: u * 0),
+    ('expr-neg', lambda: u * -1),
+    ('method-int', lambda: u.__mul__(2)),
+    ('method-index', lambda: u.__mul__(I())),
+    ('method-rint', lambda: u.__rmul__(2)),
+    ('method-rindex', lambda: u.__rmul__(I())),
+    ('method-nkw', lambda: u.__mul__(n=2)),
+    ('method-rnkw', lambda: u.__rmul__(n=2)),
+    ('type-method', lambda: UserString.__mul__(u, 2)),
+    ('type-rmethod', lambda: UserString.__rmul__(u, 2)),
+    ('type-keyword', lambda: UserString.__mul__(u, n=2)),
+    ('type-rkeyword', lambda: UserString.__rmul__(u, n=2)),
+    ('type-self-keyword', lambda: UserString.__mul__(self=u, n=2)),
+    ('type-rself-keyword', lambda: UserString.__rmul__(self=u, n=2)),
+    ('expr-float', lambda: u * 1.5),
+    ('expr-rfloat', lambda: 1.5 * u),
+    ('expr-str', lambda: u * '2'),
+    ('expr-bad-index', lambda: u * BadIndex()),
+    ('method-float', lambda: u.__mul__(1.5)),
+    ('method-rfloat', lambda: u.__rmul__(1.5)),
+    ('method-bad-index', lambda: u.__mul__(BadIndex())),
+    ('bad-receiver', lambda: UserString.__mul__('abé', 2)),
+    ('rbad-receiver', lambda: UserString.__rmul__('abé', 2)),
+    ('method-noargs', lambda: u.__mul__()),
+    ('rmethod-noargs', lambda: u.__rmul__()),
+    ('method-extra', lambda: u.__mul__(2, 3)),
+    ('rmethod-extra', lambda: u.__rmul__(2, 3)),
+    ('method-badkw', lambda: u.__mul__(value=2)),
+    ('rmethod-badkw', lambda: u.__rmul__(value=2)),
+    ('method-multi-n', lambda: u.__mul__(2, n=3)),
+    ('rmethod-multi-n', lambda: u.__rmul__(2, n=3)),
+    ('bound-self-only', lambda: u.__mul__(self=u)),
+    ('rbound-self-only', lambda: u.__rmul__(self=u)),
+    ('type-noargs', lambda: UserString.__mul__()),
+    ('rtype-noargs', lambda: UserString.__rmul__()),
+    ('type-n-only', lambda: UserString.__mul__(n=2)),
+    ('rtype-n-only', lambda: UserString.__rmul__(n=2)),
+    ('type-self-only-kw', lambda: UserString.__mul__(self=u)),
+    ('rtype-self-only-kw', lambda: UserString.__rmul__(self=u)),
+    ('type-multi-self', lambda: UserString.__mul__(u, self=u, n=2)),
+    ('rtype-multi-self', lambda: UserString.__rmul__(u, self=u, n=2)),
+    ('type-badkw-self', lambda: UserString.__mul__(receiver=u, n=2)),
+    ('rtype-badkw-self', lambda: UserString.__rmul__(receiver=u, n=2)),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        show(label, value)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "visible True True True True False True",
+            "imul-int UserString 'abéabé' 'abéabé'",
+            "expr-int UserString 'abéabé' 'abéabé'",
+            "expr-rint UserString 'abéabé' 'abéabé'",
+            "expr-int-subclass UserString 'abéabé' 'abéabé'",
+            "expr-index UserString 'abéabé' 'abéabé'",
+            "expr-rindex UserString 'abéabé' 'abéabé'",
+            "expr-zero UserString '' ''",
+            "expr-neg UserString '' ''",
+            "method-int UserString 'abéabé' 'abéabé'",
+            "method-index UserString 'abéabé' 'abéabé'",
+            "method-rint UserString 'abéabé' 'abéabé'",
+            "method-rindex UserString 'abéabé' 'abéabé'",
+            "method-nkw UserString 'abéabé' 'abéabé'",
+            "method-rnkw UserString 'abéabé' 'abéabé'",
+            "type-method UserString 'abéabé' 'abéabé'",
+            "type-rmethod UserString 'abéabé' 'abéabé'",
+            "type-keyword UserString 'abéabé' 'abéabé'",
+            "type-rkeyword UserString 'abéabé' 'abéabé'",
+            "type-self-keyword UserString 'abéabé' 'abéabé'",
+            "type-rself-keyword UserString 'abéabé' 'abéabé'",
+            "expr-float TypeError can't multiply sequence by non-int of type 'float' (\"can't multiply sequence by non-int of type 'float'\",)",
+            "expr-rfloat TypeError can't multiply sequence by non-int of type 'float' (\"can't multiply sequence by non-int of type 'float'\",)",
+            "expr-str TypeError can't multiply sequence by non-int of type 'str' (\"can't multiply sequence by non-int of type 'str'\",)",
+            "expr-bad-index TypeError __index__ returned non-int (type str) ('__index__ returned non-int (type str)',)",
+            "method-float TypeError can't multiply sequence by non-int of type 'float' (\"can't multiply sequence by non-int of type 'float'\",)",
+            "method-rfloat TypeError can't multiply sequence by non-int of type 'float' (\"can't multiply sequence by non-int of type 'float'\",)",
+            "method-bad-index TypeError __index__ returned non-int (type str) ('__index__ returned non-int (type str)',)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "rbad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-noargs TypeError UserString.__mul__() missing 1 required positional argument: 'n' (\"UserString.__mul__() missing 1 required positional argument: 'n'\",)",
+            "rmethod-noargs TypeError UserString.__mul__() missing 1 required positional argument: 'n' (\"UserString.__mul__() missing 1 required positional argument: 'n'\",)",
+            "method-extra TypeError UserString.__mul__() takes 2 positional arguments but 3 were given ('UserString.__mul__() takes 2 positional arguments but 3 were given',)",
+            "rmethod-extra TypeError UserString.__mul__() takes 2 positional arguments but 3 were given ('UserString.__mul__() takes 2 positional arguments but 3 were given',)",
+            "method-badkw TypeError UserString.__mul__() got an unexpected keyword argument 'value' (\"UserString.__mul__() got an unexpected keyword argument 'value'\",)",
+            "rmethod-badkw TypeError UserString.__mul__() got an unexpected keyword argument 'value' (\"UserString.__mul__() got an unexpected keyword argument 'value'\",)",
+            "method-multi-n TypeError UserString.__mul__() got multiple values for argument 'n' (\"UserString.__mul__() got multiple values for argument 'n'\",)",
+            "rmethod-multi-n TypeError UserString.__mul__() got multiple values for argument 'n' (\"UserString.__mul__() got multiple values for argument 'n'\",)",
+            "bound-self-only TypeError UserString.__mul__() got multiple values for argument 'self' (\"UserString.__mul__() got multiple values for argument 'self'\",)",
+            "rbound-self-only TypeError UserString.__mul__() got multiple values for argument 'self' (\"UserString.__mul__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__mul__() missing 2 required positional arguments: 'self' and 'n' (\"UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'\",)",
+            "rtype-noargs TypeError UserString.__mul__() missing 2 required positional arguments: 'self' and 'n' (\"UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'\",)",
+            "type-n-only TypeError UserString.__mul__() missing 1 required positional argument: 'self' (\"UserString.__mul__() missing 1 required positional argument: 'self'\",)",
+            "rtype-n-only TypeError UserString.__mul__() missing 1 required positional argument: 'self' (\"UserString.__mul__() missing 1 required positional argument: 'self'\",)",
+            "type-self-only-kw TypeError UserString.__mul__() missing 1 required positional argument: 'n' (\"UserString.__mul__() missing 1 required positional argument: 'n'\",)",
+            "rtype-self-only-kw TypeError UserString.__mul__() missing 1 required positional argument: 'n' (\"UserString.__mul__() missing 1 required positional argument: 'n'\",)",
+            "type-multi-self TypeError UserString.__mul__() got multiple values for argument 'self' (\"UserString.__mul__() got multiple values for argument 'self'\",)",
+            "rtype-multi-self TypeError UserString.__mul__() got multiple values for argument 'self' (\"UserString.__mul__() got multiple values for argument 'self'\",)",
+            "type-badkw-self TypeError UserString.__mul__() got an unexpected keyword argument 'receiver' (\"UserString.__mul__() got an unexpected keyword argument 'receiver'\",)",
+            "rtype-badkw-self TypeError UserString.__mul__() got an unexpected keyword argument 'receiver' (\"UserString.__mul__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

@@ -242,17 +242,26 @@ Recent runtime migration notes:
   `UserString.__add__`, the `+` expression, and the `+=` fallback for left-side
   UserString concatenation, including `other=` keyword binding, right operand
   `str()` coercion, `__str__` non-string result errors, and bad receiver
-  diagnostics, without implementing `UserString.__mul__`, without preserving
-  UserString subclass result types, full UserString string-method proxying, or
-  widening host IO, network, process, C ABI, or full stdlib scope.
+  diagnostics, without preserving UserString subclass result types, full
+  UserString string-method proxying, or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_collections_userstring_radd_method_subset`, backed by
   `cpython_collections_userstring_radd_method_diff_subset`, now pins
   `UserString.__radd__` and the right-side `+` expression for reflected
   UserString concatenation, including `other=` keyword binding, right operand
   `str()` coercion, `__str__` non-string result errors, and bad receiver
-  diagnostics, without implementing `UserString.__mul__`, without preserving
-  UserString subclass result types, full UserString string-method proxying, or
-  widening host IO, network, process, C ABI, or full stdlib scope.
+  diagnostics, without preserving UserString subclass result types, full
+  UserString string-method proxying, or widening host IO, network, process, C
+  ABI, or full stdlib scope.
+- `cpython_collections_userstring_mul_method_subset`, backed by
+  `cpython_collections_userstring_mul_method_diff_subset`, now pins
+  `UserString.__mul__`, the `UserString.__rmul__` alias, `*` expression
+  dispatch in both operand orders, the `*=` fallback, `n=` keyword binding,
+  `__index__` dispatch, zero and negative repeat counts,
+  `UserString.__rmul__ is UserString.__mul__`, bad receiver errors, and
+  sequence repeat TypeErrors, without preserving UserString subclass result
+  types, full UserString string-method proxying, or widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1337,6 +1346,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
   `cpython_collections_userstring_radd_method_diff_subset`,
+  `cpython_collections_userstring_mul_method_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7225,16 +7235,25 @@ without adding general custom encoder/decoder class support.
   `UserString.__add__`, the `+` expression, and the `+=` fallback for left-side
   UserString concatenation, `other=` keyword binding, right operand `str()`
   coercion, `__str__` non-string result errors, and bad receiver diagnostics,
-  without implementing `UserString.__mul__`, without preserving UserString
-  subclass result types, or full UserString string-method proxying.
+  without preserving UserString subclass result types or full UserString
+  string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_radd_method_diff_subset` and
   `cpython_collections_userstring_radd_method_subset`, covering
   `UserString.__radd__` and the right-side `+` expression for reflected
   UserString concatenation, `other=` keyword binding, right operand `str()`
   coercion, `__str__` non-string result errors, and bad receiver diagnostics,
-  without implementing `UserString.__mul__`, without preserving UserString
-  subclass result types, or full UserString string-method proxying.
+  without preserving UserString subclass result types or full UserString
+  string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_mul_method_diff_subset` and
+  `cpython_collections_userstring_mul_method_subset`, covering
+  `UserString.__mul__`, the `UserString.__rmul__` alias, `*` expression
+  dispatch in both operand orders, the `*=` fallback, `n=` keyword binding,
+  `__index__` dispatch, zero and negative repeat counts,
+  `UserString.__rmul__ is UserString.__mul__`, bad receiver errors, and
+  sequence repeat TypeErrors, without preserving UserString subclass result
+  types or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

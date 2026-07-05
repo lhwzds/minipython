@@ -14724,6 +14724,13 @@ impl Vm {
             return deque_repeat_value(&right, count);
         }
 
+        if matches!(left, Value::UserString { .. }) {
+            return self.user_string_repeat_value(&left, right);
+        }
+        if matches!(right, Value::UserString { .. }) {
+            return self.user_string_repeat_value(&right, left);
+        }
+
         if let Value::UserList { data, .. } = &left {
             let count = self.index_integer_value(right)?;
             let count = repeat_count_from_integer_value(count)?;
@@ -14790,6 +14797,10 @@ impl Vm {
             let repeated = repeat_values(data.borrow().clone(), count)?;
             *data.borrow_mut() = repeated;
             return Ok(left);
+        }
+
+        if matches!(left, Value::UserString { .. }) {
+            return self.user_string_repeat_value(&left, right);
         }
 
         if tuple_concat_operand_values(&left).is_some() {
@@ -35510,8 +35521,65 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let method = method_display_name(name);
+        let method = match method_display_name(name) {
+            "__rmul__" => "__mul__",
+            method => method,
+        };
         match method {
+            "__mul__" => {
+                if args.len() > 2 {
+                    return Err(format!(
+                        "TypeError: UserString.__mul__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                let mut count = args.get(1).cloned();
+                for (name, value) in keywords {
+                    match name.as_str() {
+                        "self" => {
+                            if receiver.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__mul__() got multiple values for argument 'self'"
+                                        .to_string(),
+                                );
+                            }
+                            receiver = Some(value);
+                        }
+                        "n" => {
+                            if count.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__mul__() got multiple values for argument 'n'"
+                                        .to_string(),
+                                );
+                            }
+                            count = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: UserString.__mul__() got an unexpected keyword argument '{name}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        if count.is_some() {
+                            "TypeError: UserString.__mul__() missing 1 required positional argument: 'self'"
+                        } else {
+                            "TypeError: UserString.__mul__() missing 2 required positional arguments: 'self' and 'n'"
+                        }
+                        .to_string(),
+                    );
+                };
+                let Some(count) = count else {
+                    return Err(
+                        "TypeError: UserString.__mul__() missing 1 required positional argument: 'n'"
+                            .to_string(),
+                    );
+                };
+                self.user_string_repeat_value(&receiver, count)
+            }
             "__add__" | "__radd__" => {
                 if args.len() > 2 {
                     return Err(format!(
@@ -35883,6 +35951,23 @@ impl Vm {
 
     fn user_string_radd_value(&mut self, receiver: &Value, other: &Value) -> Result<Value, String> {
         self.user_string_concat_value(receiver, other, true)
+    }
+
+    fn user_string_repeat_value(
+        &mut self,
+        receiver: &Value,
+        count: Value,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let text = data.borrow().clone();
+        let count = self.sequence_repeat_count_operator(count)?;
+        let count = repeat_count_from_integer_value(count)?;
+        user_string_value(repeat_string(text, count)?)
     }
 
     fn user_string_concat_value(
@@ -56333,8 +56418,10 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__eq__"
             | "__iter__"
             | "__len__"
+            | "__mul__"
             | "__repr__"
             | "__radd__"
+            | "__rmul__"
             | "__str__"
     )
 }
@@ -61958,8 +62045,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
+                "__rmul__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("UserString.__mul__".to_string())),
+                    receiver: Box::new(Value::UserString { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
-                | "__iter__" | "__len__" | "__repr__" | "__radd__" | "__str__" => {
+                | "__iter__" | "__len__" | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -63864,6 +63956,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__ne__" => {
             Ok(Value::Builtin("object.__ne__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__rmul__" => {
+            Ok(Value::Builtin("UserString.__mul__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "UserString" && is_builtin_user_string_type_method(name) =>

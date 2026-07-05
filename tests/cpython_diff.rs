@@ -26232,6 +26232,86 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_mul_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString repetition method behavior",
+        name: "collections-userstring-mul-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class I:
+    def __index__(self):
+        return 2
+class BadIndex:
+    def __index__(self):
+        return 'x'
+class T(int):
+    pass
+def show(label, value):
+    print(label, type(value).__name__, repr(value), repr(value.data))
+print('visible', hasattr(UserString, '__mul__'), hasattr(UserString, '__rmul__'), hasattr(u, '__mul__'), hasattr(u, '__rmul__'), hasattr(UserString, '__imul__'), UserString.__rmul__ is UserString.__mul__)
+v = UserString('abé')
+v *= 2
+show('imul-int', v)
+cases = [
+    ('expr-int', lambda: u * 2),
+    ('expr-rint', lambda: 2 * u),
+    ('expr-int-subclass', lambda: u * T(2)),
+    ('expr-index', lambda: u * I()),
+    ('expr-rindex', lambda: I() * u),
+    ('expr-zero', lambda: u * 0),
+    ('expr-neg', lambda: u * -1),
+    ('method-int', lambda: u.__mul__(2)),
+    ('method-index', lambda: u.__mul__(I())),
+    ('method-rint', lambda: u.__rmul__(2)),
+    ('method-rindex', lambda: u.__rmul__(I())),
+    ('method-nkw', lambda: u.__mul__(n=2)),
+    ('method-rnkw', lambda: u.__rmul__(n=2)),
+    ('type-method', lambda: UserString.__mul__(u, 2)),
+    ('type-rmethod', lambda: UserString.__rmul__(u, 2)),
+    ('type-keyword', lambda: UserString.__mul__(u, n=2)),
+    ('type-rkeyword', lambda: UserString.__rmul__(u, n=2)),
+    ('type-self-keyword', lambda: UserString.__mul__(self=u, n=2)),
+    ('type-rself-keyword', lambda: UserString.__rmul__(self=u, n=2)),
+    ('expr-float', lambda: u * 1.5),
+    ('expr-rfloat', lambda: 1.5 * u),
+    ('expr-str', lambda: u * '2'),
+    ('expr-bad-index', lambda: u * BadIndex()),
+    ('method-float', lambda: u.__mul__(1.5)),
+    ('method-rfloat', lambda: u.__rmul__(1.5)),
+    ('method-bad-index', lambda: u.__mul__(BadIndex())),
+    ('bad-receiver', lambda: UserString.__mul__('abé', 2)),
+    ('rbad-receiver', lambda: UserString.__rmul__('abé', 2)),
+    ('method-noargs', lambda: u.__mul__()),
+    ('rmethod-noargs', lambda: u.__rmul__()),
+    ('method-extra', lambda: u.__mul__(2, 3)),
+    ('rmethod-extra', lambda: u.__rmul__(2, 3)),
+    ('method-badkw', lambda: u.__mul__(value=2)),
+    ('rmethod-badkw', lambda: u.__rmul__(value=2)),
+    ('method-multi-n', lambda: u.__mul__(2, n=3)),
+    ('rmethod-multi-n', lambda: u.__rmul__(2, n=3)),
+    ('bound-self-only', lambda: u.__mul__(self=u)),
+    ('rbound-self-only', lambda: u.__rmul__(self=u)),
+    ('type-noargs', lambda: UserString.__mul__()),
+    ('rtype-noargs', lambda: UserString.__rmul__()),
+    ('type-n-only', lambda: UserString.__mul__(n=2)),
+    ('rtype-n-only', lambda: UserString.__rmul__(n=2)),
+    ('type-self-only-kw', lambda: UserString.__mul__(self=u)),
+    ('rtype-self-only-kw', lambda: UserString.__rmul__(self=u)),
+    ('type-multi-self', lambda: UserString.__mul__(u, self=u, n=2)),
+    ('rtype-multi-self', lambda: UserString.__rmul__(u, self=u, n=2)),
+    ('type-badkw-self', lambda: UserString.__mul__(receiver=u, n=2)),
+    ('rtype-badkw-self', lambda: UserString.__rmul__(receiver=u, n=2)),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        show(label, value)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
