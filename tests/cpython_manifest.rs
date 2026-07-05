@@ -46409,6 +46409,98 @@ fn bytes_type_not_subscriptable_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bytearray_type_not_subscriptable_subset_has_focused_diff_evidence() {
+    let diff_name = "cpython_bytearray_type_not_subscriptable_diff_subset";
+    let subset_name = "cpython_bytearray_type_not_subscriptable_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray type subscription rejection CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray type subscription rejection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = bytearray",
+        "inst = bytearray(b'ab')",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ.__class_getitem__(int)",
+        "inst.__class_getitem__(int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytearray type subscription rejection diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (False, False, False, False)\"",
+        "\"subscript-int TypeError type 'bytearray' is not subscriptable",
+        "\"call-int AttributeError type object 'bytearray' has no attribute '__class_getitem__'",
+        "\"inst-call AttributeError 'bytearray' object has no attribute '__class_getitem__'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytearray type subscription rejection subset output must pin `{required}`"
+        );
+    }
+
+    let load_subscript_body = VM_SOURCE
+        .split("fn load_subscript(object: Value, index: Value) -> Result<Value, String>")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn generic_alias_args(index: Value) -> Vec<Value>")
+                .next()
+        })
+        .expect("load_subscript implementation must be extractable");
+    let bytearray_guard = load_subscript_body
+        .find("Value::Builtin(name) if name == \"bytearray\"")
+        .expect("bytearray subscript rejection guard must exist");
+    let class_like_guard = load_subscript_body
+        .find("Value::Builtin(name) if is_class_like_builtin(&name)")
+        .expect("class-like builtin GenericAlias guard must exist");
+    assert!(
+        bytearray_guard < class_like_guard,
+        "bytearray subscript rejection must run before the generic class-like builtin alias guard"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"bytearray\"",
+        "type 'bytearray' is not subscriptable",
+        "Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytearray type subscription rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`bytearray[int]`",
+            "type 'bytearray' is not subscriptable",
+            "without adding `bytearray.__class_getitem__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "bytearray type subscription rejection docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn bytes_instance_doc_attribute_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_bytes_instance_doc_attribute_subset(",
