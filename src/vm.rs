@@ -35567,6 +35567,44 @@ impl Vm {
                 };
                 user_string_iter_value(&data.borrow())
             }
+            "__len__" => {
+                if args.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.__len__() takes 1 positional argument but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                for (name, value) in keywords {
+                    if name != "self" {
+                        return Err(format!(
+                            "TypeError: UserString.__len__() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if receiver.is_some() {
+                        return Err(
+                            "TypeError: UserString.__len__() got multiple values for argument 'self'"
+                                .to_string(),
+                        );
+                    }
+                    receiver = Some(value);
+                }
+                let Some(receiver) = receiver else {
+                    return Err(
+                        "TypeError: UserString.__len__() missing 1 required positional argument: 'self'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { data, .. } = receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(&receiver)
+                    ));
+                };
+                let len = i64::try_from(data.borrow().chars().count())
+                    .map_err(|_| "OverflowError: len() result is too large".to_string())?;
+                Ok(Value::Number(len))
+            }
             "__getitem__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56037,7 +56075,10 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 }
 
 fn is_builtin_user_string_type_method(name: &str) -> bool {
-    matches!(name, "__contains__" | "__getitem__" | "__iter__")
+    matches!(
+        name,
+        "__contains__" | "__getitem__" | "__iter__" | "__len__"
+    )
 }
 
 fn float_subclass_float(value: &Value) -> Option<Rc<f64>> {
@@ -61654,7 +61695,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__contains__" | "__getitem__" | "__iter__" => Ok(Value::BoundMethod {
+                "__contains__" | "__getitem__" | "__iter__" | "__len__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),

@@ -69551,6 +69551,47 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString length method dispatch. This keeps the
+// supported surface to direct `__len__` calls without promoting full
+// string-method proxying.
+#[test]
+fn cpython_collections_userstring_len_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('len-builtin', lambda: len(u)),
+    ('method', lambda: u.__len__()),
+    ('type-method', lambda: UserString.__len__(u)),
+    ('type-keyword', lambda: UserString.__len__(self=u)),
+    ('empty', lambda: UserString('').__len__()),
+    ('bad-receiver', lambda: UserString.__len__('abc')),
+    ('method-extra', lambda: u.__len__(1)),
+    ('method-badkw', lambda: u.__len__(x=1)),
+    ('method-multi', lambda: u.__len__(self=u)),
+    ('type-noargs', lambda: UserString.__len__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "len-builtin int 3",
+            "method int 3",
+            "type-method int 3",
+            "type-keyword int 3",
+            "empty int 0",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-extra TypeError UserString.__len__() takes 1 positional argument but 2 were given ('UserString.__len__() takes 1 positional argument but 2 were given',)",
+            "method-badkw TypeError UserString.__len__() got an unexpected keyword argument 'x' (\"UserString.__len__() got an unexpected keyword argument 'x'\",)",
+            "method-multi TypeError UserString.__len__() got multiple values for argument 'self' (\"UserString.__len__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__len__() missing 1 required positional argument: 'self' (\"UserString.__len__() missing 1 required positional argument: 'self'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

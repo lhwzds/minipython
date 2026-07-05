@@ -25915,6 +25915,34 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_len_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString length method behavior",
+        name: "collections-userstring-len-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('len-builtin', lambda: len(u)),
+    ('method', lambda: u.__len__()),
+    ('type-method', lambda: UserString.__len__(u)),
+    ('type-keyword', lambda: UserString.__len__(self=u)),
+    ('empty', lambda: UserString('').__len__()),
+    ('bad-receiver', lambda: UserString.__len__('abc')),
+    ('method-extra', lambda: u.__len__(1)),
+    ('method-badkw', lambda: u.__len__(x=1)),
+    ('method-multi', lambda: u.__len__(self=u)),
+    ('type-noargs', lambda: UserString.__len__()),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

@@ -26518,6 +26518,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_getitem_slice_subset",
             "cpython_collections_userstring_contains_subset",
             "cpython_collections_userstring_iter_subset",
+            "cpython_collections_userstring_len_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29018,8 +29019,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "name != \"char\"",
         "UserString.__contains__() missing 1 required positional argument: 'char'",
         "UserString.__contains__() got multiple values for argument 'char'",
-        "matches!(name, \"__contains__\" | \"__getitem__\" | \"__iter__\")",
-        "\"__contains__\" | \"__getitem__\" | \"__iter__\" => Ok(Value::BoundMethod",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29104,8 +29105,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Sequence.__iter__() missing 1 required positional argument: 'self'",
         "Sequence.__iter__() got multiple values for argument 'self'",
         "Sequence.__iter__() got an unexpected keyword argument",
-        "matches!(name, \"__contains__\" | \"__getitem__\" | \"__iter__\")",
-        "\"__contains__\" | \"__getitem__\" | \"__iter__\" => Ok(Value::BoundMethod",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29127,6 +29128,88 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString iter docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_len_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __len__"
+    );
+    let userstring_len_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_len_method_diff_subset",
+    );
+    let userstring_len_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_len_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "len(u)",
+        "u.__len__()",
+        "UserString.__len__(u)",
+        "UserString.__len__(self=u)",
+        "UserString('').__len__()",
+        "UserString.__len__('abc')",
+        "u.__len__(1)",
+        "u.__len__(x=1)",
+        "u.__len__(self=u)",
+        "UserString.__len__()",
+    ] {
+        assert!(
+            userstring_len_method_diff_body.contains(required)
+                && userstring_len_method_subset_body.contains(required),
+            "UserString len-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"len-builtin int 3\"",
+        "\"method int 3\"",
+        "\"type-method int 3\"",
+        "\"type-keyword int 3\"",
+        "\"empty int 0\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-extra TypeError UserString.__len__() takes 1 positional argument but 2 were given",
+        "\"method-badkw TypeError UserString.__len__() got an unexpected keyword argument 'x'",
+        "\"method-multi TypeError UserString.__len__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__len__() missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            userstring_len_method_subset_body.contains(required),
+            "UserString len-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "UserString.__len__() takes 1 positional argument but",
+        "UserString.__len__() missing 1 required positional argument: 'self'",
+        "UserString.__len__() got multiple values for argument 'self'",
+        "UserString.__len__() got an unexpected keyword argument",
+        "i64::try_from(data.borrow().chars().count())",
+        "Ok(Value::Number(len))",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString len-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_len_method_subset",
+            "cpython_collections_userstring_len_method_diff_subset",
+            "`UserString.__len__`",
+            "`len()`",
+            "`self=` keyword binding",
+            "Unicode length",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString len-method docs must contain `{required}`"
             );
         }
     }
