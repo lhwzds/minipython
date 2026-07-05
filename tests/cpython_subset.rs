@@ -28719,6 +28719,33 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public `property` type subscription rejection. MiniPython
+// keeps property as a concrete descriptor type, not a GenericAlias origin.
+#[test]
+fn cpython_property_type_not_subscriptable_subset() {
+    assert_output(
+        r#"typ = property
+inst = property(lambda self: 1)
+for label, expr in [
+    ('visible-type', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))),
+    ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: typ[int]),
+    ('call-int', lambda: typ.__class_getitem__(int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible-type tuple (False, False)",
+            "visible-inst tuple (False, False)",
+            "subscript-int TypeError type 'property' is not subscriptable (\"type 'property' is not subscriptable\",)",
+            "call-int AttributeError type object 'property' has no attribute '__class_getitem__' (\"type object 'property' has no attribute '__class_getitem__'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]
