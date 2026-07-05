@@ -25781,6 +25781,33 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_basic_construction_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString basic construction behavior",
+        name: "collections-userstring-basic-construction",
+        source: r#"from collections import UserString
+cases = [
+    ('str', lambda: UserString('abc')),
+    ('int', lambda: UserString(123)),
+    ('none', lambda: UserString(None)),
+    ('copy', lambda: UserString(UserString('x'))),
+    ('empty-string', lambda: UserString('')),
+    ('keyword', lambda: UserString(seq='kw')),
+    ('noargs', lambda: UserString()),
+    ('extra', lambda: UserString('a', 'b')),
+    ('badkw', lambda: UserString(value='x')),
+    ('multi', lambda: UserString('a', seq='b')),
+]
+for label, expr in cases:
+    try:
+        v = expr()
+        print(label, type(v).__name__, repr(v), str(v), repr(v.data), type(v.data).__name__, isinstance(v, UserString), bool(v), len(v), hash(v) == hash(v.data))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

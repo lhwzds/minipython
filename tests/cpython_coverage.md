@@ -170,7 +170,14 @@ Recent runtime migration notes:
   `UserString.__class_getitem__(int)`, `UserString[int]`, `collections.UserString[int]`
   display, inherited UserString subclass lookup, GenericAlias origin/args, and
   GenericAlias constructor error shape, without implementing full UserString
-  construction or widening host IO, network, process, C ABI, or full stdlib scope.
+  string-method proxying or widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_basic_construction_subset`, backed by
+  `cpython_collections_userstring_basic_construction_diff_subset`, now pins
+  `UserString` construction from strings, ints, `None`, existing `UserString`
+  instances, and `seq=`, plus `.data`, `repr()`, `str()`, `bool()`, `len()`,
+  `isinstance()`, string-hash equivalence, and constructor arity/keyword
+  TypeErrors, without implementing full UserString string-method proxying or
+  widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1244,6 +1251,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
+  `cpython_collections_userstring_basic_construction_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7059,7 +7067,15 @@ without adding general custom encoder/decoder class support.
   `UserString.__class_getitem__(int)` / `UserString[int]` GenericAlias behavior
   including `collections.UserString[int]` display, inherited UserString subclass
   lookup, GenericAlias origin/args, and GenericAlias constructor error shape,
-  without implementing full UserString construction.
+  without implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_basic_construction_diff_subset` and
+  `cpython_collections_userstring_basic_construction_subset`, covering
+  basic `UserString` construction from strings, ints, `None`, existing
+  `UserString` instances, and `seq=`, plus `.data`, `repr()`, `str()`,
+  `bool()`, `len()`, `isinstance()`, string-hash equivalence, and constructor
+  arity/keyword TypeErrors, without implementing full UserString string-method
+  proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

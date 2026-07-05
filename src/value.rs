@@ -612,6 +612,10 @@ pub enum Value {
         data: ListRef,
         attrs: DictRef,
     },
+    UserString {
+        data: Rc<RefCell<String>>,
+        attrs: DictRef,
+    },
     Deque {
         data: ListRef,
         maxlen: Option<usize>,
@@ -1243,6 +1247,7 @@ impl fmt::Display for Value {
                 let data = data.borrow();
                 write!(f, "[{}]", format_list_items(&data))
             }
+            Value::UserString { data, .. } => write!(f, "{}", data.borrow()),
             Value::Deque { data, maxlen } => {
                 let data = data.borrow();
                 if let Some(maxlen) = maxlen {
@@ -2182,6 +2187,7 @@ fn format_value_repr(value: &Value) -> String {
             let data = data.borrow();
             format!("[{}]", format_list_items(&data))
         }
+        Value::UserString { data, .. } => repr_string(&data.borrow()),
         Value::Deque { data, maxlen } => {
             let data = data.borrow();
             if let Some(maxlen) = maxlen {
@@ -2537,6 +2543,7 @@ fn weakref_target_address(value: &Value) -> usize {
     match value {
         Value::List(items) => Rc::as_ptr(items) as usize,
         Value::UserList { data, .. } => Rc::as_ptr(data) as usize,
+        Value::UserString { data, .. } => Rc::as_ptr(data) as usize,
         Value::Tuple(items) => Rc::as_ptr(items) as usize,
         Value::NamedTuple { values, .. } => Rc::as_ptr(values) as usize,
         Value::ByteArray(bytes) => Rc::as_ptr(bytes) as usize,

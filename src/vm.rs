@@ -1643,6 +1643,7 @@ fn repr_value(value: &Value) -> String {
 fn str_value_checked(value: &Value) -> Result<String, String> {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        Value::UserString { data, .. } => Ok(data.borrow().clone()),
         value if str_subclass_string(value).is_some() => {
             Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
         }
@@ -1715,6 +1716,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         value if str_subclass_string(value).is_some() => Ok(repr_string(
             &str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
+        Value::UserString { data, .. } => Ok(repr_string(&data.borrow())),
         Value::Bytes(value) => Ok(repr_bytes(value)),
         Value::ByteArray(value) => Ok(repr_bytearray(&value.borrow())),
         value if bytes_subclass_bytes(value).is_some() => Ok(repr_bytes(
@@ -2112,6 +2114,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
             repr_list_items(&items, active)
         }
         Value::List(items) => repr_list_items(items, active),
+        Value::UserString { data, .. } => repr_string(&data.borrow()),
         Value::Tuple(items) => repr_tuple(items, active),
         Value::Set(items) => {
             let ptr = Rc::as_ptr(items) as usize;
@@ -9596,6 +9599,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "ChainMap" => self.call_chain_map(args, keywords),
             Value::Builtin(name) if name == "UserList" => self.call_user_list(args, keywords),
+            Value::Builtin(name) if name == "UserString" => self.call_user_string(args, keywords),
             Value::Builtin(name) if name == "deque" => self.call_deque(args, keywords),
             Value::Builtin(name) if name == "array.array" => self.call_array_array(args, keywords),
             Value::Builtin(name) if name == "array.array.__new__" => {
@@ -19943,6 +19947,7 @@ impl Vm {
             value if array_array_storage(&value).is_some() => Ok(self.len_value(value)? != 0),
             Value::ChainMap { maps } => self.chain_map_maps_truth_value(&maps),
             Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
+            Value::UserString { data, .. } => Ok(!data.borrow().is_empty()),
             Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
             Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
             Value::MappingView { mapping, .. } => Ok(self.len_value(*mapping)? != 0),
@@ -20026,6 +20031,7 @@ impl Vm {
             }
             Value::ChainMap { maps } => chain_map_key_count(&maps),
             Value::UserList { data, .. } => Ok(data.borrow().len()),
+            Value::UserString { data, .. } => Ok(data.borrow().chars().count()),
             Value::Deque { data, .. } => Ok(data.borrow().len()),
             Value::UserDict { data, .. } => Ok(data.borrow().len()),
             Value::MappingView { mapping, .. } => self.len_value(*mapping),
@@ -25819,6 +25825,52 @@ impl Vm {
 
         Ok(Value::UserList {
             data: Rc::new(RefCell::new(values)),
+            attrs: dict_ref_from_entries(Vec::new())?,
+        })
+    }
+
+    fn call_user_string(
+        &mut self,
+        mut args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 1 {
+            return Err(format!(
+                "TypeError: UserString.__init__() takes 2 positional arguments but {} were given",
+                args.len() + 1
+            ));
+        }
+
+        let mut seq = args.pop();
+        for (name, value) in keywords {
+            if name != "seq" {
+                return Err(format!(
+                    "TypeError: UserString.__init__() got an unexpected keyword argument '{name}'"
+                ));
+            }
+            if seq.is_some() {
+                return Err(
+                    "TypeError: UserString.__init__() got multiple values for argument 'seq'"
+                        .to_string(),
+                );
+            }
+            seq = Some(value);
+        }
+
+        let Some(seq) = seq else {
+            return Err(
+                "TypeError: UserString.__init__() missing 1 required positional argument: 'seq'"
+                    .to_string(),
+            );
+        };
+
+        let data = match seq {
+            Value::UserString { data, .. } => data.borrow().clone(),
+            value => self.str_value(&value)?,
+        };
+
+        Ok(Value::UserString {
+            data: Rc::new(RefCell::new(data)),
             attrs: dict_ref_from_entries(Vec::new())?,
         })
     }
@@ -39434,6 +39486,10 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             data: Rc::new(RefCell::new(data.borrow().clone())),
             attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
         }),
+        Value::UserString { data, attrs } => Ok(Value::UserString {
+            data: Rc::new(RefCell::new(data.borrow().clone())),
+            attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
         Value::Deque { data, maxlen } => Ok(Value::Deque {
             data: Rc::new(RefCell::new(data.borrow().clone())),
             maxlen: *maxlen,
@@ -39546,6 +39602,7 @@ fn copy_deepcopy_identity_key(value: &Value) -> Option<usize> {
         Value::AstNode { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         Value::List(items) => Some(Rc::as_ptr(items) as usize),
         Value::UserList { data, .. } => Some(Rc::as_ptr(data) as usize),
+        Value::UserString { data, .. } => Some(Rc::as_ptr(data) as usize),
         Value::Tuple(items) => Some(Rc::as_ptr(items) as usize),
         Value::Deque { data, .. } => Some(Rc::as_ptr(data) as usize),
         Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize),
@@ -39648,6 +39705,32 @@ where
                 .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             *copied_data.borrow_mut() = copied_values;
+            let attrs = attrs.borrow().entries.clone();
+            let copied_attr_values = attrs
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for (key, value) in copied_attr_values {
+                insert_live_dict_entry(&mut copied_attrs.borrow_mut(), key, value)?;
+            }
+            Ok(copied)
+        }
+        Value::UserString { data, attrs } => {
+            let key = Rc::as_ptr(data) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_attrs = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied = Value::UserString {
+                data: Rc::new(RefCell::new(data.borrow().clone())),
+                attrs: copied_attrs.clone(),
+            };
+            memo.insert(key, copied.clone());
             let attrs = attrs.borrow().entries.clone();
             let copied_attr_values = attrs
                 .into_iter()
@@ -52517,6 +52600,11 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.push("data".to_string());
             names.extend(dict_string_names(attrs));
         }
+        Value::UserString { attrs, .. } => {
+            names.extend(builtin_type_dir_names("UserString"));
+            names.push("data".to_string());
+            names.extend(dict_string_names(attrs));
+        }
         Value::NamedTupleType(typ) => {
             names.extend(builtin_type_dir_names("tuple"));
             if is_sys_structseq(typ) {
@@ -61397,6 +61485,32 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )),
             }
         }
+        Value::UserString { data, attrs } => {
+            if name == "data" {
+                return Ok(Value::String(data.borrow().clone()));
+            }
+            if let Some(value) = attrs
+                .borrow()
+                .iter()
+                .find(|(key, _)| matches!(key, Value::String(attr_name) if attr_name == name))
+                .map(|(_, value)| value.clone())
+            {
+                return Ok(value);
+            }
+            match name {
+                "__doc__" => Ok(Value::String(
+                    builtin_type_doc("UserString")
+                        .expect("UserString type doc is defined")
+                        .to_string(),
+                )),
+                "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
+                    "UserString".to_string(),
+                ))),
+                _ => Err(format!(
+                    "AttributeError: UserString has no attribute '{name}'"
+                )),
+            }
+        }
         Value::Deque { data, maxlen } => {
             if name == "__doc__" {
                 return Ok(Value::String(
@@ -66215,6 +66329,18 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             )?;
             Ok(())
         }
+        Value::UserString { data, attrs } => {
+            if name == "data" {
+                *data.borrow_mut() = str_value_checked(&value)?;
+            } else {
+                insert_live_dict_entry(
+                    &mut attrs.borrow_mut(),
+                    Value::String(name.to_string()),
+                    value,
+                )?;
+            }
+            Ok(())
+        }
         Value::DefaultDict {
             default_factory, ..
         } if name == "default_factory" => {
@@ -69280,6 +69406,7 @@ fn type_name(value: &Value) -> &str {
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
         Value::UserList { .. } => "UserList",
+        Value::UserString { .. } => "UserString",
         Value::Deque { .. } => "deque",
         Value::UserDict { .. } => "UserDict",
         Value::NamedTupleType(_) => "type",
@@ -85828,6 +85955,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
             .borrow()
             .len()),
         Value::UserList { data, .. } => Ok(data.borrow().len()),
+        Value::UserString { data, .. } => Ok(data.borrow().chars().count()),
         Value::Deque { data, .. } => Ok(data.borrow().len()),
         Value::Tuple(items) => Ok(items.len()),
         Value::NamedTuple { values, .. } => Ok(values.len()),
@@ -87359,6 +87487,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::String(value) | Value::IdentityString { value, .. } => {
             hash_bytes_like(value.as_bytes(), hasher)
         }
+        Value::UserString { data, .. } => hash_bytes_like(data.borrow().as_bytes(), hasher),
         Value::Bytes(value) => hash_bytes_like(value, hasher),
         Value::MemoryView(view) => {
             let bytes = memoryview_hash_bytes(view)?;
@@ -87844,6 +87973,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Complex { .. }
         | Value::String(_)
         | Value::IdentityString { .. }
+        | Value::UserString { .. }
         | Value::Bytes(_)
         | Value::BytesIO(_)
         | Value::Bool(_)
@@ -88697,6 +88827,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "defaultdict" => matches!(subject, Value::DefaultDict { .. }),
         "ChainMap" => matches!(subject, Value::ChainMap { .. }),
         "UserList" => matches!(subject, Value::UserList { .. }),
+        "UserString" => matches!(subject, Value::UserString { .. }),
         "deque" => matches!(subject, Value::Deque { .. }),
         "UserDict" => matches!(subject, Value::UserDict { .. }),
         "module" => {
@@ -94976,6 +95107,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::BytesIO(_) => Ok(true),
         Value::List(items) => Ok(!items.borrow().is_empty()),
         Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
+        Value::UserString { data, .. } => Ok(!data.borrow().is_empty()),
         Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
         Value::Tuple(items) => Ok(!items.is_empty()),
         Value::Set(items) => Ok(!items.borrow().is_empty()),

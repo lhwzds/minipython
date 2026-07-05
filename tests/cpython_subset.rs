@@ -69312,7 +69312,7 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
 
 // Mirrors CPython public collections.UserString __class_getitem__ behavior. This
 // pins GenericAlias origin/args, direct type calls, and inherited subclass
-// lookup without implementing full UserString construction/wrapper behavior.
+// lookup without implementing full UserString string-method proxying.
 #[test]
 fn cpython_collections_userstring_class_getitem_generic_alias_subset() {
     assert_output(
@@ -69350,6 +69350,45 @@ for label, expr in [
             "call-extra TypeError GenericAlias expected 2 arguments, got 3 ('GenericAlias expected 2 arguments, got 3',)",
             "call-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
             "sub-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
+        ],
+    );
+}
+
+// Mirrors CPython's basic public collections.UserString construction wrapper
+// behavior without promoting the full UserString string-method proxy surface.
+#[test]
+fn cpython_collections_userstring_basic_construction_subset() {
+    assert_output(
+        r#"from collections import UserString
+cases = [
+    ('str', lambda: UserString('abc')),
+    ('int', lambda: UserString(123)),
+    ('none', lambda: UserString(None)),
+    ('copy', lambda: UserString(UserString('x'))),
+    ('empty-string', lambda: UserString('')),
+    ('keyword', lambda: UserString(seq='kw')),
+    ('noargs', lambda: UserString()),
+    ('extra', lambda: UserString('a', 'b')),
+    ('badkw', lambda: UserString(value='x')),
+    ('multi', lambda: UserString('a', seq='b')),
+]
+for label, expr in cases:
+    try:
+        v = expr()
+        print(label, type(v).__name__, repr(v), str(v), repr(v.data), type(v.data).__name__, isinstance(v, UserString), bool(v), len(v), hash(v) == hash(v.data))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "str UserString 'abc' abc 'abc' str True True 3 True",
+            "int UserString '123' 123 '123' str True True 3 True",
+            "none UserString 'None' None 'None' str True True 4 True",
+            "copy UserString 'x' x 'x' str True True 1 True",
+            "empty-string UserString ''  '' str True False 0 True",
+            "keyword UserString 'kw' kw 'kw' str True True 2 True",
+            "noargs TypeError UserString.__init__() missing 1 required positional argument: 'seq' (\"UserString.__init__() missing 1 required positional argument: 'seq'\",)",
+            "extra TypeError UserString.__init__() takes 2 positional arguments but 3 were given ('UserString.__init__() takes 2 positional arguments but 3 were given',)",
+            "badkw TypeError UserString.__init__() got an unexpected keyword argument 'value' (\"UserString.__init__() got an unexpected keyword argument 'value'\",)",
+            "multi TypeError UserString.__init__() got multiple values for argument 'seq' (\"UserString.__init__() got multiple values for argument 'seq'\",)",
         ],
     );
 }

@@ -28726,11 +28726,116 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "inherited UserString subclass lookup",
             "GenericAlias origin/args",
             "GenericAlias constructor error shape",
-            "without implementing full UserString construction",
+            "without implementing full UserString string-method proxying",
         ] {
             assert!(
                 document.contains(required),
                 "UserString class-getitem docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_basic_construction_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString basic construction"
+    );
+    let userstring_basic_construction_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_basic_construction_diff_subset",
+    );
+    let userstring_basic_construction_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_basic_construction_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "UserString('abc')",
+        "UserString(123)",
+        "UserString(None)",
+        "UserString(UserString('x'))",
+        "UserString(seq='kw')",
+        "UserString()",
+        "UserString('a', 'b')",
+        "UserString(value='x')",
+        "UserString('a', seq='b')",
+        "repr(v)",
+        "str(v)",
+        "repr(v.data)",
+        "type(v.data).__name__",
+        "isinstance(v, UserString)",
+        "bool(v)",
+        "len(v)",
+        "hash(v) == hash(v.data)",
+    ] {
+        assert!(
+            userstring_basic_construction_diff_body.contains(required)
+                && userstring_basic_construction_subset_body.contains(required),
+            "UserString basic-construction diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str UserString 'abc' abc 'abc' str True True 3 True\"",
+        "\"int UserString '123' 123 '123' str True True 3 True\"",
+        "\"none UserString 'None' None 'None' str True True 4 True\"",
+        "\"copy UserString 'x' x 'x' str True True 1 True\"",
+        "\"empty-string UserString ''  '' str True False 0 True\"",
+        "\"keyword UserString 'kw' kw 'kw' str True True 2 True\"",
+        "\"noargs TypeError UserString.__init__() missing 1 required positional argument: 'seq'",
+        "\"extra TypeError UserString.__init__() takes 2 positional arguments but 3 were given",
+        "\"badkw TypeError UserString.__init__() got an unexpected keyword argument 'value'",
+        "\"multi TypeError UserString.__init__() got multiple values for argument 'seq'",
+    ] {
+        assert!(
+            userstring_basic_construction_subset_body.contains(required),
+            "UserString basic-construction subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserString",
+        "fn call_user_string",
+        "Value::Builtin(name) if name == \"UserString\" => self.call_user_string(args, keywords)",
+        "name != \"seq\"",
+        "UserString.__init__() missing 1 required positional argument: 'seq'",
+        "UserString.__init__() got an unexpected keyword argument",
+        "UserString.__init__() got multiple values for argument 'seq'",
+        "data.borrow().chars().count()",
+        "Value::UserString { data, .. } => Ok(repr_string(&data.borrow()))",
+        "\"UserString\" => matches!(subject, Value::UserString { .. })",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString basic-construction implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "Value::UserString",
+        "Value::UserString { data, .. } => write!(f, \"{}\", data.borrow())",
+        "Value::UserString { data, .. } => repr_string(&data.borrow())",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "UserString basic-construction value implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_basic_construction_subset",
+            "cpython_collections_userstring_basic_construction_diff_subset",
+            "`UserString` construction",
+            "`.data`",
+            "`repr()`",
+            "`str()`",
+            "`bool()`",
+            "`len()`",
+            "`isinstance()`",
+            "string-hash equivalence",
+            "arity/keyword",
+            "TypeErrors",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString basic-construction docs must contain `{required}`"
             );
         }
     }
