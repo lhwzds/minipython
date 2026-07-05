@@ -178,6 +178,13 @@ Recent runtime migration notes:
   `isinstance()`, string-hash equivalence, and constructor arity/keyword
   TypeErrors, without implementing full UserString string-method proxying or
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_init_method_subset`, backed by
+  `cpython_collections_userstring_init_method_diff_subset`, now pins
+  `UserString.__init__` in-memory `.data` rebinding, including visibility,
+  bound and type-object calls, existing `UserString` argument copying,
+  `str()` conversion for non-UserString values, plain user object `.data` assignment,
+  bad receiver AttributeError text, and CPython `UserString.__init__` arity/keyword TypeErrors,
+  without promoting function/method object representation parity and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_getitem_slice_subset`, backed by
   `cpython_collections_userstring_getitem_slice_diff_subset`, now pins
   `UserString` index and slice access returning `UserString` wrappers, negative
@@ -1582,6 +1589,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userstring_basic_construction_diff_subset`,
+  `cpython_collections_userstring_init_method_diff_subset`,
   `cpython_collections_userstring_getitem_slice_diff_subset`,
   `cpython_collections_userstring_contains_diff_subset`,
   `cpython_collections_userstring_iter_diff_subset`,
@@ -7448,6 +7456,15 @@ without adding general custom encoder/decoder class support.
   `bool()`, `len()`, `isinstance()`, string-hash equivalence, and constructor
   arity/keyword TypeErrors, without implementing full UserString string-method
   proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_init_method_diff_subset` and
+  `cpython_collections_userstring_init_method_subset`, covering
+  `UserString.__init__` in-memory `.data` rebinding, visibility, bound and
+  type-object calls, existing `UserString` argument copying,
+  `str()` conversion for non-UserString values, plain user object `.data`
+  assignment, bad receiver AttributeError text, and CPython `UserString.__init__` arity/keyword
+  TypeErrors, without promoting function/method object representation parity
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_getitem_slice_diff_subset` and
   `cpython_collections_userstring_getitem_slice_subset`, covering `UserString`

@@ -25808,6 +25808,42 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_init_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __init__ method behavior",
+        name: "collections-userstring-init-method",
+        source: r#"from collections import UserString
+class C: pass
+u = UserString('abé')
+box = C()
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), 'data', repr(u.data), 'box', repr(getattr(box, 'data', None)))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args, 'data', repr(u.data), 'box', repr(getattr(box, 'data', None)))
+print('visible', hasattr(UserString, '__init__'), hasattr(u, '__init__'), '__init__' in dir(UserString), '__init__' in dir(u), callable(UserString.__init__), callable(u.__init__))
+for label, expr in [
+    ('bound-str', lambda: u.__init__('xy')),
+    ('bound-userstring', lambda: u.__init__(UserString('zz'))),
+    ('bound-int', lambda: u.__init__(123)),
+    ('type-str', lambda: UserString.__init__(u, 'pq')),
+    ('type-seqkw', lambda: UserString.__init__(u, seq='kw')),
+    ('type-self-seqkw', lambda: UserString.__init__(self=u, seq='skw')),
+    ('plain-object', lambda: UserString.__init__(box, 'box')),
+    ('bad-receiver', lambda: UserString.__init__('abc', 'xy')),
+    ('noargs', lambda: UserString.__init__()),
+    ('self-only', lambda: UserString.__init__(u)),
+    ('seq-only', lambda: UserString.__init__(seq='xy')),
+    ('extra', lambda: UserString.__init__(u, 'xy', 1)),
+    ('badkw', lambda: UserString.__init__(u, value='xy')),
+    ('multi-self', lambda: UserString.__init__(u, self=u, seq='xy')),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_getitem_slice_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString item and slice access behavior",

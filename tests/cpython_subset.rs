@@ -69393,6 +69393,60 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public collections.UserString __init__ method behavior.
+// This pins in-memory .data rebinding without promoting function/method object
+// representation parity or full UserString string-method proxying.
+#[test]
+fn cpython_collections_userstring_init_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class C: pass
+u = UserString('abé')
+box = C()
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), 'data', repr(u.data), 'box', repr(getattr(box, 'data', None)))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args, 'data', repr(u.data), 'box', repr(getattr(box, 'data', None)))
+print('visible', hasattr(UserString, '__init__'), hasattr(u, '__init__'), '__init__' in dir(UserString), '__init__' in dir(u), callable(UserString.__init__), callable(u.__init__))
+for label, expr in [
+    ('bound-str', lambda: u.__init__('xy')),
+    ('bound-userstring', lambda: u.__init__(UserString('zz'))),
+    ('bound-int', lambda: u.__init__(123)),
+    ('type-str', lambda: UserString.__init__(u, 'pq')),
+    ('type-seqkw', lambda: UserString.__init__(u, seq='kw')),
+    ('type-self-seqkw', lambda: UserString.__init__(self=u, seq='skw')),
+    ('plain-object', lambda: UserString.__init__(box, 'box')),
+    ('bad-receiver', lambda: UserString.__init__('abc', 'xy')),
+    ('noargs', lambda: UserString.__init__()),
+    ('self-only', lambda: UserString.__init__(u)),
+    ('seq-only', lambda: UserString.__init__(seq='xy')),
+    ('extra', lambda: UserString.__init__(u, 'xy', 1)),
+    ('badkw', lambda: UserString.__init__(u, value='xy')),
+    ('multi-self', lambda: UserString.__init__(u, self=u, seq='xy')),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True True",
+            "bound-str NoneType None data 'xy' box None",
+            "bound-userstring NoneType None data 'zz' box None",
+            "bound-int NoneType None data '123' box None",
+            "type-str NoneType None data 'pq' box None",
+            "type-seqkw NoneType None data 'kw' box None",
+            "type-self-seqkw NoneType None data 'skw' box None",
+            "plain-object NoneType None data 'skw' box 'box'",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' and no __dict__ for setting new attributes (\"'str' object has no attribute 'data' and no __dict__ for setting new attributes\",) data 'skw' box 'box'",
+            "noargs TypeError UserString.__init__() missing 2 required positional arguments: 'self' and 'seq' (\"UserString.__init__() missing 2 required positional arguments: 'self' and 'seq'\",) data 'skw' box 'box'",
+            "self-only TypeError UserString.__init__() missing 1 required positional argument: 'seq' (\"UserString.__init__() missing 1 required positional argument: 'seq'\",) data 'skw' box 'box'",
+            "seq-only TypeError UserString.__init__() missing 1 required positional argument: 'self' (\"UserString.__init__() missing 1 required positional argument: 'self'\",) data 'skw' box 'box'",
+            "extra TypeError UserString.__init__() takes 2 positional arguments but 3 were given ('UserString.__init__() takes 2 positional arguments but 3 were given',) data 'skw' box 'box'",
+            "badkw TypeError UserString.__init__() got an unexpected keyword argument 'value' (\"UserString.__init__() got an unexpected keyword argument 'value'\",) data 'skw' box 'box'",
+            "multi-self TypeError UserString.__init__() got multiple values for argument 'self' (\"UserString.__init__() got multiple values for argument 'self'\",) data 'skw' box 'box'",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString item/slice access. This keeps the
 // supported surface to sequence-style `__getitem__` without promoting full
 // string-method proxying.

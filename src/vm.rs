@@ -35610,6 +35610,63 @@ impl Vm {
             method => method,
         };
         match method {
+            "__init__" => {
+                if args.len() > 2 {
+                    return Err(format!(
+                        "TypeError: UserString.__init__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                let mut seq = args.get(1).cloned();
+                for (name, value) in keywords {
+                    match name.as_str() {
+                        "self" => {
+                            if receiver.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__init__() got multiple values for argument 'self'"
+                                        .to_string(),
+                                );
+                            }
+                            receiver = Some(value);
+                        }
+                        "seq" => {
+                            if seq.is_some() {
+                                return Err(
+                                    "TypeError: UserString.__init__() got multiple values for argument 'seq'"
+                                        .to_string(),
+                                );
+                            }
+                            seq = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: UserString.__init__() got an unexpected keyword argument '{name}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(receiver) = receiver else {
+                    return Err(if seq.is_some() {
+                        "TypeError: UserString.__init__() missing 1 required positional argument: 'self'"
+                    } else {
+                        "TypeError: UserString.__init__() missing 2 required positional arguments: 'self' and 'seq'"
+                    }
+                    .to_string());
+                };
+                let Some(seq) = seq else {
+                    return Err(
+                        "TypeError: UserString.__init__() missing 1 required positional argument: 'seq'"
+                            .to_string(),
+                    );
+                };
+                let data = match seq {
+                    Value::UserString { data, .. } => data.borrow().clone(),
+                    value => self.str_value(&value)?,
+                };
+                store_attribute(receiver, "data", Value::String(data))?;
+                Ok(Value::None)
+            }
             "__mul__" => {
                 if args.len() > 2 {
                     return Err(format!(
@@ -54893,6 +54950,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__format__".to_string());
         names.push("__getattribute__".to_string());
         names.push("__getnewargs__".to_string());
+        names.push("__init__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
         names.push("__rmod__".to_string());
@@ -57163,6 +57221,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__getnewargs__"
             | "__getitem__"
             | "__hash__"
+            | "__init__"
             | "__float__"
             | "__int__"
             | "__eq__"
@@ -62890,6 +62949,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "__complex__"
                 | "__float__"
                 | "__getnewargs__"
+                | "__init__"
                 | "__int__"
                 | "__mod__"
                 | "__mul__" | "__repr__" | "__radd__" | "__rmod__" | "__str__" => {

@@ -26515,6 +26515,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_basic_construction_subset",
+            "cpython_collections_userstring_init_method_subset",
             "cpython_collections_userstring_getitem_slice_subset",
             "cpython_collections_userstring_contains_subset",
             "cpython_collections_userstring_iter_subset",
@@ -28879,6 +28880,117 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString basic-construction docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_init_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __init__"
+    );
+    let userstring_init_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_init_method_diff_subset",
+    );
+    let userstring_init_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_init_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class C: pass",
+        "u = UserString('abé')",
+        "box = C()",
+        "hasattr(UserString, '__init__')",
+        "hasattr(u, '__init__')",
+        "'__init__' in dir(UserString)",
+        "'__init__' in dir(u)",
+        "callable(UserString.__init__)",
+        "callable(u.__init__)",
+        "u.__init__('xy')",
+        "u.__init__(UserString('zz'))",
+        "u.__init__(123)",
+        "UserString.__init__(u, 'pq')",
+        "UserString.__init__(u, seq='kw')",
+        "UserString.__init__(self=u, seq='skw')",
+        "UserString.__init__(box, 'box')",
+        "UserString.__init__('abc', 'xy')",
+        "UserString.__init__()",
+        "UserString.__init__(u)",
+        "UserString.__init__(seq='xy')",
+        "UserString.__init__(u, 'xy', 1)",
+        "UserString.__init__(u, value='xy')",
+        "UserString.__init__(u, self=u, seq='xy')",
+    ] {
+        assert!(
+            userstring_init_method_diff_body.contains(required)
+                && userstring_init_method_subset_body.contains(required),
+            "UserString init-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True True\"",
+        "\"bound-str NoneType None data 'xy' box None\"",
+        "\"bound-userstring NoneType None data 'zz' box None\"",
+        "\"bound-int NoneType None data '123' box None\"",
+        "\"type-str NoneType None data 'pq' box None\"",
+        "\"type-seqkw NoneType None data 'kw' box None\"",
+        "\"type-self-seqkw NoneType None data 'skw' box None\"",
+        "\"plain-object NoneType None data 'skw' box 'box'\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data' and no __dict__ for setting new attributes",
+        "\"noargs TypeError UserString.__init__() missing 2 required positional arguments: 'self' and 'seq'",
+        "\"self-only TypeError UserString.__init__() missing 1 required positional argument: 'seq'",
+        "\"seq-only TypeError UserString.__init__() missing 1 required positional argument: 'self'",
+        "\"extra TypeError UserString.__init__() takes 2 positional arguments but 3 were given",
+        "\"badkw TypeError UserString.__init__() got an unexpected keyword argument 'value'",
+        "\"multi-self TypeError UserString.__init__() got multiple values for argument 'self'",
+    ] {
+        assert!(
+            userstring_init_method_subset_body.contains(required),
+            "UserString init-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__init__\".to_string())",
+        "function_name == \"UserString\" && is_builtin_user_string_type_method(name)",
+        "Ok(Value::Builtin(format!(\"UserString.{name}\")))",
+        "Value::Builtin(name) if name.starts_with(\"UserString.\")",
+        "fn call_user_string_method",
+        "\"__init__\" =>",
+        "UserString.__init__() takes 2 positional arguments",
+        "UserString.__init__() got multiple values for argument 'self'",
+        "UserString.__init__() got multiple values for argument 'seq'",
+        "UserString.__init__() got an unexpected keyword argument",
+        "UserString.__init__() missing 2 required positional arguments: 'self' and 'seq'",
+        "UserString.__init__() missing 1 required positional argument: 'self'",
+        "UserString.__init__() missing 1 required positional argument: 'seq'",
+        "store_attribute(receiver, \"data\", Value::String(data))",
+        "Value::UserString { data, .. } => data.borrow().clone()",
+        "value => self.str_value(&value)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString init-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_init_method_subset",
+            "cpython_collections_userstring_init_method_diff_subset",
+            "`UserString.__init__`",
+            "in-memory `.data` rebinding",
+            "bound and type-object calls",
+            "existing `UserString` argument copying",
+            "`str()` conversion for non-UserString values",
+            "plain user object `.data` assignment",
+            "bad receiver AttributeError text",
+            "CPython `UserString.__init__` arity/keyword TypeErrors",
+            "without promoting function/method object representation parity",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString init-method docs must contain `{required}`"
             );
         }
     }
