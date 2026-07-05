@@ -26530,6 +26530,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_dunder_format_method_subset",
             "cpython_collections_userstring_inherited_getattribute_method_subset",
             "cpython_collections_userstring_inherited_sizeof_method_subset",
+            "cpython_collections_userstring_inherited_getstate_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -30340,6 +30341,108 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString sizeof-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_getstate_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __getstate__"
+    );
+    let userstring_getstate_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_getstate_method_diff_subset",
+    );
+    let userstring_getstate_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_getstate_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "u.extra = 'x'",
+        "hasattr(UserString, '__getstate__')",
+        "hasattr(u, '__getstate__')",
+        "'__getstate__' in dir(UserString)",
+        "'__getstate__' in dir(u)",
+        "UserString.__getstate__ is object.__getstate__",
+        "type(UserString.__getstate__).__name__",
+        "type(u.__getstate__).__name__",
+        "u.__getstate__()",
+        "object.__getstate__(u)",
+        "UserString.__getstate__(u)",
+        "UserString('abé').__getstate__()",
+        "UserString('').__getstate__()",
+        "UserString.__getstate__('abé')",
+        "UserString.__getstate__(1)",
+        "UserString.__getstate__()",
+        "UserString.__getstate__(u, 1)",
+        "UserString.__getstate__(u, receiver=u)",
+        "UserString.__getstate__(self=u)",
+        "UserString.__getstate__(u, self=u)",
+    ] {
+        assert!(
+            userstring_getstate_method_diff_body.contains(required)
+                && userstring_getstate_method_subset_body.contains(required),
+            "UserString getstate-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True method_descriptor builtin_function_or_method\"",
+        "\"bound dict {'data': 'abé', 'extra': 'x'}\"",
+        "\"object-direct dict {'data': 'abé', 'extra': 'x'}\"",
+        "\"type-direct dict {'data': 'abé', 'extra': 'x'}\"",
+        "\"plain dict {'data': 'abé'}\"",
+        "\"empty dict {'data': ''}\"",
+        "\"str-receiver NoneType None\"",
+        "\"int-receiver NoneType None\"",
+        "\"noargs TypeError unbound method object.__getstate__() needs an argument",
+        "\"extra TypeError object.__getstate__() takes no arguments (1 given)",
+        "\"badkw TypeError object.__getstate__() takes no keyword arguments",
+        "\"keyword-only TypeError unbound method object.__getstate__() needs an argument",
+        "\"multi-self TypeError object.__getstate__() takes no keyword arguments",
+    ] {
+        assert!(
+            userstring_getstate_method_subset_body.contains(required),
+            "UserString getstate-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__getstate__\".to_string())",
+        "function_name == \"UserString\" && name == \"__getstate__\"",
+        "Ok(Value::Builtin(\"object.__getstate__\".to_string()))",
+        "object_getstate_bound_method(Value::UserString",
+        "Value::Builtin(name) if name == \"object.__getstate__\"",
+        "self.call_object_getstate(args, keywords)",
+        "fn call_object_getstate(",
+        "fn object_getstate_value(",
+        "Value::String(\"data\".to_string())",
+        "entries.extend(attrs.borrow().iter().cloned())",
+        "\"TypeError: unbound method object.__getstate__() needs an argument\"",
+        "\"TypeError: object.__getstate__() takes no arguments",
+        "\"TypeError: object.__getstate__() takes no keyword arguments\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString getstate-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_getstate_method_subset",
+            "cpython_collections_userstring_inherited_getstate_method_diff_subset",
+            "`UserString.__getstate__`",
+            "inherited `object.__getstate__`",
+            "`UserString.__getstate__ is object.__getstate__`",
+            "method_descriptor",
+            "state dict containing `.data` and user attributes",
+            "CPython `object.__getstate__` TypeError text",
+            "without promoting pickle, `__reduce__`, or host I/O behavior",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString getstate-method docs must contain `{required}`"
             );
         }
     }

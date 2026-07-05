@@ -70161,6 +70161,55 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString inherited object.__getstate__ method.
+// This pins pure-memory instance state without promoting pickle, __reduce__,
+// or host I/O behavior into the supported sandbox surface.
+#[test]
+fn cpython_collections_userstring_inherited_getstate_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+u.extra = 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getstate__'), hasattr(u, '__getstate__'), '__getstate__' in dir(UserString), '__getstate__' in dir(u), UserString.__getstate__ is object.__getstate__, type(UserString.__getstate__).__name__, type(u.__getstate__).__name__)
+for label, expr in [
+    ('bound', lambda: u.__getstate__()),
+    ('object-direct', lambda: object.__getstate__(u)),
+    ('type-direct', lambda: UserString.__getstate__(u)),
+    ('plain', lambda: UserString('abé').__getstate__()),
+    ('empty', lambda: UserString('').__getstate__()),
+    ('str-receiver', lambda: UserString.__getstate__('abé')),
+    ('int-receiver', lambda: UserString.__getstate__(1)),
+    ('noargs', lambda: UserString.__getstate__()),
+    ('extra', lambda: UserString.__getstate__(u, 1)),
+    ('badkw', lambda: UserString.__getstate__(u, receiver=u)),
+    ('keyword-only', lambda: UserString.__getstate__(self=u)),
+    ('multi-self', lambda: UserString.__getstate__(u, self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True method_descriptor builtin_function_or_method",
+            "bound dict {'data': 'abé', 'extra': 'x'}",
+            "object-direct dict {'data': 'abé', 'extra': 'x'}",
+            "type-direct dict {'data': 'abé', 'extra': 'x'}",
+            "plain dict {'data': 'abé'}",
+            "empty dict {'data': ''}",
+            "str-receiver NoneType None",
+            "int-receiver NoneType None",
+            "noargs TypeError unbound method object.__getstate__() needs an argument ('unbound method object.__getstate__() needs an argument',)",
+            "extra TypeError object.__getstate__() takes no arguments (1 given) ('object.__getstate__() takes no arguments (1 given)',)",
+            "badkw TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+            "keyword-only TypeError unbound method object.__getstate__() needs an argument ('unbound method object.__getstate__() needs an argument',)",
+            "multi-self TypeError object.__getstate__() takes no keyword arguments ('object.__getstate__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

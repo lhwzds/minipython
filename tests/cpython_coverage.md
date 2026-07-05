@@ -282,6 +282,15 @@ Recent runtime migration notes:
   without depending on CPython allocation sizes or object-layout internals and
   without widening host IO, network,
   process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_inherited_getstate_method_subset`, backed by
+  `cpython_collections_userstring_inherited_getstate_method_diff_subset`, now
+  pins `UserString.__getstate__` as inherited `object.__getstate__`, including
+  type and instance visibility, `dir(UserString)` discoverability,
+  `UserString.__getstate__ is object.__getstate__`, `method_descriptor`
+  metadata, direct and bound method calls, state dict containing `.data` and user attributes,
+  non-UserString receiver fallback to `None`, and CPython `object.__getstate__` TypeError text,
+  without promoting pickle, `__reduce__`, or host I/O behavior and without widening host IO, network, process, C ABI,
+  or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -1610,6 +1619,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_dunder_format_method_diff_subset`,
   `cpython_collections_userstring_inherited_getattribute_method_diff_subset`,
   `cpython_collections_userstring_inherited_sizeof_method_diff_subset`,
+  `cpython_collections_userstring_inherited_getstate_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
@@ -7573,6 +7583,16 @@ without adding general custom encoder/decoder class support.
   calls, bad receiver support, and CPython `object.__sizeof__` TypeError text,
   without depending on CPython allocation sizes or object-layout internals and
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_getstate_method_diff_subset` and
+  `cpython_collections_userstring_inherited_getstate_method_subset`, covering
+  `UserString.__getstate__` as inherited `object.__getstate__`, type and
+  instance visibility, `dir(UserString)` discoverability,
+  `UserString.__getstate__ is object.__getstate__`, `method_descriptor`
+  metadata, direct and bound method calls, state dict containing `.data` and user attributes,
+  non-UserString receiver fallback to `None`, and CPython `object.__getstate__` TypeError text,
+  without promoting pickle, `__reduce__`, or host I/O behavior and without widening host IO, network, process, C ABI,
+  or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

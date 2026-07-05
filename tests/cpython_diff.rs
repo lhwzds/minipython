@@ -26321,6 +26321,39 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_getstate_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__getstate__ behavior",
+        name: "collections-userstring-inherited-getstate-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+u.extra = 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getstate__'), hasattr(u, '__getstate__'), '__getstate__' in dir(UserString), '__getstate__' in dir(u), UserString.__getstate__ is object.__getstate__, type(UserString.__getstate__).__name__, type(u.__getstate__).__name__)
+for label, expr in [
+    ('bound', lambda: u.__getstate__()),
+    ('object-direct', lambda: object.__getstate__(u)),
+    ('type-direct', lambda: UserString.__getstate__(u)),
+    ('plain', lambda: UserString('abé').__getstate__()),
+    ('empty', lambda: UserString('').__getstate__()),
+    ('str-receiver', lambda: UserString.__getstate__('abé')),
+    ('int-receiver', lambda: UserString.__getstate__(1)),
+    ('noargs', lambda: UserString.__getstate__()),
+    ('extra', lambda: UserString.__getstate__(u, 1)),
+    ('badkw', lambda: UserString.__getstate__(u, receiver=u)),
+    ('keyword-only', lambda: UserString.__getstate__(self=u)),
+    ('multi-self', lambda: UserString.__getstate__(u, self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

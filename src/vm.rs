@@ -16916,10 +16916,15 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: unbound method object.__getstate__() needs an argument".to_string(),
+                );
+            }
             return Err("TypeError: object.__getstate__() takes no keyword arguments".to_string());
         }
 
-        let Some((_receiver, rest)) = args.split_first() else {
+        let Some((receiver, rest)) = args.split_first() else {
             return Err(
                 "TypeError: unbound method object.__getstate__() needs an argument".to_string(),
             );
@@ -16931,7 +16936,7 @@ impl Vm {
             ));
         }
 
-        Ok(Value::None)
+        Ok(object_getstate_value(receiver))
     }
 
     fn call_default_dict_getattribute(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -54949,6 +54954,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__format__".to_string());
         names.push("__getattribute__".to_string());
         names.push("__getnewargs__".to_string());
+        names.push("__getstate__".to_string());
         names.push("__init__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
@@ -62942,6 +62948,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     data,
                     attrs,
                 })),
+                "__getstate__" => Ok(object_getstate_bound_method(Value::UserString {
+                    data,
+                    attrs,
+                })),
                 "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
@@ -64904,6 +64914,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserString" && name == "__getattribute__" =>
         {
             Ok(Value::Builtin("object.__getattribute__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__getstate__" => {
+            Ok(Value::Builtin("object.__getstate__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__sizeof__" => {
             Ok(Value::Builtin("object.__sizeof__".to_string()))
@@ -69625,6 +69638,20 @@ fn object_getstate_bound_method(receiver: Value) -> Value {
         function: Box::new(Value::Builtin("object.__getstate__".to_string())),
         receiver: Box::new(receiver),
         identity: Rc::new(()),
+    }
+}
+
+fn object_getstate_value(receiver: &Value) -> Value {
+    match receiver {
+        Value::UserString { data, attrs } => {
+            let mut entries = vec![(
+                Value::String("data".to_string()),
+                Value::String(data.borrow().clone()),
+            )];
+            entries.extend(attrs.borrow().iter().cloned());
+            dict_value(entries)
+        }
+        _ => Value::None,
     }
 }
 
