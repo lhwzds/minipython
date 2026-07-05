@@ -69592,6 +69592,67 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString display method dispatch. This keeps the
+// supported surface to direct `__str__` and `__repr__` calls without promoting
+// full string-method proxying.
+#[test]
+fn cpython_collections_userstring_display_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('str-builtin', lambda: str(u), 'abé'),
+    ('repr-builtin', lambda: repr(u), "'abé'"),
+    ('str-method', lambda: u.__str__(), 'abé'),
+    ('repr-method', lambda: u.__repr__(), "'abé'"),
+    ('str-type-method', lambda: UserString.__str__(u), 'abé'),
+    ('repr-type-method', lambda: UserString.__repr__(u), "'abé'"),
+    ('str-type-keyword', lambda: UserString.__str__(self=u), 'abé'),
+    ('repr-type-keyword', lambda: UserString.__repr__(self=u), "'abé'"),
+    ('str-empty', lambda: UserString('').__str__(), ''),
+    ('repr-empty', lambda: UserString('').__repr__(), "''"),
+    ('str-bad-receiver', lambda: UserString.__str__('abc'), None),
+    ('repr-bad-receiver', lambda: UserString.__repr__('abc'), None),
+    ('str-method-extra', lambda: u.__str__(1), None),
+    ('repr-method-extra', lambda: u.__repr__(1), None),
+    ('str-method-badkw', lambda: u.__str__(x=1), None),
+    ('repr-method-badkw', lambda: u.__repr__(x=1), None),
+    ('str-method-multi', lambda: u.__str__(self=u), None),
+    ('repr-method-multi', lambda: u.__repr__(self=u), None),
+    ('str-type-noargs', lambda: UserString.__str__(), None),
+    ('repr-type-noargs', lambda: UserString.__repr__(), None),
+]
+for label, expr, expected in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), value == expected)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+        &[
+            "str-builtin str 'abé' True",
+            "repr-builtin str \"'abé'\" True",
+            "str-method str 'abé' True",
+            "repr-method str \"'abé'\" True",
+            "str-type-method str 'abé' True",
+            "repr-type-method str \"'abé'\" True",
+            "str-type-keyword str 'abé' True",
+            "repr-type-keyword str \"'abé'\" True",
+            "str-empty str '' True",
+            "repr-empty str \"''\" True",
+            "str-bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "repr-bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "str-method-extra TypeError UserString.__str__() takes 1 positional argument but 2 were given ('UserString.__str__() takes 1 positional argument but 2 were given',)",
+            "repr-method-extra TypeError UserString.__repr__() takes 1 positional argument but 2 were given ('UserString.__repr__() takes 1 positional argument but 2 were given',)",
+            "str-method-badkw TypeError UserString.__str__() got an unexpected keyword argument 'x' (\"UserString.__str__() got an unexpected keyword argument 'x'\",)",
+            "repr-method-badkw TypeError UserString.__repr__() got an unexpected keyword argument 'x' (\"UserString.__repr__() got an unexpected keyword argument 'x'\",)",
+            "str-method-multi TypeError UserString.__str__() got multiple values for argument 'self' (\"UserString.__str__() got multiple values for argument 'self'\",)",
+            "repr-method-multi TypeError UserString.__repr__() got multiple values for argument 'self' (\"UserString.__repr__() got multiple values for argument 'self'\",)",
+            "str-type-noargs TypeError UserString.__str__() missing 1 required positional argument: 'self' (\"UserString.__str__() missing 1 required positional argument: 'self'\",)",
+            "repr-type-noargs TypeError UserString.__repr__() missing 1 required positional argument: 'self' (\"UserString.__repr__() missing 1 required positional argument: 'self'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

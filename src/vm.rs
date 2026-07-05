@@ -35486,6 +35486,45 @@ impl Vm {
     ) -> Result<Value, String> {
         let method = method_display_name(name);
         match method {
+            "__repr__" | "__str__" => {
+                if args.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() takes 1 positional argument but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                for (name, value) in keywords {
+                    if name != "self" {
+                        return Err(format!(
+                            "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if receiver.is_some() {
+                        return Err(format!(
+                            "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                        ));
+                    }
+                    receiver = Some(value);
+                }
+                let Some(receiver) = receiver else {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+                    ));
+                };
+                let Value::UserString { data, .. } = receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(&receiver)
+                    ));
+                };
+                let text = if method == "__repr__" {
+                    repr_string(&data.borrow())
+                } else {
+                    data.borrow().clone()
+                };
+                Ok(Value::String(text))
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56077,7 +56116,7 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
 fn is_builtin_user_string_type_method(name: &str) -> bool {
     matches!(
         name,
-        "__contains__" | "__getitem__" | "__iter__" | "__len__"
+        "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__str__"
     )
 }
 
@@ -61695,7 +61734,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
-                "__contains__" | "__getitem__" | "__iter__" | "__len__" => Ok(Value::BoundMethod {
+                "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__repr__"
+                | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),

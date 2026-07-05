@@ -25943,6 +25943,44 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_display_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString display method behavior",
+        name: "collections-userstring-display-methods",
+        source: r#"from collections import UserString
+u = UserString('abé')
+cases = [
+    ('str-builtin', lambda: str(u), 'abé'),
+    ('repr-builtin', lambda: repr(u), "'abé'"),
+    ('str-method', lambda: u.__str__(), 'abé'),
+    ('repr-method', lambda: u.__repr__(), "'abé'"),
+    ('str-type-method', lambda: UserString.__str__(u), 'abé'),
+    ('repr-type-method', lambda: UserString.__repr__(u), "'abé'"),
+    ('str-type-keyword', lambda: UserString.__str__(self=u), 'abé'),
+    ('repr-type-keyword', lambda: UserString.__repr__(self=u), "'abé'"),
+    ('str-empty', lambda: UserString('').__str__(), ''),
+    ('repr-empty', lambda: UserString('').__repr__(), "''"),
+    ('str-bad-receiver', lambda: UserString.__str__('abc'), None),
+    ('repr-bad-receiver', lambda: UserString.__repr__('abc'), None),
+    ('str-method-extra', lambda: u.__str__(1), None),
+    ('repr-method-extra', lambda: u.__repr__(1), None),
+    ('str-method-badkw', lambda: u.__str__(x=1), None),
+    ('repr-method-badkw', lambda: u.__repr__(x=1), None),
+    ('str-method-multi', lambda: u.__str__(self=u), None),
+    ('repr-method-multi', lambda: u.__repr__(self=u), None),
+    ('str-type-noargs', lambda: UserString.__str__(), None),
+    ('repr-type-noargs', lambda: UserString.__repr__(), None),
+]
+for label, expr, expected in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), value == expected)
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

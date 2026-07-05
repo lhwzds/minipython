@@ -26519,6 +26519,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_contains_subset",
             "cpython_collections_userstring_iter_subset",
             "cpython_collections_userstring_len_method_subset",
+            "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29020,7 +29021,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserString.__contains__() missing 1 required positional argument: 'char'",
         "UserString.__contains__() got multiple values for argument 'char'",
         "fn is_builtin_user_string_type_method(name: &str) -> bool",
-        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29106,7 +29107,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Sequence.__iter__() got multiple values for argument 'self'",
         "Sequence.__iter__() got an unexpected keyword argument",
         "fn is_builtin_user_string_type_method(name: &str) -> bool",
-        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29189,7 +29190,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "i64::try_from(data.borrow().chars().count())",
         "Ok(Value::Number(len))",
         "fn is_builtin_user_string_type_method(name: &str) -> bool",
-        "\"__contains__\" | \"__getitem__\" | \"__iter__\" | \"__len__\" => Ok(Value::BoundMethod",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -29210,6 +29211,113 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString len-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_display_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString display methods"
+    );
+    let userstring_display_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_display_methods_diff_subset",
+    );
+    let userstring_display_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_display_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "str(u)",
+        "repr(u)",
+        "u.__str__()",
+        "u.__repr__()",
+        "UserString.__str__(u)",
+        "UserString.__repr__(u)",
+        "UserString.__str__(self=u)",
+        "UserString.__repr__(self=u)",
+        "UserString('').__str__()",
+        "UserString('').__repr__()",
+        "UserString.__str__('abc')",
+        "UserString.__repr__('abc')",
+        "u.__str__(1)",
+        "u.__repr__(1)",
+        "u.__str__(x=1)",
+        "u.__repr__(x=1)",
+        "u.__str__(self=u)",
+        "u.__repr__(self=u)",
+        "UserString.__str__()",
+        "UserString.__repr__()",
+    ] {
+        assert!(
+            userstring_display_methods_diff_body.contains(required)
+                && userstring_display_methods_subset_body.contains(required),
+            "UserString display-methods diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"str-builtin str 'abé' True\"",
+        "\"repr-builtin str \\\"'abé'\\\" True\"",
+        "\"str-method str 'abé' True\"",
+        "\"repr-method str \\\"'abé'\\\" True\"",
+        "\"str-type-method str 'abé' True\"",
+        "\"repr-type-method str \\\"'abé'\\\" True\"",
+        "\"str-type-keyword str 'abé' True\"",
+        "\"repr-type-keyword str \\\"'abé'\\\" True\"",
+        "\"str-empty str '' True\"",
+        "\"repr-empty str \\\"''\\\" True\"",
+        "\"str-bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"repr-bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"str-method-extra TypeError UserString.__str__() takes 1 positional argument but 2 were given",
+        "\"repr-method-extra TypeError UserString.__repr__() takes 1 positional argument but 2 were given",
+        "\"str-method-badkw TypeError UserString.__str__() got an unexpected keyword argument 'x'",
+        "\"repr-method-badkw TypeError UserString.__repr__() got an unexpected keyword argument 'x'",
+        "\"str-method-multi TypeError UserString.__str__() got multiple values for argument 'self'",
+        "\"repr-method-multi TypeError UserString.__repr__() got multiple values for argument 'self'",
+        "\"str-type-noargs TypeError UserString.__str__() missing 1 required positional argument: 'self'",
+        "\"repr-type-noargs TypeError UserString.__repr__() missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            userstring_display_methods_subset_body.contains(required),
+            "UserString display-methods subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "UserString.{method}() takes 1 positional argument but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "method == \"__repr__\"",
+        "repr_string(&data.borrow())",
+        "data.borrow().clone()",
+        "Ok(Value::String(text))",
+        "fn is_builtin_user_string_type_method(name: &str) -> bool",
+        "\"__repr__\"",
+        "\"__str__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString display-methods implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_display_methods_subset",
+            "cpython_collections_userstring_display_methods_diff_subset",
+            "`UserString.__str__`",
+            "`UserString.__repr__`",
+            "`str()`",
+            "`repr()`",
+            "`self=` keyword binding",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString display-methods docs must contain `{required}`"
             );
         }
     }
