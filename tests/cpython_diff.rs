@@ -26189,6 +26189,41 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_getattribute_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__getattribute__ behavior",
+        name: "collections-userstring-inherited-getattribute-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        if value is UserString:
+            print(label, 'class', value.__name__, value is UserString)
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getattribute__'), hasattr(u, '__getattribute__'), '__getattribute__' in dir(UserString), '__getattribute__' in dir(u), UserString.__getattribute__ is object.__getattribute__, type(UserString.__getattribute__).__name__, type(u.__getattribute__).__name__)
+for label, expr in [
+    ('bound-data', lambda: u.__getattribute__('data')),
+    ('object-data', lambda: object.__getattribute__(u, 'data')),
+    ('type-data', lambda: UserString.__getattribute__(u, 'data')),
+    ('bound-class', lambda: u.__getattribute__('__class__')),
+    ('bound-missing', lambda: u.__getattribute__('missing')),
+    ('bad-name', lambda: u.__getattribute__(1)),
+    ('bad-receiver', lambda: UserString.__getattribute__('abé', 'data')),
+    ('noargs', lambda: UserString.__getattribute__()),
+    ('self-only', lambda: UserString.__getattribute__(u)),
+    ('extra', lambda: UserString.__getattribute__(u, 'data', 1)),
+    ('badkw', lambda: UserString.__getattribute__(u, name='data')),
+    ('keyword-only', lambda: UserString.__getattribute__(self=u, name='data')),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_inherited_sizeof_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString inherited object.__sizeof__ behavior",

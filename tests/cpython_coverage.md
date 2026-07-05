@@ -250,6 +250,16 @@ Recent runtime migration notes:
   rejection, str-subclass format specs, and CPython `object.__format__`
   TypeError text, without widening host IO, network, process, C ABI, or full
   stdlib scope.
+- `cpython_collections_userstring_inherited_getattribute_method_subset`, backed
+  by `cpython_collections_userstring_inherited_getattribute_method_diff_subset`,
+  now pins `UserString.__getattribute__` as inherited `object.__getattribute__`,
+  including type and instance visibility,
+  `dir(UserString)` discoverability,
+  `UserString.__getattribute__ is object.__getattribute__`, `wrapper_descriptor` and `method-wrapper`
+  metadata, `.data` lookup, `__class__` lookup, missing attribute and bad receiver errors,
+  and CPython `object.__getattribute__` TypeError text,
+  without promoting ABCMeta metaclass parity or object-layout internals into sandbox scope
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_inherited_sizeof_method_subset`, backed by
   `cpython_collections_userstring_inherited_sizeof_method_diff_subset`, now
   pins `UserString.__sizeof__` as inherited `object.__sizeof__`, including
@@ -1583,6 +1593,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_complex_method_diff_subset`,
   `cpython_collections_userstring_getnewargs_method_diff_subset`,
   `cpython_collections_userstring_dunder_format_method_diff_subset`,
+  `cpython_collections_userstring_inherited_getattribute_method_diff_subset`,
   `cpython_collections_userstring_inherited_sizeof_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
@@ -7512,6 +7523,17 @@ without adding general custom encoder/decoder class support.
   calls, bad receiver support, non-empty format-spec rejection, str-subclass
   format specs, and CPython `object.__format__` TypeError text, without
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_getattribute_method_diff_subset` and
+  `cpython_collections_userstring_inherited_getattribute_method_subset`,
+  covering `UserString.__getattribute__` as inherited `object.__getattribute__`,
+  type and instance visibility,
+  `dir(UserString)` discoverability,
+  `UserString.__getattribute__ is object.__getattribute__`, `wrapper_descriptor` and `method-wrapper`
+  metadata, `.data` lookup, `__class__` lookup, missing attribute and bad receiver errors,
+  and CPython `object.__getattribute__` TypeError text,
+  without promoting ABCMeta metaclass parity or object-layout internals into sandbox scope
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_inherited_sizeof_method_diff_subset` and
   `cpython_collections_userstring_inherited_sizeof_method_subset`, covering

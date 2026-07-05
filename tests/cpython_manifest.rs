@@ -26526,6 +26526,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_complex_method_subset",
             "cpython_collections_userstring_getnewargs_method_subset",
             "cpython_collections_userstring_dunder_format_method_subset",
+            "cpython_collections_userstring_inherited_getattribute_method_subset",
             "cpython_collections_userstring_inherited_sizeof_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
@@ -29938,6 +29939,107 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString format-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_getattribute_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __getattribute__"
+    );
+    let userstring_getattribute_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_getattribute_method_diff_subset",
+    );
+    let userstring_getattribute_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_getattribute_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hasattr(UserString, '__getattribute__')",
+        "hasattr(u, '__getattribute__')",
+        "'__getattribute__' in dir(UserString)",
+        "'__getattribute__' in dir(u)",
+        "UserString.__getattribute__ is object.__getattribute__",
+        "type(UserString.__getattribute__).__name__",
+        "type(u.__getattribute__).__name__",
+        "u.__getattribute__('data')",
+        "object.__getattribute__(u, 'data')",
+        "UserString.__getattribute__(u, 'data')",
+        "u.__getattribute__('__class__')",
+        "u.__getattribute__('missing')",
+        "u.__getattribute__(1)",
+        "UserString.__getattribute__('abé', 'data')",
+        "UserString.__getattribute__()",
+        "UserString.__getattribute__(u)",
+        "UserString.__getattribute__(u, 'data', 1)",
+        "UserString.__getattribute__(u, name='data')",
+        "UserString.__getattribute__(self=u, name='data')",
+    ] {
+        assert!(
+            userstring_getattribute_method_diff_body.contains(required)
+                && userstring_getattribute_method_subset_body.contains(required),
+            "UserString getattribute-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True wrapper_descriptor method-wrapper\"",
+        "\"bound-data str 'abé'\"",
+        "\"object-data str 'abé'\"",
+        "\"type-data str 'abé'\"",
+        "\"bound-class class UserString True\"",
+        "\"bound-missing AttributeError 'UserString' object has no attribute 'missing'",
+        "\"bad-name TypeError attribute name must be string, not 'int'",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"noargs TypeError descriptor '__getattribute__' of 'object' object needs an argument",
+        "\"self-only TypeError expected 1 argument, got 0",
+        "\"extra TypeError expected 1 argument, got 2",
+        "\"badkw TypeError wrapper __getattribute__() takes no keyword arguments",
+        "\"keyword-only TypeError descriptor '__getattribute__' of 'object' object needs an argument",
+    ] {
+        assert!(
+            userstring_getattribute_method_subset_body.contains(required),
+            "UserString getattribute-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__getattribute__\".to_string())",
+        "function_name == \"UserString\" && name == \"__getattribute__\"",
+        "Ok(Value::Builtin(\"object.__getattribute__\".to_string()))",
+        "object_getattribute_bound_method(Value::UserString",
+        "Value::Builtin(name) if name == \"object.__getattribute__\"",
+        "self.call_object_getattribute(args, keywords)",
+        "fn call_object_getattribute(",
+        "\"TypeError: descriptor '__getattribute__' of 'object' object needs an argument\"",
+        "\"TypeError: expected 1 argument, got {}\"",
+        "\"TypeError: wrapper __getattribute__() takes no keyword arguments\"",
+        "\"AttributeError: 'UserString' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString getattribute-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_getattribute_method_subset",
+            "cpython_collections_userstring_inherited_getattribute_method_diff_subset",
+            "`UserString.__getattribute__`",
+            "inherited `object.__getattribute__`",
+            "`UserString.__getattribute__ is object.__getattribute__`",
+            "wrapper_descriptor",
+            "method-wrapper",
+            "`.data` lookup",
+            "missing attribute and bad receiver errors",
+            "CPython `object.__getattribute__` TypeError text",
+            "without promoting ABCMeta metaclass parity or object-layout internals into sandbox scope",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString getattribute-method docs must contain `{required}`"
             );
         }
     }

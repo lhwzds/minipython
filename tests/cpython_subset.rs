@@ -69969,6 +69969,57 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString inherited object.__getattribute__ method.
+// This pins descriptor binding and attribute lookup behavior without promoting
+// ABCMeta metaclass parity or object-layout internals into sandbox scope.
+#[test]
+fn cpython_collections_userstring_inherited_getattribute_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        if value is UserString:
+            print(label, 'class', value.__name__, value is UserString)
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getattribute__'), hasattr(u, '__getattribute__'), '__getattribute__' in dir(UserString), '__getattribute__' in dir(u), UserString.__getattribute__ is object.__getattribute__, type(UserString.__getattribute__).__name__, type(u.__getattribute__).__name__)
+for label, expr in [
+    ('bound-data', lambda: u.__getattribute__('data')),
+    ('object-data', lambda: object.__getattribute__(u, 'data')),
+    ('type-data', lambda: UserString.__getattribute__(u, 'data')),
+    ('bound-class', lambda: u.__getattribute__('__class__')),
+    ('bound-missing', lambda: u.__getattribute__('missing')),
+    ('bad-name', lambda: u.__getattribute__(1)),
+    ('bad-receiver', lambda: UserString.__getattribute__('abé', 'data')),
+    ('noargs', lambda: UserString.__getattribute__()),
+    ('self-only', lambda: UserString.__getattribute__(u)),
+    ('extra', lambda: UserString.__getattribute__(u, 'data', 1)),
+    ('badkw', lambda: UserString.__getattribute__(u, name='data')),
+    ('keyword-only', lambda: UserString.__getattribute__(self=u, name='data')),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True wrapper_descriptor method-wrapper",
+            "bound-data str 'abé'",
+            "object-data str 'abé'",
+            "type-data str 'abé'",
+            "bound-class class UserString True",
+            "bound-missing AttributeError 'UserString' object has no attribute 'missing' (\"'UserString' object has no attribute 'missing'\",)",
+            "bad-name TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "noargs TypeError descriptor '__getattribute__' of 'object' object needs an argument (\"descriptor '__getattribute__' of 'object' object needs an argument\",)",
+            "self-only TypeError expected 1 argument, got 0 ('expected 1 argument, got 0',)",
+            "extra TypeError expected 1 argument, got 2 ('expected 1 argument, got 2',)",
+            "badkw TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
+            "keyword-only TypeError descriptor '__getattribute__' of 'object' object needs an argument (\"descriptor '__getattribute__' of 'object' object needs an argument\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString inherited object.__sizeof__ method.
 // This pins descriptor binding and TypeError text without depending on
 // CPython allocation sizes or object-layout internals.

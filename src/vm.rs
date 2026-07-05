@@ -10087,14 +10087,7 @@ impl Vm {
                 self.call_object_str(args)
             }
             Value::Builtin(name) if name == "object.__getattribute__" => {
-                if !keywords.is_empty() {
-                    return Err(
-                        "TypeError: wrapper __getattribute__() takes no keyword arguments"
-                            .to_string(),
-                    );
-                }
-
-                self.call_object_getattribute(args)
+                self.call_object_getattribute(args, keywords)
             }
             Value::Builtin(name) if name == "object.__getstate__" => {
                 self.call_object_getstate(args, keywords)
@@ -16852,11 +16845,32 @@ impl Vm {
         }
     }
 
-    fn call_object_getattribute(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_object_getattribute(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: descriptor '__getattribute__' of 'object' object needs an argument"
+                        .to_string(),
+                );
+            }
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
         let [object, name] = args.as_slice() else {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: descriptor '__getattribute__' of 'object' object needs an argument"
+                        .to_string(),
+                );
+            }
             return Err(format!(
-                "object.__getattribute__ expected 2 arguments, got {}",
-                args.len()
+                "TypeError: expected 1 argument, got {}",
+                args.len().saturating_sub(1)
             ));
         };
 
@@ -16940,7 +16954,7 @@ impl Vm {
             ));
         };
 
-        self.call_object_getattribute(args)
+        self.call_object_getattribute(args, Vec::new())
     }
 
     fn call_default_dict_init(
@@ -54877,6 +54891,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__complex__".to_string());
         names.push("__float__".to_string());
         names.push("__format__".to_string());
+        names.push("__getattribute__".to_string());
         names.push("__getnewargs__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
@@ -62833,6 +62848,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserString { data, attrs }),
                     identity: Rc::new(()),
                 }),
+                "__getattribute__" => Ok(object_getattribute_bound_method(Value::UserString {
+                    data,
+                    attrs,
+                })),
                 "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
@@ -62881,7 +62900,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     })
                 }
                 _ => Err(format!(
-                    "AttributeError: UserString has no attribute '{name}'"
+                    "AttributeError: 'UserString' object has no attribute '{name}'"
                 )),
             }
         }
@@ -64784,6 +64803,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserString" && name == "__getattribute__" =>
+        {
+            Ok(Value::Builtin("object.__getattribute__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__sizeof__" => {
             Ok(Value::Builtin("object.__sizeof__".to_string()))
