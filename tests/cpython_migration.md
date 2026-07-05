@@ -155,8 +155,9 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_ordered_dict_class_getitem_generic_alias_subset` and
   `cpython_ordered_dict_class_getitem_generic_alias_diff_subset` for
   OrderedDict `__class_getitem__`, `OrderedDict.__class_getitem__(int) == OrderedDict[int]`,
-  exact OrderedDict instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full OrderedDict runtime surface,
+  exact OrderedDict instance lookup, inherited OrderedDict subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation,
+  without adding full OrderedDict runtime surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_collections_counter_class_getitem_generic_alias_subset` and
   `cpython_collections_counter_class_getitem_generic_alias_diff_subset` for
@@ -14865,7 +14866,7 @@ Completed in the CPython collections manifest expansion pass:
   `copy()` preserving `OrderedDict`, type/instance `fromkeys()`,
   OrderedDict `__class_getitem__`,
   `OrderedDict.__class_getitem__(int) == OrderedDict[int]`, exact OrderedDict instance lookup,
-  GenericAlias origin/args, keyword and arity error propagation,
+  inherited OrderedDict subclass lookup, GenericAlias origin/args, keyword and arity error propagation,
   `popitem(last=...)`, direct equality methods, and mapping union
   operators that preserve `OrderedDict` result type/order and in-place
   identity.

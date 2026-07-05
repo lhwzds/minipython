@@ -143,8 +143,9 @@ Recent runtime migration notes:
 - `cpython_ordered_dict_class_getitem_generic_alias_subset`, backed by
   `cpython_ordered_dict_class_getitem_generic_alias_diff_subset`, now pins
   OrderedDict `__class_getitem__`, `OrderedDict.__class_getitem__(int) == OrderedDict[int]`,
-  exact OrderedDict instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full OrderedDict runtime surface,
+  exact OrderedDict instance lookup, inherited OrderedDict subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation,
+  without adding full OrderedDict runtime surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_counter_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_counter_class_getitem_generic_alias_diff_subset`, now pins
@@ -7311,8 +7312,8 @@ without adding general custom encoder/decoder class support.
   direct `__delitem__()` and subscript deletion preserving `KeyError.args[0]`,
   `clear()`, and OrderedDict `__class_getitem__` with
   `OrderedDict.__class_getitem__(int) == OrderedDict[int]`, exact OrderedDict
-  instance lookup, GenericAlias origin/args, and keyword and arity error
-  propagation while preserving ordered storage.
+  instance lookup, inherited OrderedDict subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation while preserving ordered storage.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by
   `cpython_program_output_parity_smoke_diff_subset` through the
