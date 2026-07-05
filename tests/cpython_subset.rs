@@ -28665,6 +28665,42 @@ fn cpython_memoryview_instance_doc_attribute_subset() {
     );
 }
 
+// Adapted from CPython public memoryview __class_getitem__ behavior. This pins
+// GenericAlias origin/args, direct type calls, and exact instance lookup without
+// adding full GenericAlias repr parity or classmethod descriptor metadata.
+#[test]
+fn cpython_memoryview_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"typ = memoryview
+inst = memoryview(b'ab')
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "subscript-int tuple ('GenericAlias', 'memoryview[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'memoryview[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('memoryview[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "call-noargs TypeError memoryview.__class_getitem__() takes exactly one argument (0 given) ('memoryview.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError memoryview.__class_getitem__() takes exactly one argument (2 given) ('memoryview.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError memoryview.__class_getitem__() takes no keyword arguments ('memoryview.__class_getitem__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Mirrors CPython's inherited public `object.__getstate__` behavior for
 // memoryview instances without promoting pickle support or CPython buffer
 // lifetime internals.

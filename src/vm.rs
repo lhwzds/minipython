@@ -53154,6 +53154,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "union",
         ],
         "memoryview" => &[
+            "__class_getitem__",
             "c_contiguous",
             "contiguous",
             "count",
@@ -61187,6 +61188,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }),
         Value::ByteArray(_) => Err(missing_type_attribute_error("bytearray", name)),
         Value::MemoryView(view) => match name {
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "memoryview".to_string(),
+            ))),
             "__doc__" => Ok(Value::String(
                 builtins_module_type_doc("memoryview")
                     .expect("memoryview builtin type doc exists")
@@ -63033,6 +63037,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin("tuple.__new__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
+            if function_name == "memoryview" && name == "__class_getitem__" =>
+        {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__str__" => {
