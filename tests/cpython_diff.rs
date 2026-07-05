@@ -26722,6 +26722,41 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_splitlines_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString splitlines method behavior",
+        name: "collections-userstring-splitlines-method",
+        source: r#"from collections import UserString
+u = UserString('a\nb\r\nc\rd\v e\f f\x1c g\x1d h\x1e i\x85 j\u2028 k\u2029')
+methods = ['splitlines']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        parts = [(item[:-1], ord(item[-1]) if item else None) for item in value]
+        return type(value).__name__ + ':' + repr(parts) + ':' + repr([type(item).__name__ for item in value]) + ':' + repr([getattr(item, 'data', None) for item in value])
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('default', ()), ('false', (False,)), ('true', (True,)), ('zero', (0,)), ('one', (1,)), ('none', (None,)), ('string', ('x',))]:
+    print('value', label, show(lambda spec=spec: u.splitlines(*spec)))
+for text in ['', '\n', 'a\n']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.splitlines()), show(lambda v=v: v.splitlines(True)))
+print('keywords', show(lambda: u.splitlines(keepends=True)), show(lambda: UserString.splitlines(self=u, keepends=True)), show(lambda: UserString.splitlines(self=u)))
+print('type', show(lambda: UserString.splitlines(u, True)))
+print('errors', [
+    show(lambda: UserString.splitlines('a\nb', True)),
+    show(lambda: u.splitlines(True, False)),
+    show(lambda: u.splitlines(True, keepends=False)),
+    show(lambda: u.splitlines(self=u)),
+    show(lambda: UserString.splitlines()),
+    show(lambda: UserString.splitlines(keepends=True)),
+    show(lambda: UserString.splitlines(receiver=u, keepends=True)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

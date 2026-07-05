@@ -70923,6 +70923,56 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString splitlines method.
+#[test]
+fn cpython_collections_userstring_splitlines_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('a\nb\r\nc\rd\v e\f f\x1c g\x1d h\x1e i\x85 j\u2028 k\u2029')
+methods = ['splitlines']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        parts = [(item[:-1], ord(item[-1]) if item else None) for item in value]
+        return type(value).__name__ + ':' + repr(parts) + ':' + repr([type(item).__name__ for item in value]) + ':' + repr([getattr(item, 'data', None) for item in value])
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('default', ()), ('false', (False,)), ('true', (True,)), ('zero', (0,)), ('one', (1,)), ('none', (None,)), ('string', ('x',))]:
+    print('value', label, show(lambda spec=spec: u.splitlines(*spec)))
+for text in ['', '\n', 'a\n']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.splitlines()), show(lambda v=v: v.splitlines(True)))
+print('keywords', show(lambda: u.splitlines(keepends=True)), show(lambda: UserString.splitlines(self=u, keepends=True)), show(lambda: UserString.splitlines(self=u)))
+print('type', show(lambda: UserString.splitlines(u, True)))
+print('errors', [
+    show(lambda: UserString.splitlines('a\nb', True)),
+    show(lambda: u.splitlines(True, False)),
+    show(lambda: u.splitlines(True, keepends=False)),
+    show(lambda: u.splitlines(self=u)),
+    show(lambda: UserString.splitlines()),
+    show(lambda: UserString.splitlines(keepends=True)),
+    show(lambda: UserString.splitlines(receiver=u, keepends=True)),
+])"#,
+        &[
+            "visible [('splitlines', True, True)]",
+            "value default list:[('', 97), ('', 98), ('', 99), ('', 100), (' ', 101), (' ', 102), (' ', 103), (' ', 104), (' ', 105), (' ', 106), (' ', 107)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]",
+            "value false list:[('', 97), ('', 98), ('', 99), ('', 100), (' ', 101), (' ', 102), (' ', 103), (' ', 104), (' ', 105), (' ', 106), (' ', 107)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]",
+            r#"value true list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]"#,
+            "value zero list:[('', 97), ('', 98), ('', 99), ('', 100), (' ', 101), (' ', 102), (' ', 103), (' ', 104), (' ', 105), (' ', 106), (' ', 107)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]",
+            r#"value one list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]"#,
+            "value none list:[('', 97), ('', 98), ('', 99), ('', 100), (' ', 101), (' ', 102), (' ', 103), (' ', 104), (' ', 105), (' ', 106), (' ', 107)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]",
+            r#"value string list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]"#,
+            "text '' list:[]:[]:[] list:[]:[]:[]",
+            r#"text '\n' list:[('', None)]:['str']:[None] list:[('', 10)]:['str']:[None]"#,
+            r#"text 'a\n' list:[('', 97)]:['str']:[None] list:[('a', 10)]:['str']:[None]"#,
+            r#"keywords list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None] list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None] list:[('', 97), ('', 98), ('', 99), ('', 100), (' ', 101), (' ', 102), (' ', 103), (' ', 104), (' ', 105), (' ', 106), (' ', 107)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]"#,
+            r#"type list:[('a', 10), ('b\r', 10), ('c', 13), ('d', 11), (' e', 12), (' f', 28), (' g', 29), (' h', 30), (' i', 133), (' j', 8232), (' k', 8233)]:['str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str', 'str']:[None, None, None, None, None, None, None, None, None, None, None]"#,
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", 'TypeError:UserString.splitlines() takes from 1 to 2 positional arguments but 3 were given', "TypeError:UserString.splitlines() got multiple values for argument 'keepends'", "TypeError:UserString.splitlines() got multiple values for argument 'self'", "TypeError:UserString.splitlines() missing 1 required positional argument: 'self'", "TypeError:UserString.splitlines() missing 1 required positional argument: 'self'", "TypeError:UserString.splitlines() got an unexpected keyword argument 'receiver'"]"#,
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

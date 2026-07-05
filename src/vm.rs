@@ -35889,6 +35889,11 @@ impl Vm {
                 let (receiver, sep) = user_string_partition_arguments(method, &args, keywords)?;
                 user_string_partition_value(&receiver, &sep, method == "partition", method)
             }
+            "splitlines" => {
+                let (receiver, keepends) =
+                    user_string_splitlines_arguments(method, &args, keywords)?;
+                self.user_string_splitlines_value(&receiver, keepends)
+            }
             "zfill" => {
                 let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
                 self.user_string_zfill_value(&receiver, width)
@@ -36100,6 +36105,28 @@ impl Vm {
         let width = user_string_zfill_width(width)?;
         let text = data.borrow();
         user_string_value(string_zfill_text(&text, width))
+    }
+
+    fn user_string_splitlines_value(
+        &mut self,
+        receiver: &Value,
+        keepends: Option<Value>,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let keepends = match keepends {
+            Some(value) => is_truthy(&value)?,
+            None => false,
+        };
+        let lines = string_splitlines(&data.borrow(), keepends)
+            .into_iter()
+            .map(Value::String)
+            .collect();
+        Ok(list_value(lines))
     }
 
     fn user_string_concat_value(
@@ -56690,6 +56717,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "removesuffix"
             | "partition"
             | "rpartition"
+            | "splitlines"
             | "zfill"
             | "__mul__"
             | "__repr__"
@@ -62334,6 +62362,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "strip" | "lstrip" | "rstrip"
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
+                | "splitlines"
                 | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -90986,6 +91015,52 @@ fn user_string_zfill_arguments(
         ));
     };
     Ok((receiver, width))
+}
+
+fn user_string_splitlines_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Option<Value>), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 1 to 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut keepends = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "keepends" => {
+                if keepends.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'keepends'"
+                    ));
+                }
+                keepends = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let Some(receiver) = receiver else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        ));
+    };
+    Ok((receiver, keepends))
 }
 
 fn user_string_zfill_width(width: Value) -> Result<usize, String> {

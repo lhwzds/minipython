@@ -26535,6 +26535,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_remove_affix_methods_subset",
             "cpython_collections_userstring_partition_methods_subset",
             "cpython_collections_userstring_zfill_method_subset",
+            "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -31136,6 +31137,107 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString zfill docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_splitlines_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString splitlines"
+    );
+    let userstring_splitlines_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_splitlines_method_diff_subset",
+    );
+    let userstring_splitlines_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_splitlines_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('a\\nb\\r\\nc\\rd\\v e\\f f\\x1c g\\x1d h\\x1e i\\x85 j\\u2028 k\\u2029')",
+        "methods = ['splitlines']",
+        "hasattr(UserString, name)",
+        "parts = [(item[:-1], ord(item[-1]) if item else None) for item in value]",
+        "getattr(item, 'data', None)",
+        "('default', ())",
+        "('string', ('x',))",
+        "u.splitlines(*spec)",
+        "v = UserString(text)",
+        "u.splitlines(keepends=True)",
+        "UserString.splitlines(self=u, keepends=True)",
+        "UserString.splitlines(self=u)",
+        "UserString.splitlines(u, True)",
+        "UserString.splitlines('a\\nb', True)",
+        "u.splitlines(True, False)",
+        "u.splitlines(True, keepends=False)",
+        "u.splitlines(self=u)",
+        "UserString.splitlines(receiver=u, keepends=True)",
+    ] {
+        assert!(
+            userstring_splitlines_method_diff_body.contains(required)
+                && userstring_splitlines_method_subset_body.contains(required),
+            "UserString splitlines diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible [('splitlines', True, True)]",
+        "value default list:[('', 97), ('', 98), ('', 99), ('', 100)",
+        "value true list:[('a', 10), ('b\\r', 10), ('c', 13)",
+        "(' j', 8232), (' k', 8233)",
+        "value none list:[('', 97), ('', 98), ('', 99), ('', 100)",
+        "value string list:[('a', 10), ('b\\r', 10), ('c', 13)",
+        "text '' list:[]:[]:[] list:[]:[]:[]",
+        "text '\\n' list:[('', None)]:['str']:[None] list:[('', 10)]:['str']:[None]",
+        "text 'a\\n' list:[('', 97)]:['str']:[None] list:[('a', 10)]:['str']:[None]",
+        "keywords list:[('a', 10), ('b\\r', 10), ('c', 13)",
+        "type list:[('a', 10), ('b\\r', 10), ('c', 13)",
+        "AttributeError:'str' object has no attribute 'data'",
+        "TypeError:UserString.splitlines() takes from 1 to 2 positional arguments but 3 were given",
+        "TypeError:UserString.splitlines() got multiple values for argument 'keepends'",
+        "TypeError:UserString.splitlines() got multiple values for argument 'self'",
+        "TypeError:UserString.splitlines() missing 1 required positional argument: 'self'",
+        "TypeError:UserString.splitlines() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_splitlines_method_subset_body.contains(required),
+            "UserString splitlines subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"splitlines\" => {",
+        "fn user_string_splitlines_value(",
+        "fn user_string_splitlines_arguments(",
+        "user_string_splitlines_arguments(method, &args, keywords)",
+        "self.user_string_splitlines_value(&receiver, keepends)",
+        "Some(value) => is_truthy(&value)?",
+        "string_splitlines(&data.borrow(), keepends)",
+        "map(Value::String)",
+        "Ok(list_value(lines))",
+        "UserString.{method}() takes from 1 to 2 positional arguments",
+        "got multiple values for argument 'keepends'",
+        "missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString splitlines implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_splitlines_method_subset",
+            "cpython_collections_userstring_splitlines_method_diff_subset",
+            "`UserString.splitlines`",
+            "ordinary `list[str]` result values",
+            "ASCII and Unicode line-boundary handling",
+            "`keepends` truthiness and keyword binding",
+            "empty and trailing-line behavior",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString splitlines docs must contain `{required}`"
             );
         }
     }
