@@ -26514,6 +26514,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
+            "cpython_collections_userstring_basic_construction_subset",
+            "cpython_collections_userstring_getitem_slice_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -28836,6 +28838,104 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString basic-construction docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_getitem_slice_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString getitem/slice"
+    );
+    let userstring_getitem_slice_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_getitem_slice_diff_subset",
+    );
+    let userstring_getitem_slice_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_getitem_slice_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "def __index__(self):",
+        "u[0]",
+        "u[-1]",
+        "u[I()]",
+        "u[1:]",
+        "u[::-1]",
+        "u.__getitem__(1)",
+        "u.__getitem__(slice(0, 2))",
+        "UserString.__getitem__(u, 2)",
+        "u['x']",
+        "u[99]",
+        "u.__getitem__()",
+        "u.__getitem__(0, 1)",
+        "u.__getitem__(index=0)",
+        "isinstance(value, UserString)",
+        "repr(value.data)",
+    ] {
+        assert!(
+            userstring_getitem_slice_diff_body.contains(required)
+                && userstring_getitem_slice_subset_body.contains(required),
+            "UserString getitem/slice diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"index0 UserString 'a' a True 'a'\"",
+        "\"indexneg UserString 'é' é True 'é'\"",
+        "\"index-object UserString 'b' b True 'b'\"",
+        "\"slice-mid UserString 'bé' bé True 'bé'\"",
+        "\"slice-step UserString 'éba' éba True 'éba'\"",
+        "\"method-index UserString 'b' b True 'b'\"",
+        "\"method-slice UserString 'ab' ab True 'ab'\"",
+        "\"type-method UserString 'é' é True 'é'\"",
+        "\"bad-str TypeError string indices must be integers, not 'str'",
+        "\"bad-big IndexError string index out of range",
+        "\"method-noargs TypeError UserString.__getitem__() missing 1 required positional argument: 'index'",
+        "\"method-extra TypeError UserString.__getitem__() takes 2 positional arguments but 3 were given",
+        "\"method-keyword UserString 'a' a True 'a'\"",
+    ] {
+        assert!(
+            userstring_getitem_slice_subset_body.contains(required),
+            "UserString getitem/slice subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_value(value: String) -> Result<Value, String>",
+        "load_subscript(Value::String(data.borrow().clone()), index)?",
+        "Value::Builtin(name) if name.starts_with(\"UserString.\")",
+        "fn call_user_string_method",
+        "name != \"index\"",
+        "UserString.__getitem__() missing 1 required positional argument: 'index'",
+        "UserString.__getitem__() got multiple values for argument 'index'",
+        "is_builtin_user_string_type_method",
+        "function_name == \"UserString\" && is_builtin_user_string_type_method(name)",
+        "| Value::UserString { .. }",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString getitem/slice implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_getitem_slice_subset",
+            "cpython_collections_userstring_getitem_slice_diff_subset",
+            "`UserString` index and slice access",
+            "`UserString` wrappers",
+            "negative indexes",
+            "Unicode slicing",
+            "`__index__` dispatch",
+            "type-object",
+            "`__getitem__`",
+            "`index=` keyword binding",
+            "string-style TypeError/IndexError",
+            "paths",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString getitem/slice docs must contain `{required}`"
             );
         }
     }

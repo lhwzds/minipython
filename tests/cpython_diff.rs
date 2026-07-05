@@ -25808,6 +25808,40 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_getitem_slice_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString item and slice access behavior",
+        name: "collections-userstring-getitem-slice",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class I:
+    def __index__(self):
+        return 1
+cases = [
+    ('index0', lambda: u[0]),
+    ('indexneg', lambda: u[-1]),
+    ('index-object', lambda: u[I()]),
+    ('slice-mid', lambda: u[1:]),
+    ('slice-step', lambda: u[::-1]),
+    ('method-index', lambda: u.__getitem__(1)),
+    ('method-slice', lambda: u.__getitem__(slice(0, 2))),
+    ('type-method', lambda: UserString.__getitem__(u, 2)),
+    ('bad-str', lambda: u['x']),
+    ('bad-big', lambda: u[99]),
+    ('method-noargs', lambda: u.__getitem__()),
+    ('method-extra', lambda: u.__getitem__(0, 1)),
+    ('method-keyword', lambda: u.__getitem__(index=0)),
+]
+for label, expr in cases:
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), str(value), isinstance(value, UserString), repr(value.data))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

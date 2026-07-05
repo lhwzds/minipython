@@ -10410,6 +10410,9 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("UserList.") => {
                 self.call_user_list_method(&name, args, keywords)
             }
+            Value::Builtin(name) if name.starts_with("UserString.") => {
+                self.call_user_string_method(&name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("deque.") => {
                 self.call_deque_method(&name, args, keywords)
             }
@@ -35475,6 +35478,66 @@ impl Vm {
         self.call_list_method(&list_method, list_args, keywords)
     }
 
+    fn call_user_string_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        match method {
+            "__getitem__" => {
+                let Some((receiver, rest)) = args.split_first() else {
+                    return Err(
+                        "TypeError: UserString.__getitem__() missing 2 required positional arguments: 'self' and 'index'"
+                            .to_string(),
+                    );
+                };
+                let Value::UserString { data, .. } = receiver else {
+                    return Err(format!(
+                        "AttributeError: '{}' object has no attribute 'data'",
+                        type_name(receiver)
+                    ));
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.__getitem__() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut index = rest.first().cloned();
+                for (name, value) in keywords {
+                    if name != "index" {
+                        return Err(format!(
+                            "TypeError: UserString.__getitem__() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if index.is_some() {
+                        return Err(
+                            "TypeError: UserString.__getitem__() got multiple values for argument 'index'"
+                                .to_string(),
+                        );
+                    }
+                    index = Some(value);
+                }
+                let Some(index) = index else {
+                    return Err(
+                        "TypeError: UserString.__getitem__() missing 1 required positional argument: 'index'"
+                            .to_string(),
+                    );
+                };
+                load_subscript(
+                    Value::UserString {
+                        data: data.clone(),
+                        attrs: dict_ref_from_entries(Vec::new())?,
+                    },
+                    index,
+                )
+            }
+            _ => unreachable!("UserString method dispatch filters unsupported methods"),
+        }
+    }
+
     fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
         let items = data.borrow();
         (
@@ -55892,6 +55955,10 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
     )
 }
 
+fn is_builtin_user_string_type_method(name: &str) -> bool {
+    matches!(name, "__getitem__")
+}
+
 fn float_subclass_float(value: &Value) -> Option<Rc<f64>> {
     let Value::Instance {
         fields,
@@ -61506,6 +61573,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
+                "__getitem__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("UserString.__getitem__".to_string())),
+                    receiver: Box::new(Value::UserString { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!(
                     "AttributeError: UserString has no attribute '{name}'"
                 )),
@@ -63401,6 +63473,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && name == "__class_getitem__" =>
         {
             Ok(generic_alias_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserString" && is_builtin_user_string_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("UserString.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "UserString" && name == "__class_getitem__" =>
@@ -86122,6 +86199,7 @@ fn uses_sequence_index_protocol(value: &Value) -> bool {
             | Value::Tuple(_)
             | Value::NamedTuple { .. }
             | Value::String(_)
+            | Value::UserString { .. }
             | Value::Bytes(_)
             | Value::ByteArray(_)
             | Value::Deque { .. }
@@ -89451,6 +89529,13 @@ fn user_list_value(values: Vec<Value>) -> Result<Value, String> {
     })
 }
 
+fn user_string_value(value: String) -> Result<Value, String> {
+    Ok(Value::UserString {
+        data: Rc::new(RefCell::new(value)),
+        attrs: dict_ref_from_entries(Vec::new())?,
+    })
+}
+
 fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, String> {
     let mut values = Vec::new();
 
@@ -89486,6 +89571,15 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             let result = load_subscript(Value::List(data.clone()), index)?;
             match result {
                 Value::List(items) => Ok(Value::UserList { data: items, attrs }),
+                value => Ok(value),
+            }
+        }
+        Value::UserString { data, .. } => {
+            let result = load_subscript(Value::String(data.borrow().clone()), index)?;
+            match result {
+                Value::String(value) | Value::IdentityString { value, .. } => {
+                    user_string_value(value)
+                }
                 value => Ok(value),
             }
         }

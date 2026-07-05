@@ -178,6 +178,13 @@ Recent runtime migration notes:
   `isinstance()`, string-hash equivalence, and constructor arity/keyword
   TypeErrors, without implementing full UserString string-method proxying or
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_getitem_slice_subset`, backed by
+  `cpython_collections_userstring_getitem_slice_diff_subset`, now pins
+  `UserString` index and slice access returning `UserString` wrappers, negative
+  indexes, Unicode slicing, `__index__` dispatch, instance and type-object
+  `__getitem__`, `index=` keyword binding, and string-style TypeError/IndexError
+  paths, without implementing full UserString string-method proxying or widening
+  host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1252,6 +1259,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userstring_basic_construction_diff_subset`,
+  `cpython_collections_userstring_getitem_slice_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7076,6 +7084,13 @@ without adding general custom encoder/decoder class support.
   `bool()`, `len()`, `isinstance()`, string-hash equivalence, and constructor
   arity/keyword TypeErrors, without implementing full UserString string-method
   proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_getitem_slice_diff_subset` and
+  `cpython_collections_userstring_getitem_slice_subset`, covering `UserString`
+  index and slice access returning `UserString` wrappers, negative indexes,
+  Unicode slicing, `__index__` dispatch, instance and type-object
+  `__getitem__`, `index=` keyword binding, and string-style TypeError/IndexError
+  paths, without implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering
