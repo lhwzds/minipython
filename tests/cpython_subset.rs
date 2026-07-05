@@ -32115,6 +32115,68 @@ print('plain', repr(plain), type(plain).__name__)"#,
     );
 }
 
+// Adapted from CPython public set/frozenset __class_getitem__ behavior. This
+// pins GenericAlias origin/args, direct type calls, and instance/subclass lookup
+// without adding full GenericAlias repr parity or classmethod descriptor metadata.
+#[test]
+fn cpython_set_family_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"class S(set):
+    pass
+class F(frozenset):
+    pass
+for typ, inst, sub, subinst in [
+    (set, set([1]), S, S([1])),
+    (frozenset, frozenset([1]), F, F([1])),
+]:
+    print('TYPE', typ.__name__)
+    for label, expr in [
+        ('visible', lambda typ=typ: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+        ('subscript-int', lambda typ=typ: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+        ('call-int', lambda typ=typ: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+        ('call-pair', lambda typ=typ: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+        ('inst-exact', lambda typ=typ, inst=inst: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+        ('type-sub', lambda sub=sub: (type(sub.__class_getitem__(int)).__name__, sub.__class_getitem__(int).__origin__ is sub, sub.__class_getitem__(int).__args__)),
+        ('inst-sub', lambda sub=sub, subinst=subinst: (type(subinst.__class_getitem__(int)).__name__, subinst.__class_getitem__(int).__origin__ is sub, subinst.__class_getitem__(int).__args__)),
+        ('call-noargs', lambda typ=typ: typ.__class_getitem__()),
+        ('call-extra', lambda typ=typ: typ.__class_getitem__(int, str)),
+        ('call-keyword', lambda typ=typ: typ.__class_getitem__(item=int)),
+        ('type-sub-keyword', lambda sub=sub: sub.__class_getitem__(item=int)),
+    ]:
+        try:
+            result = expr()
+            print(label, type(result).__name__, result)
+        except Exception as error:
+            print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "TYPE set",
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "subscript-int tuple ('GenericAlias', 'set[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'set[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('set[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "type-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "call-noargs TypeError set.__class_getitem__() takes exactly one argument (0 given) ('set.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError set.__class_getitem__() takes exactly one argument (2 given) ('set.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError set.__class_getitem__() takes no keyword arguments ('set.__class_getitem__() takes no keyword arguments',)",
+            "type-sub-keyword TypeError S.__class_getitem__() takes no keyword arguments ('S.__class_getitem__() takes no keyword arguments',)",
+            "TYPE frozenset",
+            "visible tuple (True, True, 'builtin_function_or_method')",
+            "subscript-int tuple ('GenericAlias', 'frozenset[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'frozenset[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('frozenset[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "inst-exact tuple (True, True)",
+            "type-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple ('GenericAlias', True, (<class 'int'>,))",
+            "call-noargs TypeError frozenset.__class_getitem__() takes exactly one argument (0 given) ('frozenset.__class_getitem__() takes exactly one argument (0 given)',)",
+            "call-extra TypeError frozenset.__class_getitem__() takes exactly one argument (2 given) ('frozenset.__class_getitem__() takes exactly one argument (2 given)',)",
+            "call-keyword TypeError frozenset.__class_getitem__() takes no keyword arguments ('frozenset.__class_getitem__() takes no keyword arguments',)",
+            "type-sub-keyword TypeError F.__class_getitem__() takes no keyword arguments ('F.__class_getitem__() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

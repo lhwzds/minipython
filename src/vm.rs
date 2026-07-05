@@ -15032,6 +15032,8 @@ impl Vm {
                     }
                     if class_bases_include_builtin(&class_bases, "tuple")
                         || class_bases_include_builtin(&class_bases, "list")
+                        || class_bases_include_builtin(&class_bases, "set")
+                        || class_bases_include_builtin(&class_bases, "frozenset")
                     {
                         return Ok(class_getitem_bound_method(owner));
                     }
@@ -15341,6 +15343,8 @@ impl Vm {
                     }
                     if class_bases_include_builtin(&bases, "tuple")
                         || class_bases_include_builtin(&bases, "list")
+                        || class_bases_include_builtin(&bases, "set")
+                        || class_bases_include_builtin(&bases, "frozenset")
                     {
                         return Ok(class_getitem_bound_method(owner));
                     }
@@ -53117,6 +53121,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "SimpleNamespace" => &["__new__", "__replace__"],
         "set" => &[
+            "__class_getitem__",
             "__new__",
             "add",
             "clear",
@@ -53137,6 +53142,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "update",
         ],
         "frozenset" => &[
+            "__class_getitem__",
             "__new__",
             "copy",
             "difference",
@@ -61951,6 +61957,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("set builtin type doc exists")
                     .to_string(),
             )),
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "set".to_string(),
+            ))),
             "add"
             | "clear"
             | "copy"
@@ -61994,6 +62003,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("frozenset builtin type doc exists")
                     .to_string(),
             )),
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "frozenset".to_string(),
+            ))),
             "copy"
             | "difference"
             | "intersection"
@@ -63153,6 +63165,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if is_builtin_set_type_method(&function_name, name) => {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if matches!(function_name.as_str(), "set" | "frozenset")
+                && name == "__class_getitem__" =>
+        {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name)
             if function_name == "itertools.chain" && name == "from_iterable" =>

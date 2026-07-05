@@ -106,6 +106,15 @@ Recent runtime migration notes:
   pair argument normalization through the existing alias model, and keyword and arity error propagation,
   without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_set_family_class_getitem_generic_alias_subset`, backed by
+  `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
+  set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
+  `frozenset.__class_getitem__(int) == frozenset[int]`, exact set and frozenset instance lookup,
+  set and frozenset subclass class and instance origin binding,
+  `GenericAlias` origin/args, pair argument normalization
+  through the existing alias model, and keyword and arity error propagation,
+  without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

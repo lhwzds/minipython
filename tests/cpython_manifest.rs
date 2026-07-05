@@ -2234,6 +2234,132 @@ fn frozenset_new_direct_allocation_docs_cover_core_runtime() {
 }
 
 #[test]
+fn set_family_class_getitem_generic_alias_docs_cover_core_runtime() {
+    let diff_name = "cpython_set_family_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_set_family_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "set/frozenset class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "set/frozenset class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class S(set):",
+        "class F(frozenset):",
+        "(set, set([1]), S, S([1]))",
+        "(frozenset, frozenset([1]), F, F([1]))",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "sub.__class_getitem__(int)",
+        "sub.__class_getitem__(int).__origin__ is sub",
+        "subinst.__class_getitem__(int)",
+        "subinst.__class_getitem__(int).__origin__ is sub",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+        "sub.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "set/frozenset class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"TYPE set\"",
+        "\"subscript-int tuple ('GenericAlias', 'set[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'set[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('set[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"call-noargs TypeError set.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError set.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError set.__class_getitem__() takes no keyword arguments",
+        "\"type-sub-keyword TypeError S.__class_getitem__() takes no keyword arguments",
+        "\"TYPE frozenset\"",
+        "\"subscript-int tuple ('GenericAlias', 'frozenset[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'frozenset[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('frozenset[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"call-noargs TypeError frozenset.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError frozenset.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError frozenset.__class_getitem__() takes no keyword arguments",
+        "\"type-sub-keyword TypeError F.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "set/frozenset class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for (type_name, next_type_name) in [("set", "frozenset"), ("frozenset", "memoryview")] {
+        let block_start = VM_SOURCE
+            .find(&format!("\"{type_name}\" => &["))
+            .unwrap_or_else(|| panic!("{type_name} dir block must exist"));
+        let block_tail = &VM_SOURCE[block_start..];
+        let block_end = block_tail
+            .find(&format!("],\n        \"{next_type_name}\""))
+            .unwrap_or_else(|| panic!("{type_name} dir block must end before {next_type_name}"));
+        let block = &block_tail[..block_end];
+        assert!(
+            block.contains("\"__class_getitem__\""),
+            "{type_name} dir block must expose `__class_getitem__`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"type.__class_getitem__\"",
+        "fn call_type_class_getitem(",
+        "Value::Set(items) => match name",
+        "Value::FrozenSet(items) => match name",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"set\".to_string()",
+        "\"frozenset\".to_string()",
+        "matches!(function_name.as_str(), \"set\" | \"frozenset\")",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "class_bases_include_builtin(&class_bases, \"set\")",
+        "class_bases_include_builtin(&class_bases, \"frozenset\")",
+        "class_bases_include_builtin(&bases, \"set\")",
+        "class_bases_include_builtin(&bases, \"frozenset\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set/frozenset class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "set/frozenset `__class_getitem__`",
+            "`set.__class_getitem__(int) == set[int]`",
+            "`frozenset.__class_getitem__(int) == frozenset[int]`",
+            "exact set and frozenset instance lookup",
+            "set and frozenset subclass class and instance origin binding",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or full classmethod_descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "set/frozenset class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_rich_search_docs_cover_container_runtime() {
     let diff_name = "cpython_list_rich_search_diff_subset";
     let subset_name = "cpython_list_rich_search_subset";

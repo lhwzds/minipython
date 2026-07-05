@@ -18763,6 +18763,41 @@ print('plain', repr(plain), type(plain).__name__)"#,
 }
 
 #[test]
+fn cpython_set_family_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public set/frozenset __class_getitem__ GenericAlias behavior",
+        name: "set-family-class-getitem-generic-alias",
+        source: r#"class S(set):
+    pass
+class F(frozenset):
+    pass
+for typ, inst, sub, subinst in [
+    (set, set([1]), S, S([1])),
+    (frozenset, frozenset([1]), F, F([1])),
+]:
+    print('TYPE', typ.__name__)
+    for label, expr in [
+        ('visible', lambda typ=typ: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+        ('subscript-int', lambda typ=typ: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+        ('call-int', lambda typ=typ: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+        ('call-pair', lambda typ=typ: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+        ('inst-exact', lambda typ=typ, inst=inst: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+        ('type-sub', lambda sub=sub: (type(sub.__class_getitem__(int)).__name__, sub.__class_getitem__(int).__origin__ is sub, sub.__class_getitem__(int).__args__)),
+        ('inst-sub', lambda sub=sub, subinst=subinst: (type(subinst.__class_getitem__(int)).__name__, subinst.__class_getitem__(int).__origin__ is sub, subinst.__class_getitem__(int).__args__)),
+        ('call-noargs', lambda typ=typ: typ.__class_getitem__()),
+        ('call-extra', lambda typ=typ: typ.__class_getitem__(int, str)),
+        ('call-keyword', lambda typ=typ: typ.__class_getitem__(item=int)),
+        ('type-sub-keyword', lambda sub=sub: sub.__class_getitem__(item=int)),
+    ]:
+        try:
+            result = expr()
+            print(label, type(result).__name__, result)
+        except Exception as error:
+            print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_list_rich_search_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py rich comparison list search public subset",
