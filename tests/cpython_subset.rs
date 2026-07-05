@@ -70973,6 +70973,70 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString expandtabs method.
+#[test]
+fn cpython_collections_userstring_expandtabs_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('abc\rab\tdef\ng\thi')
+methods = ['expandtabs']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('default', ()), ('eight', (8,)), ('four', (4,)), ('zero', (0,)), ('negative', (-1,)), ('true', (True,)), ('false', (False,)), ('index', (Width(4),)), ('badindex', (BadIndex(),)), ('none', (None,)), ('string', ('4',)), ('huge', (2147483648,)), ('huge-neg', (-2147483649,))]:
+    print('value', label, show(lambda spec=spec: u.expandtabs(*spec)))
+for text in ['abc\r\nab\tdef\ng\thi', 'abc\r\nab\r\ndef\ng\r\nhi', ' \ta\n\tb', '\t\ta', 'a\tb\tc']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.expandtabs(4)))
+print('keywords', show(lambda: u.expandtabs(tabsize=4)), show(lambda: UserString.expandtabs(self=u, tabsize=4)), show(lambda: UserString.expandtabs(self=u)))
+print('type', show(lambda: UserString.expandtabs(u, 4)))
+print('errors', [
+    show(lambda: UserString.expandtabs('ab\tc', 4)),
+    show(lambda: u.expandtabs(4, 0)),
+    show(lambda: u.expandtabs(4, tabsize=8)),
+    show(lambda: u.expandtabs(self=u)),
+    show(lambda: UserString.expandtabs()),
+    show(lambda: UserString.expandtabs(tabsize=4)),
+    show(lambda: UserString.expandtabs(receiver=u, tabsize=4)),
+])"#,
+        &[
+            "visible [('expandtabs', True, True)]",
+            "value default UserString:'abc\\rab      def\\ng       hi':'abc\\rab      def\\ng       hi'",
+            "value eight UserString:'abc\\rab      def\\ng       hi':'abc\\rab      def\\ng       hi'",
+            "value four UserString:'abc\\rab  def\\ng   hi':'abc\\rab  def\\ng   hi'",
+            "value zero UserString:'abc\\rabdef\\nghi':'abc\\rabdef\\nghi'",
+            "value negative UserString:'abc\\rabdef\\nghi':'abc\\rabdef\\nghi'",
+            "value true UserString:'abc\\rab def\\ng hi':'abc\\rab def\\ng hi'",
+            "value false UserString:'abc\\rabdef\\nghi':'abc\\rabdef\\nghi'",
+            "index-called 4",
+            "value index UserString:'abc\\rab  def\\ng   hi':'abc\\rab  def\\ng   hi'",
+            "bad-index-called",
+            "value badindex TypeError:__index__ returned non-int (type str)",
+            "value none TypeError:'NoneType' object cannot be interpreted as an integer",
+            "value string TypeError:'str' object cannot be interpreted as an integer",
+            "value huge OverflowError:Python int too large to convert to C int",
+            "value huge-neg OverflowError:Python int too large to convert to C int",
+            "text 'abc\\r\\nab\\tdef\\ng\\thi' UserString:'abc\\r\\nab  def\\ng   hi':'abc\\r\\nab  def\\ng   hi'",
+            "text 'abc\\r\\nab\\r\\ndef\\ng\\r\\nhi' UserString:'abc\\r\\nab\\r\\ndef\\ng\\r\\nhi':'abc\\r\\nab\\r\\ndef\\ng\\r\\nhi'",
+            "text ' \\ta\\n\\tb' UserString:'    a\\n    b':'    a\\n    b'",
+            "text '\\t\\ta' UserString:'        a':'        a'",
+            "text 'a\\tb\\tc' UserString:'a   b   c':'a   b   c'",
+            "keywords UserString:'abc\\rab  def\\ng   hi':'abc\\rab  def\\ng   hi' UserString:'abc\\rab  def\\ng   hi':'abc\\rab  def\\ng   hi' UserString:'abc\\rab      def\\ng       hi':'abc\\rab      def\\ng       hi'",
+            "type UserString:'abc\\rab  def\\ng   hi':'abc\\rab  def\\ng   hi'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", 'TypeError:UserString.expandtabs() takes from 1 to 2 positional arguments but 3 were given', "TypeError:UserString.expandtabs() got multiple values for argument 'tabsize'", "TypeError:UserString.expandtabs() got multiple values for argument 'self'", "TypeError:UserString.expandtabs() missing 1 required positional argument: 'self'", "TypeError:UserString.expandtabs() missing 1 required positional argument: 'self'", "TypeError:UserString.expandtabs() got an unexpected keyword argument 'receiver'"]"#,
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

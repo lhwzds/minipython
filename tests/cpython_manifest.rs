@@ -26536,6 +26536,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_partition_methods_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
+            "cpython_collections_userstring_expandtabs_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -31238,6 +31239,124 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString splitlines docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_expandtabs_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString expandtabs"
+    );
+    let userstring_expandtabs_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_expandtabs_method_diff_subset",
+    );
+    let userstring_expandtabs_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_expandtabs_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Width:",
+        "def __index__(self): print('index-called', self.value); return self.value",
+        "class BadIndex:",
+        "return 'x'",
+        "u = UserString('abc\\rab\\tdef\\ng\\thi')",
+        "methods = ['expandtabs']",
+        "hasattr(UserString, name)",
+        "getattr(value, 'data', None)",
+        "('default', ())",
+        "('index', (Width(4),))",
+        "('badindex', (BadIndex(),))",
+        "u.expandtabs(*spec)",
+        "v = UserString(text)",
+        "u.expandtabs(tabsize=4)",
+        "UserString.expandtabs(self=u, tabsize=4)",
+        "UserString.expandtabs(self=u)",
+        "UserString.expandtabs(u, 4)",
+        "UserString.expandtabs('ab\\tc', 4)",
+        "u.expandtabs(4, 0)",
+        "u.expandtabs(4, tabsize=8)",
+        "u.expandtabs(self=u)",
+        "UserString.expandtabs(receiver=u, tabsize=4)",
+    ] {
+        assert!(
+            userstring_expandtabs_method_diff_body.contains(required)
+                && userstring_expandtabs_method_subset_body.contains(required),
+            "UserString expandtabs diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible [('expandtabs', True, True)]",
+        r#"value default UserString:'abc\\rab      def\\ng       hi'"#,
+        r#"value eight UserString:'abc\\rab      def\\ng       hi'"#,
+        r#"value four UserString:'abc\\rab  def\\ng   hi'"#,
+        r#"value zero UserString:'abc\\rabdef\\nghi'"#,
+        r#"value negative UserString:'abc\\rabdef\\nghi'"#,
+        r#"value true UserString:'abc\\rab def\\ng hi'"#,
+        r#"value false UserString:'abc\\rabdef\\nghi'"#,
+        "index-called 4",
+        r#"value index UserString:'abc\\rab  def\\ng   hi'"#,
+        "bad-index-called",
+        "value badindex TypeError:__index__ returned non-int (type str)",
+        "value none TypeError:'NoneType' object cannot be interpreted as an integer",
+        "value string TypeError:'str' object cannot be interpreted as an integer",
+        "value huge OverflowError:Python int too large to convert to C int",
+        r#"text 'abc\\r\\nab\\tdef\\ng\\thi' UserString:'abc\\r\\nab  def\\ng   hi'"#,
+        r#"text 'abc\\r\\nab\\r\\ndef\\ng\\r\\nhi' UserString:'abc\\r\\nab\\r\\ndef\\ng\\r\\nhi'"#,
+        r#"text ' \\ta\\n\\tb' UserString:'    a\\n    b'"#,
+        r#"text '\\t\\ta' UserString:'        a'"#,
+        r#"text 'a\\tb\\tc' UserString:'a   b   c'"#,
+        r#"keywords UserString:'abc\\rab  def\\ng   hi'"#,
+        r#"type UserString:'abc\\rab  def\\ng   hi'"#,
+        "AttributeError:'str' object has no attribute 'data'",
+        "TypeError:UserString.expandtabs() takes from 1 to 2 positional arguments but 3 were given",
+        "TypeError:UserString.expandtabs() got multiple values for argument 'tabsize'",
+        "TypeError:UserString.expandtabs() got multiple values for argument 'self'",
+        "TypeError:UserString.expandtabs() missing 1 required positional argument: 'self'",
+        "TypeError:UserString.expandtabs() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_expandtabs_method_subset_body.contains(required),
+            "UserString expandtabs subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"expandtabs\" => {",
+        "fn user_string_expandtabs_value(",
+        "fn user_string_expandtabs_arguments(",
+        "user_string_expandtabs_arguments(method, &args, keywords)",
+        "self.user_string_expandtabs_value(&receiver, tabsize, method)",
+        "self.index_integer_value(value)?",
+        "string_tabsize_argument(&value, method)?",
+        "string_expandtabs(&text, tabsize)",
+        "user_string_value(string_expandtabs(&text, tabsize)?)",
+        "UserString.{method}() takes from 1 to 2 positional arguments",
+        "got multiple values for argument 'tabsize'",
+        "missing 1 required positional argument: 'self'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString expandtabs implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_expandtabs_method_subset",
+            "cpython_collections_userstring_expandtabs_method_diff_subset",
+            "`UserString.expandtabs`",
+            "UserString result wrapping",
+            "`tabsize=` keyword tab sizes",
+            "CR/LF column reset behavior",
+            "zero, negative, and bool tab sizes",
+            "`__index__` dispatch",
+            "C-int overflow `OverflowError`",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString expandtabs docs must contain `{required}`"
             );
         }
     }

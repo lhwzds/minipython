@@ -26757,6 +26757,45 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_expandtabs_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString expandtabs method behavior",
+        name: "collections-userstring-expandtabs-method",
+        source: r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('abc\rab\tdef\ng\thi')
+methods = ['expandtabs']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('default', ()), ('eight', (8,)), ('four', (4,)), ('zero', (0,)), ('negative', (-1,)), ('true', (True,)), ('false', (False,)), ('index', (Width(4),)), ('badindex', (BadIndex(),)), ('none', (None,)), ('string', ('4',)), ('huge', (2147483648,)), ('huge-neg', (-2147483649,))]:
+    print('value', label, show(lambda spec=spec: u.expandtabs(*spec)))
+for text in ['abc\r\nab\tdef\ng\thi', 'abc\r\nab\r\ndef\ng\r\nhi', ' \ta\n\tb', '\t\ta', 'a\tb\tc']:
+    v = UserString(text)
+    print('text', repr(text), show(lambda v=v: v.expandtabs(4)))
+print('keywords', show(lambda: u.expandtabs(tabsize=4)), show(lambda: UserString.expandtabs(self=u, tabsize=4)), show(lambda: UserString.expandtabs(self=u)))
+print('type', show(lambda: UserString.expandtabs(u, 4)))
+print('errors', [
+    show(lambda: UserString.expandtabs('ab\tc', 4)),
+    show(lambda: u.expandtabs(4, 0)),
+    show(lambda: u.expandtabs(4, tabsize=8)),
+    show(lambda: u.expandtabs(self=u)),
+    show(lambda: UserString.expandtabs()),
+    show(lambda: UserString.expandtabs(tabsize=4)),
+    show(lambda: UserString.expandtabs(receiver=u, tabsize=4)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

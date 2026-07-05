@@ -35894,6 +35894,11 @@ impl Vm {
                     user_string_splitlines_arguments(method, &args, keywords)?;
                 self.user_string_splitlines_value(&receiver, keepends)
             }
+            "expandtabs" => {
+                let (receiver, tabsize) =
+                    user_string_expandtabs_arguments(method, &args, keywords)?;
+                self.user_string_expandtabs_value(&receiver, tabsize, method)
+            }
             "zfill" => {
                 let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
                 self.user_string_zfill_value(&receiver, width)
@@ -36127,6 +36132,29 @@ impl Vm {
             .map(Value::String)
             .collect();
         Ok(list_value(lines))
+    }
+
+    fn user_string_expandtabs_value(
+        &mut self,
+        receiver: &Value,
+        tabsize: Option<Value>,
+        method: &str,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let tabsize = match tabsize {
+            Some(value) => {
+                let value = self.index_integer_value(value)?;
+                string_tabsize_argument(&value, method)?
+            }
+            None => 8,
+        };
+        let text = data.borrow();
+        user_string_value(string_expandtabs(&text, tabsize)?)
     }
 
     fn user_string_concat_value(
@@ -56718,6 +56746,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "partition"
             | "rpartition"
             | "splitlines"
+            | "expandtabs"
             | "zfill"
             | "__mul__"
             | "__repr__"
@@ -62363,6 +62392,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
                 | "splitlines"
+                | "expandtabs"
                 | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -91061,6 +91091,52 @@ fn user_string_splitlines_arguments(
         ));
     };
     Ok((receiver, keepends))
+}
+
+fn user_string_expandtabs_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Option<Value>), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 1 to 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut tabsize = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "tabsize" => {
+                if tabsize.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'tabsize'"
+                    ));
+                }
+                tabsize = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let Some(receiver) = receiver else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        ));
+    };
+    Ok((receiver, tabsize))
 }
 
 fn user_string_zfill_width(width: Value) -> Result<usize, String> {
