@@ -379,6 +379,13 @@ Recent runtime migration notes:
   arity/keyword TypeErrors, without implementing full UserString
   string-method proxying or widening host IO, network, process, C ABI, or
   full stdlib scope.
+- `cpython_collections_userstring_translate_method_subset`, backed by
+  `cpython_collections_userstring_translate_method_diff_subset`, now pins
+  `UserString.translate`, including ordinary `UserString` result values, dict translation tables, deletion mappings, Unicode codepoint replacements,
+  `self` binding, bad receiver errors, delegated `str.translate()` arity errors,
+  and out-of-range mapping errors, without arbitrary mapping protocol support,
+  full UserString string-method proxying, or widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1542,6 +1549,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_format_method_diff_subset`,
   `cpython_collections_userstring_format_map_method_diff_subset`,
   `cpython_collections_userstring_encode_method_diff_subset`,
+  `cpython_collections_userstring_translate_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7573,6 +7581,13 @@ without adding general custom encoder/decoder class support.
   subclass encoding names, bad receiver errors, codec lookup errors,
   UnicodeEncodeError propagation, and UserString-specific arity/keyword
   TypeErrors, without implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_translate_method_diff_subset` and
+  `cpython_collections_userstring_translate_method_subset`, covering
+  `UserString.translate`, ordinary `UserString` result values, dict translation tables, deletion mappings, Unicode codepoint replacements,
+  `self` binding, bad receiver errors, delegated `str.translate()` arity errors,
+  and out-of-range mapping errors, without arbitrary mapping protocol support or
+  implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_zfill_method_diff_subset` and
   `cpython_collections_userstring_zfill_method_subset`, covering

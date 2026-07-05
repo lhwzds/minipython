@@ -35926,6 +35926,11 @@ impl Vm {
                     user_string_encode_arguments(method, &args, keywords)?;
                 self.user_string_encode_value(&receiver, encoding.as_ref(), errors.as_ref())
             }
+            "translate" => {
+                let (receiver, translate_args) =
+                    user_string_translate_arguments(method, &args, keywords)?;
+                self.user_string_translate_value(&receiver, translate_args)
+            }
             "splitlines" => {
                 let (receiver, keepends) =
                     user_string_splitlines_arguments(method, &args, keywords)?;
@@ -36302,6 +36307,27 @@ impl Vm {
         };
         let (encoding, errors) = user_string_encode_options(encoding, errors)?;
         encode_text(&data.borrow(), encoding, errors).map(bytes_value)
+    }
+
+    fn user_string_translate_value(
+        &mut self,
+        receiver: &Value,
+        translate_args: Vec<Value>,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let mut str_args = Vec::with_capacity(translate_args.len() + 1);
+        str_args.push(Value::String(data.borrow().clone()));
+        str_args.extend(translate_args);
+        let Value::String(translated) = call_str_translate_method("str.translate", str_args)?
+        else {
+            unreachable!("str.translate returns a string")
+        };
+        user_string_value(translated)
     }
 
     fn user_string_expandtabs_value(
@@ -57042,6 +57068,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "format"
             | "format_map"
             | "encode"
+            | "translate"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62697,6 +62724,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "format"
                 | "format_map"
                 | "encode"
+                | "translate"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"
@@ -79779,9 +79807,14 @@ fn is_python_undefined_encoding_byte(encoding_name: &str, byte: u8) -> bool {
 
 fn call_str_translate_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
     let method = method_display_name(name);
+    if args.is_empty() {
+        return Err(format!(
+            "TypeError: unbound method {name}() needs an argument"
+        ));
+    }
     let [receiver, table] = args.as_slice() else {
         return Err(format!(
-            "TypeError: {method}() expected 1 argument, got {}",
+            "TypeError: {name}() takes exactly one argument ({} given)",
             method_arg_count(&args)
         ));
     };
@@ -91547,6 +91580,33 @@ fn user_string_encode_arguments(
         ));
     };
     Ok((receiver, encoding, errors))
+}
+
+fn user_string_translate_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Vec<Value>), String> {
+    let mut receiver = args.first().cloned();
+    for (name, value) in keywords {
+        if name != "self" {
+            return Err(format!(
+                "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+            ));
+        }
+        if receiver.is_some() {
+            return Err(format!(
+                "TypeError: UserString.{method}() got multiple values for argument 'self'"
+            ));
+        }
+        receiver = Some(value);
+    }
+    let Some(receiver) = receiver else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        ));
+    };
+    Ok((receiver, args.iter().skip(1).cloned().collect()))
 }
 
 fn user_string_encode_options(

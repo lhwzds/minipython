@@ -26966,6 +26966,38 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_translate_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString translate method behavior",
+        name: "collections-userstring-translate-method",
+        source: r#"from collections import UserString
+u = UserString('abacé')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+table = {ord('a'): 'X', ord('b'): None, ord('c'): ord('Z'), ord('é'): 'E'}
+print('visible', hasattr(UserString, 'translate'), hasattr(u, 'translate'))
+print('value dict', show(lambda: u.translate(table)))
+print('value delete', show(lambda: UserString('banana').translate({ord('a'): None})))
+print('value empty', show(lambda: UserString('').translate(table)))
+print('value type', show(lambda: UserString.translate(u, table)))
+print('errors', [
+    show(lambda: UserString.translate('abc', table)),
+    show(lambda: UserString.translate(1, table)),
+    show(lambda: UserString.translate()),
+    show(lambda: u.translate()),
+    show(lambda: u.translate(table, {})),
+    show(lambda: u.translate(table=table)),
+    show(lambda: UserString.translate(receiver=u, table=table)),
+    show(lambda: u.translate({ord('a'): 1114112})),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

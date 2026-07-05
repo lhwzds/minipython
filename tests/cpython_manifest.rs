@@ -26540,6 +26540,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_format_method_subset",
             "cpython_collections_userstring_format_map_method_subset",
             "cpython_collections_userstring_encode_method_subset",
+            "cpython_collections_userstring_translate_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31718,6 +31719,101 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString encode docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_translate_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString translate"
+    );
+    let userstring_translate_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_translate_method_diff_subset",
+    );
+    let userstring_translate_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_translate_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abacé')",
+        "table = {ord('a'): 'X', ord('b'): None, ord('c'): ord('Z'), ord('é'): 'E'}",
+        "hasattr(UserString, 'translate')",
+        "u.translate(table)",
+        "UserString('banana').translate({ord('a'): None})",
+        "UserString('').translate(table)",
+        "UserString.translate(u, table)",
+        "UserString.translate('abc', table)",
+        "UserString.translate(1, table)",
+        "UserString.translate()",
+        "u.translate()",
+        "u.translate(table, {})",
+        "u.translate(table=table)",
+        "UserString.translate(receiver=u, table=table)",
+        "u.translate({ord('a'): 1114112})",
+    ] {
+        assert!(
+            userstring_translate_method_diff_body.contains(required)
+                && userstring_translate_method_subset_body.contains(required),
+            "UserString translate diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "value dict UserString:'XXZE':'XXZE'",
+        "value delete UserString:'bnn':'bnn'",
+        "value empty UserString:'':''",
+        "value type UserString:'XXZE':'XXZE'",
+        "AttributeError:'str' object has no attribute 'data'",
+        "AttributeError:'int' object has no attribute 'data'",
+        "TypeError:UserString.translate() missing 1 required positional argument: 'self'",
+        "TypeError:str.translate() takes exactly one argument (0 given)",
+        "TypeError:str.translate() takes exactly one argument (2 given)",
+        "TypeError:UserString.translate() got an unexpected keyword argument 'table'",
+        "TypeError:UserString.translate() got an unexpected keyword argument 'receiver'",
+        "ValueError:character mapping must be in range(0x110000)",
+    ] {
+        assert!(
+            userstring_translate_method_subset_body.contains(required),
+            "UserString translate subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"translate\" => {",
+        "fn user_string_translate_value(",
+        "fn user_string_translate_arguments(",
+        "user_string_translate_arguments(method, &args, keywords)?",
+        "self.user_string_translate_value(&receiver, translate_args)",
+        "call_str_translate_method(\"str.translate\", str_args)",
+        "user_string_value(translated)",
+        "got an unexpected keyword argument '{name}'",
+        "{name}() takes exactly one argument",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString translate implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_translate_method_subset",
+            "cpython_collections_userstring_translate_method_diff_subset",
+            "`UserString.translate`",
+            "ordinary `UserString` result values",
+            "dict translation tables",
+            "deletion mappings",
+            "Unicode codepoint replacements",
+            "`self` binding",
+            "bad receiver",
+            "delegated `str.translate()` arity errors",
+            "out-of-range mapping errors",
+            "without arbitrary mapping protocol support",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString translate docs must contain `{required}`"
             );
         }
     }

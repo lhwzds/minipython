@@ -71250,6 +71250,47 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString translate method over dict translation
+// tables. This deliberately keeps arbitrary mapping protocol support outside
+// this focused sandbox slice.
+#[test]
+fn cpython_collections_userstring_translate_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abacé')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+table = {ord('a'): 'X', ord('b'): None, ord('c'): ord('Z'), ord('é'): 'E'}
+print('visible', hasattr(UserString, 'translate'), hasattr(u, 'translate'))
+print('value dict', show(lambda: u.translate(table)))
+print('value delete', show(lambda: UserString('banana').translate({ord('a'): None})))
+print('value empty', show(lambda: UserString('').translate(table)))
+print('value type', show(lambda: UserString.translate(u, table)))
+print('errors', [
+    show(lambda: UserString.translate('abc', table)),
+    show(lambda: UserString.translate(1, table)),
+    show(lambda: UserString.translate()),
+    show(lambda: u.translate()),
+    show(lambda: u.translate(table, {})),
+    show(lambda: u.translate(table=table)),
+    show(lambda: UserString.translate(receiver=u, table=table)),
+    show(lambda: u.translate({ord('a'): 1114112})),
+])"#,
+        &[
+            "visible True True",
+            "value dict UserString:'XXZE':'XXZE'",
+            "value delete UserString:'bnn':'bnn'",
+            "value empty UserString:'':''",
+            "value type UserString:'XXZE':'XXZE'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "AttributeError:'int' object has no attribute 'data'", "TypeError:UserString.translate() missing 1 required positional argument: 'self'", 'TypeError:str.translate() takes exactly one argument (0 given)', 'TypeError:str.translate() takes exactly one argument (2 given)', "TypeError:UserString.translate() got an unexpected keyword argument 'table'", "TypeError:UserString.translate() got an unexpected keyword argument 'receiver'", 'ValueError:character mapping must be in range(0x110000)']"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {
