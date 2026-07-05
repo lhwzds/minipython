@@ -8414,6 +8414,8 @@ fn cpython_collections_deque_class_getitem_generic_alias_diff_subset() {
         source: r#"import collections
 typ = collections.deque
 inst = collections.deque()
+class C(collections.deque):
+    pass
 for label, expr in [
     ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
     ('visible-inst', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
@@ -8421,9 +8423,12 @@ for label, expr in [
     ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
     ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
     ('inst-exact', lambda: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+    ('type-sub', lambda: (hasattr(C, '__class_getitem__'), '__class_getitem__' in dir(C), type(C.__class_getitem__).__name__, type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (hasattr(C(), '__class_getitem__'), '__class_getitem__' in dir(C()), type(C().__class_getitem__(str)).__name__, C().__class_getitem__(str).__origin__ is C, C().__class_getitem__(str).__args__)),
     ('call-noargs', lambda: typ.__class_getitem__()),
     ('call-extra', lambda: typ.__class_getitem__(int, str)),
     ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+    ('sub-keyword', lambda: C.__class_getitem__(item=int)),
 ]:
     try:
         result = expr()

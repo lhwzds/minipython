@@ -137,8 +137,8 @@ Recent runtime migration notes:
 - `cpython_collections_deque_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_deque_class_getitem_generic_alias_diff_subset`, now pins
   collections.deque `__class_getitem__`, `collections.deque.__class_getitem__(int) == collections.deque[int]`,
-  exact deque instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full GenericAlias repr parity or host IO,
+  exact deque instance lookup, inherited deque subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation, without adding full GenericAlias repr parity or host IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_ordered_dict_class_getitem_generic_alias_subset`, backed by
   `cpython_ordered_dict_class_getitem_generic_alias_diff_subset`, now pins
