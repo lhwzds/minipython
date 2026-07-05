@@ -11466,6 +11466,31 @@ print([name in dir(cm) for name in ['__isabstractmethod__', '__func__']])"#,
 }
 
 #[test]
+fn cpython_staticmethod_classmethod_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public staticmethod/classmethod __class_getitem__ GenericAlias behavior",
+        name: "staticmethod-classmethod-class-getitem-generic-alias",
+        source: r#"for typ, inst in [(staticmethod, staticmethod(lambda: None)), (classmethod, classmethod(lambda cls: None))]:
+    print('TYPE', typ.__name__)
+    for label, expr in [
+        ('visible', lambda typ=typ, inst=inst: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__, hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+        ('subscript-int', lambda typ=typ: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+        ('call-int', lambda typ=typ: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+        ('call-pair', lambda typ=typ: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+        ('inst-exact', lambda typ=typ, inst=inst: (inst.__class_getitem__(int) == typ[int], inst.__class_getitem__(int).__origin__ is typ)),
+        ('call-noargs', lambda typ=typ: typ.__class_getitem__()),
+        ('call-extra', lambda typ=typ: typ.__class_getitem__(int, str)),
+        ('call-keyword', lambda typ=typ: typ.__class_getitem__(item=int)),
+    ]:
+        try:
+            result = expr()
+            print(label, type(result).__name__, result)
+        except Exception as error:
+            print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_descriptor_constructor_arity_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public descriptor constructor positional arity diagnostics",

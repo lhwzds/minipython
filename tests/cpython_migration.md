@@ -10136,6 +10136,19 @@ Completed in the staticmethod/classmethod abstract-method descriptor pass:
   descriptor assignment as read-only, and appear in `dir()` for the descriptor
   objects.
 
+Completed in the staticmethod/classmethod class-getitem descriptor pass:
+
+- Added `cpython_staticmethod_classmethod_class_getitem_generic_alias_subset`
+  and
+  `cpython_staticmethod_classmethod_class_getitem_generic_alias_diff_subset` for
+  staticmethod/classmethod `__class_getitem__`,
+  `staticmethod.__class_getitem__(int) == staticmethod[int]`,
+  `classmethod.__class_getitem__(int) == classmethod[int]`,
+  exact descriptor instance lookup, type and descriptor instance `dir()` visibility,
+  `GenericAlias` origin/args, pair argument normalization through the existing
+  alias model, keyword and arity error propagation, without adding full GenericAlias repr parity or arbitrary descriptor attribute dictionaries,
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the property abstract-method descriptor pass:
 
 - Added `cpython_property_abstractmethod_subset` and direct CPython evidence in

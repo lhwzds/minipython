@@ -9100,6 +9100,15 @@ evidence in `cpython_staticmethod_classmethod_abstractmethod_diff_subset` cover
 the shared public `staticmethod` / `classmethod` `__isabstractmethod__` marker:
 dynamic truthiness from the wrapped callable, read-only descriptor assignment
 behavior, and `dir()` visibility.
+`cpython_staticmethod_classmethod_class_getitem_generic_alias_subset`, backed by
+`cpython_staticmethod_classmethod_class_getitem_generic_alias_diff_subset`, covers
+staticmethod/classmethod `__class_getitem__`,
+`staticmethod.__class_getitem__(int) == staticmethod[int]`,
+`classmethod.__class_getitem__(int) == classmethod[int]`,
+exact descriptor instance lookup, type and descriptor instance `dir()` visibility,
+`GenericAlias` origin/args, pair argument normalization through the existing
+alias model, keyword and arity error propagation, without adding full GenericAlias repr parity or arbitrary descriptor attribute dictionaries,
+and without widening host IO, network, process, C ABI, or full stdlib scope.
 `cpython_property_abstractmethod_subset` and direct CPython evidence in
 `cpython_property_abstractmethod_diff_subset` cover public
 `property.__isabstractmethod__` aggregation across getter, setter, and deleter

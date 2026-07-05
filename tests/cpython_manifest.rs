@@ -39180,6 +39180,120 @@ fn staticmethod_classmethod_abstractmethod_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn staticmethod_classmethod_class_getitem_generic_alias_docs_cover_core_runtime() {
+    let diff_name = "cpython_staticmethod_classmethod_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_staticmethod_classmethod_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "staticmethod/classmethod class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "staticmethod/classmethod class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "(staticmethod, staticmethod(lambda: None))",
+        "(classmethod, classmethod(lambda cls: None))",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "staticmethod/classmethod class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"TYPE staticmethod\"",
+        "\"visible tuple (True, True, 'builtin_function_or_method', True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'staticmethod[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'staticmethod[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('staticmethod[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"call-noargs TypeError staticmethod.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError staticmethod.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError staticmethod.__class_getitem__() takes no keyword arguments",
+        "\"TYPE classmethod\"",
+        "\"subscript-int tuple ('GenericAlias', 'classmethod[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'classmethod[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('classmethod[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"call-noargs TypeError classmethod.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError classmethod.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError classmethod.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "staticmethod/classmethod class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"type.__class_getitem__\"",
+        "self.call_type_class_getitem(args, keywords)",
+        "fn call_type_class_getitem(",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+        "\"staticmethod\" | \"classmethod\" => &[\"__class_getitem__\"]",
+        "Value::StaticMethod { .. } => names.extend(",
+        "Value::ClassMethod { .. } => names.extend(",
+        "Value::StaticMethod { function, identity } => match name",
+        "Value::ClassMethod { function, identity } => match name",
+        "\"__class_getitem__\" => Ok(class_getitem_bound_method(Value::Builtin(",
+        "\"staticmethod\".to_string()",
+        "\"classmethod\".to_string()",
+        "matches!(function_name.as_str(), \"staticmethod\" | \"classmethod\")",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "fn class_getitem_bound_method(",
+        "Value::Builtin(\"type.__class_getitem__\".to_string())",
+        "fn class_getitem_origin_name(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "staticmethod/classmethod class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "staticmethod/classmethod `__class_getitem__`",
+            "`staticmethod.__class_getitem__(int) == staticmethod[int]`",
+            "`classmethod.__class_getitem__(int) == classmethod[int]`",
+            "exact descriptor instance lookup",
+            "type and descriptor instance `dir()` visibility",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or arbitrary descriptor attribute dictionaries",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "staticmethod/classmethod class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn property_abstractmethod_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_property_abstractmethod_subset(",

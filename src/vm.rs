@@ -52399,6 +52399,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::StaticMethod { .. } => names.extend(
             [
                 "__annotations__",
+                "__class_getitem__",
                 "__doc__",
                 "__func__",
                 "__get__",
@@ -52414,6 +52415,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::ClassMethod { .. } => names.extend(
             [
                 "__annotations__",
+                "__class_getitem__",
                 "__doc__",
                 "__func__",
                 "__get__",
@@ -53496,6 +53498,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__self_class__",
             "__thisclass__",
         ],
+        "staticmethod" | "classmethod" => &["__class_getitem__"],
         "object" => &[
             "__dir__",
             "__format__",
@@ -60740,6 +60743,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::StaticMethod { function, identity } => match name {
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "staticmethod".to_string(),
+            ))),
             "__func__" | "__wrapped__" => Ok(*function),
             "__isabstractmethod__" => descriptor_is_abstract_method(*function),
             "__get__" => Ok(Value::BoundMethod {
@@ -60755,6 +60761,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::ClassMethod { function, identity } => match name {
+            "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
+                "classmethod".to_string(),
+            ))),
             "__func__" | "__wrapped__" => Ok(*function),
             "__isabstractmethod__" => descriptor_is_abstract_method(*function),
             "__get__" => Ok(Value::BoundMethod {
@@ -63041,6 +63050,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "memoryview" && name == "__class_getitem__" =>
+        {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
+            if matches!(function_name.as_str(), "staticmethod" | "classmethod")
+                && name == "__class_getitem__" =>
         {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
