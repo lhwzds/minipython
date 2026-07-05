@@ -35889,7 +35889,7 @@ impl Vm {
                 let (receiver, sep) = user_string_partition_arguments(method, &args, keywords)?;
                 user_string_partition_value(&receiver, &sep, method == "partition", method)
             }
-            "split" => {
+            "split" | "rsplit" => {
                 let (receiver, separator, maxsplit) =
                     user_string_split_arguments(method, &args, keywords)?;
                 self.user_string_split_value(&receiver, separator, maxsplit, method)
@@ -56930,6 +56930,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "partition"
             | "rpartition"
             | "split"
+            | "rsplit"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62580,7 +62581,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "strip" | "lstrip" | "rstrip"
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
-                | "split"
+                | "split" | "rsplit"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"

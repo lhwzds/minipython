@@ -70931,6 +70931,79 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString rsplit method.
+#[test]
+fn cpython_collections_userstring_rsplit_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Max:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+class S(str): pass
+u = UserString(' a  b c ')
+print('visible', hasattr(UserString, 'rsplit'), hasattr(u, 'rsplit'))
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [
+    ('default', ()), ('none', (None,)), ('none-one', (None, 1)), ('none-zero', (None, 0)),
+    ('space', (' ',)), ('space-one', (' ', 1)), ('pipe', ('|',)), ('multi', ('--',)),
+    ('empty', ('',)), ('true-max', (' ', True)), ('false-max', (' ', False)),
+    ('negative', (' ', -1)), ('index', (' ', Max(2))), ('badindex', (' ', BadIndex())),
+    ('none-max', (' ', None)), ('string-max', (' ', '2')), ('huge', (' ', 9223372036854775808)),
+    ('userstring-sep', (UserString(' '),)), ('str-sub-sep', (S(' '),)), ('int-sep', (1,)),
+]:
+    target = UserString('a|b|c') if label == 'pipe' else UserString('a--b--c') if label == 'multi' else u
+    print('value', label, show(lambda target=target, spec=spec: target.rsplit(*spec)))
+print('keywords', show(lambda: u.rsplit(sep=' ')), show(lambda: u.rsplit(sep=' ', maxsplit=1)), show(lambda: u.rsplit(maxsplit=1)), show(lambda: UserString.rsplit(self=u, sep=' ', maxsplit=1)))
+print('type', show(lambda: UserString.rsplit(u, ' ', 1)))
+print('errors', [
+    show(lambda: UserString.rsplit(' a b ', ' ')),
+    show(lambda: UserString.rsplit(1, ' ', 1, '-')),
+    show(lambda: u.rsplit(' ', 1, '-')),
+    show(lambda: u.rsplit(' ', sep=' ')),
+    show(lambda: u.rsplit(' ', maxsplit=1, sep=' ')),
+    show(lambda: u.rsplit(self=u)),
+    show(lambda: UserString.rsplit()),
+    show(lambda: UserString.rsplit(sep=' ')),
+    show(lambda: UserString.rsplit(receiver=u, sep=' ')),
+])"#,
+        &[
+            "visible True True",
+            "value default list:['a', 'b', 'c']",
+            "value none list:['a', 'b', 'c']",
+            "value none-one list:[' a  b', 'c']",
+            "value none-zero list:[' a  b c']",
+            "value space list:['', 'a', '', 'b', 'c', '']",
+            "value space-one list:[' a  b c', '']",
+            "value pipe list:['a', 'b', 'c']",
+            "value multi list:['a', 'b', 'c']",
+            "value empty ValueError:empty separator",
+            "value true-max list:[' a  b c', '']",
+            "value false-max list:[' a  b c ']",
+            "value negative list:['', 'a', '', 'b', 'c', '']",
+            "index-called 2",
+            "value index list:[' a  b', 'c', '']",
+            "bad-index-called",
+            "value badindex TypeError:__index__ returned non-int (type str)",
+            "value none-max TypeError:'NoneType' object cannot be interpreted as an integer",
+            "value string-max TypeError:'str' object cannot be interpreted as an integer",
+            "value huge OverflowError:Python int too large to convert to C ssize_t",
+            "value userstring-sep TypeError:must be str or None, not UserString",
+            "value str-sub-sep list:['', 'a', '', 'b', 'c', '']",
+            "value int-sep TypeError:must be str or None, not int",
+            "keywords list:['', 'a', '', 'b', 'c', ''] list:[' a  b c', ''] list:[' a  b', 'c'] list:[' a  b c', '']",
+            "type list:[' a  b c', '']",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", 'TypeError:UserString.rsplit() takes from 1 to 3 positional arguments but 4 were given', 'TypeError:UserString.rsplit() takes from 1 to 3 positional arguments but 4 were given', "TypeError:UserString.rsplit() got multiple values for argument 'sep'", "TypeError:UserString.rsplit() got multiple values for argument 'sep'", "TypeError:UserString.rsplit() got multiple values for argument 'self'", "TypeError:UserString.rsplit() missing 1 required positional argument: 'self'", "TypeError:UserString.rsplit() missing 1 required positional argument: 'self'", "TypeError:UserString.rsplit() got an unexpected keyword argument 'receiver'"]"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {

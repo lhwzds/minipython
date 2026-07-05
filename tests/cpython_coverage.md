@@ -337,6 +337,15 @@ Recent runtime migration notes:
   UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying or widening host IO, network, process, C
   ABI, or full stdlib scope.
+- `cpython_collections_userstring_rsplit_method_subset`, backed by
+  `cpython_collections_userstring_rsplit_method_diff_subset`, now pins
+  `UserString.rsplit`, including ordinary `list[str]` result values, right-side whitespace and explicit separator splitting, `sep=` and `maxsplit=` keyword binding,
+  bool and negative maxsplit handling, `__index__` dispatch and bad-result
+  TypeErrors, C-ssize_t overflow `OverflowError`, `str` subclass separator
+  handling, UserString separator rejection, bad receiver errors, and
+  UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1495,6 +1504,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_remove_affix_methods_diff_subset`,
   `cpython_collections_userstring_partition_methods_diff_subset`,
   `cpython_collections_userstring_split_method_diff_subset`,
+  `cpython_collections_userstring_rsplit_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7480,6 +7490,15 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_split_method_diff_subset` and
   `cpython_collections_userstring_split_method_subset`, covering
   `UserString.split`, ordinary `list[str]` result values, whitespace and explicit separator splitting, `sep=` and `maxsplit=` keyword binding, bool
+  and negative maxsplit handling, `__index__` dispatch and bad-result
+  TypeErrors, C-ssize_t overflow `OverflowError`, `str` subclass separator
+  handling, UserString separator rejection, bad receiver errors, and
+  UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_rsplit_method_diff_subset` and
+  `cpython_collections_userstring_rsplit_method_subset`, covering
+  `UserString.rsplit`, ordinary `list[str]` result values, right-side whitespace and explicit separator splitting, `sep=` and `maxsplit=` keyword binding, bool
   and negative maxsplit handling, `__index__` dispatch and bad-result
   TypeErrors, C-ssize_t overflow `OverflowError`, `str` subclass separator
   handling, UserString separator rejection, bad receiver errors, and
