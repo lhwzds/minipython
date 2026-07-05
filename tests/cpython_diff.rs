@@ -26014,6 +26014,38 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_int_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString integer conversion method behavior",
+        name: "collections-userstring-int-method",
+        source: r#"from collections import UserString
+u = UserString('123')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__int__'), hasattr(u, '__int__'), '__int__' in dir(UserString), '__int__' in dir(u))
+for label, expr in [
+    ('int-value', lambda: int(u)),
+    ('type-method', lambda: UserString.__int__(u)),
+    ('bound', lambda: u.__int__()),
+    ('plus', lambda: int(UserString('+42'))),
+    ('spaces', lambda: int(UserString('  7  '))),
+    ('explicit-base', lambda: int(UserString('10'), 10)),
+    ('bad-str', lambda: int(UserString('x'))),
+    ('bad-receiver', lambda: UserString.__int__('123')),
+    ('noargs', lambda: UserString.__int__()),
+    ('extra', lambda: UserString.__int__(u, 1)),
+    ('keyword', lambda: UserString.__int__(self=u)),
+    ('badkw', lambda: UserString.__int__(receiver=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

@@ -221,6 +221,11 @@ Recent runtime migration notes:
   stable checks that avoid pinning process-randomized hash integers, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_int_method_subset`, backed by
+  `cpython_collections_userstring_int_method_diff_subset`, now pins
+  `UserString.__int__` and `int(UserString(...))` behavior, including type and instance visibility,
+  `dir(UserString)` discoverability, direct and bound method calls, signed and whitespace-padded decimal strings,
+  explicit-base rejection, and CPython `UserString.__int__` TypeError/ValueError text, without broadening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -1533,6 +1538,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_len_method_diff_subset`,
   `cpython_collections_userstring_display_methods_diff_subset`,
   `cpython_collections_userstring_hash_method_diff_subset`,
+  `cpython_collections_userstring_int_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
@@ -7427,6 +7433,12 @@ without adding general custom encoder/decoder class support.
   errors, UserString-specific arity/keyword TypeErrors, and stable checks that
   avoid pinning process-randomized hash integers, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_int_method_diff_subset` and
+  `cpython_collections_userstring_int_method_subset`, covering
+  `UserString.__int__` and `int(UserString(...))` behavior, type and instance visibility,
+  `dir(UserString)` discoverability, direct and bound method calls, signed and whitespace-padded decimal strings,
+  explicit-base rejection, and CPython `UserString.__int__` TypeError/ValueError text, without broadening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

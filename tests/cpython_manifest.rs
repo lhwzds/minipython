@@ -26521,6 +26521,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_len_method_subset",
             "cpython_collections_userstring_display_methods_subset",
             "cpython_collections_userstring_hash_method_subset",
+            "cpython_collections_userstring_int_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -29438,6 +29439,99 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString hash-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_int_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __int__"
+    );
+    let userstring_int_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_int_method_diff_subset",
+    );
+    let userstring_int_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_int_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('123')",
+        "hasattr(UserString, '__int__')",
+        "hasattr(u, '__int__')",
+        "'__int__' in dir(UserString)",
+        "'__int__' in dir(u)",
+        "int(u)",
+        "UserString.__int__(u)",
+        "u.__int__()",
+        "int(UserString('+42'))",
+        "int(UserString('  7  '))",
+        "int(UserString('10'), 10)",
+        "int(UserString('x'))",
+        "UserString.__int__('123')",
+        "UserString.__int__()",
+        "UserString.__int__(u, 1)",
+        "UserString.__int__(self=u)",
+        "UserString.__int__(receiver=u)",
+    ] {
+        assert!(
+            userstring_int_method_diff_body.contains(required)
+                && userstring_int_method_subset_body.contains(required),
+            "UserString int-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"int-value int 123\"",
+        "\"type-method int 123\"",
+        "\"bound int 123\"",
+        "\"plus int 42\"",
+        "\"spaces int 7\"",
+        "\"explicit-base TypeError int() can't convert non-string with explicit base",
+        "\"bad-str ValueError invalid literal for int() with base 10: 'x'",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"noargs TypeError UserString.__int__() missing 1 required positional argument: 'self'",
+        "\"extra TypeError UserString.__int__() takes 1 positional argument but 2 were given",
+        "\"keyword int 123\"",
+        "\"badkw TypeError UserString.__int__() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_int_method_subset_body.contains(required),
+            "UserString int-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__int__\".to_string())",
+        "Value::UserString { data, .. } => parse_int_string_base(&data.borrow(), 10)",
+        "fn user_string_int_value(receiver: &Value) -> Result<Value, String>",
+        "user_string_self_argument(method, &args, keywords)?",
+        "parse_int_string_base(&data.borrow(), 10)",
+        "\"__int__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString int-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_int_method_subset",
+            "cpython_collections_userstring_int_method_diff_subset",
+            "`UserString.__int__`",
+            "`int(UserString(...))`",
+            "type and instance visibility",
+            "`dir(UserString)` discoverability",
+            "direct and bound method calls",
+            "signed and whitespace-padded decimal strings",
+            "explicit-base rejection",
+            "CPython `UserString.__int__` TypeError/ValueError text",
+            "without broadening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString int-method docs must contain `{required}`"
             );
         }
     }

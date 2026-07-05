@@ -23938,6 +23938,7 @@ impl Vm {
             }
             Value::Bytes(value) => parse_int_bytes_base(&value, 10),
             Value::ByteArray(value) => parse_int_bytes_base(&value.borrow(), 10),
+            Value::UserString { data, .. } => parse_int_string_base(&data.borrow(), 10),
             value => {
                 if let Some(method) = instance_special_method(&value, "__int__") {
                     let result = self.call_value(method, Vec::new())?;
@@ -35795,6 +35796,10 @@ impl Vm {
                     ));
                 };
                 hash_value(&receiver)
+            }
+            "__int__" => {
+                let receiver = user_string_self_argument(method, &args, keywords)?;
+                user_string_int_value(&receiver)
             }
             "__repr__" | "__str__" => {
                 if args.len() > 1 {
@@ -54759,6 +54764,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "UserString" {
         names.push("__class_getitem__".to_string());
+        names.push("__int__".to_string());
     }
     names
 }
@@ -57023,6 +57029,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__contains__"
             | "__getitem__"
             | "__hash__"
+            | "__int__"
             | "__eq__"
             | "__iter__"
             | "__len__"
@@ -62733,11 +62740,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "ljust"
                 | "rjust"
                 | "zfill"
+                | "__int__"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("UserString.{name}"))),
-                    receiver: Box::new(Value::UserString { data, attrs }),
-                    identity: Rc::new(()),
+                        function: Box::new(Value::Builtin(format!("UserString.{name}"))),
+                        receiver: Box::new(Value::UserString { data, attrs }),
+                        identity: Rc::new(()),
                     })
                 }
                 _ => Err(format!(
@@ -90854,6 +90862,16 @@ fn user_string_case_transform_value(receiver: &Value, method: &str) -> Result<Va
         _ => unreachable!("UserString case-transform method is filtered before dispatch"),
     };
     user_string_value(transformed)
+}
+
+fn user_string_int_value(receiver: &Value) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    parse_int_string_base(&data.borrow(), 10)
 }
 
 fn user_string_self_argument(

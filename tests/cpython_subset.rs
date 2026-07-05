@@ -69701,6 +69701,54 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString integer conversion method. This pins the
+// pure-memory `__int__` path without promoting file, process, or full stdlib
+// behavior.
+#[test]
+fn cpython_collections_userstring_int_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('123')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__int__'), hasattr(u, '__int__'), '__int__' in dir(UserString), '__int__' in dir(u))
+for label, expr in [
+    ('int-value', lambda: int(u)),
+    ('type-method', lambda: UserString.__int__(u)),
+    ('bound', lambda: u.__int__()),
+    ('plus', lambda: int(UserString('+42'))),
+    ('spaces', lambda: int(UserString('  7  '))),
+    ('explicit-base', lambda: int(UserString('10'), 10)),
+    ('bad-str', lambda: int(UserString('x'))),
+    ('bad-receiver', lambda: UserString.__int__('123')),
+    ('noargs', lambda: UserString.__int__()),
+    ('extra', lambda: UserString.__int__(u, 1)),
+    ('keyword', lambda: UserString.__int__(self=u)),
+    ('badkw', lambda: UserString.__int__(receiver=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True",
+            "int-value int 123",
+            "type-method int 123",
+            "bound int 123",
+            "plus int 42",
+            "spaces int 7",
+            "explicit-base TypeError int() can't convert non-string with explicit base (\"int() can't convert non-string with explicit base\",)",
+            "bad-str ValueError invalid literal for int() with base 10: 'x' (\"invalid literal for int() with base 10: 'x'\",)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "noargs TypeError UserString.__int__() missing 1 required positional argument: 'self' (\"UserString.__int__() missing 1 required positional argument: 'self'\",)",
+            "extra TypeError UserString.__int__() takes 1 positional argument but 2 were given ('UserString.__int__() takes 1 positional argument but 2 were given',)",
+            "keyword int 123",
+            "badkw TypeError UserString.__int__() got an unexpected keyword argument 'receiver' (\"UserString.__int__() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.
