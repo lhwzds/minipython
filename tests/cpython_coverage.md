@@ -122,6 +122,14 @@ Recent runtime migration notes:
   through the existing alias model, and keyword and arity error propagation,
   without adding full GenericAlias repr parity or full classmethod_descriptor metadata,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_enumerate_class_getitem_generic_alias_subset`, backed by
+  `cpython_enumerate_class_getitem_generic_alias_diff_subset`, now pins
+  enumerate `__class_getitem__`, `enumerate.__class_getitem__(int) == enumerate[int]`,
+  exact enumerate instance lookup, type and enumerate instance `dir()` visibility,
+  `GenericAlias` origin/args, pair argument normalization through the existing
+  alias model, and keyword and arity error propagation,
+  without adding full GenericAlias repr parity or enumerate subclassing support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

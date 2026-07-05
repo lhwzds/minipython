@@ -52555,6 +52555,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names("io.BytesIO"));
         }
         Value::MemoryView(_) => names.extend(builtin_type_dir_names("memoryview")),
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::EnumerateIterator { .. }) => {
+            names.extend(builtin_type_dir_names("enumerate"))
+        }
+        Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -53178,6 +53182,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "tolist",
             "toreadonly",
         ],
+        "enumerate" => &["__class_getitem__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -62163,6 +62168,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
+        Value::EnumerateIterator { .. } if name == "__class_getitem__" => {
+            Ok(class_getitem_bound_method(Value::Builtin(
+                "enumerate".to_string(),
+            )))
+        }
         Value::EnumerateIterator { iterator, index } => iterator_protocol_method(
             "enumerate",
             Value::EnumerateIterator { iterator, index },
@@ -62216,16 +62226,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name,
         ),
         Value::Iterator(state) => {
-            let (has_length_hint, reduce_type_name) = {
+            let (is_enumerate, has_length_hint, reduce_type_name) = {
                 let iterator = state.borrow();
+                let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::ListIterator { .. } => Some("list_iterator"),
                     Value::TupleIterator { .. } => Some("tuple_iterator"),
                     _ => None,
                 };
-                (iterator_has_length_hint(&iterator), reduce_type_name)
+                (is_enumerate, iterator_has_length_hint(&iterator), reduce_type_name)
             };
-            if let Some(type_name) = reduce_type_name {
+            if name == "__class_getitem__" && is_enumerate {
+                Ok(class_getitem_bound_method(Value::Builtin(
+                    "enumerate".to_string(),
+                )))
+            } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
                 length_hint_iterator_protocol_method("iterator", Value::Iterator(state), name)
@@ -63056,6 +63071,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if matches!(function_name.as_str(), "staticmethod" | "classmethod")
                 && name == "__class_getitem__" =>
+        {
+            Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
+            if function_name == "enumerate" && name == "__class_getitem__" =>
         {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
         }
@@ -89448,6 +89468,11 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::Builtin(name) if typing_alias_origin_name(&name).is_some() => Ok(
             generic_alias_value(Value::Builtin(name), generic_alias_args(index)),
         ),
+        Value::Builtin(name) if name == "enumerate" => Ok(Value::GenericAlias {
+            origin: Box::new(Value::Builtin(name)),
+            args: generic_alias_args(index),
+            union_unhashable_count: 0,
+        }),
         Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias {
             origin: Box::new(Value::Builtin(name)),
             args: generic_alias_args(index),

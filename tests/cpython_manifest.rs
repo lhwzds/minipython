@@ -42361,6 +42361,124 @@ fn enumerate_zip_sorted_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn enumerate_class_getitem_generic_alias_docs_cover_core_runtime() {
+    let diff_name = "cpython_enumerate_class_getitem_generic_alias_diff_subset";
+    let subset_name = "cpython_enumerate_class_getitem_generic_alias_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "enumerate class_getitem GenericAlias CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "enumerate class_getitem GenericAlias runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = enumerate",
+        "inst = enumerate(['a', 'b'])",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "hasattr(inst, '__class_getitem__')",
+        "'__class_getitem__' in dir(inst)",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "inst.__class_getitem__(int)",
+        "inst.__class_getitem__(int).__origin__ is typ",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "enumerate class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible tuple (True, True, 'builtin_function_or_method', True, True)\"",
+        "\"subscript-int tuple ('GenericAlias', 'enumerate[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'enumerate[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('enumerate[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"inst-exact tuple (True, True)\"",
+        "\"call-noargs TypeError enumerate.__class_getitem__() takes exactly one argument (0 given)",
+        "\"call-extra TypeError enumerate.__class_getitem__() takes exactly one argument (2 given)",
+        "\"call-keyword TypeError enumerate.__class_getitem__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "enumerate class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let class_like_body = VM_SOURCE
+        .split("fn is_class_like_builtin(name: &str) -> bool")
+        .nth(1)
+        .and_then(|tail| tail.split("fn is_ast_type_name").next())
+        .expect("is_class_like_builtin implementation must be extractable");
+    assert!(
+        !class_like_body.contains("\"enumerate\""),
+        "this slice must not promote enumerate into the general class-like builtin set"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"type.__class_getitem__\"",
+        "self.call_type_class_getitem(args, keywords)",
+        "fn call_type_class_getitem(",
+        "TypeError: {name}.__class_getitem__() takes no keyword arguments",
+        "TypeError: {name}.__class_getitem__() takes exactly one argument",
+        "Value::GenericAlias {",
+        "generic_alias_args(item.clone())",
+        "\"enumerate\" => &[\"__class_getitem__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::EnumerateIterator { .. })",
+        "Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names(\"enumerate\"))",
+        "Value::EnumerateIterator { .. } if name == \"__class_getitem__\"",
+        "let (is_enumerate, has_length_hint, reduce_type_name)",
+        "if name == \"__class_getitem__\" && is_enumerate",
+        "\"enumerate\".to_string()",
+        "function_name == \"enumerate\" && name == \"__class_getitem__\"",
+        "class_getitem_bound_method(Value::Builtin(function_name))",
+        "Value::Builtin(name) if name == \"enumerate\" => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+        "fn class_getitem_bound_method(",
+        "Value::Builtin(\"type.__class_getitem__\".to_string())",
+        "fn class_getitem_origin_name(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "enumerate class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "enumerate `__class_getitem__`",
+            "`enumerate.__class_getitem__(int) == enumerate[int]`",
+            "exact enumerate instance lookup",
+            "type and enumerate instance `dir()` visibility",
+            "GenericAlias origin/args",
+            "keyword and arity error propagation",
+            "without adding full GenericAlias repr parity or enumerate subclassing support",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "enumerate class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_sorted_exact_subset(",
