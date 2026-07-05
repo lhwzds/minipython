@@ -69863,6 +69863,48 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString pickling argument helper. This pins only
+// the pure-memory `__getnewargs__` tuple shape and descriptor binding behavior,
+// without implementing pickle support.
+#[test]
+fn cpython_collections_userstring_getnewargs_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), tuple(type(item).__name__ for item in value) if isinstance(value, tuple) else '')
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getnewargs__'), hasattr(u, '__getnewargs__'), '__getnewargs__' in dir(UserString), '__getnewargs__' in dir(u))
+for label, expr in [
+    ('bound', lambda: u.__getnewargs__()),
+    ('type-method', lambda: UserString.__getnewargs__(u)),
+    ('keyword', lambda: UserString.__getnewargs__(self=u)),
+    ('empty', lambda: UserString('').__getnewargs__()),
+    ('bad-receiver', lambda: UserString.__getnewargs__('abé')),
+    ('noargs', lambda: UserString.__getnewargs__()),
+    ('extra', lambda: UserString.__getnewargs__(u, 1)),
+    ('badkw', lambda: UserString.__getnewargs__(u, receiver=u)),
+    ('multi-self', lambda: UserString.__getnewargs__(u, self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True",
+            "bound tuple ('abé',) ('str',)",
+            "type-method tuple ('abé',) ('str',)",
+            "keyword tuple ('abé',) ('str',)",
+            "empty tuple ('',) ('str',)",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "noargs TypeError UserString.__getnewargs__() missing 1 required positional argument: 'self' (\"UserString.__getnewargs__() missing 1 required positional argument: 'self'\",)",
+            "extra TypeError UserString.__getnewargs__() takes 1 positional argument but 2 were given ('UserString.__getnewargs__() takes 1 positional argument but 2 were given',)",
+            "badkw TypeError UserString.__getnewargs__() got an unexpected keyword argument 'receiver' (\"UserString.__getnewargs__() got an unexpected keyword argument 'receiver'\",)",
+            "multi-self TypeError UserString.__getnewargs__() got multiple values for argument 'self' (\"UserString.__getnewargs__() got multiple values for argument 'self'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

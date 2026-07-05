@@ -26524,6 +26524,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_int_method_subset",
             "cpython_collections_userstring_float_method_subset",
             "cpython_collections_userstring_complex_method_subset",
+            "cpython_collections_userstring_getnewargs_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -29740,6 +29741,90 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString complex-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_getnewargs_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __getnewargs__"
+    );
+    let userstring_getnewargs_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_getnewargs_method_diff_subset",
+    );
+    let userstring_getnewargs_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_getnewargs_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hasattr(UserString, '__getnewargs__')",
+        "hasattr(u, '__getnewargs__')",
+        "'__getnewargs__' in dir(UserString)",
+        "'__getnewargs__' in dir(u)",
+        "u.__getnewargs__()",
+        "UserString.__getnewargs__(u)",
+        "UserString.__getnewargs__(self=u)",
+        "UserString('').__getnewargs__()",
+        "UserString.__getnewargs__('abé')",
+        "UserString.__getnewargs__()",
+        "UserString.__getnewargs__(u, 1)",
+        "UserString.__getnewargs__(u, receiver=u)",
+        "UserString.__getnewargs__(u, self=u)",
+    ] {
+        assert!(
+            userstring_getnewargs_method_diff_body.contains(required)
+                && userstring_getnewargs_method_subset_body.contains(required),
+            "UserString getnewargs-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"bound tuple ('abé',) ('str',)\"",
+        "\"type-method tuple ('abé',) ('str',)\"",
+        "\"keyword tuple ('abé',) ('str',)\"",
+        "\"empty tuple ('',) ('str',)\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"noargs TypeError UserString.__getnewargs__() missing 1 required positional argument: 'self'",
+        "\"extra TypeError UserString.__getnewargs__() takes 1 positional argument but 2 were given",
+        "\"badkw TypeError UserString.__getnewargs__() got an unexpected keyword argument 'receiver'",
+        "\"multi-self TypeError UserString.__getnewargs__() got multiple values for argument 'self'",
+    ] {
+        assert!(
+            userstring_getnewargs_method_subset_body.contains(required),
+            "UserString getnewargs-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__getnewargs__\".to_string())",
+        "fn user_string_getnewargs_value(receiver: &Value) -> Result<Value, String>",
+        "tuple_value(vec![Value::String(data.borrow().clone())])",
+        "user_string_self_argument(method, &args, keywords)?",
+        "\"__getnewargs__\"",
+        "Value::Builtin(format!(\"UserString.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString getnewargs-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_getnewargs_method_subset",
+            "cpython_collections_userstring_getnewargs_method_diff_subset",
+            "`UserString.__getnewargs__`",
+            "one-item tuple",
+            "type and instance visibility",
+            "`dir(UserString)` discoverability",
+            "direct and bound method calls",
+            "CPython UserString __getnewargs__ TypeError/AttributeError text",
+            "without implementing pickle support",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString getnewargs-method docs must contain `{required}`"
             );
         }
     }

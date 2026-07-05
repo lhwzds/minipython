@@ -235,6 +235,12 @@ Recent runtime migration notes:
   `UserString.__complex__` and `complex(UserString(...))` behavior, including type and instance visibility,
   `dir(UserString)` discoverability, direct and bound method calls, real and imaginary constructor arguments,
   signed, whitespace-padded, nan, and infinity strings, and CPython `UserString.__complex__` TypeError/ValueError text, without broadening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_getnewargs_method_subset`, backed by
+  `cpython_collections_userstring_getnewargs_method_diff_subset`, now pins
+  `UserString.__getnewargs__` returning a one-item tuple containing `.data`,
+  including type and instance visibility, `dir(UserString)` discoverability,
+  direct and bound method calls, empty-string behavior, and CPython UserString __getnewargs__ TypeError/AttributeError text,
+  without implementing pickle support or widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -1557,6 +1563,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_int_method_diff_subset`,
   `cpython_collections_userstring_float_method_diff_subset`,
   `cpython_collections_userstring_complex_method_diff_subset`,
+  `cpython_collections_userstring_getnewargs_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
@@ -7469,6 +7476,13 @@ without adding general custom encoder/decoder class support.
   `UserString.__complex__` and `complex(UserString(...))` behavior, type and instance visibility,
   `dir(UserString)` discoverability, direct and bound method calls, real and imaginary constructor arguments,
   signed, whitespace-padded, nan, and infinity strings, and CPython `UserString.__complex__` TypeError/ValueError text, without broadening host IO, network, process, C ABI, or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_getnewargs_method_diff_subset` and
+  `cpython_collections_userstring_getnewargs_method_subset`, covering
+  `UserString.__getnewargs__` returning a one-item tuple containing `.data`,
+  type and instance visibility, `dir(UserString)` discoverability, direct and
+  bound method calls, empty-string behavior, and CPython UserString __getnewargs__ TypeError/AttributeError text,
+  without implementing pickle support or widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

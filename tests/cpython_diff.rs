@@ -26119,6 +26119,35 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_getnewargs_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __getnewargs__ method behavior",
+        name: "collections-userstring-getnewargs-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), tuple(type(item).__name__ for item in value) if isinstance(value, tuple) else '')
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__getnewargs__'), hasattr(u, '__getnewargs__'), '__getnewargs__' in dir(UserString), '__getnewargs__' in dir(u))
+for label, expr in [
+    ('bound', lambda: u.__getnewargs__()),
+    ('type-method', lambda: UserString.__getnewargs__(u)),
+    ('keyword', lambda: UserString.__getnewargs__(self=u)),
+    ('empty', lambda: UserString('').__getnewargs__()),
+    ('bad-receiver', lambda: UserString.__getnewargs__('abé')),
+    ('noargs', lambda: UserString.__getnewargs__()),
+    ('extra', lambda: UserString.__getnewargs__(u, 1)),
+    ('badkw', lambda: UserString.__getnewargs__(u, receiver=u)),
+    ('multi-self', lambda: UserString.__getnewargs__(u, self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

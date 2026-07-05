@@ -35827,6 +35827,10 @@ impl Vm {
                 let receiver = user_string_self_argument(method, &args, keywords)?;
                 user_string_complex_value(&receiver)
             }
+            "__getnewargs__" => {
+                let receiver = user_string_self_argument(method, &args, keywords)?;
+                user_string_getnewargs_value(&receiver)
+            }
             "__repr__" | "__str__" => {
                 if args.len() > 1 {
                     return Err(format!(
@@ -54830,6 +54834,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__class_getitem__".to_string());
         names.push("__complex__".to_string());
         names.push("__float__".to_string());
+        names.push("__getnewargs__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
         names.push("__rmod__".to_string());
@@ -57096,6 +57101,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
         "__add__"
             | "__contains__"
             | "__complex__"
+            | "__getnewargs__"
             | "__getitem__"
             | "__hash__"
             | "__float__"
@@ -62814,6 +62820,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "zfill"
                 | "__complex__"
                 | "__float__"
+                | "__getnewargs__"
                 | "__int__"
                 | "__mod__"
                 | "__mul__" | "__repr__" | "__radd__" | "__rmod__" | "__str__" => {
@@ -90968,6 +90975,16 @@ fn user_string_complex_value(receiver: &Value) -> Result<Value, String> {
     };
     let (real, imag) = parse_complex_string(&data.borrow())?;
     Ok(complex_value(real, imag))
+}
+
+fn user_string_getnewargs_value(receiver: &Value) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    Ok(tuple_value(vec![Value::String(data.borrow().clone())]))
 }
 
 fn user_string_self_argument(
