@@ -26379,6 +26379,34 @@ for op_label, name in ops:
 }
 
 #[test]
+fn cpython_collections_userstring_case_transform_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString case-transform method behavior",
+        name: "collections-userstring-case-transform-methods",
+        source: r#"from collections import UserString
+u = UserString('Abé Σß')
+methods = ['lower','upper','capitalize','casefold','swapcase','title']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), getattr(value, 'data', None))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+for name in methods:
+    show('expr-' + name, lambda name=name: getattr(u, name)())
+    show('type-' + name, lambda name=name: getattr(UserString, name)(u))
+    show('type-selfkw-' + name, lambda name=name: getattr(UserString, name)(self=u))
+    show('bad-receiver-' + name, lambda name=name: getattr(UserString, name)('Abé'))
+    show('extra-' + name, lambda name=name: getattr(u, name)('x'))
+    show('badkw-' + name, lambda name=name: getattr(u, name)(value='x'))
+    show('bound-selfkw-' + name, lambda name=name: getattr(u, name)(self=u))
+    show('type-noargs-' + name, lambda name=name: getattr(UserString, name)())
+    show('type-badkw-' + name, lambda name=name: getattr(UserString, name)(receiver=u))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

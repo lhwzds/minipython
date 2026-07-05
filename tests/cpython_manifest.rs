@@ -26527,6 +26527,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_radd_method_subset",
             "cpython_collections_userstring_mul_method_subset",
             "cpython_collections_userstring_order_methods_subset",
+            "cpython_collections_userstring_case_transform_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30237,6 +30238,107 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString order-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_case_transform_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString case-transform methods"
+    );
+    let userstring_case_transform_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_case_transform_methods_diff_subset",
+    );
+    let userstring_case_transform_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_case_transform_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('Abé Σß')",
+        "methods = ['lower','upper','capitalize','casefold','swapcase','title']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "getattr(u, name)()",
+        "getattr(UserString, name)(u)",
+        "getattr(UserString, name)(self=u)",
+        "getattr(UserString, name)('Abé')",
+        "getattr(u, name)('x')",
+        "getattr(u, name)(value='x')",
+        "getattr(u, name)(self=u)",
+        "getattr(UserString, name)()",
+        "getattr(UserString, name)(receiver=u)",
+    ] {
+        assert!(
+            userstring_case_transform_methods_diff_body.contains(required)
+                && userstring_case_transform_methods_subset_body.contains(required),
+            "UserString case-transform diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('lower', True, True), ('upper', True, True), ('capitalize', True, True), ('casefold', True, True), ('swapcase', True, True), ('title', True, True)]\"",
+        "\"expr-lower UserString 'abé σß' abé σß\"",
+        "\"type-lower UserString 'abé σß' abé σß\"",
+        "\"type-selfkw-lower UserString 'abé σß' abé σß\"",
+        "\"expr-upper UserString 'ABÉ ΣSS' ABÉ ΣSS\"",
+        "\"expr-capitalize UserString 'Abé σß' Abé σß\"",
+        "\"expr-casefold UserString 'abé σss' abé σss\"",
+        "\"expr-swapcase UserString 'aBÉ σSS' aBÉ σSS\"",
+        "\"expr-title UserString 'Abé Σß' Abé Σß\"",
+        "\"bad-receiver-lower AttributeError 'str' object has no attribute 'data'",
+        "\"extra-upper TypeError UserString.upper() takes 1 positional argument but 2 were given",
+        "\"badkw-capitalize TypeError UserString.capitalize() got an unexpected keyword argument 'value'",
+        "\"bound-selfkw-casefold TypeError UserString.casefold() got multiple values for argument 'self'",
+        "\"type-noargs-swapcase TypeError UserString.swapcase() missing 1 required positional argument: 'self'",
+        "\"type-badkw-title TypeError UserString.title() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_case_transform_methods_subset_body.contains(required),
+            "UserString case-transform subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_case_transform_value(receiver: &Value, method: &str)",
+        "user_string_case_transform_value(&receiver, method)",
+        "\"lower\" | \"upper\" | \"capitalize\" | \"casefold\" | \"swapcase\" | \"title\"",
+        "\"lower\" => string_lower(&text)",
+        "\"upper\" => text.chars().flat_map(char::to_uppercase).collect()",
+        "\"capitalize\" => string_capitalize(&text)",
+        "\"casefold\" => string_casefold(&text)",
+        "\"swapcase\" => string_swapcase(&text)",
+        "\"title\" => string_title(&text)",
+        "user_string_value(transformed)",
+        "UserString.{method}() takes 1 positional argument but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "AttributeError: '{}' object has no attribute 'data'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString case-transform implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_case_transform_methods_subset",
+            "cpython_collections_userstring_case_transform_methods_diff_subset",
+            "`UserString.lower`",
+            "`UserString.upper`",
+            "`UserString.capitalize`",
+            "`UserString.casefold`",
+            "`UserString.swapcase`",
+            "`UserString.title`",
+            "Unicode case conversion",
+            "`self=` keyword binding",
+            "bad receiver",
+            "without preserving UserString subclass result types",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString case-transform docs must contain `{required}`"
             );
         }
     }

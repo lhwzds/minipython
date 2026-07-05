@@ -70296,6 +70296,92 @@ for op_label, name in ops:
     );
 }
 
+// Mirrors CPython's public UserString no-argument case-transform methods.
+// MiniPython preserves exact UserString result behavior here while still
+// excluding broader UserString subclass result-type preservation.
+#[test]
+fn cpython_collections_userstring_case_transform_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('Abé Σß')
+methods = ['lower','upper','capitalize','casefold','swapcase','title']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), getattr(value, 'data', None))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+for name in methods:
+    show('expr-' + name, lambda name=name: getattr(u, name)())
+    show('type-' + name, lambda name=name: getattr(UserString, name)(u))
+    show('type-selfkw-' + name, lambda name=name: getattr(UserString, name)(self=u))
+    show('bad-receiver-' + name, lambda name=name: getattr(UserString, name)('Abé'))
+    show('extra-' + name, lambda name=name: getattr(u, name)('x'))
+    show('badkw-' + name, lambda name=name: getattr(u, name)(value='x'))
+    show('bound-selfkw-' + name, lambda name=name: getattr(u, name)(self=u))
+    show('type-noargs-' + name, lambda name=name: getattr(UserString, name)())
+    show('type-badkw-' + name, lambda name=name: getattr(UserString, name)(receiver=u))"#,
+        &[
+            "visible [('lower', True, True), ('upper', True, True), ('capitalize', True, True), ('casefold', True, True), ('swapcase', True, True), ('title', True, True)]",
+            "expr-lower UserString 'abé σß' abé σß",
+            "type-lower UserString 'abé σß' abé σß",
+            "type-selfkw-lower UserString 'abé σß' abé σß",
+            "bad-receiver-lower AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-lower TypeError UserString.lower() takes 1 positional argument but 2 were given ('UserString.lower() takes 1 positional argument but 2 were given',)",
+            "badkw-lower TypeError UserString.lower() got an unexpected keyword argument 'value' (\"UserString.lower() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-lower TypeError UserString.lower() got multiple values for argument 'self' (\"UserString.lower() got multiple values for argument 'self'\",)",
+            "type-noargs-lower TypeError UserString.lower() missing 1 required positional argument: 'self' (\"UserString.lower() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-lower TypeError UserString.lower() got an unexpected keyword argument 'receiver' (\"UserString.lower() got an unexpected keyword argument 'receiver'\",)",
+            "expr-upper UserString 'ABÉ ΣSS' ABÉ ΣSS",
+            "type-upper UserString 'ABÉ ΣSS' ABÉ ΣSS",
+            "type-selfkw-upper UserString 'ABÉ ΣSS' ABÉ ΣSS",
+            "bad-receiver-upper AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-upper TypeError UserString.upper() takes 1 positional argument but 2 were given ('UserString.upper() takes 1 positional argument but 2 were given',)",
+            "badkw-upper TypeError UserString.upper() got an unexpected keyword argument 'value' (\"UserString.upper() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-upper TypeError UserString.upper() got multiple values for argument 'self' (\"UserString.upper() got multiple values for argument 'self'\",)",
+            "type-noargs-upper TypeError UserString.upper() missing 1 required positional argument: 'self' (\"UserString.upper() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-upper TypeError UserString.upper() got an unexpected keyword argument 'receiver' (\"UserString.upper() got an unexpected keyword argument 'receiver'\",)",
+            "expr-capitalize UserString 'Abé σß' Abé σß",
+            "type-capitalize UserString 'Abé σß' Abé σß",
+            "type-selfkw-capitalize UserString 'Abé σß' Abé σß",
+            "bad-receiver-capitalize AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-capitalize TypeError UserString.capitalize() takes 1 positional argument but 2 were given ('UserString.capitalize() takes 1 positional argument but 2 were given',)",
+            "badkw-capitalize TypeError UserString.capitalize() got an unexpected keyword argument 'value' (\"UserString.capitalize() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-capitalize TypeError UserString.capitalize() got multiple values for argument 'self' (\"UserString.capitalize() got multiple values for argument 'self'\",)",
+            "type-noargs-capitalize TypeError UserString.capitalize() missing 1 required positional argument: 'self' (\"UserString.capitalize() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-capitalize TypeError UserString.capitalize() got an unexpected keyword argument 'receiver' (\"UserString.capitalize() got an unexpected keyword argument 'receiver'\",)",
+            "expr-casefold UserString 'abé σss' abé σss",
+            "type-casefold UserString 'abé σss' abé σss",
+            "type-selfkw-casefold UserString 'abé σss' abé σss",
+            "bad-receiver-casefold AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-casefold TypeError UserString.casefold() takes 1 positional argument but 2 were given ('UserString.casefold() takes 1 positional argument but 2 were given',)",
+            "badkw-casefold TypeError UserString.casefold() got an unexpected keyword argument 'value' (\"UserString.casefold() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-casefold TypeError UserString.casefold() got multiple values for argument 'self' (\"UserString.casefold() got multiple values for argument 'self'\",)",
+            "type-noargs-casefold TypeError UserString.casefold() missing 1 required positional argument: 'self' (\"UserString.casefold() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-casefold TypeError UserString.casefold() got an unexpected keyword argument 'receiver' (\"UserString.casefold() got an unexpected keyword argument 'receiver'\",)",
+            "expr-swapcase UserString 'aBÉ σSS' aBÉ σSS",
+            "type-swapcase UserString 'aBÉ σSS' aBÉ σSS",
+            "type-selfkw-swapcase UserString 'aBÉ σSS' aBÉ σSS",
+            "bad-receiver-swapcase AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-swapcase TypeError UserString.swapcase() takes 1 positional argument but 2 were given ('UserString.swapcase() takes 1 positional argument but 2 were given',)",
+            "badkw-swapcase TypeError UserString.swapcase() got an unexpected keyword argument 'value' (\"UserString.swapcase() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-swapcase TypeError UserString.swapcase() got multiple values for argument 'self' (\"UserString.swapcase() got multiple values for argument 'self'\",)",
+            "type-noargs-swapcase TypeError UserString.swapcase() missing 1 required positional argument: 'self' (\"UserString.swapcase() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-swapcase TypeError UserString.swapcase() got an unexpected keyword argument 'receiver' (\"UserString.swapcase() got an unexpected keyword argument 'receiver'\",)",
+            "expr-title UserString 'Abé Σß' Abé Σß",
+            "type-title UserString 'Abé Σß' Abé Σß",
+            "type-selfkw-title UserString 'Abé Σß' Abé Σß",
+            "bad-receiver-title AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "extra-title TypeError UserString.title() takes 1 positional argument but 2 were given ('UserString.title() takes 1 positional argument but 2 were given',)",
+            "badkw-title TypeError UserString.title() got an unexpected keyword argument 'value' (\"UserString.title() got an unexpected keyword argument 'value'\",)",
+            "bound-selfkw-title TypeError UserString.title() got multiple values for argument 'self' (\"UserString.title() got multiple values for argument 'self'\",)",
+            "type-noargs-title TypeError UserString.title() missing 1 required positional argument: 'self' (\"UserString.title() missing 1 required positional argument: 'self'\",)",
+            "type-badkw-title TypeError UserString.title() got an unexpected keyword argument 'receiver' (\"UserString.title() got an unexpected keyword argument 'receiver'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

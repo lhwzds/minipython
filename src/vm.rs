@@ -35826,6 +35826,34 @@ impl Vm {
                 };
                 Ok(Value::String(text))
             }
+            "lower" | "upper" | "capitalize" | "casefold" | "swapcase" | "title" => {
+                if args.len() > 1 {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() takes 1 positional argument but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                for (name, value) in keywords {
+                    if name != "self" {
+                        return Err(format!(
+                            "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                        ));
+                    }
+                    if receiver.is_some() {
+                        return Err(format!(
+                            "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                        ));
+                    }
+                    receiver = Some(value);
+                }
+                let Some(receiver) = receiver else {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+                    ));
+                };
+                user_string_case_transform_value(&receiver, method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56474,6 +56502,12 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__le__"
             | "__gt__"
             | "__ge__"
+            | "lower"
+            | "upper"
+            | "capitalize"
+            | "casefold"
+            | "swapcase"
+            | "title"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62108,6 +62142,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
                 | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
+                | "lower" | "upper" | "capitalize" | "casefold" | "swapcase" | "title"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90190,6 +90225,26 @@ fn user_string_order_value(
         _ => unreachable!("UserString order method is filtered before dispatch"),
     };
     Ok(Value::Bool(value))
+}
+
+fn user_string_case_transform_value(receiver: &Value, method: &str) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let text = data.borrow();
+    let transformed = match method {
+        "lower" => string_lower(&text),
+        "upper" => text.chars().flat_map(char::to_uppercase).collect(),
+        "capitalize" => string_capitalize(&text),
+        "casefold" => string_casefold(&text),
+        "swapcase" => string_swapcase(&text),
+        "title" => string_title(&text),
+        _ => unreachable!("UserString case-transform method is filtered before dispatch"),
+    };
+    user_string_value(transformed)
 }
 
 fn method_order_operator(method: &str) -> &str {
