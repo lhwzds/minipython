@@ -28820,6 +28820,57 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public non-ExceptionGroup builtin exception type
+// subscription rejection while preserving ExceptionGroup GenericAlias support.
+#[test]
+fn cpython_builtin_exception_type_not_subscriptable_subset() {
+    assert_output(
+        r#"import builtins, io
+for name in ['BaseException', 'Exception', 'TypeError', 'StopIteration', 'KeyboardInterrupt', 'SystemExit', 'ArithmeticError', 'Warning', 'UnicodeDecodeError']:
+    typ = getattr(builtins, name)
+    print('visible', name, hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))
+    try:
+        result = typ[int]
+        print('subscript', name, type(result).__name__, result)
+    except Exception as error:
+        print('subscript', name, type(error).__name__, str(error), error.args)
+typ = io.UnsupportedOperation
+print('visible', 'io.UnsupportedOperation', hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))
+try:
+    result = typ[int]
+    print('subscript', 'io.UnsupportedOperation', type(result).__name__, result)
+except Exception as error:
+    print('subscript', 'io.UnsupportedOperation', type(error).__name__, str(error), error.args)
+for typ in [BaseExceptionGroup, ExceptionGroup]:
+    alias = typ[int]
+    print('group', typ.__name__, type(alias).__name__, str(alias), alias.__origin__ is typ, alias.__args__)"#,
+        &[
+            "visible BaseException False False",
+            "subscript BaseException TypeError type 'BaseException' is not subscriptable (\"type 'BaseException' is not subscriptable\",)",
+            "visible Exception False False",
+            "subscript Exception TypeError type 'Exception' is not subscriptable (\"type 'Exception' is not subscriptable\",)",
+            "visible TypeError False False",
+            "subscript TypeError TypeError type 'TypeError' is not subscriptable (\"type 'TypeError' is not subscriptable\",)",
+            "visible StopIteration False False",
+            "subscript StopIteration TypeError type 'StopIteration' is not subscriptable (\"type 'StopIteration' is not subscriptable\",)",
+            "visible KeyboardInterrupt False False",
+            "subscript KeyboardInterrupt TypeError type 'KeyboardInterrupt' is not subscriptable (\"type 'KeyboardInterrupt' is not subscriptable\",)",
+            "visible SystemExit False False",
+            "subscript SystemExit TypeError type 'SystemExit' is not subscriptable (\"type 'SystemExit' is not subscriptable\",)",
+            "visible ArithmeticError False False",
+            "subscript ArithmeticError TypeError type 'ArithmeticError' is not subscriptable (\"type 'ArithmeticError' is not subscriptable\",)",
+            "visible Warning False False",
+            "subscript Warning TypeError type 'Warning' is not subscriptable (\"type 'Warning' is not subscriptable\",)",
+            "visible UnicodeDecodeError False False",
+            "subscript UnicodeDecodeError TypeError type 'UnicodeDecodeError' is not subscriptable (\"type 'UnicodeDecodeError' is not subscriptable\",)",
+            "visible io.UnsupportedOperation False False",
+            "subscript io.UnsupportedOperation TypeError type 'UnsupportedOperation' is not subscriptable (\"type 'UnsupportedOperation' is not subscriptable\",)",
+            "group BaseExceptionGroup GenericAlias BaseExceptionGroup[int] True (<class 'int'>,)",
+            "group ExceptionGroup GenericAlias ExceptionGroup[int] True (<class 'int'>,)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `list` instance `__doc__` type-attribute lookup
 // without adding writable instance dictionaries.
 #[test]

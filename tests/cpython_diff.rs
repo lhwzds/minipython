@@ -13915,6 +13915,33 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_builtin_exception_type_not_subscriptable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public builtin exception type subscription rejection",
+        name: "builtin-exception-type-not-subscriptable",
+        source: r#"import builtins, io
+for name in ['BaseException', 'Exception', 'TypeError', 'StopIteration', 'KeyboardInterrupt', 'SystemExit', 'ArithmeticError', 'Warning', 'UnicodeDecodeError']:
+    typ = getattr(builtins, name)
+    print('visible', name, hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))
+    try:
+        result = typ[int]
+        print('subscript', name, type(result).__name__, result)
+    except Exception as error:
+        print('subscript', name, type(error).__name__, str(error), error.args)
+typ = io.UnsupportedOperation
+print('visible', 'io.UnsupportedOperation', hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ))
+try:
+    result = typ[int]
+    print('subscript', 'io.UnsupportedOperation', type(result).__name__, result)
+except Exception as error:
+    print('subscript', 'io.UnsupportedOperation', type(error).__name__, str(error), error.args)
+for typ in [BaseExceptionGroup, ExceptionGroup]:
+    alias = typ[int]
+    print('group', typ.__name__, type(alias).__name__, str(alias), alias.__origin__ is typ, alias.__args__)"#,
+    });
+}
+
+#[test]
 fn cpython_list_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py public list instance __doc__ attribute subset",

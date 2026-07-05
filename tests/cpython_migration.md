@@ -132,6 +132,14 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `type 'types.SimpleNamespace' is not subscriptable` and absent type
   `__class_getitem__` visibility, without adding `types.SimpleNamespace.__class_getitem__`
   or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_builtin_exception_type_not_subscriptable_subset` and
+  `cpython_builtin_exception_type_not_subscriptable_diff_subset` for
+  non-ExceptionGroup builtin exception type subscription rejection, including
+  `BaseException[int]`, `TypeError[int]`, and `io.UnsupportedOperation[int]`
+  with `type 'BaseException' is not subscriptable` /
+  `type 'UnsupportedOperation' is not subscriptable`, while preserving
+  `BaseExceptionGroup[int]` and `ExceptionGroup[int]` GenericAlias behavior,
+  without adding `BaseException.__class_getitem__` or widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -4953,6 +4961,11 @@ Completed in the raise-statement supported-promotion pass:
   `ZeroDivisionError`, `LookupError` catches `IndexError` and `KeyError`,
   builtin exception `__bases__` exposes the direct base tuple, and
   `GeneratorExit` remains catchable by `BaseException` but not `Exception`.
+- Added `cpython_builtin_exception_type_not_subscriptable_subset` and
+  `cpython_builtin_exception_type_not_subscriptable_diff_subset`, covering
+  CPython's public non-ExceptionGroup builtin exception type subscription
+  rejection while keeping `BaseExceptionGroup[int]` and `ExceptionGroup[int]`
+  as GenericAlias-producing exception-group types.
 - Added `cpython_runtime_exception_capture_diff_subset` to pin runtime-raised
   `IndexError`, `KeyError`, `TypeError`, and `NotImplementedError` exception
   class/catchability behavior to direct CPython output parity without claiming

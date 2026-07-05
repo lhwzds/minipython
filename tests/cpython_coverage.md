@@ -120,6 +120,14 @@ Recent runtime migration notes:
   `types.SimpleNamespace[int]` rejection with `type 'types.SimpleNamespace' is not subscriptable`
   and absent type `__class_getitem__` visibility, without adding `types.SimpleNamespace.__class_getitem__`
   or GenericAlias support, without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_builtin_exception_type_not_subscriptable_subset`, backed by
+  `cpython_builtin_exception_type_not_subscriptable_diff_subset`, now pins
+  non-ExceptionGroup builtin exception type subscription rejection, including
+  `BaseException[int]`, `TypeError[int]`, and `io.UnsupportedOperation[int]`
+  with `type 'BaseException' is not subscriptable` /
+  `type 'UnsupportedOperation' is not subscriptable`, while preserving
+  `BaseExceptionGroup[int]` and `ExceptionGroup[int]` GenericAlias behavior,
+  without adding `BaseException.__class_getitem__` or widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -778,6 +786,12 @@ Recent runtime migration notes:
 - `cpython_chr_ord_builtin_subset`, backed by
   `cpython_chr_ord_builtin_diff_subset`, now pins CPython no-keyword TypeError
   text for `chr()` and `ord()`.
+- `cpython_builtin_exception_type_not_subscriptable_subset`, backed by
+  `cpython_builtin_exception_type_not_subscriptable_diff_subset`, covers
+  non-ExceptionGroup builtin exception type subscription rejection for
+  representative `BaseException`, `Exception`, concrete exception, warning, and
+  `io.UnsupportedOperation` types, plus the preserved `BaseExceptionGroup[int]`
+  / `ExceptionGroup[int]` GenericAlias path.
 - `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
   blocking over otherwise sequence-like objects and exact `reversed` arity
   `TypeError` text, keeping the public reverse protocol distinct from sequence

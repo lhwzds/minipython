@@ -68622,6 +68622,15 @@ fn is_exception_type_name(name: &str) -> bool {
     builtin_exception_bases(name).is_some()
 }
 
+fn exception_type_subscript_error_name(name: &str) -> Option<&str> {
+    match name {
+        "BaseExceptionGroup" | "ExceptionGroup" => None,
+        "io.UnsupportedOperation" => Some("UnsupportedOperation"),
+        name if is_exception_type_name(name) => Some(name),
+        _ => None,
+    }
+}
+
 fn builtin_exception_bases(name: &str) -> Option<&'static [&'static str]> {
     match name {
         "BaseException" => Some(&["object"]),
@@ -89508,6 +89517,10 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         }
         Value::Builtin(name) if name == "SimpleNamespace" => {
             Err("type 'types.SimpleNamespace' is not subscriptable".to_string())
+        }
+        Value::Builtin(name) if exception_type_subscript_error_name(&name).is_some() => {
+            let type_name = exception_type_subscript_error_name(&name).unwrap_or(&name);
+            Err(format!("type '{type_name}' is not subscriptable"))
         }
         Value::Builtin(name) if name == "enumerate" => Ok(Value::GenericAlias {
             origin: Box::new(Value::Builtin(name)),

@@ -47939,6 +47939,121 @@ fn types_simple_namespace_type_not_subscriptable_subset_has_focused_diff_evidenc
 }
 
 #[test]
+fn builtin_exception_type_not_subscriptable_subset_has_focused_diff_evidence() {
+    let diff_name = "cpython_builtin_exception_type_not_subscriptable_diff_subset";
+    let subset_name = "cpython_builtin_exception_type_not_subscriptable_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "builtin exception type subscription rejection CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "builtin exception type subscription rejection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "import builtins, io",
+        "'BaseException'",
+        "'Exception'",
+        "'TypeError'",
+        "'StopIteration'",
+        "'KeyboardInterrupt'",
+        "'SystemExit'",
+        "'ArithmeticError'",
+        "'Warning'",
+        "'UnicodeDecodeError'",
+        "io.UnsupportedOperation",
+        "typ[int]",
+        "BaseExceptionGroup",
+        "ExceptionGroup",
+        "alias.__origin__ is typ",
+        "alias.__args__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "builtin exception type subscription rejection diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"subscript BaseException TypeError type 'BaseException' is not subscriptable",
+        "\"subscript Exception TypeError type 'Exception' is not subscriptable",
+        "\"subscript TypeError TypeError type 'TypeError' is not subscriptable",
+        "\"subscript StopIteration TypeError type 'StopIteration' is not subscriptable",
+        "\"subscript KeyboardInterrupt TypeError type 'KeyboardInterrupt' is not subscriptable",
+        "\"subscript SystemExit TypeError type 'SystemExit' is not subscriptable",
+        "\"subscript ArithmeticError TypeError type 'ArithmeticError' is not subscriptable",
+        "\"subscript Warning TypeError type 'Warning' is not subscriptable",
+        "\"subscript UnicodeDecodeError TypeError type 'UnicodeDecodeError' is not subscriptable",
+        "\"subscript io.UnsupportedOperation TypeError type 'UnsupportedOperation' is not subscriptable",
+        "\"group BaseExceptionGroup GenericAlias BaseExceptionGroup[int] True (<class 'int'>,)\"",
+        "\"group ExceptionGroup GenericAlias ExceptionGroup[int] True (<class 'int'>,)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "builtin exception type subscription rejection subset output must pin `{required}`"
+        );
+    }
+
+    let load_subscript_body = VM_SOURCE
+        .split("fn load_subscript(object: Value, index: Value) -> Result<Value, String>")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn generic_alias_args(index: Value) -> Vec<Value>")
+                .next()
+        })
+        .expect("load_subscript implementation must be extractable");
+    let exception_guard = load_subscript_body
+        .find("exception_type_subscript_error_name(&name).is_some()")
+        .expect("builtin exception subscript rejection guard must exist");
+    let class_like_guard = load_subscript_body
+        .find("Value::Builtin(name) if is_class_like_builtin(&name)")
+        .expect("class-like builtin GenericAlias guard must exist");
+    assert!(
+        exception_guard < class_like_guard,
+        "builtin exception subscript rejection must run before the generic class-like builtin alias guard"
+    );
+
+    for required in [
+        "fn exception_type_subscript_error_name(name: &str) -> Option<&str>",
+        "\"BaseExceptionGroup\" | \"ExceptionGroup\" => None",
+        "\"io.UnsupportedOperation\" => Some(\"UnsupportedOperation\")",
+        "name if is_exception_type_name(name) => Some(name)",
+        "type '{type_name}' is not subscriptable",
+        "Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias",
+        "origin: Box::new(Value::Builtin(name))",
+        "args: generic_alias_args(index)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "builtin exception type subscription rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`BaseException[int]`",
+            "`TypeError[int]`",
+            "`io.UnsupportedOperation[int]`",
+            "`BaseExceptionGroup[int]`",
+            "`ExceptionGroup[int]`",
+            "type 'BaseException' is not subscriptable",
+            "type 'UnsupportedOperation' is not subscriptable",
+            "without adding `BaseException.__class_getitem__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "builtin exception type subscription rejection docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_attribute_assignment_errors_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_list_attribute_assignment_errors_subset(",
