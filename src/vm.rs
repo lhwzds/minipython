@@ -53009,6 +53009,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "values",
         ],
         "defaultdict" => &[
+            "__class_getitem__",
             "__contains__",
             "__copy__",
             "__delitem__",
@@ -61484,6 +61485,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
             "default_factory" => Ok(default_factory.borrow().clone()),
             "fromkeys" => Ok(Value::Builtin("defaultdict.fromkeys".to_string())),
+            "__class_getitem__" => Ok(Value::Builtin("defaultdict.__class_getitem__".to_string())),
             "__format__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("object.__format__".to_string())),
                 receiver: Box::new(Value::DefaultDict {

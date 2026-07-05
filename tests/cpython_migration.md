@@ -14712,6 +14712,8 @@ Completed in the CPython collections manifest expansion pass:
   wrapper_descriptor identity, `defaultdict.__dict__['__getattribute__']`
   mappingproxy exposure, bound method-wrapper attribute reads,
   `defaultdict.__class_getitem__` pure-memory GenericAlias creation,
+  `dir(defaultdict)` classmethod visibility,
+  `defaultdict().__class_getitem__(int) == defaultdict[int]`, exact defaultdict instance lookup,
   `defaultdict.__dict__['__class_getitem__']` classmethod_descriptor
   mappingproxy exposure, `defaultdict.__init__` wrapper_descriptor identity,
   `defaultdict.__dict__['__init__']` mappingproxy exposure, pure-memory

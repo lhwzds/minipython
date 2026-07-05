@@ -25082,10 +25082,13 @@ for label, thunk in [
         thunk()
     except Exception as error:
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
-print('type-class-getitem', hasattr(defaultdict, '__class_getitem__'), type(defaultdict.__class_getitem__).__name__)
+print('type-class-getitem', hasattr(defaultdict, '__class_getitem__'), '__class_getitem__' in dir(defaultdict), type(defaultdict.__class_getitem__).__name__)
 print('type-dict-class-getitem', '__class_getitem__' in mp, type(mp['__class_getitem__']).__name__, repr(mp['__class_getitem__']))
+print('instance-class-getitem', hasattr(defaultdict(), '__class_getitem__'), '__class_getitem__' in dir(defaultdict()))
 alias = defaultdict.__class_getitem__(int)
 print('class-getitem-direct', repr(alias), alias.__origin__ is defaultdict, alias.__args__[0] is int)
+alias = defaultdict().__class_getitem__(int)
+print('class-getitem-instance', repr(alias), alias == defaultdict[int], alias.__origin__ is defaultdict)
 alias = defaultdict.__class_getitem__((str, int))
 print('class-getitem-tuple', repr(alias), alias.__origin__ is defaultdict, alias.__args__ == (str, int))
 for label, thunk in [

@@ -71273,10 +71273,13 @@ for label, thunk in [
         thunk()
     except Exception as error:
         print(label, type(error).__name__, str(error), getattr(error, 'args', None))
-print('type-class-getitem', hasattr(defaultdict, '__class_getitem__'), type(defaultdict.__class_getitem__).__name__)
+print('type-class-getitem', hasattr(defaultdict, '__class_getitem__'), '__class_getitem__' in dir(defaultdict), type(defaultdict.__class_getitem__).__name__)
 print('type-dict-class-getitem', '__class_getitem__' in mp, type(mp['__class_getitem__']).__name__, repr(mp['__class_getitem__']))
+print('instance-class-getitem', hasattr(defaultdict(), '__class_getitem__'), '__class_getitem__' in dir(defaultdict()))
 alias = defaultdict.__class_getitem__(int)
 print('class-getitem-direct', repr(alias), alias.__origin__ is defaultdict, alias.__args__[0] is int)
+alias = defaultdict().__class_getitem__(int)
+print('class-getitem-instance', repr(alias), alias == defaultdict[int], alias.__origin__ is defaultdict)
 alias = defaultdict.__class_getitem__((str, int))
 print('class-getitem-tuple', repr(alias), alias.__origin__ is defaultdict, alias.__args__ == (str, int))
 for label, thunk in [
@@ -71351,9 +71354,11 @@ except Exception as error:
             "bound-getattribute method-wrapper True True",
             "getattribute-wrong-self TypeError descriptor '__getattribute__' requires a 'collections.defaultdict' object but received a 'dict' (\"descriptor '__getattribute__' requires a 'collections.defaultdict' object but received a 'dict'\",)",
             "getattribute-keyword TypeError wrapper __getattribute__() takes no keyword arguments ('wrapper __getattribute__() takes no keyword arguments',)",
-            "type-class-getitem True builtin_function_or_method",
+            "type-class-getitem True True builtin_function_or_method",
             "type-dict-class-getitem True classmethod_descriptor <method '__class_getitem__' of 'collections.defaultdict' objects>",
+            "instance-class-getitem True True",
             "class-getitem-direct collections.defaultdict[int] True True",
+            "class-getitem-instance collections.defaultdict[int] True True",
             "class-getitem-tuple collections.defaultdict[str, int] True True",
             "class-getitem-noargs TypeError defaultdict.__class_getitem__() takes exactly one argument (0 given) ('defaultdict.__class_getitem__() takes exactly one argument (0 given)',)",
             "class-getitem-extra TypeError defaultdict.__class_getitem__() takes exactly one argument (2 given) ('defaultdict.__class_getitem__() takes exactly one argument (2 given)',)",
