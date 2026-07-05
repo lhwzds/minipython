@@ -143,8 +143,8 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_array_array_class_getitem_generic_alias_subset` and
   `cpython_array_array_class_getitem_generic_alias_diff_subset` for array.array
   `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
-  exact array.array instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full GenericAlias repr parity or host file IO,
+  exact array.array instance lookup, inherited array.array subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation, without adding full GenericAlias repr parity or host file IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_collections_deque_class_getitem_generic_alias_subset` and
   `cpython_collections_deque_class_getitem_generic_alias_diff_subset` for
@@ -3230,8 +3230,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_array_array_class_getitem_generic_alias_subset` and
   `cpython_array_array_class_getitem_generic_alias_diff_subset`, covering
   array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
-  exact array.array instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation without adding full GenericAlias repr parity or host file IO.
+  exact array.array instance lookup, inherited array.array subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation without adding full GenericAlias repr parity or host file IO.
 - Added `cpython_array_one_byte_public_sequence_subset` and
   `cpython_array_one_byte_public_sequence_diff_subset`, extending the same
   first-pass `array.array('B')` / `array.array('b')` storage to the public array

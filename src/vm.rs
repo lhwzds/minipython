@@ -15033,7 +15033,9 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&class_bases, "defaultdict")
+                    if (!is_exact_array_array_instance(&instance)
+                        && class_bases_include_builtin(&class_bases, "array.array"))
+                        || class_bases_include_builtin(&class_bases, "defaultdict")
                         || class_bases_include_builtin(&class_bases, "deque")
                         || class_bases_include_builtin(&class_bases, "OrderedDict")
                         || class_bases_include_builtin(&class_bases, "Counter")
@@ -15351,7 +15353,8 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&bases, "defaultdict")
+                    if class_bases_include_builtin(&bases, "array.array")
+                        || class_bases_include_builtin(&bases, "defaultdict")
                         || class_bases_include_builtin(&bases, "deque")
                         || class_bases_include_builtin(&bases, "OrderedDict")
                         || class_bases_include_builtin(&bases, "Counter")

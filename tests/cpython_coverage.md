@@ -131,8 +131,8 @@ Recent runtime migration notes:
 - `cpython_array_array_class_getitem_generic_alias_subset`, backed by
   `cpython_array_array_class_getitem_generic_alias_diff_subset`, now pins
   array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
-  exact array.array instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full GenericAlias repr parity or host file IO,
+  exact array.array instance lookup, inherited array.array subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation, without adding full GenericAlias repr parity or host file IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_deque_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_deque_class_getitem_generic_alias_diff_subset`, now pins
@@ -8110,8 +8110,8 @@ without adding general custom encoder/decoder class support.
   `cpython_array_array_class_getitem_generic_alias_subset`, backed by
   `cpython_array_array_class_getitem_generic_alias_diff_subset`, covering
   array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
-  exact array.array instance lookup, GenericAlias origin/args, and keyword and
-  arity error propagation, without adding full GenericAlias repr parity or host file IO.
+  exact array.array instance lookup, inherited array.array subclass lookup,
+  GenericAlias origin/args, and keyword and arity error propagation, without adding full GenericAlias repr parity or host file IO.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_sequence_subset`, covering the supported
   public `array.array('B')` / `array.array('b')` sequence and bytes surface:
