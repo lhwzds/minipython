@@ -28334,6 +28334,33 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public `bool` type subscription rejection. MiniPython keeps
+// bool as a concrete singleton numeric type, not a GenericAlias origin.
+#[test]
+fn cpython_bool_type_not_subscriptable_subset() {
+    assert_output(
+        r#"typ = bool
+inst = True
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))),
+    ('subscript-int', lambda: typ[int]),
+    ('call-int', lambda: typ.__class_getitem__(int)),
+    ('inst-call', lambda: inst.__class_getitem__(int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (False, False, False, False)",
+            "subscript-int TypeError type 'bool' is not subscriptable (\"type 'bool' is not subscriptable\",)",
+            "call-int AttributeError type object 'bool' has no attribute '__class_getitem__' (\"type object 'bool' has no attribute '__class_getitem__'\",)",
+            "inst-call AttributeError 'bool' object has no attribute '__class_getitem__' (\"'bool' object has no attribute '__class_getitem__'\",)",
+        ],
+    );
+}
+
 // Mirrors CPython's public `str` type subscription rejection. MiniPython keeps
 // str as a concrete text sequence type, not a GenericAlias origin.
 #[test]
