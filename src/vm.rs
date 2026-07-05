@@ -35885,6 +35885,10 @@ impl Vm {
                     user_string_remove_affix_arguments(method, &args, keywords)?;
                 user_string_remove_affix_value(&receiver, &affix, method == "removeprefix", method)
             }
+            "partition" | "rpartition" => {
+                let (receiver, sep) = user_string_partition_arguments(method, &args, keywords)?;
+                user_string_partition_value(&receiver, &sep, method == "partition", method)
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -56667,6 +56671,8 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rstrip"
             | "removeprefix"
             | "removesuffix"
+            | "partition"
+            | "rpartition"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62309,6 +62315,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "startswith" | "endswith"
                 | "strip" | "lstrip" | "rstrip"
                 | "removeprefix" | "removesuffix"
+                | "partition" | "rpartition"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90791,6 +90798,118 @@ fn user_string_remove_affix_value(
         text.strip_suffix(&affix).unwrap_or(&text)
     };
     user_string_value(value.to_string())
+}
+
+fn user_string_partition_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut sep = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "sep" => {
+                if sep.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'sep'"
+                    ));
+                }
+                sep = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let Some(receiver) = receiver else {
+        return Err(if sep.is_some() {
+            format!(
+                "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+            )
+        } else {
+            format!(
+                "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'sep'"
+            )
+        });
+    };
+    let Some(sep) = sep else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'sep'"
+        ));
+    };
+    Ok((receiver, sep))
+}
+
+fn user_string_partition_separator(sep: &Value, _method: &str) -> Result<String, String> {
+    let text = match sep {
+        Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        value if str_subclass_string(value).is_some() => {
+            str_subclass_string(value).expect("str subclass storage exists after guard")
+        }
+        value => {
+            return Err(format!("TypeError: must be str, not {}", type_name(value)));
+        }
+    };
+    if text.is_empty() {
+        return Err("ValueError: empty separator".to_string());
+    }
+    Ok(text)
+}
+
+fn user_string_partition_value(
+    receiver: &Value,
+    sep: &Value,
+    leftmost: bool,
+    method: &str,
+) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let sep_text = user_string_partition_separator(sep, method)?;
+    let text = data.borrow();
+    let Some(index) = (if leftmost {
+        text.find(&sep_text)
+    } else {
+        text.rfind(&sep_text)
+    }) else {
+        return Ok(if leftmost {
+            tuple_value(vec![
+                Value::String(text.clone()),
+                Value::String(String::new()),
+                Value::String(String::new()),
+            ])
+        } else {
+            tuple_value(vec![
+                Value::String(String::new()),
+                Value::String(String::new()),
+                Value::String(text.clone()),
+            ])
+        });
+    };
+    let before = Value::String(text[..index].to_string());
+    let after_index = index + sep_text.len();
+    let after = Value::String(text[after_index..].to_string());
+    Ok(tuple_value(vec![before, sep.clone(), after]))
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

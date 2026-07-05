@@ -26533,6 +26533,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_prefix_suffix_methods_subset",
             "cpython_collections_userstring_strip_methods_subset",
             "cpython_collections_userstring_remove_affix_methods_subset",
+            "cpython_collections_userstring_partition_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30899,6 +30900,132 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString remove-affix docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_partition_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString partition methods"
+    );
+    let userstring_partition_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_partition_methods_diff_subset",
+    );
+    let userstring_partition_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_partition_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class S(str):",
+        "u = UserString('banana bandana')",
+        "methods = ['partition', 'rpartition']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "if isinstance(value, tuple):",
+        "repr([type(item).__name__ for item in value])",
+        "(S('na'),)",
+        "(S('x'),)",
+        "getattr(u, name)(*spec)",
+        "found = getattr(u, name)(sep)",
+        "found[1] is sep",
+        "missing = getattr(u, name)(sep)",
+        "missing[1] is sep",
+        "getattr(u, name)(sep='na')",
+        "getattr(UserString, name)(self=u, sep='na')",
+        "getattr(UserString, name)(u, 'na')",
+        "getattr(UserString, name)('banana bandana', 'na')",
+        "getattr(u, name)()",
+        "getattr(u, name)('na', 'x')",
+        "getattr(u, name)('na', sep='x')",
+        "getattr(u, name)(self=u)",
+        "getattr(UserString, name)()",
+        "getattr(UserString, name)(sep='na')",
+        "getattr(UserString, name)(receiver=u, sep='na')",
+        "getattr(u, name)(UserString('na'))",
+        "getattr(u, name)('')",
+        "getattr(u, name)(1)",
+    ] {
+        assert!(
+            userstring_partition_methods_diff_body.contains(required)
+                && userstring_partition_methods_subset_body.contains(required),
+            "UserString partition diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('partition', True, True), ('rpartition', True, True)]\"",
+        "\"value ('na',) tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None]\"",
+        "\"value ('x',) tuple:('banana bandana', '', ''):['str', 'str', 'str']:[None, None, None]\"",
+        "\"value ('na',) tuple:('ba', 'na', 'na bandana'):['str', 'S', 'str']:[None, None, None]\"",
+        "\"identity S True True\"",
+        "\"missing-subclass str False ('banana bandana', '', '')\"",
+        "\"keywords tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None]",
+        "\"errors partition [\\\"AttributeError:'str' object has no attribute 'data'\\\"",
+        "TypeError:UserString.partition() missing 1 required positional argument: 'sep'",
+        "TypeError:UserString.partition() takes 2 positional arguments but 3 were given",
+        "TypeError:UserString.partition() got multiple values for argument 'sep'",
+        "TypeError:UserString.partition() missing 2 required positional arguments: 'self' and 'sep'",
+        "TypeError:must be str, not UserString",
+        "ValueError:empty separator",
+        "\"value ('na',) tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None]\"",
+        "\"value ('x',) tuple:('', '', 'banana bandana'):['str', 'str', 'str']:[None, None, None]\"",
+        "\"value ('na',) tuple:('banana banda', 'na', ''):['str', 'S', 'str']:[None, None, None]\"",
+        "\"missing-subclass str False ('', '', 'banana bandana')\"",
+        "\"keywords tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None]",
+        "\"errors rpartition [\\\"AttributeError:'str' object has no attribute 'data'\\\"",
+        "TypeError:UserString.rpartition() missing 1 required positional argument: 'sep'",
+        "TypeError:UserString.rpartition() takes 2 positional arguments but 3 were given",
+        "TypeError:UserString.rpartition() got multiple values for argument 'self'",
+        "TypeError:UserString.rpartition() got an unexpected keyword argument 'receiver'",
+        "TypeError:must be str, not int",
+    ] {
+        assert!(
+            userstring_partition_methods_subset_body.contains(required),
+            "UserString partition subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"partition\" | \"rpartition\"",
+        "fn user_string_partition_arguments(",
+        "fn user_string_partition_separator(",
+        "fn user_string_partition_value(",
+        "user_string_partition_arguments(method, &args, keywords)",
+        "user_string_partition_value(&receiver, &sep, method == \"partition\", method)",
+        "UserString.{method}() takes 2 positional arguments",
+        "got multiple values for argument 'sep'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and 'sep'",
+        "TypeError: must be str, not",
+        "ValueError: empty separator",
+        "str_subclass_string(value).expect(\"str subclass storage exists after guard\")",
+        "text.find(&sep_text)",
+        "text.rfind(&sep_text)",
+        "tuple_value(vec![before, sep.clone(), after])",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString partition implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_partition_methods_subset",
+            "cpython_collections_userstring_partition_methods_diff_subset",
+            "`UserString.partition`",
+            "`UserString.rpartition`",
+            "tuple result shapes",
+            "leftmost/rightmost separator search",
+            "missing-separator result ordering",
+            "`str` subclass separator identity preservation",
+            "`sep=` keyword binding",
+            "empty separator `ValueError`",
+            "UserString separator rejection",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString partition docs must contain `{required}`"
             );
         }
     }

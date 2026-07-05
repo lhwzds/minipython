@@ -70777,6 +70777,87 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString partition/rpartition methods.
+#[test]
+fn cpython_collections_userstring_partition_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+class S(str):
+    pass
+u = UserString('banana bandana')
+methods = ['partition', 'rpartition']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        if isinstance(value, tuple):
+            return type(value).__name__ + ':' + repr(value) + ':' + repr([type(item).__name__ for item in value]) + ':' + repr([getattr(item, 'data', None) for item in value])
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('na',),
+    ('x',),
+    (' ',),
+    (S('na'),),
+    (S('x'),),
+]
+for name in methods:
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    sep = S('na')
+    found = getattr(u, name)(sep)
+    print('identity', type(found[1]).__name__, found[1] is sep, found[1] == sep)
+    sep = S('x')
+    missing = getattr(u, name)(sep)
+    print('missing-subclass', type(missing[1]).__name__, missing[1] is sep, missing)
+    print('keywords',
+          show(lambda name=name: getattr(u, name)(sep='na')),
+          show(lambda name=name: getattr(UserString, name)(self=u, sep='na')))
+    print('type', show(lambda name=name: getattr(UserString, name)(u, 'na')))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('banana bandana', 'na')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('na', 'x')),
+        show(lambda name=name: getattr(u, name)('na', sep='x')),
+        show(lambda name=name: getattr(u, name)(self=u)),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name: getattr(UserString, name)(sep='na')),
+        show(lambda name=name: getattr(UserString, name)(self=u)),
+        show(lambda name=name: getattr(UserString, name)(receiver=u, sep='na')),
+        show(lambda name=name: getattr(u, name)(UserString('na'))),
+        show(lambda name=name: getattr(u, name)('')),
+        show(lambda name=name: getattr(u, name)(1)),
+    ])"#,
+        &[
+            "visible [('partition', True, True), ('rpartition', True, True)]",
+            "method partition",
+            "value ('na',) tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None]",
+            "value ('x',) tuple:('banana bandana', '', ''):['str', 'str', 'str']:[None, None, None]",
+            "value (' ',) tuple:('banana', ' ', 'bandana'):['str', 'str', 'str']:[None, None, None]",
+            "value ('na',) tuple:('ba', 'na', 'na bandana'):['str', 'S', 'str']:[None, None, None]",
+            "value ('x',) tuple:('banana bandana', '', ''):['str', 'str', 'str']:[None, None, None]",
+            "identity S True True",
+            "missing-subclass str False ('banana bandana', '', '')",
+            "keywords tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None] tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None]",
+            "type tuple:('ba', 'na', 'na bandana'):['str', 'str', 'str']:[None, None, None]",
+            "errors partition [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.partition() missing 1 required positional argument: 'sep'\", 'TypeError:UserString.partition() takes 2 positional arguments but 3 were given', \"TypeError:UserString.partition() got multiple values for argument 'sep'\", \"TypeError:UserString.partition() got multiple values for argument 'self'\", \"TypeError:UserString.partition() missing 2 required positional arguments: 'self' and 'sep'\", \"TypeError:UserString.partition() missing 1 required positional argument: 'self'\", \"TypeError:UserString.partition() missing 1 required positional argument: 'sep'\", \"TypeError:UserString.partition() got an unexpected keyword argument 'receiver'\", 'TypeError:must be str, not UserString', 'ValueError:empty separator', 'TypeError:must be str, not int']",
+            "method rpartition",
+            "value ('na',) tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None]",
+            "value ('x',) tuple:('', '', 'banana bandana'):['str', 'str', 'str']:[None, None, None]",
+            "value (' ',) tuple:('banana', ' ', 'bandana'):['str', 'str', 'str']:[None, None, None]",
+            "value ('na',) tuple:('banana banda', 'na', ''):['str', 'S', 'str']:[None, None, None]",
+            "value ('x',) tuple:('', '', 'banana bandana'):['str', 'str', 'str']:[None, None, None]",
+            "identity S True True",
+            "missing-subclass str False ('', '', 'banana bandana')",
+            "keywords tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None] tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None]",
+            "type tuple:('banana banda', 'na', ''):['str', 'str', 'str']:[None, None, None]",
+            "errors rpartition [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.rpartition() missing 1 required positional argument: 'sep'\", 'TypeError:UserString.rpartition() takes 2 positional arguments but 3 were given', \"TypeError:UserString.rpartition() got multiple values for argument 'sep'\", \"TypeError:UserString.rpartition() got multiple values for argument 'self'\", \"TypeError:UserString.rpartition() missing 2 required positional arguments: 'self' and 'sep'\", \"TypeError:UserString.rpartition() missing 1 required positional argument: 'self'\", \"TypeError:UserString.rpartition() missing 1 required positional argument: 'sep'\", \"TypeError:UserString.rpartition() got an unexpected keyword argument 'receiver'\", 'TypeError:must be str, not UserString', 'ValueError:empty separator', 'TypeError:must be str, not int']",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

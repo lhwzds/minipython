@@ -319,6 +319,15 @@ Recent runtime migration notes:
   affix coercion through `.data`, bad receiver errors, and UserString-specific
   arity/keyword TypeErrors, without implementing full UserString string-method
   proxying or widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_partition_methods_subset`, backed by
+  `cpython_collections_userstring_partition_methods_diff_subset`, now pins
+  `UserString.partition` and `UserString.rpartition`, including tuple result
+  shapes, leftmost/rightmost separator search, missing-separator result
+  ordering, `str` subclass separator identity preservation, `sep=` keyword
+  binding, empty separator `ValueError`, UserString separator rejection, bad
+  receiver errors, and UserString-specific arity/keyword TypeErrors, without
+  implementing full UserString string-method proxying or widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1411,6 +1420,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_prefix_suffix_methods_diff_subset`,
   `cpython_collections_userstring_strip_methods_diff_subset`,
   `cpython_collections_userstring_remove_affix_methods_diff_subset`,
+  `cpython_collections_userstring_partition_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7376,6 +7386,15 @@ without adding general custom encoder/decoder class support.
   prefix/suffix handling, empty affix behavior, UserString affix coercion
   through `.data`, bad receiver errors, and UserString-specific arity/keyword
   TypeErrors, without implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_partition_methods_diff_subset` and
+  `cpython_collections_userstring_partition_methods_subset`, covering
+  `UserString.partition` and `UserString.rpartition`, tuple result shapes,
+  leftmost/rightmost separator search, missing-separator result ordering,
+  `str` subclass separator identity preservation, `sep=` keyword binding,
+  empty separator `ValueError`, UserString separator rejection, bad receiver
+  errors, and UserString-specific arity/keyword TypeErrors, without
+  implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering
