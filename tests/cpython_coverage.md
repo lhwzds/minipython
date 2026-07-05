@@ -359,9 +359,17 @@ Recent runtime migration notes:
   `UserString.format`, including ordinary `str` result values,
   positional and keyword format fields, mapping item lookup, automatic field numbering,
   literal brace escaping, positional-only receiver handling, bad receiver
-  errors, and format error propagation, without implementing
-  `UserString.format_map`, full UserString string-method proxying, or widening
-  host IO, network, process, C ABI, or full stdlib scope.
+  errors, and format error propagation, without implementing full UserString
+  string-method proxying or widening host IO, network, process, C ABI, or full
+  stdlib scope.
+- `cpython_collections_userstring_format_map_method_subset`, backed by
+  `cpython_collections_userstring_format_map_method_diff_subset`, now pins
+  `UserString.format_map`, including ordinary `str` result values, mapping
+  field lookup, `__missing__` mapping fallback, literal brace escaping,
+  `self=` and `mapping=` keyword binding, bad receiver errors,
+  positional field `ValueError`, and UserString-specific arity/keyword TypeErrors,
+  without implementing full UserString string-method proxying or widening host
+  IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1523,6 +1531,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_rsplit_method_diff_subset`,
   `cpython_collections_userstring_join_method_diff_subset`,
   `cpython_collections_userstring_format_method_diff_subset`,
+  `cpython_collections_userstring_format_map_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7536,7 +7545,16 @@ without adding general custom encoder/decoder class support.
   `UserString.format`, ordinary `str` result values,
   positional and keyword format fields, mapping item lookup, automatic field numbering, literal brace
   escaping, positional-only receiver handling, bad receiver errors, and format
-  error propagation, without implementing `UserString.format_map`.
+  error propagation, without implementing full UserString string-method
+  proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_format_map_method_diff_subset` and
+  `cpython_collections_userstring_format_map_method_subset`, covering
+  `UserString.format_map`, ordinary `str` result values, mapping field lookup,
+  `__missing__` mapping fallback, literal brace escaping, `self=` and
+  `mapping=` keyword binding, bad receiver errors, positional field `ValueError`,
+  and UserString-specific arity/keyword TypeErrors, without
+  implementing full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_zfill_method_diff_subset` and
   `cpython_collections_userstring_zfill_method_subset`, covering

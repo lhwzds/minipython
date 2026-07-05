@@ -26538,6 +26538,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_rsplit_method_subset",
             "cpython_collections_userstring_join_method_subset",
             "cpython_collections_userstring_format_method_subset",
+            "cpython_collections_userstring_format_map_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31498,11 +31499,116 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "positional-only receiver",
             "bad receiver",
             "format error propagation",
-            "without implementing `UserString.format_map`",
+            "without implementing full UserString string-method proxying",
         ] {
             assert!(
                 document.contains(required),
                 "UserString format docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_format_map_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString format_map"
+    );
+    let userstring_format_map_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_format_map_method_diff_subset",
+    );
+    let userstring_format_map_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_format_map_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Map(dict):",
+        "def __missing__(self, key):",
+        "print('missing-called', key)",
+        "return key.upper()",
+        "class S(str): pass",
+        "u = UserString('{name}-{item[x]}-{missing}')",
+        "hasattr(UserString, 'format_map')",
+        "('dict', UserString('{name}'), {'name': 'value'})",
+        "('item', UserString('{item[x]}'), {'item': {'x': 'ok'}})",
+        "('missing-map', UserString('{missing}'), Map())",
+        "('literal', UserString('{{x}}'), {})",
+        "('plain-str', '{name}', {'name': 'value'})",
+        "('str-subclass', S('{name}'), {'name': 'value'})",
+        "UserString.format_map(fmt, mapping)",
+        "u.format_map(Map(name='n', item={'x': 'i'}))",
+        "UserString.format_map(self=UserString('{name}'), mapping={'name':'v'})",
+        "UserString.format_map(UserString('{name}'), mapping={'name':'v'})",
+        "UserString.format_map(format_string=UserString('{name}'), mapping={'name':'v'})",
+        "UserString.format_map('{name}', {'name': 'v'})",
+        "UserString.format_map(UserString('{name}'), {'name':'v'}, mapping={})",
+        "UserString.format_map(UserString('{missing}'), {})",
+        "UserString.format_map(UserString('{0}'), {'0': 'zero'})",
+    ] {
+        assert!(
+            userstring_format_map_method_diff_body.contains(required)
+                && userstring_format_map_method_subset_body.contains(required),
+            "UserString format_map diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "value dict str:'value'",
+        "value item str:'ok'",
+        "missing-called missing",
+        "value missing-map str:'MISSING'",
+        "value literal str:'{x}'",
+        "value plain-str AttributeError:'str' object has no attribute 'data'",
+        "value str-subclass AttributeError:'S' object has no attribute 'data'",
+        "bound str:'n-i-MISSING'",
+        "keywords str:'v' str:'v' TypeError:UserString.format_map() got an unexpected keyword argument 'format_string'",
+        "TypeError:UserString.format_map() missing 2 required positional arguments: 'self' and 'mapping'",
+        "TypeError:UserString.format_map() missing 1 required positional argument: 'mapping'",
+        "TypeError:UserString.format_map() missing 1 required positional argument: 'self'",
+        "TypeError:UserString.format_map() takes 2 positional arguments but 3 were given",
+        "TypeError:UserString.format_map() got multiple values for argument 'mapping'",
+        "KeyError:'missing'",
+        "ValueError:Format string contains positional fields",
+    ] {
+        assert!(
+            userstring_format_map_method_subset_body.contains(required),
+            "UserString format_map subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"format_map\" => {",
+        "fn user_string_format_map_value(",
+        "fn user_string_format_map_arguments(",
+        "user_string_format_map_arguments(method, &args, keywords)?",
+        "self.user_string_format_map_value(&receiver, mapping)",
+        "render_str_format(&data.borrow(), &[], &[], Some(&mapping))",
+        "Format string contains positional fields",
+        "got multiple values for argument 'mapping'",
+        "missing 2 required positional arguments: 'self' and 'mapping'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString format_map implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_format_map_method_subset",
+            "cpython_collections_userstring_format_map_method_diff_subset",
+            "`UserString.format_map`",
+            "ordinary `str` result values",
+            "mapping field lookup",
+            "`__missing__` mapping fallback",
+            "literal brace escaping",
+            "`self=` and `mapping=` keyword binding",
+            "UserString-specific arity/keyword TypeErrors",
+            "positional field `ValueError`",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString format_map docs must contain `{required}`"
             );
         }
     }

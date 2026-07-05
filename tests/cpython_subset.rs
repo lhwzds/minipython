@@ -71139,6 +71139,67 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString format_map method.
+#[test]
+fn cpython_collections_userstring_format_map_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Map(dict):
+    def __missing__(self, key):
+        print('missing-called', key)
+        return key.upper()
+class S(str): pass
+u = UserString('{name}-{item[x]}-{missing}')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'format_map'), hasattr(u, 'format_map'))
+for label, fmt, mapping in [
+    ('dict', UserString('{name}'), {'name': 'value'}),
+    ('item', UserString('{item[x]}'), {'item': {'x': 'ok'}}),
+    ('missing-map', UserString('{missing}'), Map()),
+    ('literal', UserString('{{x}}'), {}),
+    ('plain-str', '{name}', {'name': 'value'}),
+    ('str-subclass', S('{name}'), {'name': 'value'}),
+]:
+    print('value', label, show(lambda fmt=fmt, mapping=mapping: UserString.format_map(fmt, mapping)))
+print('bound', show(lambda: u.format_map(Map(name='n', item={'x': 'i'}))))
+print('keywords',
+      show(lambda: UserString.format_map(self=UserString('{name}'), mapping={'name':'v'})),
+      show(lambda: UserString.format_map(UserString('{name}'), mapping={'name':'v'})),
+      show(lambda: UserString.format_map(format_string=UserString('{name}'), mapping={'name':'v'})))
+print('errors', [
+    show(lambda: UserString.format_map('{name}', {'name': 'v'})),
+    show(lambda: UserString.format_map(1, {'name': 'v'})),
+    show(lambda: UserString.format_map()),
+    show(lambda: UserString.format_map(UserString('{name}'))),
+    show(lambda: UserString.format_map(self=UserString('{name}'))),
+    show(lambda: UserString.format_map(mapping={'name': 'v'})),
+    show(lambda: UserString.format_map(UserString('{name}'), {'name':'v'}, {})),
+    show(lambda: UserString.format_map(UserString('{name}'), {'name':'v'}, mapping={})),
+    show(lambda: UserString.format_map(UserString('{missing}'), {})),
+    show(lambda: UserString.format_map(UserString('{0}'), {'0': 'zero'})),
+])"#,
+        &[
+            "visible True True",
+            "value dict str:'value'",
+            "value item str:'ok'",
+            "missing-called missing",
+            "value missing-map str:'MISSING'",
+            "value literal str:'{x}'",
+            "value plain-str AttributeError:'str' object has no attribute 'data'",
+            "value str-subclass AttributeError:'S' object has no attribute 'data'",
+            "missing-called missing",
+            "bound str:'n-i-MISSING'",
+            "keywords str:'v' str:'v' TypeError:UserString.format_map() got an unexpected keyword argument 'format_string'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "AttributeError:'int' object has no attribute 'data'", "TypeError:UserString.format_map() missing 2 required positional arguments: 'self' and 'mapping'", "TypeError:UserString.format_map() missing 1 required positional argument: 'mapping'", "TypeError:UserString.format_map() missing 1 required positional argument: 'mapping'", "TypeError:UserString.format_map() missing 1 required positional argument: 'self'", 'TypeError:UserString.format_map() takes 2 positional arguments but 3 were given', "TypeError:UserString.format_map() got multiple values for argument 'mapping'", "KeyError:'missing'", 'ValueError:Format string contains positional fields']"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {

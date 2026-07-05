@@ -26877,6 +26877,54 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_format_map_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString format_map method behavior",
+        name: "collections-userstring-format-map-method",
+        source: r#"from collections import UserString
+class Map(dict):
+    def __missing__(self, key):
+        print('missing-called', key)
+        return key.upper()
+class S(str): pass
+u = UserString('{name}-{item[x]}-{missing}')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'format_map'), hasattr(u, 'format_map'))
+for label, fmt, mapping in [
+    ('dict', UserString('{name}'), {'name': 'value'}),
+    ('item', UserString('{item[x]}'), {'item': {'x': 'ok'}}),
+    ('missing-map', UserString('{missing}'), Map()),
+    ('literal', UserString('{{x}}'), {}),
+    ('plain-str', '{name}', {'name': 'value'}),
+    ('str-subclass', S('{name}'), {'name': 'value'}),
+]:
+    print('value', label, show(lambda fmt=fmt, mapping=mapping: UserString.format_map(fmt, mapping)))
+print('bound', show(lambda: u.format_map(Map(name='n', item={'x': 'i'}))))
+print('keywords',
+      show(lambda: UserString.format_map(self=UserString('{name}'), mapping={'name':'v'})),
+      show(lambda: UserString.format_map(UserString('{name}'), mapping={'name':'v'})),
+      show(lambda: UserString.format_map(format_string=UserString('{name}'), mapping={'name':'v'})))
+print('errors', [
+    show(lambda: UserString.format_map('{name}', {'name': 'v'})),
+    show(lambda: UserString.format_map(1, {'name': 'v'})),
+    show(lambda: UserString.format_map()),
+    show(lambda: UserString.format_map(UserString('{name}'))),
+    show(lambda: UserString.format_map(self=UserString('{name}'))),
+    show(lambda: UserString.format_map(mapping={'name': 'v'})),
+    show(lambda: UserString.format_map(UserString('{name}'), {'name':'v'}, {})),
+    show(lambda: UserString.format_map(UserString('{name}'), {'name':'v'}, mapping={})),
+    show(lambda: UserString.format_map(UserString('{missing}'), {})),
+    show(lambda: UserString.format_map(UserString('{0}'), {'0': 'zero'})),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

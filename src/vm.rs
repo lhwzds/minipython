@@ -20999,7 +20999,11 @@ impl Vm {
         let root = &field_name[..root_end];
         let mut tail = &field_name[root_end..];
 
-        let mut value = if root.is_empty() {
+        let mut value = if mapping.is_some()
+            && (root.is_empty() || root.chars().all(|ch| ch.is_ascii_digit()))
+        {
+            return Err("ValueError: Format string contains positional fields".to_string());
+        } else if root.is_empty() {
             if *used_manual {
                 return Err(
                     "ValueError: cannot switch from manual field specification to automatic field numbering"
@@ -35912,6 +35916,11 @@ impl Vm {
                 };
                 self.user_string_format_value(receiver, positional, &keywords)
             }
+            "format_map" => {
+                let (receiver, mapping) =
+                    user_string_format_map_arguments(method, &args, keywords)?;
+                self.user_string_format_map_value(&receiver, mapping)
+            }
             "splitlines" => {
                 let (receiver, keepends) =
                     user_string_splitlines_arguments(method, &args, keywords)?;
@@ -36256,6 +36265,21 @@ impl Vm {
             ));
         };
         self.render_str_format(&data.borrow(), positional, keywords, None)
+            .map(Value::String)
+    }
+
+    fn user_string_format_map_value(
+        &mut self,
+        receiver: &Value,
+        mapping: Value,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        self.render_str_format(&data.borrow(), &[], &[], Some(&mapping))
             .map(Value::String)
     }
 
@@ -56995,6 +57019,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rsplit"
             | "join"
             | "format"
+            | "format_map"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62648,6 +62673,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "split" | "rsplit"
                 | "join"
                 | "format"
+                | "format_map"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"
@@ -91388,6 +91414,58 @@ fn user_string_join_part(value: &Value) -> Option<String> {
             Some(str_subclass_string(value).expect("str subclass storage exists after guard"))
         }
         _ => None,
+    }
+}
+
+fn user_string_format_map_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value), String> {
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut mapping = args.get(1).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "mapping" => {
+                if mapping.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'mapping'"
+                    ));
+                }
+                mapping = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    match (receiver, mapping) {
+        (Some(receiver), Some(mapping)) => Ok((receiver, mapping)),
+        (None, Some(_)) => Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        )),
+        (Some(_), None) => Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'mapping'"
+        )),
+        (None, None) => Err(format!(
+            "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'mapping'"
+        )),
     }
 }
 
