@@ -149,7 +149,8 @@ Recent runtime migration notes:
 - `cpython_collections_counter_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_counter_class_getitem_generic_alias_diff_subset`, now pins
   Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
-  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  exact Counter instance lookup, inherited Counter subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation,
   without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_chainmap_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_chainmap_class_getitem_generic_alias_diff_subset`, now pins
@@ -1910,7 +1911,8 @@ Recent runtime migration notes:
   `cpython_collections_counter_class_getitem_generic_alias_diff_subset` and
   `cpython_collections_counter_class_getitem_generic_alias_subset`, covering
   Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
-  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  exact Counter instance lookup, inherited Counter subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation,
   without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - The bundled `collections` module also includes
   `cpython_collections_counter_instance_doc_attribute_diff_subset` and

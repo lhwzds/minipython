@@ -161,7 +161,8 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_collections_counter_class_getitem_generic_alias_subset` and
   `cpython_collections_counter_class_getitem_generic_alias_diff_subset` for
   Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
-  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  exact Counter instance lookup, inherited Counter subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation,
   without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_collections_chainmap_class_getitem_generic_alias_subset` and
   `cpython_collections_chainmap_class_getitem_generic_alias_diff_subset` for
@@ -14977,7 +14978,8 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_counter_class_getitem_generic_alias_diff_subset`
   and `cpython_collections_counter_class_getitem_generic_alias_subset`, covering
   Counter `__class_getitem__`, `Counter.__class_getitem__(int) == Counter[int]`,
-  exact Counter instance lookup, GenericAlias origin/args, and keyword and arity error propagation,
+  exact Counter instance lookup, inherited Counter subclass lookup, GenericAlias origin/args,
+  and keyword and arity error propagation,
   without adding full Counter runtime surface, without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_collections_counter_subtract_unary_subset`, adapted from
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed

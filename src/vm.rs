@@ -15033,7 +15033,8 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&class_bases, "tuple")
+                    if class_bases_include_builtin(&class_bases, "Counter")
+                        || class_bases_include_builtin(&class_bases, "tuple")
                         || class_bases_include_builtin(&class_bases, "list")
                         || class_bases_include_builtin(&class_bases, "set")
                         || class_bases_include_builtin(&class_bases, "frozenset")
@@ -15347,7 +15348,8 @@ impl Vm {
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
-                    if class_bases_include_builtin(&bases, "tuple")
+                    if class_bases_include_builtin(&bases, "Counter")
+                        || class_bases_include_builtin(&bases, "tuple")
                         || class_bases_include_builtin(&bases, "list")
                         || class_bases_include_builtin(&bases, "set")
                         || class_bases_include_builtin(&bases, "frozenset")
