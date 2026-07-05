@@ -26834,6 +26834,49 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_format_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString format method behavior",
+        name: "collections-userstring-format-method",
+        source: r#"from collections import UserString
+class S(str): pass
+u = UserString('{0}-{name}-{item[x]}')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'format'), hasattr(u, 'format'))
+for label, fmt, args, kwargs in [
+    ('simple', UserString('{0}-{name}'), ('x',), {'name': 'y'}),
+    ('named', UserString('{name}'), (), {'name': 'value'}),
+    ('mapping', UserString('{item[x]}'), (), {'item': {'x': 'ok'}}),
+    ('auto', UserString('{}-{}'), ('a', 'b'), {}),
+    ('literal', UserString('{{x}}'), (), {}),
+    ('plain-str', '{0}', ('x',), {}),
+    ('str-subclass', S('{0}'), ('x',), {}),
+]:
+    print('value', label, show(lambda fmt=fmt, args=args, kwargs=kwargs: UserString.format(fmt, *args, **kwargs)))
+print('bound', show(lambda: u.format('p', name='q', item={'x': 'r'})))
+print('keywords',
+      show(lambda: UserString.format(self=UserString('{name}'), name='v')),
+      show(lambda: UserString.format(UserString('{name}'), name='v')),
+      show(lambda: UserString.format(format_string=UserString('{name}'), name='v')))
+print('errors', [
+    show(lambda: UserString.format('{0}', 'x')),
+    show(lambda: UserString.format(1, 'x')),
+    show(lambda: UserString.format()),
+    show(lambda: UserString.format(self=UserString('{0}'))),
+    show(lambda: UserString.format(receiver=UserString('{0}'))),
+    show(lambda: UserString.format(UserString('{0}'))),
+    show(lambda: UserString.format(UserString('{missing}'))),
+    show(lambda: UserString.format(UserString('{0}'), self='shadow')),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

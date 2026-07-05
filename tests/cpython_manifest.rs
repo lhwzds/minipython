@@ -26537,6 +26537,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_split_method_subset",
             "cpython_collections_userstring_rsplit_method_subset",
             "cpython_collections_userstring_join_method_subset",
+            "cpython_collections_userstring_format_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31406,6 +31407,102 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString join docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_format_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString format"
+    );
+    let userstring_format_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_format_method_diff_subset",
+    );
+    let userstring_format_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_format_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class S(str): pass",
+        "u = UserString('{0}-{name}-{item[x]}')",
+        "hasattr(UserString, 'format')",
+        "('simple', UserString('{0}-{name}'), ('x',), {'name': 'y'})",
+        "('named', UserString('{name}'), (), {'name': 'value'})",
+        "('mapping', UserString('{item[x]}'), (), {'item': {'x': 'ok'}})",
+        "('auto', UserString('{}-{}'), ('a', 'b'), {})",
+        "('literal', UserString('{{x}}'), (), {})",
+        "('plain-str', '{0}', ('x',), {})",
+        "('str-subclass', S('{0}'), ('x',), {})",
+        "UserString.format(fmt, *args, **kwargs)",
+        "u.format('p', name='q', item={'x': 'r'})",
+        "UserString.format(self=UserString('{name}'), name='v')",
+        "UserString.format(UserString('{name}'), name='v')",
+        "UserString.format(format_string=UserString('{name}'), name='v')",
+        "UserString.format('{0}', 'x')",
+        "UserString.format(1, 'x')",
+        "UserString.format(UserString('{missing}'))",
+        "UserString.format(UserString('{0}'), self='shadow')",
+    ] {
+        assert!(
+            userstring_format_method_diff_body.contains(required)
+                && userstring_format_method_subset_body.contains(required),
+            "UserString format diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "value simple str:'x-y'",
+        "value named str:'value'",
+        "value mapping str:'ok'",
+        "value auto str:'a-b'",
+        "value literal str:'{x}'",
+        "value plain-str AttributeError:'str' object has no attribute 'data'",
+        "value str-subclass AttributeError:'S' object has no attribute 'data'",
+        "bound str:'p-q-r'",
+        "keywords TypeError:UserString.format() missing 1 required positional argument: 'self' str:'v' TypeError:UserString.format() missing 1 required positional argument: 'self'",
+        "AttributeError:'int' object has no attribute 'data'",
+        "IndexError:Replacement index 0 out of range for positional args tuple",
+        "KeyError:'missing'",
+    ] {
+        assert!(
+            userstring_format_method_subset_body.contains(required),
+            "UserString format subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"format\" => {",
+        "fn user_string_format_value(",
+        "self.user_string_format_value(receiver, positional, &keywords)",
+        "render_str_format(&data.borrow(), positional, keywords, None)",
+        "missing 1 required positional argument: 'self'",
+        "Replacement index",
+        "out of range for positional args tuple",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString format implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_format_method_subset",
+            "cpython_collections_userstring_format_method_diff_subset",
+            "`UserString.format`",
+            "ordinary `str` result values",
+            "positional and keyword format fields",
+            "mapping item lookup",
+            "automatic field numbering",
+            "literal brace escaping",
+            "positional-only receiver",
+            "bad receiver",
+            "format error propagation",
+            "without implementing `UserString.format_map`",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString format docs must contain `{required}`"
             );
         }
     }

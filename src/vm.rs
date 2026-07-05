@@ -21008,7 +21008,10 @@ impl Vm {
             }
             *used_auto = true;
             let value = positional.get(*auto_index).cloned().ok_or_else(|| {
-                "IndexError: replacement index out of range for positional args tuple".to_string()
+                format!(
+                    "IndexError: Replacement index {} out of range for positional args tuple",
+                    *auto_index
+                )
             })?;
             *auto_index += 1;
             value
@@ -21024,7 +21027,9 @@ impl Vm {
                 .parse::<usize>()
                 .map_err(|_| "ValueError: replacement index is too large".to_string())?;
             positional.get(index).cloned().ok_or_else(|| {
-                "IndexError: replacement index out of range for positional args tuple".to_string()
+                format!(
+                    "IndexError: Replacement index {index} out of range for positional args tuple"
+                )
             })?
         } else if let Some(mapping) = mapping {
             self.load_subscript_value(mapping.clone(), Value::String(root.to_string()))?
@@ -35898,6 +35903,15 @@ impl Vm {
                 let (receiver, seq) = user_string_join_arguments(method, &args, keywords)?;
                 self.user_string_join_value(&receiver, seq)
             }
+            "format" => {
+                let Some((receiver, positional)) = args.split_first() else {
+                    return Err(
+                        "TypeError: UserString.format() missing 1 required positional argument: 'self'"
+                            .to_string(),
+                    );
+                };
+                self.user_string_format_value(receiver, positional, &keywords)
+            }
             "splitlines" => {
                 let (receiver, keepends) =
                     user_string_splitlines_arguments(method, &args, keywords)?;
@@ -36227,6 +36241,22 @@ impl Vm {
             }
         }
         Ok(Value::String(parts.join(&data.borrow())))
+    }
+
+    fn user_string_format_value(
+        &mut self,
+        receiver: &Value,
+        positional: &[Value],
+        keywords: &[(String, Value)],
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        self.render_str_format(&data.borrow(), positional, keywords, None)
+            .map(Value::String)
     }
 
     fn user_string_expandtabs_value(
@@ -56964,6 +56994,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "split"
             | "rsplit"
             | "join"
+            | "format"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62616,6 +62647,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "partition" | "rpartition"
                 | "split" | "rsplit"
                 | "join"
+                | "format"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"

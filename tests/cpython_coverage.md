@@ -354,6 +354,14 @@ Recent runtime migration notes:
   errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying or widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_format_method_subset`, backed by
+  `cpython_collections_userstring_format_method_diff_subset`, now pins
+  `UserString.format`, including ordinary `str` result values,
+  positional and keyword format fields, mapping item lookup, automatic field numbering,
+  literal brace escaping, positional-only receiver handling, bad receiver
+  errors, and format error propagation, without implementing
+  `UserString.format_map`, full UserString string-method proxying, or widening
+  host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_zfill_method_subset`, backed by
   `cpython_collections_userstring_zfill_method_diff_subset`, now pins
   `UserString.zfill`, including UserString result wrapping, sign-aware zero
@@ -1514,6 +1522,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_split_method_diff_subset`,
   `cpython_collections_userstring_rsplit_method_diff_subset`,
   `cpython_collections_userstring_join_method_diff_subset`,
+  `cpython_collections_userstring_format_method_diff_subset`,
   `cpython_collections_userstring_zfill_method_diff_subset`,
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
@@ -7521,6 +7530,13 @@ without adding general custom encoder/decoder class support.
   non-iterable `can only join an iterable` errors, bad receiver
   errors, and UserString-specific arity/keyword TypeErrors, without
   implementing full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_format_method_diff_subset` and
+  `cpython_collections_userstring_format_method_subset`, covering
+  `UserString.format`, ordinary `str` result values,
+  positional and keyword format fields, mapping item lookup, automatic field numbering, literal brace
+  escaping, positional-only receiver handling, bad receiver errors, and format
+  error propagation, without implementing `UserString.format_map`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_zfill_method_diff_subset` and
   `cpython_collections_userstring_zfill_method_subset`, covering
