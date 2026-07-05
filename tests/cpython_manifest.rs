@@ -26526,6 +26526,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_add_method_subset",
             "cpython_collections_userstring_radd_method_subset",
             "cpython_collections_userstring_mul_method_subset",
+            "cpython_collections_userstring_order_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -29532,7 +29533,6 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`self=` keyword binding",
             "non-string operands",
             "bad receiver",
-            "ordered comparisons",
             "without implementing full UserString string-method proxying",
         ] {
             assert!(
@@ -29648,7 +29648,6 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "no keyword arguments",
             "non-string operands",
             "bad receiver",
-            "ordered comparisons",
             "without implementing full UserString string-method proxying",
         ] {
             assert!(
@@ -30089,6 +30088,155 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString mul-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_order_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString ordered comparisons"
+    );
+    let userstring_order_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_order_methods_diff_subset",
+    );
+    let userstring_order_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_order_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "class S:",
+        "class T(str):",
+        "ops = [('lt', '__lt__'), ('le', '__le__'), ('gt', '__gt__'), ('ge', '__ge__')]",
+        "hasattr(UserString, name)",
+        "u < 'ac'",
+        "u <= 'abé'",
+        "u > 'aa'",
+        "u >= 'abé'",
+        "'aa' < u",
+        "'abé' <= u",
+        "'ac' > u",
+        "'abé' >= u",
+        "u < UserString('ac')",
+        "u < T('ac')",
+        "u < 1",
+        "1 < u",
+        "[] < u",
+        "u < S()",
+        "u.__lt__('ac')",
+        "u.__le__(UserString('abé'))",
+        "u.__gt__(T('aa'))",
+        "u.__ge__(1)",
+        "u.__lt__(string='ac')",
+        "UserString.__lt__(u, 'ac')",
+        "UserString.__le__(u, UserString('abé'))",
+        "UserString.__gt__(u, string='aa')",
+        "UserString.__ge__(self=u, string='abé')",
+        "UserString.__lt__('abé', 'ac')",
+        "u.__lt__()",
+        "u.__lt__('a', 'b')",
+        "u.__lt__(value='a')",
+        "u.__lt__(other='a')",
+        "u.__lt__('a', string='b')",
+        "u.__lt__(self=u)",
+        "UserString.__lt__()",
+        "UserString.__lt__(string='abé')",
+        "UserString.__lt__(self=u)",
+        "UserString.__lt__(u, self=u, string='abé')",
+        "UserString.__lt__(receiver=u, string='abé')",
+        "method('abé')",
+        "method(1)",
+    ] {
+        assert!(
+            userstring_order_methods_diff_body.contains(required)
+                && userstring_order_methods_subset_body.contains(required),
+            "UserString order-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [True, True, True, True] [True, True, True, True]\"",
+        "\"expr-lt-str-hit bool True\"",
+        "\"expr-lt-str-miss bool False\"",
+        "\"expr-left-str-lt bool True\"",
+        "\"expr-userstring bool True\"",
+        "\"expr-str-subclass bool True\"",
+        "\"expr-int TypeError '<' not supported between instances of 'str' and 'int'",
+        "\"expr-left-int TypeError '>' not supported between instances of 'str' and 'int'",
+        "\"expr-left-list TypeError '>' not supported between instances of 'str' and 'list'",
+        "\"expr-strlike TypeError '<' not supported between instances of 'str' and 'S'",
+        "\"method-ge-int TypeError '>=' not supported between instances of 'str' and 'int'",
+        "\"method-stringkw bool True\"",
+        "\"type-self-stringkw bool True\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'data'",
+        "\"method-noargs TypeError UserString.__lt__() missing 1 required positional argument: 'string'",
+        "\"method-extra TypeError UserString.__lt__() takes 2 positional arguments but 3 were given",
+        "\"method-badkw TypeError UserString.__lt__() got an unexpected keyword argument 'value'",
+        "\"method-otherkw TypeError UserString.__lt__() got an unexpected keyword argument 'other'",
+        "\"method-multi-string TypeError UserString.__lt__() got multiple values for argument 'string'",
+        "\"bound-self-only TypeError UserString.__lt__() got multiple values for argument 'self'",
+        "\"type-noargs TypeError UserString.__lt__() missing 2 required positional arguments: 'self' and 'string'",
+        "\"type-string-only TypeError UserString.__lt__() missing 1 required positional argument: 'self'",
+        "\"type-self-only-kw TypeError UserString.__lt__() missing 1 required positional argument: 'string'",
+        "\"type-multi-self TypeError UserString.__lt__() got multiple values for argument 'self'",
+        "\"type-badkw-self TypeError UserString.__lt__() got an unexpected keyword argument 'receiver'",
+        "\"loop-lt-str bool False\"",
+        "\"loop-le-str bool True\"",
+        "\"loop-gt-str bool False\"",
+        "\"loop-ge-str bool True\"",
+        "\"loop-ge-int TypeError '>=' not supported between instances of 'str' and 'int'",
+    ] {
+        assert!(
+            userstring_order_methods_subset_body.contains(required),
+            "UserString order-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_string_order_operand(value: &Value) -> Option<String>",
+        "fn user_string_ordering_values(",
+        "fn user_string_order_value(",
+        "fn method_order_operator(method: &str) -> &str",
+        "user_string_ordering_values(&left, &right, op)",
+        "user_string_order_type_error(",
+        "reflected_order_op(op)",
+        "\"__lt__\" | \"__le__\" | \"__gt__\" | \"__ge__\"",
+        "\"string\" => {",
+        "UserString.{method}() takes 2 positional arguments but",
+        "UserString.{method}() got an unexpected keyword argument",
+        "UserString.{method}() got multiple values for argument 'self'",
+        "UserString.{method}() got multiple values for argument 'string'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and 'string'",
+        "UserString.{method}() missing 1 required positional argument: 'self'",
+        "UserString.{method}() missing 1 required positional argument: 'string'",
+        "not supported between instances of 'str'",
+        "\"__lt__\"",
+        "\"__le__\"",
+        "\"__gt__\"",
+        "\"__ge__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString order-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_order_methods_subset",
+            "cpython_collections_userstring_order_methods_diff_subset",
+            "`UserString.__lt__`",
+            "`UserString.__le__`",
+            "`UserString.__gt__`",
+            "`UserString.__ge__`",
+            "ordered comparisons",
+            "reverse string comparison",
+            "`string=` keyword binding",
+            "CPython string-style TypeErrors",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString order-method docs must contain `{required}`"
             );
         }
     }

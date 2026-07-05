@@ -70181,6 +70181,121 @@ for label, expr in cases:
     );
 }
 
+// Mirrors CPython's public UserString ordered comparison dispatch. UserString
+// delegates comparisons to its public `.data` string and names the right
+// operand parameter `string`.
+#[test]
+fn cpython_collections_userstring_order_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+class T(str):
+    pass
+ops = [('lt', '__lt__'), ('le', '__le__'), ('gt', '__gt__'), ('ge', '__ge__')]
+print('visible', [hasattr(UserString, name) for _, name in ops], [hasattr(u, name) for _, name in ops])
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+cases = [
+    ('expr-lt-str-hit', lambda: u < 'ac'),
+    ('expr-lt-str-miss', lambda: u < 'aa'),
+    ('expr-le-eq', lambda: u <= 'abé'),
+    ('expr-gt-str-hit', lambda: u > 'aa'),
+    ('expr-ge-eq', lambda: u >= 'abé'),
+    ('expr-left-str-lt', lambda: 'aa' < u),
+    ('expr-left-str-le', lambda: 'abé' <= u),
+    ('expr-left-str-gt', lambda: 'ac' > u),
+    ('expr-left-str-ge', lambda: 'abé' >= u),
+    ('expr-userstring', lambda: u < UserString('ac')),
+    ('expr-str-subclass', lambda: u < T('ac')),
+    ('expr-int', lambda: u < 1),
+    ('expr-left-int', lambda: 1 < u),
+    ('expr-left-list', lambda: [] < u),
+    ('expr-strlike', lambda: u < S()),
+    ('method-lt-str', lambda: u.__lt__('ac')),
+    ('method-le-userstring', lambda: u.__le__(UserString('abé'))),
+    ('method-gt-subclass', lambda: u.__gt__(T('aa'))),
+    ('method-ge-int', lambda: u.__ge__(1)),
+    ('method-stringkw', lambda: u.__lt__(string='ac')),
+    ('type-method', lambda: UserString.__lt__(u, 'ac')),
+    ('type-userstring', lambda: UserString.__le__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__gt__(u, string='aa')),
+    ('type-self-stringkw', lambda: UserString.__ge__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__lt__('abé', 'ac')),
+    ('method-noargs', lambda: u.__lt__()),
+    ('method-extra', lambda: u.__lt__('a', 'b')),
+    ('method-badkw', lambda: u.__lt__(value='a')),
+    ('method-otherkw', lambda: u.__lt__(other='a')),
+    ('method-multi-string', lambda: u.__lt__('a', string='b')),
+    ('bound-self-only', lambda: u.__lt__(self=u)),
+    ('type-noargs', lambda: UserString.__lt__()),
+    ('type-string-only', lambda: UserString.__lt__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__lt__(self=u)),
+    ('type-multi-self', lambda: UserString.__lt__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__lt__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    show(label, expr)
+for op_label, name in ops:
+    method = getattr(u, name)
+    show('loop-' + op_label + '-str', lambda method=method: method('abé'))
+    show('loop-' + op_label + '-int', lambda method=method: method(1))"#,
+        &[
+            "visible [True, True, True, True] [True, True, True, True]",
+            "expr-lt-str-hit bool True",
+            "expr-lt-str-miss bool False",
+            "expr-le-eq bool True",
+            "expr-gt-str-hit bool True",
+            "expr-ge-eq bool True",
+            "expr-left-str-lt bool True",
+            "expr-left-str-le bool True",
+            "expr-left-str-gt bool True",
+            "expr-left-str-ge bool True",
+            "expr-userstring bool True",
+            "expr-str-subclass bool True",
+            "expr-int TypeError '<' not supported between instances of 'str' and 'int' (\"'<' not supported between instances of 'str' and 'int'\",)",
+            "expr-left-int TypeError '>' not supported between instances of 'str' and 'int' (\"'>' not supported between instances of 'str' and 'int'\",)",
+            "expr-left-list TypeError '>' not supported between instances of 'str' and 'list' (\"'>' not supported between instances of 'str' and 'list'\",)",
+            "expr-strlike TypeError '<' not supported between instances of 'str' and 'S' (\"'<' not supported between instances of 'str' and 'S'\",)",
+            "method-lt-str bool True",
+            "method-le-userstring bool True",
+            "method-gt-subclass bool True",
+            "method-ge-int TypeError '>=' not supported between instances of 'str' and 'int' (\"'>=' not supported between instances of 'str' and 'int'\",)",
+            "method-stringkw bool True",
+            "type-method bool True",
+            "type-userstring bool True",
+            "type-stringkw bool True",
+            "type-self-stringkw bool True",
+            "bad-receiver AttributeError 'str' object has no attribute 'data' (\"'str' object has no attribute 'data'\",)",
+            "method-noargs TypeError UserString.__lt__() missing 1 required positional argument: 'string' (\"UserString.__lt__() missing 1 required positional argument: 'string'\",)",
+            "method-extra TypeError UserString.__lt__() takes 2 positional arguments but 3 were given ('UserString.__lt__() takes 2 positional arguments but 3 were given',)",
+            "method-badkw TypeError UserString.__lt__() got an unexpected keyword argument 'value' (\"UserString.__lt__() got an unexpected keyword argument 'value'\",)",
+            "method-otherkw TypeError UserString.__lt__() got an unexpected keyword argument 'other' (\"UserString.__lt__() got an unexpected keyword argument 'other'\",)",
+            "method-multi-string TypeError UserString.__lt__() got multiple values for argument 'string' (\"UserString.__lt__() got multiple values for argument 'string'\",)",
+            "bound-self-only TypeError UserString.__lt__() got multiple values for argument 'self' (\"UserString.__lt__() got multiple values for argument 'self'\",)",
+            "type-noargs TypeError UserString.__lt__() missing 2 required positional arguments: 'self' and 'string' (\"UserString.__lt__() missing 2 required positional arguments: 'self' and 'string'\",)",
+            "type-string-only TypeError UserString.__lt__() missing 1 required positional argument: 'self' (\"UserString.__lt__() missing 1 required positional argument: 'self'\",)",
+            "type-self-only-kw TypeError UserString.__lt__() missing 1 required positional argument: 'string' (\"UserString.__lt__() missing 1 required positional argument: 'string'\",)",
+            "type-multi-self TypeError UserString.__lt__() got multiple values for argument 'self' (\"UserString.__lt__() got multiple values for argument 'self'\",)",
+            "type-badkw-self TypeError UserString.__lt__() got an unexpected keyword argument 'receiver' (\"UserString.__lt__() got an unexpected keyword argument 'receiver'\",)",
+            "loop-lt-str bool False",
+            "loop-lt-int TypeError '<' not supported between instances of 'str' and 'int' (\"'<' not supported between instances of 'str' and 'int'\",)",
+            "loop-le-str bool True",
+            "loop-le-int TypeError '<=' not supported between instances of 'str' and 'int' (\"'<=' not supported between instances of 'str' and 'int'\",)",
+            "loop-gt-str bool False",
+            "loop-gt-int TypeError '>' not supported between instances of 'str' and 'int' (\"'>' not supported between instances of 'str' and 'int'\",)",
+            "loop-ge-str bool True",
+            "loop-ge-int TypeError '>=' not supported between instances of 'str' and 'int' (\"'>=' not supported between instances of 'str' and 'int'\",)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

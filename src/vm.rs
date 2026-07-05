@@ -35699,6 +35699,58 @@ impl Vm {
                     &string,
                 )))
             }
+            "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                if args.len() > 2 {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() takes 2 positional arguments but {} were given",
+                        args.len()
+                    ));
+                }
+                let mut receiver = args.first().cloned();
+                let mut string = args.get(1).cloned();
+                for (name, value) in keywords {
+                    match name.as_str() {
+                        "self" => {
+                            if receiver.is_some() {
+                                return Err(format!(
+                                    "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                                ));
+                            }
+                            receiver = Some(value);
+                        }
+                        "string" => {
+                            if string.is_some() {
+                                return Err(format!(
+                                    "TypeError: UserString.{method}() got multiple values for argument 'string'"
+                                ));
+                            }
+                            string = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(receiver) = receiver else {
+                    return Err(if string.is_some() {
+                        format!(
+                            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+                        )
+                    } else {
+                        format!(
+                            "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and 'string'"
+                        )
+                    });
+                };
+                let Some(string) = string else {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() missing 1 required positional argument: 'string'"
+                    ));
+                };
+                user_string_order_value(&receiver, &string, method)
+            }
             "__hash__" => {
                 if args.len() > 1 {
                     return Err(format!(
@@ -56418,6 +56470,10 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "__eq__"
             | "__iter__"
             | "__len__"
+            | "__lt__"
+            | "__le__"
+            | "__gt__"
+            | "__ge__"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62051,7 +62107,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 }),
                 "__add__" | "__contains__" | "__eq__" | "__getitem__" | "__hash__"
-                | "__iter__" | "__len__" | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
+                | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
+                | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -90053,6 +90110,98 @@ fn user_string_equal_value(left: &str, right: &Value) -> bool {
     }
 }
 
+fn user_string_order_operand(value: &Value) -> Option<String> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => Some(value.clone()),
+        Value::UserString { data, .. } => Some(data.borrow().clone()),
+        value if str_subclass_string(value).is_some() => {
+            Some(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
+        _ => None,
+    }
+}
+
+fn reflected_order_op(op: &str) -> &str {
+    match op {
+        "<" => ">",
+        "<=" => ">=",
+        ">" => "<",
+        ">=" => "<=",
+        _ => op,
+    }
+}
+
+fn user_string_order_type_error(op: &str, other: &Value) -> String {
+    format!(
+        "TypeError: '{op}' not supported between instances of 'str' and '{}'",
+        type_name(other)
+    )
+}
+
+fn user_string_ordering_values(
+    left: &Value,
+    right: &Value,
+    op: &str,
+) -> Option<Result<Ordering, String>> {
+    let left_is_user_string = matches!(left, Value::UserString { .. });
+    let right_is_user_string = matches!(right, Value::UserString { .. });
+    if !left_is_user_string && !right_is_user_string {
+        return None;
+    }
+
+    let left_string = user_string_order_operand(left);
+    let right_string = user_string_order_operand(right);
+    match (left_string, right_string) {
+        (Some(left), Some(right)) => Some(Ok(left.cmp(&right))),
+        (Some(_), None) if left_is_user_string => {
+            Some(Err(user_string_order_type_error(op, right)))
+        }
+        (None, Some(_)) if right_is_user_string => Some(Err(user_string_order_type_error(
+            reflected_order_op(op),
+            left,
+        ))),
+        _ => None,
+    }
+}
+
+fn user_string_order_value(
+    receiver: &Value,
+    string: &Value,
+    method: &str,
+) -> Result<Value, String> {
+    let Value::UserString { data, .. } = receiver else {
+        return Err(format!(
+            "AttributeError: '{}' object has no attribute 'data'",
+            type_name(receiver)
+        ));
+    };
+    let Some(right) = user_string_order_operand(string) else {
+        return Err(user_string_order_type_error(
+            method_order_operator(method),
+            string,
+        ));
+    };
+    let ordering = data.borrow().cmp(&right);
+    let value = match method {
+        "__lt__" => ordering.is_lt(),
+        "__le__" => ordering.is_lt() || ordering.is_eq(),
+        "__gt__" => ordering.is_gt(),
+        "__ge__" => ordering.is_gt() || ordering.is_eq(),
+        _ => unreachable!("UserString order method is filtered before dispatch"),
+    };
+    Ok(Value::Bool(value))
+}
+
+fn method_order_operator(method: &str) -> &str {
+    match method {
+        "__lt__" => "<",
+        "__le__" => "<=",
+        "__gt__" => ">",
+        "__ge__" => ">=",
+        _ => method,
+    }
+}
+
 fn user_string_rich_equal_values(left: &Value, right: &Value) -> Option<bool> {
     match (left, right) {
         (Value::UserString { data, .. }, value) => {
@@ -94821,6 +94970,9 @@ fn compare_positive_float_biguint(value: f64, integer: &BigUint) -> Ordering {
 }
 
 fn ordered_compare_values(left: Value, right: Value, op: &str) -> Result<Ordering, String> {
+    if let Some(result) = user_string_ordering_values(&left, &right, op) {
+        return result;
+    }
     compare_values(left.clone(), right.clone()).map_err(|message| {
         if message.starts_with("cannot compare ") {
             format!(

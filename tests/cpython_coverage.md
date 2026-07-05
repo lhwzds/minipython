@@ -226,17 +226,17 @@ Recent runtime migration notes:
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
   and non-string operands, including reverse string comparison, `string=` keyword
   binding, type-object `self=` keyword binding, bad receiver errors,
-  and UserString-specific arity/keyword TypeErrors, without implementing
-  ordered comparisons, full UserString string-method proxying, or widening host
-  IO, network, process, C ABI, or full stdlib scope.
+  and UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_collections_userstring_ne_method_subset`, backed by
   `cpython_collections_userstring_ne_method_diff_subset`, now pins the inherited
   `object.__ne__` wrapper exposed as `UserString.__ne__` and `!=` expression behavior for
   string, `UserString`, and non-string operands, including reverse object-wrapper
   `NotImplemented`, no keyword arguments, bad receiver behavior, and
-  descriptor-style missing-receiver errors, without implementing ordered
-  comparisons, full UserString string-method proxying, or widening host IO,
-  network, process, C ABI, or full stdlib scope.
+  descriptor-style missing-receiver errors, without implementing full
+  UserString string-method proxying or widening host IO, network, process, C
+  ABI, or full stdlib scope.
 - `cpython_collections_userstring_add_method_subset`, backed by
   `cpython_collections_userstring_add_method_diff_subset`, now pins
   `UserString.__add__`, the `+` expression, and the `+=` fallback for left-side
@@ -262,6 +262,15 @@ Recent runtime migration notes:
   sequence repeat TypeErrors, without preserving UserString subclass result
   types, full UserString string-method proxying, or widening host IO, network,
   process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_order_methods_subset`, backed by
+  `cpython_collections_userstring_order_methods_diff_subset`, now pins
+  `UserString.__lt__`, `UserString.__le__`, `UserString.__gt__`, and
+  `UserString.__ge__` ordered comparisons, expression dispatch in both operand
+  orders, reverse string comparison, `UserString` and str-subclass operands,
+  `string=` keyword binding, bad receiver errors, and CPython string-style
+  TypeErrors for non-string operands, without implementing full UserString
+  string-method proxying or widening host IO, network, process, C ABI, or full
+  stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1347,6 +1356,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_add_method_diff_subset`,
   `cpython_collections_userstring_radd_method_diff_subset`,
   `cpython_collections_userstring_mul_method_diff_subset`,
+  `cpython_collections_userstring_order_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7219,16 +7229,16 @@ without adding general custom encoder/decoder class support.
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
   and non-string operands, reverse string comparison, `string=` keyword binding,
   type-object `self=` keyword binding, bad receiver errors, and
-  UserString-specific arity/keyword TypeErrors, without implementing ordered
-  comparisons or full UserString string-method proxying.
+  UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_ne_method_diff_subset` and
   `cpython_collections_userstring_ne_method_subset`, covering the inherited
   `object.__ne__` wrapper exposed as `UserString.__ne__` and `!=` expression behavior for
   string, `UserString`, and non-string operands, reverse object-wrapper
   `NotImplemented`, no keyword arguments, bad receiver behavior, and
-  descriptor-style missing-receiver errors, without implementing ordered
-  comparisons or full UserString string-method proxying.
+  descriptor-style missing-receiver errors, without implementing full
+  UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_add_method_diff_subset` and
   `cpython_collections_userstring_add_method_subset`, covering
@@ -7254,6 +7264,15 @@ without adding general custom encoder/decoder class support.
   `UserString.__rmul__ is UserString.__mul__`, bad receiver errors, and
   sequence repeat TypeErrors, without preserving UserString subclass result
   types or full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_order_methods_diff_subset` and
+  `cpython_collections_userstring_order_methods_subset`, covering
+  `UserString.__lt__`, `UserString.__le__`, `UserString.__gt__`, and
+  `UserString.__ge__` ordered comparisons, expression dispatch in both operand
+  orders, reverse string comparison, `UserString` and str-subclass operands,
+  `string=` keyword binding, bad receiver errors, and CPython string-style
+  TypeErrors for non-string operands, without implementing full UserString
+  string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

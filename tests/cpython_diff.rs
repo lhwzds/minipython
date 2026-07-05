@@ -26312,6 +26312,73 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_order_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString ordered comparison method behavior",
+        name: "collections-userstring-order-methods",
+        source: r#"from collections import UserString
+u = UserString('abé')
+class S:
+    def __str__(self):
+        return 'abé'
+class T(str):
+    pass
+ops = [('lt', '__lt__'), ('le', '__le__'), ('gt', '__gt__'), ('ge', '__ge__')]
+print('visible', [hasattr(UserString, name) for _, name in ops], [hasattr(u, name) for _, name in ops])
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value))
+    except Exception as e:
+        print(label, type(e).__name__, str(e), e.args)
+cases = [
+    ('expr-lt-str-hit', lambda: u < 'ac'),
+    ('expr-lt-str-miss', lambda: u < 'aa'),
+    ('expr-le-eq', lambda: u <= 'abé'),
+    ('expr-gt-str-hit', lambda: u > 'aa'),
+    ('expr-ge-eq', lambda: u >= 'abé'),
+    ('expr-left-str-lt', lambda: 'aa' < u),
+    ('expr-left-str-le', lambda: 'abé' <= u),
+    ('expr-left-str-gt', lambda: 'ac' > u),
+    ('expr-left-str-ge', lambda: 'abé' >= u),
+    ('expr-userstring', lambda: u < UserString('ac')),
+    ('expr-str-subclass', lambda: u < T('ac')),
+    ('expr-int', lambda: u < 1),
+    ('expr-left-int', lambda: 1 < u),
+    ('expr-left-list', lambda: [] < u),
+    ('expr-strlike', lambda: u < S()),
+    ('method-lt-str', lambda: u.__lt__('ac')),
+    ('method-le-userstring', lambda: u.__le__(UserString('abé'))),
+    ('method-gt-subclass', lambda: u.__gt__(T('aa'))),
+    ('method-ge-int', lambda: u.__ge__(1)),
+    ('method-stringkw', lambda: u.__lt__(string='ac')),
+    ('type-method', lambda: UserString.__lt__(u, 'ac')),
+    ('type-userstring', lambda: UserString.__le__(u, UserString('abé'))),
+    ('type-stringkw', lambda: UserString.__gt__(u, string='aa')),
+    ('type-self-stringkw', lambda: UserString.__ge__(self=u, string='abé')),
+    ('bad-receiver', lambda: UserString.__lt__('abé', 'ac')),
+    ('method-noargs', lambda: u.__lt__()),
+    ('method-extra', lambda: u.__lt__('a', 'b')),
+    ('method-badkw', lambda: u.__lt__(value='a')),
+    ('method-otherkw', lambda: u.__lt__(other='a')),
+    ('method-multi-string', lambda: u.__lt__('a', string='b')),
+    ('bound-self-only', lambda: u.__lt__(self=u)),
+    ('type-noargs', lambda: UserString.__lt__()),
+    ('type-string-only', lambda: UserString.__lt__(string='abé')),
+    ('type-self-only-kw', lambda: UserString.__lt__(self=u)),
+    ('type-multi-self', lambda: UserString.__lt__(u, self=u, string='abé')),
+    ('type-badkw-self', lambda: UserString.__lt__(receiver=u, string='abé')),
+]
+for label, expr in cases:
+    show(label, expr)
+for op_label, name in ops:
+    method = getattr(u, name)
+    show('loop-' + op_label + '-str', lambda method=method: method('abé'))
+    show('loop-' + op_label + '-int', lambda method=method: method(1))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
