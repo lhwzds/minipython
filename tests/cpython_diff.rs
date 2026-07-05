@@ -26925,6 +26925,47 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_encode_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString encode method behavior",
+        name: "collections-userstring-encode-method",
+        source: r#"from collections import UserString
+class S(str): pass
+u = UserString('café')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'encode'), hasattr(u, 'encode'))
+print('value default', show(lambda: u.encode()))
+print('value ascii-ignore', show(lambda: u.encode('ascii', 'ignore')))
+print('value ascii-replace', show(lambda: u.encode(encoding='ascii', errors='replace')))
+print('value latin-type', show(lambda: UserString.encode(u, 'latin-1')))
+print('value str-sub-encoding', show(lambda: u.encode(S('latin-1'))))
+print('keywords',
+      show(lambda: UserString.encode(self=u)),
+      show(lambda: UserString.encode(self=u, encoding='ascii', errors='ignore')),
+      show(lambda: UserString.encode(u, errors='ignore')))
+print('errors', [
+    show(lambda: UserString.encode('abc')),
+    show(lambda: UserString.encode(1)),
+    show(lambda: UserString.encode()),
+    show(lambda: u.encode('utf-8', 'strict', 'x')),
+    show(lambda: UserString.encode(self=u, receiver=u)),
+    show(lambda: UserString.encode(u, 'utf-8', encoding='latin-1')),
+    show(lambda: UserString.encode(u, 'utf-8', 'strict', errors='ignore')),
+    show(lambda: u.encode(foo=1)),
+    show(lambda: u.encode(1)),
+    show(lambda: u.encode('ascii', 1)),
+    show(lambda: u.encode('unknown')),
+    show(lambda: u.encode('ascii')),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

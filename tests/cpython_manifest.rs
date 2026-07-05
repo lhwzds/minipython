@@ -26539,6 +26539,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_join_method_subset",
             "cpython_collections_userstring_format_method_subset",
             "cpython_collections_userstring_format_map_method_subset",
+            "cpython_collections_userstring_encode_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31609,6 +31610,114 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString format_map docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_encode_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString encode"
+    );
+    let userstring_encode_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_encode_method_diff_subset",
+    );
+    let userstring_encode_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_encode_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class S(str): pass",
+        "u = UserString('café')",
+        "hasattr(UserString, 'encode')",
+        "u.encode()",
+        "u.encode('ascii', 'ignore')",
+        "u.encode(encoding='ascii', errors='replace')",
+        "UserString.encode(u, 'latin-1')",
+        "u.encode(S('latin-1'))",
+        "UserString.encode(self=u)",
+        "UserString.encode(self=u, encoding='ascii', errors='ignore')",
+        "UserString.encode(u, errors='ignore')",
+        "UserString.encode('abc')",
+        "UserString.encode(1)",
+        "u.encode('utf-8', 'strict', 'x')",
+        "UserString.encode(self=u, receiver=u)",
+        "UserString.encode(u, 'utf-8', encoding='latin-1')",
+        "UserString.encode(u, 'utf-8', 'strict', errors='ignore')",
+        "u.encode(foo=1)",
+        "u.encode(1)",
+        "u.encode('ascii', 1)",
+        "u.encode('unknown')",
+        "u.encode('ascii')",
+    ] {
+        assert!(
+            userstring_encode_method_diff_body.contains(required)
+                && userstring_encode_method_subset_body.contains(required),
+            "UserString encode diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        r#"value default bytes:b'caf\\xc3\\xa9'"#,
+        "value ascii-ignore bytes:b'caf'",
+        "value ascii-replace bytes:b'caf?'",
+        r#"value latin-type bytes:b'caf\\xe9'"#,
+        r#"value str-sub-encoding bytes:b'caf\\xe9'"#,
+        r#"keywords bytes:b'caf\\xc3\\xa9' bytes:b'caf' bytes:b'caf\\xc3\\xa9'"#,
+        "AttributeError:'str' object has no attribute 'data'",
+        "TypeError:UserString.encode() missing 1 required positional argument: 'self'",
+        "TypeError:UserString.encode() takes from 1 to 3 positional arguments but 4 were given",
+        "TypeError:UserString.encode() got an unexpected keyword argument 'receiver'",
+        "TypeError:UserString.encode() got multiple values for argument 'encoding'",
+        "TypeError:UserString.encode() got multiple values for argument 'errors'",
+        "TypeError:encode() argument 'encoding' must be str, not int",
+        "LookupError:unknown encoding: unknown",
+        r#"UnicodeEncodeError:'ascii' codec can't encode character '\\xe9' in position 3: ordinal not in range(128)"#,
+    ] {
+        assert!(
+            userstring_encode_method_subset_body.contains(required),
+            "UserString encode subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"encode\" => {",
+        "fn user_string_encode_value(",
+        "fn user_string_encode_arguments(",
+        "fn user_string_encode_options(",
+        "fn user_string_encode_codec_arg(",
+        "user_string_encode_arguments(method, &args, keywords)?",
+        "self.user_string_encode_value(&receiver, encoding.as_ref(), errors.as_ref())",
+        "encode_text(&data.borrow(), encoding, errors).map(bytes_value)",
+        "got multiple values for argument 'encoding'",
+        "got multiple values for argument 'errors'",
+        "encode() argument '{name}' must be str",
+        "ordinal not in range({limit})",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString encode implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_encode_method_subset",
+            "cpython_collections_userstring_encode_method_diff_subset",
+            "`UserString.encode`",
+            "ordinary `bytes` result values",
+            "default UTF-8 encoding",
+            "explicit `encoding` / `errors` handling",
+            "`self=` keyword binding",
+            "`str` subclass encoding names",
+            "codec lookup errors",
+            "UnicodeEncodeError propagation",
+            "UserString-specific arity/keyword TypeErrors",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString encode docs must contain `{required}`"
             );
         }
     }

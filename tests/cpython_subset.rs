@@ -71200,6 +71200,56 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString encode method.
+#[test]
+fn cpython_collections_userstring_encode_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class S(str): pass
+u = UserString('café')
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+print('visible', hasattr(UserString, 'encode'), hasattr(u, 'encode'))
+print('value default', show(lambda: u.encode()))
+print('value ascii-ignore', show(lambda: u.encode('ascii', 'ignore')))
+print('value ascii-replace', show(lambda: u.encode(encoding='ascii', errors='replace')))
+print('value latin-type', show(lambda: UserString.encode(u, 'latin-1')))
+print('value str-sub-encoding', show(lambda: u.encode(S('latin-1'))))
+print('keywords',
+      show(lambda: UserString.encode(self=u)),
+      show(lambda: UserString.encode(self=u, encoding='ascii', errors='ignore')),
+      show(lambda: UserString.encode(u, errors='ignore')))
+print('errors', [
+    show(lambda: UserString.encode('abc')),
+    show(lambda: UserString.encode(1)),
+    show(lambda: UserString.encode()),
+    show(lambda: u.encode('utf-8', 'strict', 'x')),
+    show(lambda: UserString.encode(self=u, receiver=u)),
+    show(lambda: UserString.encode(u, 'utf-8', encoding='latin-1')),
+    show(lambda: UserString.encode(u, 'utf-8', 'strict', errors='ignore')),
+    show(lambda: u.encode(foo=1)),
+    show(lambda: u.encode(1)),
+    show(lambda: u.encode('ascii', 1)),
+    show(lambda: u.encode('unknown')),
+    show(lambda: u.encode('ascii')),
+])"#,
+        &[
+            "visible True True",
+            "value default bytes:b'caf\\xc3\\xa9'",
+            "value ascii-ignore bytes:b'caf'",
+            "value ascii-replace bytes:b'caf?'",
+            "value latin-type bytes:b'caf\\xe9'",
+            "value str-sub-encoding bytes:b'caf\\xe9'",
+            "keywords bytes:b'caf\\xc3\\xa9' bytes:b'caf' bytes:b'caf\\xc3\\xa9'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "AttributeError:'int' object has no attribute 'data'", "TypeError:UserString.encode() missing 1 required positional argument: 'self'", 'TypeError:UserString.encode() takes from 1 to 3 positional arguments but 4 were given', "TypeError:UserString.encode() got an unexpected keyword argument 'receiver'", "TypeError:UserString.encode() got multiple values for argument 'encoding'", "TypeError:UserString.encode() got multiple values for argument 'errors'", "TypeError:UserString.encode() got an unexpected keyword argument 'foo'", "TypeError:encode() argument 'encoding' must be str, not int", "TypeError:encode() argument 'errors' must be str, not int", 'LookupError:unknown encoding: unknown', "UnicodeEncodeError:'ascii' codec can't encode character '\\xe9' in position 3: ordinal not in range(128)"]"#,
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString zfill method.
 #[test]
 fn cpython_collections_userstring_zfill_method_subset() {
