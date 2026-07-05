@@ -26354,6 +26354,38 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_setattr_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__setattr__ behavior",
+        name: "collections-userstring-inherited-setattr-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), 'data=', getattr(u, 'data', None), 'extra=', getattr(u, 'extra', '<missing>'))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args, 'data=', getattr(u, 'data', None), 'extra=', getattr(u, 'extra', '<missing>'))
+print('visible', hasattr(UserString, '__setattr__'), hasattr(u, '__setattr__'), '__setattr__' in dir(UserString), '__setattr__' in dir(u), UserString.__setattr__ is object.__setattr__, type(UserString.__setattr__).__name__, type(u.__setattr__).__name__)
+for label, expr in [
+    ('bound-extra', lambda: u.__setattr__('extra', 'x')),
+    ('type-data', lambda: UserString.__setattr__(u, 'data', 'zz')),
+    ('object-extra', lambda: object.__setattr__(u, 'extra2', 'y')),
+    ('bad-receiver', lambda: UserString.__setattr__('abé', 'extra', 'x')),
+    ('bad-name', lambda: u.__setattr__(1, 'x')),
+    ('noargs', lambda: UserString.__setattr__()),
+    ('self-only', lambda: UserString.__setattr__(u)),
+    ('self-name', lambda: UserString.__setattr__(u, 'extra3')),
+    ('extra', lambda: UserString.__setattr__(u, 'extra3', 'z', 1)),
+    ('badkw', lambda: UserString.__setattr__(u, name='extra3', value='z')),
+    ('keyword-only', lambda: UserString.__setattr__(self=u, name='extra3', value='z')),
+]:
+    show(label, expr)
+print('final', u.data, u.extra, u.extra2, hasattr(u, 'extra3'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

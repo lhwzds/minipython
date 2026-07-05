@@ -291,6 +291,15 @@ Recent runtime migration notes:
   non-UserString receiver fallback to `None`, and CPython `object.__getstate__` TypeError text,
   without promoting pickle, `__reduce__`, or host I/O behavior and without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `cpython_collections_userstring_inherited_setattr_method_subset`, backed by
+  `cpython_collections_userstring_inherited_setattr_method_diff_subset`, now
+  pins `UserString.__setattr__` as inherited `object.__setattr__`, including
+  type and instance visibility, `dir(UserString)` discoverability,
+  `UserString.__setattr__ is object.__setattr__`, `wrapper_descriptor` and
+  `method-wrapper` metadata, `.data` rebinding and user attribute assignment,
+  bad receiver and bad name errors, and CPython `object.__setattr__` TypeError text,
+  without adding custom descriptor hooks, pickle support, or host-backed state
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -1620,6 +1629,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_inherited_getattribute_method_diff_subset`,
   `cpython_collections_userstring_inherited_sizeof_method_diff_subset`,
   `cpython_collections_userstring_inherited_getstate_method_diff_subset`,
+  `cpython_collections_userstring_inherited_setattr_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
@@ -7593,6 +7603,16 @@ without adding general custom encoder/decoder class support.
   non-UserString receiver fallback to `None`, and CPython `object.__getstate__` TypeError text,
   without promoting pickle, `__reduce__`, or host I/O behavior and without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_setattr_method_diff_subset` and
+  `cpython_collections_userstring_inherited_setattr_method_subset`, covering
+  `UserString.__setattr__` as inherited `object.__setattr__`, type and instance
+  visibility, `dir(UserString)` discoverability,
+  `UserString.__setattr__ is object.__setattr__`, `wrapper_descriptor` and
+  `method-wrapper` metadata, `.data` rebinding and user attribute assignment,
+  bad receiver and bad name errors, and CPython `object.__setattr__` TypeError text,
+  without adding custom descriptor hooks, pickle support, or host-backed state
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

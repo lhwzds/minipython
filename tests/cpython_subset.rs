@@ -70210,6 +70210,54 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserString inherited object.__setattr__ method.
+// This pins pure-memory attribute assignment without adding custom descriptor
+// hooks, pickle support, or host-backed state.
+#[test]
+fn cpython_collections_userstring_inherited_setattr_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), 'data=', getattr(u, 'data', None), 'extra=', getattr(u, 'extra', '<missing>'))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args, 'data=', getattr(u, 'data', None), 'extra=', getattr(u, 'extra', '<missing>'))
+print('visible', hasattr(UserString, '__setattr__'), hasattr(u, '__setattr__'), '__setattr__' in dir(UserString), '__setattr__' in dir(u), UserString.__setattr__ is object.__setattr__, type(UserString.__setattr__).__name__, type(u.__setattr__).__name__)
+for label, expr in [
+    ('bound-extra', lambda: u.__setattr__('extra', 'x')),
+    ('type-data', lambda: UserString.__setattr__(u, 'data', 'zz')),
+    ('object-extra', lambda: object.__setattr__(u, 'extra2', 'y')),
+    ('bad-receiver', lambda: UserString.__setattr__('abé', 'extra', 'x')),
+    ('bad-name', lambda: u.__setattr__(1, 'x')),
+    ('noargs', lambda: UserString.__setattr__()),
+    ('self-only', lambda: UserString.__setattr__(u)),
+    ('self-name', lambda: UserString.__setattr__(u, 'extra3')),
+    ('extra', lambda: UserString.__setattr__(u, 'extra3', 'z', 1)),
+    ('badkw', lambda: UserString.__setattr__(u, name='extra3', value='z')),
+    ('keyword-only', lambda: UserString.__setattr__(self=u, name='extra3', value='z')),
+]:
+    show(label, expr)
+print('final', u.data, u.extra, u.extra2, hasattr(u, 'extra3'))"#,
+        &[
+            "visible True True True True True wrapper_descriptor method-wrapper",
+            "bound-extra NoneType None data= abé extra= x",
+            "type-data NoneType None data= zz extra= x",
+            "object-extra NoneType None data= zz extra= x",
+            "bad-receiver AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes (\"'str' object has no attribute 'extra' and no __dict__ for setting new attributes\",) data= zz extra= x",
+            "bad-name TypeError attribute name must be string, not 'int' (\"attribute name must be string, not 'int'\",) data= zz extra= x",
+            "noargs TypeError descriptor '__setattr__' of 'object' object needs an argument (\"descriptor '__setattr__' of 'object' object needs an argument\",) data= zz extra= x",
+            "self-only TypeError __setattr__ expected 2 arguments, got 0 ('__setattr__ expected 2 arguments, got 0',) data= zz extra= x",
+            "self-name TypeError __setattr__ expected 2 arguments, got 1 ('__setattr__ expected 2 arguments, got 1',) data= zz extra= x",
+            "extra TypeError __setattr__ expected 2 arguments, got 3 ('__setattr__ expected 2 arguments, got 3',) data= zz extra= x",
+            "badkw TypeError wrapper __setattr__() takes no keyword arguments ('wrapper __setattr__() takes no keyword arguments',) data= zz extra= x",
+            "keyword-only TypeError descriptor '__setattr__' of 'object' object needs an argument (\"descriptor '__setattr__' of 'object' object needs an argument\",) data= zz extra= x",
+            "final zz x y False",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

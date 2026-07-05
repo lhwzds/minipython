@@ -26531,6 +26531,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_inherited_getattribute_method_subset",
             "cpython_collections_userstring_inherited_sizeof_method_subset",
             "cpython_collections_userstring_inherited_getstate_method_subset",
+            "cpython_collections_userstring_inherited_setattr_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -30443,6 +30444,108 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString getstate-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_setattr_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __setattr__"
+    );
+    let userstring_setattr_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_setattr_method_diff_subset",
+    );
+    let userstring_setattr_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_setattr_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "hasattr(UserString, '__setattr__')",
+        "hasattr(u, '__setattr__')",
+        "'__setattr__' in dir(UserString)",
+        "'__setattr__' in dir(u)",
+        "UserString.__setattr__ is object.__setattr__",
+        "type(UserString.__setattr__).__name__",
+        "type(u.__setattr__).__name__",
+        "u.__setattr__('extra', 'x')",
+        "UserString.__setattr__(u, 'data', 'zz')",
+        "object.__setattr__(u, 'extra2', 'y')",
+        "UserString.__setattr__('abé', 'extra', 'x')",
+        "u.__setattr__(1, 'x')",
+        "UserString.__setattr__()",
+        "UserString.__setattr__(u)",
+        "UserString.__setattr__(u, 'extra3')",
+        "UserString.__setattr__(u, 'extra3', 'z', 1)",
+        "UserString.__setattr__(u, name='extra3', value='z')",
+        "UserString.__setattr__(self=u, name='extra3', value='z')",
+        "print('final', u.data, u.extra, u.extra2, hasattr(u, 'extra3'))",
+    ] {
+        assert!(
+            userstring_setattr_method_diff_body.contains(required)
+                && userstring_setattr_method_subset_body.contains(required),
+            "UserString setattr-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True wrapper_descriptor method-wrapper\"",
+        "\"bound-extra NoneType None data= abé extra= x\"",
+        "\"type-data NoneType None data= zz extra= x\"",
+        "\"object-extra NoneType None data= zz extra= x\"",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        "\"bad-name TypeError attribute name must be string, not 'int'",
+        "\"noargs TypeError descriptor '__setattr__' of 'object' object needs an argument",
+        "\"self-only TypeError __setattr__ expected 2 arguments, got 0",
+        "\"self-name TypeError __setattr__ expected 2 arguments, got 1",
+        "\"extra TypeError __setattr__ expected 2 arguments, got 3",
+        "\"badkw TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"keyword-only TypeError descriptor '__setattr__' of 'object' object needs an argument",
+        "\"final zz x y False\"",
+    ] {
+        assert!(
+            userstring_setattr_method_subset_body.contains(required),
+            "UserString setattr-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__setattr__\".to_string())",
+        "function_name == \"UserString\" && name == \"__setattr__\"",
+        "Ok(Value::Builtin(\"object.__setattr__\".to_string()))",
+        "object_setattr_bound_method(Value::UserString",
+        "Value::Builtin(name) if name == \"object.__setattr__\"",
+        "self.call_object_setattr(args)",
+        "fn call_object_setattr(",
+        "self.store_attribute_without_custom_setattr(object.clone(), &name, value.clone())",
+        "Value::UserString { data, attrs }",
+        "insert_live_dict_entry(",
+        "str_value_checked(&value)?",
+        "\"TypeError: wrapper __setattr__() takes no keyword arguments\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString setattr-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_setattr_method_subset",
+            "cpython_collections_userstring_inherited_setattr_method_diff_subset",
+            "`UserString.__setattr__`",
+            "inherited `object.__setattr__`",
+            "`UserString.__setattr__ is object.__setattr__`",
+            "wrapper_descriptor",
+            "method-wrapper",
+            "`.data` rebinding and user attribute assignment",
+            "bad receiver and bad name errors",
+            "CPython `object.__setattr__` TypeError text",
+            "without adding custom descriptor hooks, pickle support, or host-backed state",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString setattr-method docs must contain `{required}`"
             );
         }
     }

@@ -10110,6 +10110,12 @@ impl Vm {
             }
             Value::Builtin(name) if name == "object.__setattr__" => {
                 if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__setattr__' of 'object' object needs an argument"
+                                .to_string(),
+                        );
+                    }
                     return Err(
                         "TypeError: wrapper __setattr__() takes no keyword arguments".to_string(),
                     );
@@ -17007,10 +17013,16 @@ impl Vm {
     }
 
     fn call_object_setattr(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [object, name, value] = args.as_slice() else {
+        let Some((object, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__setattr__' of 'object' object needs an argument"
+                    .to_string(),
+            );
+        };
+        let [name, value] = rest else {
             return Err(format!(
-                "object.__setattr__ expected 3 arguments, got {}",
-                args.len()
+                "TypeError: __setattr__ expected 2 arguments, got {}",
+                rest.len()
             ));
         };
 
@@ -54960,6 +54972,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__mod__".to_string());
         names.push("__reversed__".to_string());
         names.push("__rmod__".to_string());
+        names.push("__setattr__".to_string());
         names.push("__sizeof__".to_string());
     }
     names
@@ -62952,6 +62965,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     data,
                     attrs,
                 })),
+                "__setattr__" => Ok(object_setattr_bound_method(Value::UserString {
+                    data,
+                    attrs,
+                })),
                 "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
@@ -64917,6 +64934,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__getstate__" => {
             Ok(Value::Builtin("object.__getstate__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__setattr__" => {
+            Ok(Value::Builtin("object.__setattr__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__sizeof__" => {
             Ok(Value::Builtin("object.__sizeof__".to_string()))
