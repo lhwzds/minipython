@@ -35899,6 +35899,11 @@ impl Vm {
                     user_string_expandtabs_arguments(method, &args, keywords)?;
                 self.user_string_expandtabs_value(&receiver, tabsize, method)
             }
+            "replace" => {
+                let (receiver, old, new, maxsplit) =
+                    user_string_replace_arguments(method, &args, keywords)?;
+                self.user_string_replace_value(&receiver, &old, &new, maxsplit, method)
+            }
             "zfill" => {
                 let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
                 self.user_string_zfill_value(&receiver, width)
@@ -36155,6 +36160,43 @@ impl Vm {
         };
         let text = data.borrow();
         user_string_value(string_expandtabs(&text, tabsize)?)
+    }
+
+    fn user_string_replace_value(
+        &mut self,
+        receiver: &Value,
+        old: &Value,
+        new: &Value,
+        maxsplit: Option<Value>,
+        method: &str,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let Some(old) = user_string_order_operand(old) else {
+            return Err(format!(
+                "TypeError: replace() argument 1 must be str, not {}",
+                type_name(old)
+            ));
+        };
+        let Some(new) = user_string_order_operand(new) else {
+            return Err(format!(
+                "TypeError: replace() argument 2 must be str, not {}",
+                type_name(new)
+            ));
+        };
+        let maxsplit = match maxsplit {
+            Some(value) => {
+                let value = self.index_integer_value(value)?;
+                string_replace_count_argument(&value, method)?
+            }
+            None => -1,
+        };
+        let text = data.borrow();
+        user_string_value(string_replace(&text, &old, &new, maxsplit)?)
     }
 
     fn user_string_concat_value(
@@ -56747,6 +56789,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rpartition"
             | "splitlines"
             | "expandtabs"
+            | "replace"
             | "zfill"
             | "__mul__"
             | "__repr__"
@@ -62393,6 +62436,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "partition" | "rpartition"
                 | "splitlines"
                 | "expandtabs"
+                | "replace"
                 | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -91137,6 +91181,101 @@ fn user_string_expandtabs_arguments(
         ));
     };
     Ok((receiver, tabsize))
+}
+
+fn user_string_replace_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value, Value, Option<Value>), String> {
+    if args.len() > 4 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 3 to 4 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut old = args.get(1).cloned();
+    let mut new = args.get(2).cloned();
+    let mut maxsplit = args.get(3).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "old" => {
+                if old.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'old'"
+                    ));
+                }
+                old = Some(value);
+            }
+            "new" => {
+                if new.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'new'"
+                    ));
+                }
+                new = Some(value);
+            }
+            "maxsplit" => {
+                if maxsplit.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'maxsplit'"
+                    ));
+                }
+                maxsplit = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let mut missing = Vec::new();
+    if receiver.is_none() {
+        missing.push("self");
+    }
+    if old.is_none() {
+        missing.push("old");
+    }
+    if new.is_none() {
+        missing.push("new");
+    }
+    if !missing.is_empty() {
+        return Err(user_string_method_missing_required(method, &missing));
+    }
+    Ok((
+        receiver.expect("missing receiver handled above"),
+        old.expect("missing old handled above"),
+        new.expect("missing new handled above"),
+        maxsplit,
+    ))
+}
+
+fn user_string_method_missing_required(method: &str, names: &[&str]) -> String {
+    let arguments = match names {
+        [name] => format!("'{name}'"),
+        [first, second] => format!("'{first}' and '{second}'"),
+        [first, second, third] => format!("'{first}', '{second}', and '{third}'"),
+        _ => unreachable!("UserString missing argument helper is only used for small arities"),
+    };
+    let label = if names.len() == 1 {
+        "argument"
+    } else {
+        "arguments"
+    };
+    format!(
+        "TypeError: UserString.{method}() missing {} required positional {label}: {arguments}",
+        names.len()
+    )
 }
 
 fn user_string_zfill_width(width: Value) -> Result<usize, String> {

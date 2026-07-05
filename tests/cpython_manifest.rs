@@ -26537,6 +26537,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
+            "cpython_collections_userstring_replace_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -31357,6 +31358,129 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString expandtabs docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_replace_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString replace"
+    );
+    let userstring_replace_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_replace_method_diff_subset",
+    );
+    let userstring_replace_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_replace_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Count:",
+        "def __index__(self): print('index-called', self.value); return self.value",
+        "class BadIndex:",
+        "return 'x'",
+        "u = UserString('ababa')",
+        "methods = ['replace']",
+        "hasattr(UserString, name)",
+        "getattr(value, 'data', None)",
+        "('empty-two', ('','-',2))",
+        "('index', ('a','X',Count(2)))",
+        "('badindex', ('a','X',BadIndex()))",
+        "('userstring-old', (UserString('a'),'X'))",
+        "target = UserString('a😀aa')",
+        "target.replace(*spec)",
+        "u.replace(old='a', new='X', maxsplit=1)",
+        "UserString.replace(self=u, old='a', new='X', maxsplit=1)",
+        "UserString.replace(u, 'a', 'X', 1)",
+        "UserString.replace('ababa', 'a', 'X')",
+        "u.replace('a', 'X', 1, maxsplit=2)",
+        "u.replace('a', 'X', maxsplit=1, count=1)",
+        "UserString.replace(receiver=u, old='a', new='X')",
+        "UserString.replace(self=u, new='X')",
+        "u.replace(1, 'X')",
+        "u.replace('a', 1)",
+    ] {
+        assert!(
+            userstring_replace_method_diff_body.contains(required)
+                && userstring_replace_method_subset_body.contains(required),
+            "UserString replace diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible [('replace', True, True)]",
+        "value all UserString:'XbXbX':'XbXbX'",
+        "value one UserString:'Xbaba':'Xbaba'",
+        "value zero UserString:'ababa':'ababa'",
+        "value negative UserString:'XbXbX':'XbXbX'",
+        "value empty UserString:'-a-b-a-b-a-':'-a-b-a-b-a-'",
+        "value empty-two UserString:'-a-baba':'-a-baba'",
+        "value unicode UserString:'aZaa':'aZaa'",
+        "value true UserString:'Xbaba':'Xbaba'",
+        "value false UserString:'ababa':'ababa'",
+        "index-called 2",
+        "value index UserString:'XbXba':'XbXba'",
+        "bad-index-called",
+        "value badindex TypeError:__index__ returned non-int (type str)",
+        "value none-count TypeError:'NoneType' object cannot be interpreted as an integer",
+        "value string-count TypeError:'str' object cannot be interpreted as an integer",
+        "value huge OverflowError:Python int too large to convert to C ssize_t",
+        "value userstring-old UserString:'XbXbX':'XbXbX'",
+        "value userstring-new UserString:'XbXbX':'XbXbX'",
+        "value userstring-both UserString:'XbXbX':'XbXbX'",
+        "keywords UserString:'XbXbX':'XbXbX' UserString:'Xbaba':'Xbaba' UserString:'Xbaba':'Xbaba'",
+        "type UserString:'Xbaba':'Xbaba'",
+        "TypeError:UserString.replace() missing 2 required positional arguments: 'old' and 'new'",
+        "TypeError:UserString.replace() got multiple values for argument 'maxsplit'",
+        "TypeError:UserString.replace() got an unexpected keyword argument 'count'",
+        "TypeError:UserString.replace() missing 3 required positional arguments: 'self', 'old', and 'new'",
+        "TypeError:replace() argument 1 must be str, not int",
+        "TypeError:replace() argument 2 must be str, not int",
+    ] {
+        assert!(
+            userstring_replace_method_subset_body.contains(required),
+            "UserString replace subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"replace\" => {",
+        "fn user_string_replace_value(",
+        "fn user_string_replace_arguments(",
+        "user_string_replace_arguments(method, &args, keywords)",
+        "self.user_string_replace_value(&receiver, &old, &new, maxsplit, method)",
+        "user_string_order_operand(old)",
+        "user_string_order_operand(new)",
+        "self.index_integer_value(value)?",
+        "string_replace_count_argument(&value, method)?",
+        "string_replace(&text, &old, &new, maxsplit)?",
+        "UserString.{method}() takes from 3 to 4 positional arguments",
+        "got multiple values for argument 'maxsplit'",
+        "user_string_method_missing_required(method, &missing)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString replace implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_replace_method_subset",
+            "cpython_collections_userstring_replace_method_diff_subset",
+            "`UserString.replace`",
+            "UserString result wrapping",
+            "`old`/`new`",
+            "UserString operands",
+            "empty old-string replacement",
+            "`maxsplit`",
+            "keyword handling",
+            "`__index__` dispatch",
+            "C-ssize_t overflow `OverflowError`",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString replace docs must contain `{required}`"
             );
         }
     }

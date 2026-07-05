@@ -71037,6 +71037,74 @@ print('errors', [
     );
 }
 
+// Mirrors CPython's public UserString replace method.
+#[test]
+fn cpython_collections_userstring_replace_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+class Count:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('ababa')
+methods = ['replace']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('all', ('a','X')), ('one', ('a','X',1)), ('zero', ('a','X',0)), ('negative', ('a','X',-1)), ('empty', ('','-')), ('empty-two', ('','-',2)), ('missing', ('z','X')), ('unicode', ('😀','Z')), ('true', ('a','X',True)), ('false', ('a','X',False)), ('index', ('a','X',Count(2))), ('badindex', ('a','X',BadIndex())), ('none-count', ('a','X',None)), ('string-count', ('a','X','2')), ('huge', ('a','X',9223372036854775808)), ('userstring-old', (UserString('a'),'X')), ('userstring-new', ('a', UserString('X'))), ('userstring-both', (UserString('a'), UserString('X'))),]:
+    target = UserString('a😀aa') if label == 'unicode' else u
+    print('value', label, show(lambda spec=spec, target=target: target.replace(*spec)))
+print('keywords', show(lambda: u.replace(old='a', new='X')), show(lambda: u.replace(old='a', new='X', maxsplit=1)), show(lambda: UserString.replace(self=u, old='a', new='X', maxsplit=1)))
+print('type', show(lambda: UserString.replace(u, 'a', 'X', 1)))
+print('errors', [
+    show(lambda: UserString.replace('ababa', 'a', 'X')),
+    show(lambda: u.replace()),
+    show(lambda: u.replace('a')),
+    show(lambda: u.replace('a', 'X', 1, 2)),
+    show(lambda: u.replace('a', 'X', 1, maxsplit=2)),
+    show(lambda: u.replace('a', 'X', maxsplit=1, count=1)),
+    show(lambda: u.replace(self=u, old='a', new='X')),
+    show(lambda: UserString.replace()),
+    show(lambda: UserString.replace(old='a', new='X')),
+    show(lambda: UserString.replace(receiver=u, old='a', new='X')),
+    show(lambda: UserString.replace(self=u, new='X')),
+    show(lambda: u.replace(1, 'X')),
+    show(lambda: u.replace('a', 1)),
+])"#,
+        &[
+            "visible [('replace', True, True)]",
+            "value all UserString:'XbXbX':'XbXbX'",
+            "value one UserString:'Xbaba':'Xbaba'",
+            "value zero UserString:'ababa':'ababa'",
+            "value negative UserString:'XbXbX':'XbXbX'",
+            "value empty UserString:'-a-b-a-b-a-':'-a-b-a-b-a-'",
+            "value empty-two UserString:'-a-baba':'-a-baba'",
+            "value missing UserString:'ababa':'ababa'",
+            "value unicode UserString:'aZaa':'aZaa'",
+            "value true UserString:'Xbaba':'Xbaba'",
+            "value false UserString:'ababa':'ababa'",
+            "index-called 2",
+            "value index UserString:'XbXba':'XbXba'",
+            "bad-index-called",
+            "value badindex TypeError:__index__ returned non-int (type str)",
+            "value none-count TypeError:'NoneType' object cannot be interpreted as an integer",
+            "value string-count TypeError:'str' object cannot be interpreted as an integer",
+            "value huge OverflowError:Python int too large to convert to C ssize_t",
+            "value userstring-old UserString:'XbXbX':'XbXbX'",
+            "value userstring-new UserString:'XbXbX':'XbXbX'",
+            "value userstring-both UserString:'XbXbX':'XbXbX'",
+            "keywords UserString:'XbXbX':'XbXbX' UserString:'Xbaba':'Xbaba' UserString:'Xbaba':'Xbaba'",
+            "type UserString:'Xbaba':'Xbaba'",
+            r#"errors ["AttributeError:'str' object has no attribute 'data'", "TypeError:UserString.replace() missing 2 required positional arguments: 'old' and 'new'", "TypeError:UserString.replace() missing 1 required positional argument: 'new'", 'TypeError:UserString.replace() takes from 3 to 4 positional arguments but 5 were given', "TypeError:UserString.replace() got multiple values for argument 'maxsplit'", "TypeError:UserString.replace() got an unexpected keyword argument 'count'", "TypeError:UserString.replace() got multiple values for argument 'self'", "TypeError:UserString.replace() missing 3 required positional arguments: 'self', 'old', and 'new'", "TypeError:UserString.replace() missing 1 required positional argument: 'self'", "TypeError:UserString.replace() got an unexpected keyword argument 'receiver'", "TypeError:UserString.replace() missing 1 required positional argument: 'old'", 'TypeError:replace() argument 1 must be str, not int', 'TypeError:replace() argument 2 must be str, not int']"#,
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

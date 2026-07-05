@@ -26796,6 +26796,49 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_replace_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString replace method behavior",
+        name: "collections-userstring-replace-method",
+        source: r#"from collections import UserString
+class Count:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+u = UserString('ababa')
+methods = ['replace']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('all', ('a','X')), ('one', ('a','X',1)), ('zero', ('a','X',0)), ('negative', ('a','X',-1)), ('empty', ('','-')), ('empty-two', ('','-',2)), ('missing', ('z','X')), ('unicode', ('😀','Z')), ('true', ('a','X',True)), ('false', ('a','X',False)), ('index', ('a','X',Count(2))), ('badindex', ('a','X',BadIndex())), ('none-count', ('a','X',None)), ('string-count', ('a','X','2')), ('huge', ('a','X',9223372036854775808)), ('userstring-old', (UserString('a'),'X')), ('userstring-new', ('a', UserString('X'))), ('userstring-both', (UserString('a'), UserString('X'))),]:
+    target = UserString('a😀aa') if label == 'unicode' else u
+    print('value', label, show(lambda spec=spec, target=target: target.replace(*spec)))
+print('keywords', show(lambda: u.replace(old='a', new='X')), show(lambda: u.replace(old='a', new='X', maxsplit=1)), show(lambda: UserString.replace(self=u, old='a', new='X', maxsplit=1)))
+print('type', show(lambda: UserString.replace(u, 'a', 'X', 1)))
+print('errors', [
+    show(lambda: UserString.replace('ababa', 'a', 'X')),
+    show(lambda: u.replace()),
+    show(lambda: u.replace('a')),
+    show(lambda: u.replace('a', 'X', 1, 2)),
+    show(lambda: u.replace('a', 'X', 1, maxsplit=2)),
+    show(lambda: u.replace('a', 'X', maxsplit=1, count=1)),
+    show(lambda: u.replace(self=u, old='a', new='X')),
+    show(lambda: UserString.replace()),
+    show(lambda: UserString.replace(old='a', new='X')),
+    show(lambda: UserString.replace(receiver=u, old='a', new='X')),
+    show(lambda: UserString.replace(self=u, new='X')),
+    show(lambda: u.replace(1, 'X')),
+    show(lambda: u.replace('a', 1)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",
