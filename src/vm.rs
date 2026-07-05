@@ -89468,6 +89468,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::Builtin(name) if typing_alias_origin_name(&name).is_some() => Ok(
             generic_alias_value(Value::Builtin(name), generic_alias_args(index)),
         ),
+        Value::Builtin(name) if name == "str" => Err("type 'str' is not subscriptable".to_string()),
         Value::Builtin(name) if name == "bytes" => {
             Err("type 'bytes' is not subscriptable".to_string())
         }

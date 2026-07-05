@@ -29,6 +29,12 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
+- `cpython_str_type_not_subscriptable_subset`, backed by
+  `cpython_str_type_not_subscriptable_diff_subset`, now pins `str[int]`
+  rejection with `type 'str' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `str.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_bytes_type_not_subscriptable_subset`, backed by
   `cpython_bytes_type_not_subscriptable_diff_subset`, now pins `bytes[int]`
   rejection with `type 'bytes' is not subscriptable`, absent type and instance
