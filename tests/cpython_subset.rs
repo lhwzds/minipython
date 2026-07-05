@@ -69310,6 +69310,50 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
     );
 }
 
+// Mirrors CPython public collections.UserString __class_getitem__ behavior. This
+// pins GenericAlias origin/args, direct type calls, and inherited subclass
+// lookup without implementing full UserString construction/wrapper behavior.
+#[test]
+fn cpython_collections_userstring_class_getitem_generic_alias_subset() {
+    assert_output(
+        r#"from collections import UserString
+typ = UserString
+class C(UserString):
+    def __init__(self):
+        pass
+inst = C()
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('type-sub', lambda: (hasattr(C, '__class_getitem__'), '__class_getitem__' in dir(C), type(C.__class_getitem__).__name__, type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst), type(inst.__class_getitem__(str)).__name__, inst.__class_getitem__(str).__origin__ is C, inst.__class_getitem__(str).__args__)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+    ('sub-keyword', lambda: C.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "visible tuple (True, True, 'method')",
+            "subscript-int tuple ('GenericAlias', 'collections.UserString[int]', True, (<class 'int'>,))",
+            "call-int tuple ('GenericAlias', 'collections.UserString[int]', True, True, (<class 'int'>,))",
+            "call-pair tuple ('collections.UserString[int, str]', True, (<class 'int'>, <class 'str'>))",
+            "type-sub tuple (True, True, 'method', 'GenericAlias', True, (<class 'int'>,))",
+            "inst-sub tuple (True, True, 'GenericAlias', True, (<class 'str'>,))",
+            "call-noargs TypeError GenericAlias expected 2 arguments, got 1 ('GenericAlias expected 2 arguments, got 1',)",
+            "call-extra TypeError GenericAlias expected 2 arguments, got 3 ('GenericAlias expected 2 arguments, got 3',)",
+            "call-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
+            "sub-keyword TypeError GenericAlias() takes no keyword arguments ('GenericAlias() takes no keyword arguments',)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

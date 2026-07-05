@@ -2847,6 +2847,7 @@ fn format_generic_builtin_name(name: &str) -> String {
         "defaultdict" => "collections.defaultdict".to_string(),
         "UserList" => "collections.UserList".to_string(),
         "UserDict" => "collections.UserDict".to_string(),
+        "UserString" => "collections.UserString".to_string(),
         _ => name.to_string(),
     }
 }

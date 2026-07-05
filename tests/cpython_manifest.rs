@@ -26513,6 +26513,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
+            "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -28632,6 +28633,104 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_class_getitem_generic_alias_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString class_getitem GenericAlias behavior"
+    );
+    let userstring_class_getitem_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_class_getitem_generic_alias_diff_subset",
+    );
+    let userstring_class_getitem_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_class_getitem_generic_alias_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "typ = UserString",
+        "class C(UserString):",
+        "def __init__(self):",
+        "hasattr(typ, '__class_getitem__')",
+        "'__class_getitem__' in dir(typ)",
+        "type(typ.__class_getitem__).__name__",
+        "typ[int]",
+        "typ[int].__origin__ is typ",
+        "typ[int].__args__",
+        "typ.__class_getitem__(int)",
+        "typ.__class_getitem__(int) == typ[int]",
+        "typ.__class_getitem__((int, str))",
+        "typ.__class_getitem__((int, str)) == typ[int, str]",
+        "hasattr(C, '__class_getitem__')",
+        "'__class_getitem__' in dir(C)",
+        "C.__class_getitem__(int)",
+        "C.__class_getitem__(int).__origin__ is C",
+        "inst.__class_getitem__(str)",
+        "inst.__class_getitem__(str).__origin__ is C",
+        "typ.__class_getitem__()",
+        "typ.__class_getitem__(int, str)",
+        "typ.__class_getitem__(item=int)",
+        "C.__class_getitem__(item=int)",
+    ] {
+        assert!(
+            userstring_class_getitem_diff_body.contains(required)
+                && userstring_class_getitem_subset_body.contains(required),
+            "UserString class_getitem GenericAlias diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible tuple (True, True, 'method')\"",
+        "\"subscript-int tuple ('GenericAlias', 'collections.UserString[int]', True, (<class 'int'>,))\"",
+        "\"call-int tuple ('GenericAlias', 'collections.UserString[int]', True, True, (<class 'int'>,))\"",
+        "\"call-pair tuple ('collections.UserString[int, str]', True, (<class 'int'>, <class 'str'>))\"",
+        "\"type-sub tuple (True, True, 'method', 'GenericAlias', True, (<class 'int'>,))\"",
+        "\"inst-sub tuple (True, True, 'GenericAlias', True, (<class 'str'>,))\"",
+        "\"call-noargs TypeError GenericAlias expected 2 arguments, got 1",
+        "\"call-extra TypeError GenericAlias expected 2 arguments, got 3",
+        "\"call-keyword TypeError GenericAlias() takes no keyword arguments",
+        "\"sub-keyword TypeError GenericAlias() takes no keyword arguments",
+    ] {
+        assert!(
+            userstring_class_getitem_subset_body.contains(required),
+            "UserString class_getitem GenericAlias subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn generic_alias_bound_method(origin: Value) -> Value",
+        "Value::Builtin(\"GenericAlias\".to_string())",
+        "function_name == \"UserString\" && name == \"__class_getitem__\"",
+        "class_bases_include_builtin(&class_bases, \"UserString\")",
+        "class_bases_include_builtin(&bases, \"UserString\")",
+        "if name == \"UserString\"",
+        "names.push(\"__class_getitem__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString class_getitem GenericAlias implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VALUE_SOURCE.contains("\"UserString\" => \"collections.UserString\".to_string()"),
+        "UserString GenericAlias formatting must use the collections-qualified public name"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_class_getitem_generic_alias_subset",
+            "cpython_collections_userstring_class_getitem_generic_alias_diff_subset",
+            "`UserString.__class_getitem__(int)`",
+            "`UserString[int]`",
+            "`collections.UserString[int]`",
+            "inherited UserString subclass lookup",
+            "GenericAlias origin/args",
+            "GenericAlias constructor error shape",
+            "without implementing full UserString construction",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString class-getitem docs must contain `{required}`"
             );
         }
     }

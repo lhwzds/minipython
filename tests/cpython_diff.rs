@@ -25750,6 +25750,37 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
 }
 
 #[test]
+fn cpython_collections_userstring_class_getitem_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __class_getitem__ GenericAlias behavior",
+        name: "collections-userstring-class-getitem-generic-alias",
+        source: r#"from collections import UserString
+typ = UserString
+class C(UserString):
+    def __init__(self):
+        pass
+inst = C()
+for label, expr in [
+    ('visible', lambda: (hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), type(typ.__class_getitem__).__name__)),
+    ('subscript-int', lambda: (type(typ[int]).__name__, str(typ[int]), typ[int].__origin__ is typ, typ[int].__args__)),
+    ('call-int', lambda: (type(typ.__class_getitem__(int)).__name__, str(typ.__class_getitem__(int)), typ.__class_getitem__(int) == typ[int], typ.__class_getitem__(int).__origin__ is typ, typ.__class_getitem__(int).__args__)),
+    ('call-pair', lambda: (str(typ.__class_getitem__((int, str))), typ.__class_getitem__((int, str)) == typ[int, str], typ.__class_getitem__((int, str)).__args__)),
+    ('type-sub', lambda: (hasattr(C, '__class_getitem__'), '__class_getitem__' in dir(C), type(C.__class_getitem__).__name__, type(C.__class_getitem__(int)).__name__, C.__class_getitem__(int).__origin__ is C, C.__class_getitem__(int).__args__)),
+    ('inst-sub', lambda: (hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst), type(inst.__class_getitem__(str)).__name__, inst.__class_getitem__(str).__origin__ is C, inst.__class_getitem__(str).__args__)),
+    ('call-noargs', lambda: typ.__class_getitem__()),
+    ('call-extra', lambda: typ.__class_getitem__(int, str)),
+    ('call-keyword', lambda: typ.__class_getitem__(item=int)),
+    ('sub-keyword', lambda: C.__class_getitem__(item=int)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

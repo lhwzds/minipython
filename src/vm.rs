@@ -15030,6 +15030,7 @@ impl Vm {
                     if class_bases_include_builtin(&class_bases, "UserList")
                         || class_bases_include_builtin(&class_bases, "ChainMap")
                         || class_bases_include_builtin(&class_bases, "UserDict")
+                        || class_bases_include_builtin(&class_bases, "UserString")
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
@@ -15350,6 +15351,7 @@ impl Vm {
                     if class_bases_include_builtin(&bases, "UserList")
                         || class_bases_include_builtin(&bases, "ChainMap")
                         || class_bases_include_builtin(&bases, "UserDict")
+                        || class_bases_include_builtin(&bases, "UserString")
                     {
                         return Ok(generic_alias_bound_method(owner));
                     }
@@ -53543,6 +53545,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     };
 
     names.extend(methods.iter().copied().map(str::to_string));
+    if name == "UserString" {
+        names.push("__class_getitem__".to_string());
+    }
     names
 }
 
@@ -63284,6 +63289,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(generic_alias_bound_method(Value::Builtin(function_name)))
         }
         Value::Builtin(function_name)
+            if function_name == "UserString" && name == "__class_getitem__" =>
+        {
+            Ok(generic_alias_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
             if function_name == "UserDict" && is_builtin_user_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserDict.{name}")))
@@ -69388,6 +69398,9 @@ fn type_name(value: &Value) -> &str {
             "method-wrapper"
         }
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) => {
+            "method"
+        }
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if name == "GenericAlias") => {
             "method"
         }
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(_)) => {
