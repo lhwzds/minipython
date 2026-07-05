@@ -48,6 +48,12 @@ Recent runtime migration notes:
   AttributeError shape for direct calls, without adding `bytearray.__class_getitem__`
   or GenericAlias support, without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `cpython_range_type_not_subscriptable_subset`, backed by
+  `cpython_range_type_not_subscriptable_diff_subset`, now pins `range[int]`
+  rejection with `type 'range' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `range.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
