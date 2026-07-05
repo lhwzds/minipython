@@ -78,6 +78,14 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   builtin `hash()` inheritance for a tuple subclass receiver, non-tuple receiver
   TypeError text, and unhashable tuple item propagation, without adding full wrapper metadata or unrelated hash-method parity,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_tuple_inherited_sizeof_direct_subset` and
+  `cpython_tuple_inherited_sizeof_direct_diff_subset` for tuple inherited `__sizeof__`,
+  exact and tuple-subclass positive integer shape, direct `tuple.__sizeof__`
+  dispatch for tuple and non-tuple receivers, non-tuple direct receiver support
+  through `object.__sizeof__`, `tuple.__sizeof__ is object.__sizeof__`, and
+  `method_descriptor` visibility, positive integer shape rather than exact CPython allocation size,
+  without adding CPython allocator/object-layout parity or full descriptor metadata,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_tuple_inherited_str_direct_subset` and
   `cpython_tuple_inherited_str_direct_diff_subset` for tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for

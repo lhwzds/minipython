@@ -18232,6 +18232,33 @@ print('visible', hasattr(left, '__hash__'), '__hash__' in dir(left), '__hash__' 
 }
 
 #[test]
+fn cpython_tuple_inherited_sizeof_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple inherited __sizeof__ method descriptor behavior",
+        name: "tuple-inherited-sizeof-direct",
+        source: r#"class T(tuple):
+    pass
+left = T((1, 'x'))
+for label, expr in [
+    ('sizeof-exact', lambda: (1, 'x').__sizeof__()),
+    ('sizeof-sub', lambda: left.__sizeof__()),
+    ('type-sizeof-exact', lambda: tuple.__sizeof__((1, 'x'))),
+    ('type-sizeof-sub', lambda: tuple.__sizeof__(left)),
+    ('type-sizeof-list', lambda: tuple.__sizeof__([1, 2])),
+    ('type-sizeof-noargs', lambda: tuple.__sizeof__()),
+    ('sizeof-extra', lambda: (1,).__sizeof__(1)),
+    ('sizeof-kw', lambda: (1,).__sizeof__(x=1)),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, isinstance(result, int), result > 0)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__sizeof__'), '__sizeof__' in dir(left), '__sizeof__' in dir(T), '__sizeof__' in dir(tuple), type(tuple.__sizeof__).__name__, tuple.__sizeof__ is object.__sizeof__, type(object.__sizeof__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_inherited_str_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple inherited __str__ wrapper behavior",

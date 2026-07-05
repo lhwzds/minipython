@@ -721,6 +721,120 @@ fn tuple_hash_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn tuple_inherited_sizeof_direct_docs_cover_core_runtime() {
+    let diff_name = "cpython_tuple_inherited_sizeof_direct_diff_subset";
+    let subset_name = "cpython_tuple_inherited_sizeof_direct_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "tuple inherited sizeof direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "tuple inherited sizeof direct runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class T(tuple):",
+        "left = T((1, 'x'))",
+        "(1, 'x').__sizeof__()",
+        "left.__sizeof__()",
+        "tuple.__sizeof__((1, 'x'))",
+        "tuple.__sizeof__(left)",
+        "tuple.__sizeof__([1, 2])",
+        "tuple.__sizeof__()",
+        "(1,).__sizeof__(1)",
+        "(1,).__sizeof__(x=1)",
+        "isinstance(result, int)",
+        "result > 0",
+        "hasattr(left, '__sizeof__')",
+        "'__sizeof__' in dir(left)",
+        "'__sizeof__' in dir(T)",
+        "'__sizeof__' in dir(tuple)",
+        "type(tuple.__sizeof__).__name__",
+        "tuple.__sizeof__ is object.__sizeof__",
+        "type(object.__sizeof__).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "tuple inherited sizeof direct diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"sizeof-exact int True True\"",
+        "\"sizeof-sub int True True\"",
+        "\"type-sizeof-exact int True True\"",
+        "\"type-sizeof-sub int True True\"",
+        "\"type-sizeof-list int True True\"",
+        "\"type-sizeof-noargs TypeError unbound method object.__sizeof__() needs an argument",
+        "\"sizeof-extra TypeError object.__sizeof__() takes no arguments (1 given)",
+        "\"sizeof-kw TypeError object.__sizeof__() takes no keyword arguments",
+        "\"visible True True True True method_descriptor True method_descriptor\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "tuple inherited sizeof direct subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let tuple_dir_start = VM_SOURCE
+        .find("\"tuple\" => &[")
+        .expect("tuple dir block must exist");
+    let tuple_dir_tail = &VM_SOURCE[tuple_dir_start..];
+    let tuple_dir_end = tuple_dir_tail
+        .find("],\n        \"range\"")
+        .expect("tuple dir block must end before range block");
+    let tuple_dir_block = &tuple_dir_tail[..tuple_dir_end];
+
+    assert!(
+        tuple_dir_block.contains("\"__sizeof__\""),
+        "tuple dir block must expose inherited `__sizeof__`"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"object.__sizeof__\"",
+        "self.call_object_sizeof(args, keywords)",
+        "fn call_object_sizeof(",
+        "object.__sizeof__() takes no keyword arguments",
+        "unbound method object.__sizeof__() needs an argument",
+        "object.__sizeof__() takes no arguments",
+        "Ok(Value::Number(24))",
+        "Value::Tuple(items) if name == \"__sizeof__\"",
+        "object_sizeof_bound_method(Value::Tuple(",
+        "function_name == \"tuple\" && name == \"__sizeof__\"",
+        "Ok(Value::Builtin(\"object.__sizeof__\".to_string()))",
+        "fn object_sizeof_bound_method(",
+        "\"object\" => matches!(",
+        "| \"__sizeof__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "tuple inherited sizeof direct implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "tuple inherited `__sizeof__`",
+            "`tuple.__sizeof__ is object.__sizeof__`",
+            "non-tuple direct receiver support",
+            "method_descriptor",
+            "positive integer shape rather than exact CPython allocation size",
+            "without adding CPython allocator/object-layout parity or full descriptor metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "tuple inherited sizeof direct docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_inherited_str_direct_docs_cover_core_runtime() {
     let diff_name = "cpython_tuple_inherited_str_direct_diff_subset";
     let subset_name = "cpython_tuple_inherited_str_direct_subset";
@@ -1081,7 +1195,7 @@ fn tuple_inherited_dir_direct_docs_cover_core_runtime() {
         "matches!(builtin.as_str(), \"object\" | \"tuple\")",
         "object_dir_bound_method(object)",
         "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
-        "\"object\" => matches!(method, \"__dir__\" | \"__format__\" | \"__getstate__\")",
+        "| \"__sizeof__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),

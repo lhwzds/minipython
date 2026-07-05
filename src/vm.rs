@@ -10090,6 +10090,9 @@ impl Vm {
             Value::Builtin(name) if name == "object.__getstate__" => {
                 self.call_object_getstate(args, keywords)
             }
+            Value::Builtin(name) if name == "object.__sizeof__" => {
+                self.call_object_sizeof(args, keywords)
+            }
             Value::Builtin(name) if name == "defaultdict.__getattribute__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -15059,6 +15062,10 @@ impl Vm {
                     return Ok(object_getstate_bound_method(instance));
                 }
 
+                if name == "__sizeof__" {
+                    return Ok(object_sizeof_bound_method(instance));
+                }
+
                 if name == "__replace__" && class_bases_include_builtin(&class_bases, "AST") {
                     return Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin("ast.__replace__".to_string())),
@@ -16568,6 +16575,30 @@ impl Vm {
         };
 
         Ok(identity_hash_value(object))
+    }
+
+    fn call_object_sizeof(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: object.__sizeof__() takes no keyword arguments".to_string());
+        }
+
+        let Some((_receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: unbound method object.__sizeof__() needs an argument".to_string(),
+            );
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: object.__sizeof__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        Ok(Value::Number(24))
     }
 
     fn call_object_rich_compare(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
@@ -53207,6 +53238,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__new__",
             "__repr__",
             "__rmul__",
+            "__sizeof__",
             "__str__",
             "count",
             "index",
@@ -53392,6 +53424,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getattribute__",
             "__getstate__",
             "__hash__",
+            "__sizeof__",
             "__setattr__",
             "__delattr__",
             "__repr__",
@@ -61023,6 +61056,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver: Box::new(Value::Tuple(items)),
             identity: Rc::new(()),
         }),
+        Value::Tuple(items) if name == "__sizeof__" => Ok(object_sizeof_bound_method(Value::Tuple(
+            items,
+        ))),
         Value::Tuple(items) if name == "__init__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("object.__init__".to_string())),
             receiver: Box::new(Value::Tuple(items)),
@@ -62904,6 +62940,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "tuple" && name == "__dir__" => {
             Ok(Value::Builtin("object.__dir__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "tuple" && name == "__sizeof__" => {
+            Ok(Value::Builtin("object.__sizeof__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__init__" => {
             Ok(Value::Builtin("object.__init__".to_string()))
         }
@@ -63180,6 +63219,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "__init__"
                         | "__repr__"
                         | "__str__"
+                        | "__sizeof__"
                         | "__getattribute__"
                         | "__setattr__"
                         | "__delattr__"
@@ -67173,7 +67213,10 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
         return false;
     };
     match type_name {
-        "object" => matches!(method, "__dir__" | "__format__" | "__getstate__"),
+        "object" => matches!(
+            method,
+            "__dir__" | "__format__" | "__getstate__" | "__sizeof__"
+        ),
         "defaultdict" => matches!(method, "__missing__" | "copy" | "__copy__"),
         "io" => matches!(
             method,
@@ -67636,6 +67679,14 @@ fn object_dir_bound_method(receiver: Value) -> Value {
 fn object_getstate_bound_method(receiver: Value) -> Value {
     Value::BoundMethod {
         function: Box::new(Value::Builtin("object.__getstate__".to_string())),
+        receiver: Box::new(receiver),
+        identity: Rc::new(()),
+    }
+}
+
+fn object_sizeof_bound_method(receiver: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("object.__sizeof__".to_string())),
         receiver: Box::new(receiver),
         identity: Rc::new(()),
     }

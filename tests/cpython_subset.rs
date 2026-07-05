@@ -54849,6 +54849,47 @@ fn cpython_tuple_hash_direct_subset() {
     );
 }
 
+// Adapted from CPython public tuple __sizeof__ inheritance. This pins the
+// inherited object.__sizeof__ method descriptor without depending on CPython
+// allocation sizes or object-layout internals.
+#[test]
+fn cpython_tuple_inherited_sizeof_direct_subset() {
+    assert_output(
+        concat!(
+            "class T(tuple):\n",
+            "    pass\n",
+            "left = T((1, 'x'))\n",
+            "for label, expr in [\n",
+            "    ('sizeof-exact', lambda: (1, 'x').__sizeof__()),\n",
+            "    ('sizeof-sub', lambda: left.__sizeof__()),\n",
+            "    ('type-sizeof-exact', lambda: tuple.__sizeof__((1, 'x'))),\n",
+            "    ('type-sizeof-sub', lambda: tuple.__sizeof__(left)),\n",
+            "    ('type-sizeof-list', lambda: tuple.__sizeof__([1, 2])),\n",
+            "    ('type-sizeof-noargs', lambda: tuple.__sizeof__()),\n",
+            "    ('sizeof-extra', lambda: (1,).__sizeof__(1)),\n",
+            "    ('sizeof-kw', lambda: (1,).__sizeof__(x=1)),\n",
+            "]:\n",
+            "    try:\n",
+            "        result = expr()\n",
+            "        print(label, type(result).__name__, isinstance(result, int), result > 0)\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, str(error), error.args)\n",
+            "print('visible', hasattr(left, '__sizeof__'), '__sizeof__' in dir(left), '__sizeof__' in dir(T), '__sizeof__' in dir(tuple), type(tuple.__sizeof__).__name__, tuple.__sizeof__ is object.__sizeof__, type(object.__sizeof__).__name__)",
+        ),
+        &[
+            "sizeof-exact int True True",
+            "sizeof-sub int True True",
+            "type-sizeof-exact int True True",
+            "type-sizeof-sub int True True",
+            "type-sizeof-list int True True",
+            "type-sizeof-noargs TypeError unbound method object.__sizeof__() needs an argument ('unbound method object.__sizeof__() needs an argument',)",
+            "sizeof-extra TypeError object.__sizeof__() takes no arguments (1 given) ('object.__sizeof__() takes no arguments (1 given)',)",
+            "sizeof-kw TypeError object.__sizeof__() takes no keyword arguments ('object.__sizeof__() takes no keyword arguments',)",
+            "visible True True True True method_descriptor True method_descriptor",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple __str__ inheritance. This pins the
 // inherited object.__str__ wrapper for tuple without making it a tuple-specific
 // sequence method.
