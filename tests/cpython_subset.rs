@@ -70554,6 +70554,84 @@ for name in methods:
     );
 }
 
+// Mirrors CPython's public UserString startswith/endswith methods.
+#[test]
+fn cpython_collections_userstring_prefix_suffix_methods_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('banana bandana')
+methods = ['startswith', 'endswith']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('ban',),
+    ('ana',),
+    (('ban', 'x'),),
+    (('x', 'ana'),),
+    ('ana', 1),
+    ('ana', 1, 4),
+    ('',),
+    ('', 2, 5),
+    (UserString('ban'),),
+]
+for name in methods:
+    first = 'prefix' if name == 'startswith' else 'suffix'
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)('ana', start=1)),
+          show(lambda name=name: getattr(u, name)('ana', 1, end=4)),
+          show(lambda name=name, first=first: getattr(u, name)(**{first: 'ban'})))
+    print('type',
+          show(lambda name=name: getattr(UserString, name)(u, 'ban')),
+          show(lambda name=name, first=first: getattr(UserString, name)(self=u, **{first: 'ban'})))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('banana', 'ban')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('ban', 1, 2, 3)),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)((1, 'ban'))),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name, first=first: getattr(UserString, name)(receiver=u, **{first: 'ban'})),
+    ])"#,
+        &[
+            "visible [('startswith', True, True), ('endswith', True, True)]",
+            "method startswith",
+            "value ('ban',) bool:True",
+            "value ('ana',) bool:False",
+            "value (('ban', 'x'),) bool:True",
+            "value (('x', 'ana'),) bool:False",
+            "value ('ana', 1) bool:True",
+            "value ('ana', 1, 4) bool:True",
+            "value ('',) bool:True",
+            "value ('', 2, 5) bool:True",
+            "value ('ban',) TypeError:startswith first arg must be str or a tuple of str, not UserString",
+            "keywords bool:True bool:True bool:True",
+            "type bool:True bool:True",
+            "errors startswith [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.startswith() missing 1 required positional argument: 'prefix'\", 'TypeError:UserString.startswith() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:startswith first arg must be str or a tuple of str, not int', 'TypeError:tuple for startswith must only contain str, not int', \"TypeError:UserString.startswith() missing 2 required positional arguments: 'self' and 'prefix'\", \"TypeError:UserString.startswith() got an unexpected keyword argument 'receiver'\"]",
+            "method endswith",
+            "value ('ban',) bool:False",
+            "value ('ana',) bool:True",
+            "value (('ban', 'x'),) bool:False",
+            "value (('x', 'ana'),) bool:True",
+            "value ('ana', 1) bool:True",
+            "value ('ana', 1, 4) bool:True",
+            "value ('',) bool:True",
+            "value ('', 2, 5) bool:True",
+            "value ('ban',) TypeError:endswith first arg must be str or a tuple of str, not UserString",
+            "keywords bool:True bool:True bool:False",
+            "type bool:False bool:False",
+            "errors endswith [\"AttributeError:'str' object has no attribute 'data'\", \"TypeError:UserString.endswith() missing 1 required positional argument: 'suffix'\", 'TypeError:UserString.endswith() takes from 2 to 4 positional arguments but 5 were given', 'TypeError:endswith first arg must be str or a tuple of str, not int', 'TypeError:tuple for endswith must only contain str, not int', \"TypeError:UserString.endswith() missing 2 required positional arguments: 'self' and 'suffix'\", \"TypeError:UserString.endswith() got an unexpected keyword argument 'receiver'\"]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
 // coverage.
 #[test]

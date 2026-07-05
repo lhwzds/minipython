@@ -26484,6 +26484,56 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_prefix_suffix_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString startswith/endswith method behavior",
+        name: "collections-userstring-prefix-suffix-methods",
+        source: r#"from collections import UserString
+u = UserString('banana bandana')
+methods = ['startswith', 'endswith']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+samples = [
+    ('ban',),
+    ('ana',),
+    (('ban', 'x'),),
+    (('x', 'ana'),),
+    ('ana', 1),
+    ('ana', 1, 4),
+    ('',),
+    ('', 2, 5),
+    (UserString('ban'),),
+]
+for name in methods:
+    first = 'prefix' if name == 'startswith' else 'suffix'
+    print('method', name)
+    for spec in samples:
+        print('value', spec, show(lambda name=name, spec=spec: getattr(u, name)(*spec)))
+    print('keywords',
+          show(lambda name=name: getattr(u, name)('ana', start=1)),
+          show(lambda name=name: getattr(u, name)('ana', 1, end=4)),
+          show(lambda name=name, first=first: getattr(u, name)(**{first: 'ban'})))
+    print('type',
+          show(lambda name=name: getattr(UserString, name)(u, 'ban')),
+          show(lambda name=name, first=first: getattr(UserString, name)(self=u, **{first: 'ban'})))
+    print('errors', name, [
+        show(lambda name=name: getattr(UserString, name)('banana', 'ban')),
+        show(lambda name=name: getattr(u, name)()),
+        show(lambda name=name: getattr(u, name)('ban', 1, 2, 3)),
+        show(lambda name=name: getattr(u, name)(1)),
+        show(lambda name=name: getattr(u, name)((1, 'ban'))),
+        show(lambda name=name: getattr(UserString, name)()),
+        show(lambda name=name, first=first: getattr(UserString, name)(receiver=u, **{first: 'ban'})),
+    ])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

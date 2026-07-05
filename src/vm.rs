@@ -35864,6 +35864,18 @@ impl Vm {
                     user_string_search_arguments(method, &args, keywords)?;
                 self.user_string_search_value(&receiver, &sub, start.as_ref(), end.as_ref(), method)
             }
+            "startswith" | "endswith" => {
+                let (receiver, affix, start, end) =
+                    user_string_prefix_suffix_arguments(method, &args, keywords)?;
+                self.user_string_prefix_suffix_value(
+                    &receiver,
+                    &affix,
+                    start.as_ref(),
+                    end.as_ref(),
+                    method == "startswith",
+                    method,
+                )
+            }
             "__contains__" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(
@@ -36130,6 +36142,59 @@ impl Vm {
             }
             _ => unreachable!("UserString search method is filtered before dispatch"),
         }
+    }
+
+    fn user_string_prefix_suffix_value(
+        &mut self,
+        receiver: &Value,
+        affix: &Value,
+        start: Option<&Value>,
+        end: Option<&Value>,
+        starts_with: bool,
+        method: &str,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let affixes = user_string_prefix_suffix_values(affix, method)?;
+        if affixes.is_empty() {
+            return Ok(Value::Bool(false));
+        }
+
+        let text = data.borrow();
+        let len = text.chars().count();
+        let len_i64 = i64::try_from(len).map_err(|_| "string is too large".to_string())?;
+        let start = match start {
+            Some(value) => bytes_bound_argument(self, value, 0, method)?,
+            None => 0,
+        };
+        let end = match end {
+            Some(value) => bytes_bound_argument(self, value, len_i64, method)?,
+            None => len_i64,
+        };
+        let start = normalize_string_start_bound(start, len_i64);
+        let end = normalize_string_stop_bound(end, len_i64);
+        if start > end {
+            return Ok(Value::Bool(false));
+        }
+        let start = usize::try_from(start).map_err(|_| "string index out of range".to_string())?;
+        let end = usize::try_from(end).map_err(|_| "string index out of range".to_string())?;
+        let window = text
+            .chars()
+            .skip(start)
+            .take(end - start)
+            .collect::<String>();
+        let matched = affixes.iter().any(|affix| {
+            if starts_with {
+                window.starts_with(affix)
+            } else {
+                window.ends_with(affix)
+            }
+        });
+        Ok(Value::Bool(matched))
     }
 
     fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
@@ -56586,6 +56651,8 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "rfind"
             | "index"
             | "rindex"
+            | "startswith"
+            | "endswith"
             | "__mul__"
             | "__repr__"
             | "__radd__"
@@ -62225,6 +62292,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "isdigit" | "isdecimal" | "isnumeric" | "isascii" | "isidentifier"
                 | "isprintable"
                 | "count" | "find" | "rfind" | "index" | "rindex"
+                | "startswith" | "endswith"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserString.{name}"))),
@@ -90435,6 +90503,115 @@ fn user_string_search_arguments(
     };
 
     Ok((receiver, sub, start, end))
+}
+
+fn user_string_prefix_suffix_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value, Option<Value>, Option<Value>), String> {
+    let first_arg_name = if method == "startswith" {
+        "prefix"
+    } else {
+        "suffix"
+    };
+    if args.len() > 4 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 2 to 4 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+
+    let mut receiver = args.first().cloned();
+    let mut affix = args.get(1).cloned();
+    let mut start = args.get(2).cloned();
+    let mut end = args.get(3).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            name if name == first_arg_name => {
+                if affix.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument '{first_arg_name}'"
+                    ));
+                }
+                affix = Some(value);
+            }
+            "start" => {
+                if start.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'start'"
+                    ));
+                }
+                start = Some(value);
+            }
+            "end" => {
+                if end.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'end'"
+                    ));
+                }
+                end = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+
+    let Some(receiver) = receiver else {
+        return Err(if affix.is_some() {
+            format!(
+                "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+            )
+        } else {
+            format!(
+                "TypeError: UserString.{method}() missing 2 required positional arguments: 'self' and '{first_arg_name}'"
+            )
+        });
+    };
+    let Some(affix) = affix else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: '{first_arg_name}'"
+        ));
+    };
+
+    Ok((receiver, affix, start, end))
+}
+
+fn user_string_prefix_suffix_values(value: &Value, method: &str) -> Result<Vec<String>, String> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(vec![value.clone()]),
+        value if str_subclass_string(value).is_some() => Ok(vec![
+            str_subclass_string(value).expect("str subclass storage exists after guard"),
+        ]),
+        Value::Tuple(items) => items
+            .iter()
+            .map(|item| match item {
+                Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+                item if str_subclass_string(item).is_some() => {
+                    Ok(str_subclass_string(item).expect("str subclass storage exists after guard"))
+                }
+                item => Err(format!(
+                    "TypeError: tuple for {method} must only contain str, not {}",
+                    type_name(item)
+                )),
+            })
+            .collect(),
+        value => Err(format!(
+            "TypeError: {method} first arg must be str or a tuple of str, not {}",
+            type_name(value)
+        )),
+    }
 }
 
 fn user_string_predicate_value(receiver: &Value, method: &str) -> Result<Value, String> {

@@ -26530,6 +26530,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_case_transform_methods_subset",
             "cpython_collections_userstring_predicate_methods_subset",
             "cpython_collections_userstring_search_methods_subset",
+            "cpython_collections_userstring_prefix_suffix_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -30563,6 +30564,121 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString search-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_prefix_suffix_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString startswith/endswith methods"
+    );
+    let userstring_prefix_suffix_methods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_prefix_suffix_methods_diff_subset",
+    );
+    let userstring_prefix_suffix_methods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_prefix_suffix_methods_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('banana bandana')",
+        "methods = ['startswith', 'endswith']",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+        "first = 'prefix' if name == 'startswith' else 'suffix'",
+        "(('ban', 'x'),)",
+        "(('x', 'ana'),)",
+        "('', 2, 5)",
+        "(UserString('ban'),)",
+        "getattr(u, name)(*spec)",
+        "getattr(u, name)('ana', start=1)",
+        "getattr(u, name)('ana', 1, end=4)",
+        "getattr(u, name)(**{first: 'ban'})",
+        "getattr(UserString, name)(u, 'ban')",
+        "getattr(UserString, name)(self=u, **{first: 'ban'})",
+        "getattr(UserString, name)('banana', 'ban')",
+        "getattr(u, name)('ban', 1, 2, 3)",
+        "getattr(u, name)(1)",
+        "getattr(u, name)((1, 'ban'))",
+        "getattr(UserString, name)(receiver=u, **{first: 'ban'})",
+    ] {
+        assert!(
+            userstring_prefix_suffix_methods_diff_body.contains(required)
+                && userstring_prefix_suffix_methods_subset_body.contains(required),
+            "UserString prefix/suffix-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible [('startswith', True, True), ('endswith', True, True)]\"",
+        "\"value ('ban',) bool:True\"",
+        "\"value (('ban', 'x'),) bool:True\"",
+        "\"value (('x', 'ana'),) bool:False\"",
+        "\"value ('ban',) TypeError:startswith first arg must be str or a tuple of str, not UserString\"",
+        "\"keywords bool:True bool:True bool:True\"",
+        "\"type bool:True bool:True\"",
+        "\"errors startswith [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.startswith() missing 1 required positional argument: 'prefix'\\\"",
+        "TypeError:UserString.startswith() takes from 2 to 4 positional arguments but 5 were given",
+        "TypeError:startswith first arg must be str or a tuple of str, not int",
+        "TypeError:tuple for startswith must only contain str, not int",
+        "\"value ('ana',) bool:True\"",
+        "\"value (('x', 'ana'),) bool:True\"",
+        "\"value ('ban',) TypeError:endswith first arg must be str or a tuple of str, not UserString\"",
+        "\"keywords bool:True bool:True bool:False\"",
+        "\"type bool:False bool:False\"",
+        "\"errors endswith [\\\"AttributeError:'str' object has no attribute 'data'\\\", \\\"TypeError:UserString.endswith() missing 1 required positional argument: 'suffix'\\\"",
+        "TypeError:endswith first arg must be str or a tuple of str, not int",
+        "TypeError:tuple for endswith must only contain str, not int",
+        "TypeError:UserString.endswith() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_prefix_suffix_methods_subset_body.contains(required),
+            "UserString prefix/suffix-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"startswith\" | \"endswith\"",
+        "fn user_string_prefix_suffix_arguments(",
+        "fn user_string_prefix_suffix_values(",
+        "fn user_string_prefix_suffix_value(",
+        "user_string_prefix_suffix_arguments(method, &args, keywords)",
+        "self.user_string_prefix_suffix_value(",
+        "method == \"startswith\"",
+        "\"prefix\"",
+        "\"suffix\"",
+        "UserString.{method}() takes from 2 to 4 positional arguments",
+        "UserString.{method}() got multiple values for argument '{first_arg_name}'",
+        "UserString.{method}() missing 2 required positional arguments: 'self' and '{first_arg_name}'",
+        "UserString.{method}() missing 1 required positional argument: '{first_arg_name}'",
+        "{method} first arg must be str or a tuple of str, not",
+        "tuple for {method} must only contain str, not",
+        "str_subclass_string(value)",
+        "bytes_bound_argument(self, value, 0, method)",
+        "normalize_string_start_bound(start, len_i64)",
+        "window.starts_with(affix)",
+        "window.ends_with(affix)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString prefix/suffix-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_prefix_suffix_methods_subset",
+            "cpython_collections_userstring_prefix_suffix_methods_diff_subset",
+            "`UserString.startswith`",
+            "`UserString.endswith`",
+            "`prefix/suffix/start/end` keyword binding",
+            "tuple-of-str prefixes and suffixes",
+            "empty substring",
+            "UserString prefix rejection",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString prefix/suffix-method docs must contain `{required}`"
             );
         }
     }
