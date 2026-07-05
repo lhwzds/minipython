@@ -35889,6 +35889,11 @@ impl Vm {
                 let (receiver, sep) = user_string_partition_arguments(method, &args, keywords)?;
                 user_string_partition_value(&receiver, &sep, method == "partition", method)
             }
+            "split" => {
+                let (receiver, separator, maxsplit) =
+                    user_string_split_arguments(method, &args, keywords)?;
+                self.user_string_split_value(&receiver, separator, maxsplit, method)
+            }
             "splitlines" => {
                 let (receiver, keepends) =
                     user_string_splitlines_arguments(method, &args, keywords)?;
@@ -36152,6 +36157,44 @@ impl Vm {
             .map(Value::String)
             .collect();
         Ok(list_value(lines))
+    }
+
+    fn user_string_split_value(
+        &mut self,
+        receiver: &Value,
+        separator: Option<Value>,
+        maxsplit: Option<Value>,
+        method: &str,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        let separator = user_string_split_separator(separator)?;
+        let maxsplit = match maxsplit {
+            Some(value) => self.user_string_split_maxsplit(value)?,
+            None => -1,
+        };
+        let text = data.borrow();
+        let parts = match separator {
+            Some(separator) => {
+                string_split_separator(&text, &separator, maxsplit, method == "rsplit")?
+            }
+            None => string_split_whitespace(&text, maxsplit, method == "rsplit"),
+        };
+        Ok(list_value(parts.into_iter().map(Value::String).collect()))
+    }
+
+    fn user_string_split_maxsplit(&mut self, value: Value) -> Result<i64, String> {
+        match self.index_integer_value(value)? {
+            Value::Number(value) => Ok(value),
+            Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            }),
+            _ => unreachable!("index_integer_value returns an integer"),
+        }
     }
 
     fn user_string_expandtabs_value(
@@ -56886,6 +56929,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "removesuffix"
             | "partition"
             | "rpartition"
+            | "split"
             | "splitlines"
             | "expandtabs"
             | "replace"
@@ -62536,6 +62580,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "strip" | "lstrip" | "rstrip"
                 | "removeprefix" | "removesuffix"
                 | "partition" | "rpartition"
+                | "split"
                 | "splitlines"
                 | "expandtabs"
                 | "replace"
@@ -91137,6 +91182,84 @@ fn user_string_partition_value(
     let after_index = index + sep_text.len();
     let after = Value::String(text[after_index..].to_string());
     Ok(tuple_value(vec![before, sep.clone(), after]))
+}
+
+fn user_string_split_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Option<Value>, Option<Value>), String> {
+    if args.len() > 3 {
+        return Err(format!(
+            "TypeError: UserString.{method}() takes from 1 to 3 positional arguments but {} were given",
+            args.len()
+        ));
+    }
+    let mut receiver = args.first().cloned();
+    let mut separator = args.get(1).cloned();
+    let mut maxsplit = args.get(2).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "sep" => {
+                if separator.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'sep'"
+                    ));
+                }
+                separator = Some(value);
+            }
+            "maxsplit" => {
+                if maxsplit.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'maxsplit'"
+                    ));
+                }
+                maxsplit = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let Some(receiver) = receiver else {
+        return Err(format!(
+            "TypeError: UserString.{method}() missing 1 required positional argument: 'self'"
+        ));
+    };
+    Ok((receiver, separator, maxsplit))
+}
+
+fn user_string_split_separator(separator: Option<Value>) -> Result<Option<String>, String> {
+    match separator {
+        None | Some(Value::None) => Ok(None),
+        Some(Value::String(value) | Value::IdentityString { value, .. }) if value.is_empty() => {
+            Err("ValueError: empty separator".to_string())
+        }
+        Some(Value::String(value) | Value::IdentityString { value, .. }) => Ok(Some(value)),
+        Some(value) if str_subclass_string(&value).is_some() => {
+            let value =
+                str_subclass_string(&value).expect("str subclass storage exists after guard");
+            if value.is_empty() {
+                Err("ValueError: empty separator".to_string())
+            } else {
+                Ok(Some(value))
+            }
+        }
+        Some(value) => Err(format!(
+            "TypeError: must be str or None, not {}",
+            type_name(&value)
+        )),
+    }
 }
 
 fn user_string_zfill_arguments(

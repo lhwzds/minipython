@@ -26681,6 +26681,52 @@ for name in methods:
 }
 
 #[test]
+fn cpython_collections_userstring_split_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString split method behavior",
+        name: "collections-userstring-split-method",
+        source: r#"from collections import UserString
+class Max:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+class S(str): pass
+u = UserString(' a  b c ')
+print('visible', hasattr(UserString, 'split'), hasattr(u, 'split'))
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value)
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [
+    ('default', ()), ('none', (None,)), ('none-one', (None, 1)), ('none-zero', (None, 0)),
+    ('space', (' ',)), ('space-one', (' ', 1)), ('pipe', ('|',)), ('multi', ('--',)),
+    ('empty', ('',)), ('true-max', (' ', True)), ('false-max', (' ', False)),
+    ('negative', (' ', -1)), ('index', (' ', Max(2))), ('badindex', (' ', BadIndex())),
+    ('none-max', (' ', None)), ('string-max', (' ', '2')), ('huge', (' ', 9223372036854775808)),
+    ('userstring-sep', (UserString(' '),)), ('str-sub-sep', (S(' '),)), ('int-sep', (1,)),
+]:
+    target = UserString('a|b|c') if label == 'pipe' else UserString('a--b--c') if label == 'multi' else u
+    print('value', label, show(lambda target=target, spec=spec: target.split(*spec)))
+print('keywords', show(lambda: u.split(sep=' ')), show(lambda: u.split(sep=' ', maxsplit=1)), show(lambda: u.split(maxsplit=1)), show(lambda: UserString.split(self=u, sep=' ', maxsplit=1)))
+print('type', show(lambda: UserString.split(u, ' ', 1)))
+print('errors', [
+    show(lambda: UserString.split(' a b ', ' ')),
+    show(lambda: UserString.split(1, ' ', 1, '-')),
+    show(lambda: u.split(' ', 1, '-')),
+    show(lambda: u.split(' ', sep=' ')),
+    show(lambda: u.split(' ', maxsplit=1, sep=' ')),
+    show(lambda: u.split(self=u)),
+    show(lambda: UserString.split()),
+    show(lambda: UserString.split(sep=' ')),
+    show(lambda: UserString.split(receiver=u, sep=' ')),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_zfill_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString zfill method behavior",

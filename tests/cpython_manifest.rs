@@ -26534,6 +26534,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_strip_methods_subset",
             "cpython_collections_userstring_remove_affix_methods_subset",
             "cpython_collections_userstring_partition_methods_subset",
+            "cpython_collections_userstring_split_method_subset",
             "cpython_collections_userstring_zfill_method_subset",
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
@@ -31033,6 +31034,133 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString partition docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_split_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString split"
+    );
+    let userstring_split_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_split_method_diff_subset",
+    );
+    let userstring_split_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_split_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Max:",
+        "def __index__(self): print('index-called', self.value); return self.value",
+        "class BadIndex:",
+        "class S(str): pass",
+        "u = UserString(' a  b c ')",
+        "hasattr(UserString, 'split')",
+        "('pipe', ('|',))",
+        "('multi', ('--',))",
+        "('index', (' ', Max(2)))",
+        "('userstring-sep', (UserString(' '),))",
+        "('str-sub-sep', (S(' '),))",
+        "target = UserString('a|b|c') if label == 'pipe'",
+        "target.split(*spec)",
+        "u.split(sep=' ')",
+        "u.split(sep=' ', maxsplit=1)",
+        "u.split(maxsplit=1)",
+        "UserString.split(self=u, sep=' ', maxsplit=1)",
+        "UserString.split(u, ' ', 1)",
+        "UserString.split(' a b ', ' ')",
+        "UserString.split(1, ' ', 1, '-')",
+        "u.split(' ', 1, '-')",
+        "u.split(' ', sep=' ')",
+        "UserString.split(receiver=u, sep=' ')",
+    ] {
+        assert!(
+            userstring_split_method_diff_body.contains(required)
+                && userstring_split_method_subset_body.contains(required),
+            "UserString split diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible True True",
+        "value default list:['a', 'b', 'c']",
+        "value none list:['a', 'b', 'c']",
+        "value none-one list:['a', 'b c ']",
+        "value none-zero list:['a  b c ']",
+        "value space list:['', 'a', '', 'b', 'c', '']",
+        "value pipe list:['a', 'b', 'c']",
+        "value multi list:['a', 'b', 'c']",
+        "value empty ValueError:empty separator",
+        "value true-max list:['', 'a  b c ']",
+        "value false-max list:[' a  b c ']",
+        "value negative list:['', 'a', '', 'b', 'c', '']",
+        "index-called 2",
+        "value index list:['', 'a', ' b c ']",
+        "bad-index-called",
+        "value badindex TypeError:__index__ returned non-int (type str)",
+        "value none-max TypeError:'NoneType' object cannot be interpreted as an integer",
+        "value string-max TypeError:'str' object cannot be interpreted as an integer",
+        "value huge OverflowError:Python int too large to convert to C ssize_t",
+        "value userstring-sep TypeError:must be str or None, not UserString",
+        "value str-sub-sep list:['', 'a', '', 'b', 'c', '']",
+        "value int-sep TypeError:must be str or None, not int",
+        "keywords list:['', 'a', '', 'b', 'c', ''] list:['', 'a  b c '] list:['a', 'b c '] list:['', 'a  b c ']",
+        "type list:['', 'a  b c ']",
+        "TypeError:UserString.split() takes from 1 to 3 positional arguments but 4 were given",
+        "TypeError:UserString.split() got multiple values for argument 'sep'",
+        "TypeError:UserString.split() got multiple values for argument 'self'",
+        "TypeError:UserString.split() missing 1 required positional argument: 'self'",
+        "TypeError:UserString.split() got an unexpected keyword argument 'receiver'",
+    ] {
+        assert!(
+            userstring_split_method_subset_body.contains(required),
+            "UserString split subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"split\" => {",
+        "fn user_string_split_value(",
+        "fn user_string_split_maxsplit(",
+        "fn user_string_split_arguments(",
+        "fn user_string_split_separator(",
+        "user_string_split_arguments(method, &args, keywords)",
+        "self.user_string_split_value(&receiver, separator, maxsplit, method)",
+        "user_string_split_separator(separator)?",
+        "self.user_string_split_maxsplit(value)?",
+        "self.index_integer_value(value)?",
+        "string_split_separator(&text, &separator, maxsplit, method == \"rsplit\")?",
+        "string_split_whitespace(&text, maxsplit, method == \"rsplit\")",
+        "list_value(parts.into_iter().map(Value::String).collect())",
+        "takes from 1 to 3 positional arguments",
+        "got multiple values for argument 'sep'",
+        "got multiple values for argument 'maxsplit'",
+        "must be str or None",
+        "Python int too large to convert to C ssize_t",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString split implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_split_method_subset",
+            "cpython_collections_userstring_split_method_diff_subset",
+            "`UserString.split`",
+            "ordinary `list[str]` result values",
+            "whitespace and explicit separator splitting",
+            "`sep=` and `maxsplit=` keyword binding",
+            "`__index__` dispatch",
+            "C-ssize_t overflow `OverflowError`",
+            "`str` subclass separator",
+            "UserString separator rejection",
+            "bad receiver",
+            "without implementing full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString split docs must contain `{required}`"
             );
         }
     }
