@@ -362,6 +362,16 @@ Recent runtime migration notes:
   UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying or widening host IO, network, process, C
   ABI, or full stdlib scope.
+- `cpython_collections_userstring_center_method_subset`, backed by
+  `cpython_collections_userstring_center_method_diff_subset`, now pins
+  `UserString.center`, including UserString result wrapping, default and custom
+  fill characters, str-subclass fill characters, UserString fill rejection,
+  positional-only fill character rejection, `width=` keyword binding, bool and
+  negative width handling, `__index__` dispatch and bad-result TypeErrors,
+  C-ssize_t overflow `OverflowError`, bad receiver errors, and
+  UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString alignment proxying or widening host IO, network, process, C ABI,
+  or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
@@ -1459,6 +1469,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_splitlines_method_diff_subset`,
   `cpython_collections_userstring_expandtabs_method_diff_subset`,
   `cpython_collections_userstring_replace_method_diff_subset`,
+  `cpython_collections_userstring_center_method_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_defaultdict_core_diff_subset`,
   `cpython_collections_defaultdict_instance_doc_attribute_diff_subset`,
@@ -7467,6 +7478,16 @@ without adding general custom encoder/decoder class support.
   C-ssize_t overflow `OverflowError`, bad receiver errors, and
   UserString-specific arity/keyword TypeErrors, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_center_method_diff_subset` and
+  `cpython_collections_userstring_center_method_subset`, covering
+  `UserString.center`, UserString result wrapping, default and custom fill
+  characters, str-subclass fill characters, UserString fill rejection,
+  positional-only fill character rejection, `width=` keyword binding, bool and
+  negative width handling, `__index__` dispatch and bad-result TypeErrors,
+  C-ssize_t overflow `OverflowError`, bad receiver errors, and
+  UserString-specific arity/keyword TypeErrors, without implementing full
+  UserString alignment proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_instance_doc_attribute_diff_subset` and
   `cpython_collections_userlist_instance_doc_attribute_subset`, covering

@@ -26538,6 +26538,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_splitlines_method_subset",
             "cpython_collections_userstring_expandtabs_method_subset",
             "cpython_collections_userstring_replace_method_subset",
+            "cpython_collections_userstring_center_method_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_defaultdict_core_subset",
             "cpython_collections_defaultdict_instance_doc_attribute_subset",
@@ -31481,6 +31482,128 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString replace docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_center_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString center"
+    );
+    let userstring_center_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_center_method_diff_subset",
+    );
+    let userstring_center_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_center_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "class Width:",
+        "def __index__(self): print('index-called', self.value); return self.value",
+        "class BadIndex:",
+        "class S(str): pass",
+        "u = UserString('abc')",
+        "methods = ['center']",
+        "hasattr(UserString, name)",
+        "getattr(value, 'data', None)",
+        "('even', (8,))",
+        "('index', (Width(7), '.'))",
+        "('userstring-fill', (7, UserString('*')))",
+        "('str-sub-fill', (7, S('*')))",
+        "u.center(*spec)",
+        "emoji = chr(0x1f600)",
+        "u.center(6, emoji).data == emoji + 'abc' + emoji + emoji",
+        "u.center(width=7)",
+        "u.center(width=7, fillchar='*')",
+        "UserString.center(self=u, width=7, fillchar='*')",
+        "UserString.center(u, 7, '*')",
+        "UserString.center('abc', 7)",
+        "UserString.center(1, 7, '*', '-')",
+        "u.center(7, '*', '-')",
+        "u.center(7, width=8)",
+        "UserString.center(receiver=u, width=7)",
+    ] {
+        assert!(
+            userstring_center_method_diff_body.contains(required)
+                && userstring_center_method_subset_body.contains(required),
+            "UserString center diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "visible [('center', True, True)]",
+        "value wide UserString:'  abc  ':'  abc  '",
+        "value same UserString:'abc':'abc'",
+        "value even UserString:'  abc   ':'  abc   '",
+        "value fill UserString:'**abc**':'**abc**'",
+        "value true-width UserString:'abc':'abc'",
+        "value false-width UserString:'abc':'abc'",
+        "value negative UserString:'abc':'abc'",
+        "index-called 7",
+        "value index UserString:'..abc..':'..abc..'",
+        "bad-index-called",
+        "value badindex TypeError:__index__ returned non-int (type str)",
+        "value none-width TypeError:'NoneType' object cannot be interpreted as an integer",
+        "value string-width TypeError:'str' object cannot be interpreted as an integer",
+        "value huge OverflowError:Python int too large to convert to C ssize_t",
+        "value empty-fill TypeError:The fill character must be exactly one character long",
+        "value long-fill TypeError:The fill character must be exactly one character long",
+        "value none-fill TypeError:The fill character must be a unicode character, not NoneType",
+        "value userstring-fill TypeError:The fill character must be a unicode character, not UserString",
+        "value str-sub-fill UserString:'**abc**':'**abc**'",
+        "unicode-fill True",
+        "TypeError:UserString.center() got an unexpected keyword argument 'fillchar'",
+        "TypeError:center expected at most 2 arguments, got 3",
+        "TypeError:UserString.center() got multiple values for argument 'width'",
+        "TypeError:UserString.center() missing 2 required positional arguments: 'self' and 'width'",
+    ] {
+        assert!(
+            userstring_center_method_subset_body.contains(required),
+            "UserString center subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"center\" => {",
+        "fn user_string_center_value(",
+        "fn user_string_center_arguments(",
+        "fn user_string_center_width(",
+        "fn user_string_center_fill_character(",
+        "fn user_string_center_text(",
+        "user_string_center_arguments(method, &args, keywords)",
+        "self.user_string_center_value(&receiver, width, fillchar, too_many_args)",
+        "self.index_integer_value(width)?",
+        "user_string_center_width(width)?",
+        "user_string_center_fill_character(&value)?",
+        "user_string_value(user_string_center_text(&text, width, fill))",
+        "center expected at most 2 arguments",
+        "got multiple values for argument 'width'",
+        "The fill character must be a unicode character",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString center implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_center_method_subset",
+            "cpython_collections_userstring_center_method_diff_subset",
+            "`UserString.center`",
+            "UserString result wrapping",
+            "default and custom",
+            "fill characters",
+            "positional-only fill character rejection",
+            "`width=` keyword binding",
+            "`__index__` dispatch",
+            "C-ssize_t overflow `OverflowError`",
+            "bad receiver",
+            "without implementing full",
+            "UserString alignment proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString center docs must contain `{required}`"
             );
         }
     }

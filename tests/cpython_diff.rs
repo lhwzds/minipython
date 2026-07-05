@@ -26839,6 +26839,49 @@ print('errors', [
 }
 
 #[test]
+fn cpython_collections_userstring_center_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString center method behavior",
+        name: "collections-userstring-center-method",
+        source: r#"from collections import UserString
+class Width:
+    def __init__(self, value): self.value = value
+    def __index__(self): print('index-called', self.value); return self.value
+class BadIndex:
+    def __index__(self): print('bad-index-called'); return 'x'
+class S(str): pass
+u = UserString('abc')
+methods = ['center']
+print('visible', [(name, hasattr(UserString, name), hasattr(u, name)) for name in methods])
+def show(expr):
+    try:
+        value = expr()
+        return type(value).__name__ + ':' + repr(value) + ':' + repr(getattr(value, 'data', None))
+    except Exception as exc:
+        return type(exc).__name__ + ':' + str(exc)
+for label, spec in [('wide', (7,)), ('same', (3,)), ('narrow', (2,)), ('even', (8,)), ('fill', (7, '*')), ('true-width', (True,)), ('false-width', (False,)), ('negative', (-1,)), ('index', (Width(7), '.')), ('badindex', (BadIndex(), '.')), ('none-width', (None,)), ('string-width', ('7',)), ('huge', (9223372036854775808,)), ('empty-fill', (7, '')), ('long-fill', (7, '**')), ('none-fill', (7, None)), ('userstring-fill', (7, UserString('*'))), ('str-sub-fill', (7, S('*'))),]:
+    print('value', label, show(lambda spec=spec: u.center(*spec)))
+emoji = chr(0x1f600)
+print('unicode-fill', u.center(6, emoji).data == emoji + 'abc' + emoji + emoji)
+print('keywords', show(lambda: u.center(width=7)), show(lambda: u.center(width=7, fillchar='*')), show(lambda: UserString.center(self=u, width=7, fillchar='*')))
+print('type', show(lambda: UserString.center(u, 7, '*')))
+print('errors', [
+    show(lambda: UserString.center('abc', 7)),
+    show(lambda: UserString.center(1, 7, '*', '-')),
+    show(lambda: u.center()),
+    show(lambda: u.center(7, '*', '-')),
+    show(lambda: u.center(7, width=8)),
+    show(lambda: u.center(7, fillchar='*', width=7)),
+    show(lambda: u.center(self=u, width=7)),
+    show(lambda: UserString.center()),
+    show(lambda: UserString.center(width=7)),
+    show(lambda: UserString.center(receiver=u, width=7)),
+    show(lambda: UserString.center(self=u)),
+])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_instance_doc_attribute_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public instance __doc__ attribute subset",

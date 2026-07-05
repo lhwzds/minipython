@@ -35904,6 +35904,11 @@ impl Vm {
                     user_string_replace_arguments(method, &args, keywords)?;
                 self.user_string_replace_value(&receiver, &old, &new, maxsplit, method)
             }
+            "center" => {
+                let (receiver, width, fillchar, too_many_args) =
+                    user_string_center_arguments(method, &args, keywords)?;
+                self.user_string_center_value(&receiver, width, fillchar, too_many_args)
+            }
             "zfill" => {
                 let (receiver, width) = user_string_zfill_arguments(method, &args, keywords)?;
                 self.user_string_zfill_value(&receiver, width)
@@ -36197,6 +36202,34 @@ impl Vm {
         };
         let text = data.borrow();
         user_string_value(string_replace(&text, &old, &new, maxsplit)?)
+    }
+
+    fn user_string_center_value(
+        &mut self,
+        receiver: &Value,
+        width: Value,
+        fillchar: Option<Value>,
+        too_many_args: Option<usize>,
+    ) -> Result<Value, String> {
+        let Value::UserString { data, .. } = receiver else {
+            return Err(format!(
+                "AttributeError: '{}' object has no attribute 'data'",
+                type_name(receiver)
+            ));
+        };
+        if let Some(count) = too_many_args {
+            return Err(format!(
+                "TypeError: center expected at most 2 arguments, got {count}"
+            ));
+        }
+        let width = self.index_integer_value(width)?;
+        let width = user_string_center_width(width)?;
+        let fill = match fillchar {
+            Some(value) => user_string_center_fill_character(&value)?,
+            None => ' ',
+        };
+        let text = data.borrow();
+        user_string_value(user_string_center_text(&text, width, fill))
     }
 
     fn user_string_concat_value(
@@ -56790,6 +56823,7 @@ fn is_builtin_user_string_type_method(name: &str) -> bool {
             | "splitlines"
             | "expandtabs"
             | "replace"
+            | "center"
             | "zfill"
             | "__mul__"
             | "__repr__"
@@ -62437,6 +62471,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "splitlines"
                 | "expandtabs"
                 | "replace"
+                | "center"
                 | "zfill"
                 | "__mul__" | "__repr__" | "__radd__" | "__str__" => {
                     Ok(Value::BoundMethod {
@@ -91260,6 +91295,62 @@ fn user_string_replace_arguments(
     ))
 }
 
+fn user_string_center_arguments(
+    method: &str,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<(Value, Value, Option<Value>, Option<usize>), String> {
+    let mut receiver = args.first().cloned();
+    let mut width = args.get(1).cloned();
+    let fillchar = args.get(2).cloned();
+    for (name, value) in keywords {
+        match name.as_str() {
+            "self" => {
+                if receiver.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'self'"
+                    ));
+                }
+                receiver = Some(value);
+            }
+            "width" => {
+                if width.is_some() {
+                    return Err(format!(
+                        "TypeError: UserString.{method}() got multiple values for argument 'width'"
+                    ));
+                }
+                width = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: UserString.{method}() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+    let mut missing = Vec::new();
+    if receiver.is_none() {
+        missing.push("self");
+    }
+    if width.is_none() {
+        missing.push("width");
+    }
+    if !missing.is_empty() {
+        return Err(user_string_method_missing_required(method, &missing));
+    }
+    let too_many_args = if args.len() > 3 {
+        Some(args.len() - 1)
+    } else {
+        None
+    };
+    Ok((
+        receiver.expect("missing receiver handled above"),
+        width.expect("missing width handled above"),
+        fillchar,
+        too_many_args,
+    ))
+}
+
 fn user_string_method_missing_required(method: &str, names: &[&str]) -> String {
     let arguments = match names {
         [name] => format!("'{name}'"),
@@ -91294,6 +91385,66 @@ fn user_string_zfill_width(width: Value) -> Result<usize, String> {
             type_name(&value)
         )),
     }
+}
+
+fn user_string_center_width(width: Value) -> Result<usize, String> {
+    match width {
+        Value::Number(value) if value <= 0 => Ok(0),
+        Value::Number(value) => usize::try_from(value)
+            .map_err(|_| "OverflowError: Python int too large to convert to C ssize_t".to_string()),
+        Value::BigInt(value) if value.is_negative() => Ok(0),
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?;
+            usize::try_from(value).map_err(|_| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })
+        }
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(&value)
+        )),
+    }
+}
+
+fn user_string_center_fill_character(value: &Value) -> Result<char, String> {
+    let fill = match value {
+        Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        value if str_subclass_string(value).is_some() => {
+            str_subclass_string(value).expect("str subclass storage exists after guard")
+        }
+        value => {
+            return Err(format!(
+                "TypeError: The fill character must be a unicode character, not {}",
+                type_name(value)
+            ));
+        }
+    };
+    let mut chars = fill.chars();
+    let Some(fill) = chars.next() else {
+        return Err("TypeError: The fill character must be exactly one character long".to_string());
+    };
+    if chars.next().is_some() {
+        return Err("TypeError: The fill character must be exactly one character long".to_string());
+    }
+    Ok(fill)
+}
+
+fn user_string_center_text(receiver: &str, width: usize, fill: char) -> String {
+    let length = receiver.chars().count();
+    if width <= length {
+        return receiver.to_string();
+    }
+    let padding = width - length;
+    let left = padding / 2;
+    let right = padding - left;
+    format!(
+        "{}{}{}",
+        fill.to_string().repeat(left),
+        receiver,
+        fill.to_string().repeat(right)
+    )
 }
 
 fn string_zfill_text(receiver: &str, width: usize) -> String {
