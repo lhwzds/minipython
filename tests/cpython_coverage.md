@@ -84,6 +84,12 @@ Recent runtime migration notes:
   `__class_getitem__` visibility, and CPython AttributeError shape for direct
   calls, without adding `slice.__class_getitem__` or GenericAlias support,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_module_type_not_subscriptable_subset`, backed by
+  `cpython_module_type_not_subscriptable_diff_subset`, now pins `module[int]`
+  rejection with `type 'module' is not subscriptable`, absent type and instance
+  `__class_getitem__` visibility, and CPython AttributeError shape for direct
+  calls, without adding `module.__class_getitem__` or GenericAlias support,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, the builtin-subclass `__new__` staticmethod path,
