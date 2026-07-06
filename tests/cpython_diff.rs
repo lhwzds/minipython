@@ -25708,6 +25708,20 @@ for label, value in [('direct', UserDict.__doc__), ('object-getattribute', objec
 }
 
 #[test]
+fn cpython_collections_userdict_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserDict __module__ metadata",
+        name: "collections-userdict-module-metadata",
+        source: r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('visible', '__module__' in dir(UserDict), '__module__' in dir(u), hasattr(UserDict, '__module__'), hasattr(u, '__module__'))
+print('type-module', UserDict.__module__, type(UserDict.__module__).__name__, object.__getattribute__(UserDict, '__module__'))
+print('inst-module', u.__module__, type(u.__module__).__name__, getattr(u, '__module__'), object.__getattribute__(u, '__module__'))
+print('same', u.__module__ == UserDict.__module__, getattr(u, '__module__') == 'collections')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserDict public direct base metadata subset",

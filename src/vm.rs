@@ -54301,6 +54301,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     if name == "CellType" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
         names.push("cell_contents".to_string());
+    } else if name == "UserDict" {
+        names.push("__module__".to_string());
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
     }
@@ -63275,6 +63277,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "__doc__" => Ok(Value::None),
+                "__module__" => Ok(Value::String("collections".to_string())),
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserDict".to_string(),
                 ))),

@@ -69259,6 +69259,26 @@ for label, value in [('direct', UserDict.__doc__), ('object-getattribute', objec
     );
 }
 
+// Mirrors CPython's public UserDict __module__ metadata on the type and
+// instances. This only covers pure metadata lookup and dir() discoverability.
+#[test]
+fn cpython_collections_userdict_module_metadata_subset() {
+    assert_output(
+        r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('visible', '__module__' in dir(UserDict), '__module__' in dir(u), hasattr(UserDict, '__module__'), hasattr(u, '__module__'))
+print('type-module', UserDict.__module__, type(UserDict.__module__).__name__, object.__getattribute__(UserDict, '__module__'))
+print('inst-module', u.__module__, type(u.__module__).__name__, getattr(u, '__module__'), object.__getattribute__(u, '__module__'))
+print('same', u.__module__ == UserDict.__module__, getattr(u, '__module__') == 'collections')"#,
+        &[
+            "visible True True True True",
+            "type-module collections str collections",
+            "inst-module collections str collections collections",
+            "same True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserDict` direct base metadata.
 #[test]
 fn cpython_collections_userdict_type_base_metadata_subset() {

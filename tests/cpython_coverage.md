@@ -165,6 +165,12 @@ Recent runtime migration notes:
   exact UserDict instance lookup, inherited UserDict subclass lookup, GenericAlias origin/args,
   and GenericAlias arity and keyword error propagation, without adding new UserDict mapping-method surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userdict_module_metadata_subset`, backed by
+  `cpython_collections_userdict_module_metadata_diff_subset`, now pins
+  `UserDict.__module__`, `UserDict(...).__module__`, and
+  `dir(UserDict)` and `dir(UserDict(...))` visibility to `collections`,
+  without adding `__slots__`, `__abstractmethods__`, `__weakref__`, or new
+  UserDict mapping-method surface.
 - `cpython_collections_userstring_module_metadata_subset`, backed by
   `cpython_collections_userstring_module_metadata_diff_subset`, now pins
   `UserString.__module__`, `UserString(...).__module__`, and
@@ -1662,6 +1668,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userdict_instance_doc_attribute_diff_subset`,
   `cpython_collections_userdict_type_doc_attribute_diff_subset`,
+  `cpython_collections_userdict_module_metadata_diff_subset`,
   `cpython_collections_userdict_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
@@ -7519,6 +7526,13 @@ without adding general custom encoder/decoder class support.
   `UserDict` type-object `__doc__` as CPython's None-valued metadata for
   direct and `object.__getattribute__` lookup plus `dir(UserDict)` visibility,
   without expanding unrelated UserDict metadata.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_module_metadata_diff_subset` and
+  `cpython_collections_userdict_module_metadata_subset`, covering
+  `UserDict.__module__`, `UserDict(...).__module__`, and
+  `dir(UserDict)` and `dir(UserDict(...))` visibility to `collections`,
+  without adding `__slots__`, `__abstractmethods__`, `__weakref__`, or new
+  UserDict mapping-method surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_type_base_metadata_diff_subset` and
   `cpython_collections_userdict_type_base_metadata_subset`, covering

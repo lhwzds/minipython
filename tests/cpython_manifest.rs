@@ -26506,6 +26506,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_class_getitem_generic_alias_subset",
             "cpython_collections_userdict_instance_doc_attribute_subset",
             "cpython_collections_userdict_type_doc_attribute_subset",
+            "cpython_collections_userdict_module_metadata_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
@@ -28497,6 +28498,78 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict type-object __doc__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_module_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict __module__ metadata"
+    );
+    let userdict_module_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_module_metadata_diff_subset",
+    );
+    let userdict_module_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_module_metadata_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "u = UserDict({'a': 1})",
+        "'__module__' in dir(UserDict)",
+        "'__module__' in dir(u)",
+        "hasattr(UserDict, '__module__')",
+        "hasattr(u, '__module__')",
+        "UserDict.__module__",
+        "object.__getattribute__(UserDict, '__module__')",
+        "u.__module__",
+        "getattr(u, '__module__')",
+        "object.__getattribute__(u, '__module__')",
+        "getattr(u, '__module__') == 'collections'",
+    ] {
+        assert!(
+            userdict_module_diff_body.contains(required)
+                && userdict_module_subset_body.contains(required),
+            "UserDict __module__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-module collections str collections\"",
+        "\"inst-module collections str collections collections\"",
+        "\"same True True\"",
+    ] {
+        assert!(
+            userdict_module_subset_body.contains(required),
+            "UserDict __module__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserDict\"",
+        "names.push(\"__module__\".to_string())",
+        "\"__module__\" => Ok(Value::String(\"collections\".to_string()))",
+        "name == \"__module__\" && function_name == \"UserDict\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict __module__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_module_metadata_subset",
+            "cpython_collections_userdict_module_metadata_diff_subset",
+            "`UserDict.__module__`",
+            "`UserDict(...).__module__`",
+            "`dir(UserDict)` and `dir(UserDict(...))`",
+            "`collections`",
+            "without adding `__slots__`, `__abstractmethods__`, `__weakref__`",
+            "UserDict mapping-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict __module__ metadata docs must contain `{required}`"
             );
         }
     }
