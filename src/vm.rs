@@ -54110,11 +54110,15 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. }) => {
             names.extend(builtin_type_dir_names("callable_iterator"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::RangeIterator { .. }) => {
+            names.extend(builtin_type_dir_names("range_iterator"))
+        }
         Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
         Value::ZipIterator { .. } => names.extend(builtin_type_dir_names("zip")),
         Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
         Value::FilterIterator { .. } => names.extend(builtin_type_dir_names("filter")),
         Value::CallIterator { .. } => names.extend(builtin_type_dir_names("callable_iterator")),
+        Value::RangeIterator { .. } => names.extend(builtin_type_dir_names("range_iterator")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -54441,6 +54445,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "filter" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "callable_iterator" {
+        remove_type_metadata_dir_names(&mut names);
+    } else if name == "range_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
@@ -54808,6 +54814,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
         "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
+        "range_iterator" => &["__iter__", "__next__", "__length_hint__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -55951,6 +55958,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "map" => vec![builtin_type_value("object")],
         "filter" => vec![builtin_type_value("object")],
         "callable_iterator" => vec![builtin_type_value("object")],
+        "range_iterator" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -65035,6 +65043,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
+        Value::Builtin(function_name)
+            if function_name == "range_iterator" && name == "__length_hint__" =>
+        {
+            Ok(Value::Builtin("range_iterator.__length_hint__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__str__" => {
             Ok(Value::Builtin("object.__str__".to_string()))
         }
@@ -70190,6 +70203,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "map"
             | "filter"
             | "callable_iterator"
+            | "range_iterator"
             | "property"
             | "super"
             | "staticmethod"
