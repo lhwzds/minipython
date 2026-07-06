@@ -46731,6 +46731,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_setstate_subset",
             "cpython_str_iterator_type_metadata_dir_surface_subset",
+            "cpython_str_iterator_setstate_subset",
             "cpython_str_ascii_iterator_type_metadata_dir_surface_subset",
             "cpython_str_ascii_iterator_setstate_subset",
             "cpython_bytes_iterator_type_metadata_dir_surface_subset",
@@ -47001,6 +47002,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_setstate_diff_subset",
         "cpython_str_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_str_iterator_setstate_diff_subset",
         "cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_ascii_iterator_setstate_diff_subset",
         "cpython_bytes_iterator_type_metadata_dir_surface_diff_subset",
@@ -54674,14 +54676,15 @@ fn str_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"str_iterator\"",
         "\"str_iterator\" => vec![builtin_type_value(\"object\")]",
-        "\"str_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
-        "Value::Iterator(state) if matches!(&*state.borrow(), Value::StringIterator { .. })",
+        "\"str_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
         "string_iterator_type_name(&chars)",
         "Value::StringIterator { chars, index } => (Value::String(chars.concat()), Some(index))",
-        "Value::StringIterator { chars, .. } => string_iterator_type_name(chars)",
+        "str_iterator_protocol_method(Value::StringIterator { chars, index }, name)",
+        "is_str_iterator",
+        "str_iterator_protocol_method(Value::Iterator(state), name)",
         "| \"str_iterator\"\n            | \"str_ascii_iterator\"",
         "function_name == \"str_iterator\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -54722,6 +54725,124 @@ fn str_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "str_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn str_iterator_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_str_iterator_setstate_diff_subset";
+    let subset_name = "cpython_str_iterator_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "str_iterator __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "str_iterator __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = 'aé𐍈'",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "next(probe)",
+        "bad-setstate-",
+        "10**200",
+        "iter(source).__setstate__()",
+        "iter(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "ascii_iter = iter('abc')",
+        "typ.__setstate__(ascii_iter, 1)",
+        "typ.__setstate__(object(), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "str_iterator __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None a\"",
+        "\"setstate-next 0 None a\"",
+        "\"setstate-next 1 None é\"",
+        "\"setstate-next 2 None 𐍈\"",
+        "\"setstate-next 3 None StopIteration\"",
+        "\"setstate-next 99 None StopIteration\"",
+        "\"setstate-next True None é\"",
+        "\"setstate-next False None a\"",
+        "\"bad-setstate-Index TypeError an integer is required\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C ssize_t\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C ssize_t\"",
+        "\"missing TypeError str_iterator.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError str_iterator.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-setstate None\"",
+        "\"unbound-next 𐍈\"",
+        "\"unbound-ascii TypeError descriptor '__setstate__' for 'str_iterator' objects doesn't apply to a 'str_ascii_iterator' object\"",
+        "\"ascii-next a\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'str_iterator' objects doesn't apply to a 'object' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "str_iterator __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"str_iterator.__setstate__\"",
+        "self.call_str_iterator_setstate(receiver.clone(), index.clone())",
+        "fn call_str_iterator_setstate(",
+        "str_iterator_setstate_index(&index)",
+        "Value::StringIterator {",
+        "string_iterator_type_name(chars) == \"str_iterator\"",
+        "*current = index;",
+        "str_iterator_setstate_receiver_error(&*iterator)",
+        "\"str_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "fn str_iterator_protocol_method(",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "str_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"str_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "fn str_iterator_setstate_index(",
+        "Value::Bool(value) => Value::Number(bool_as_i64(*value))",
+        "\"OverflowError: Python int too large to convert to C ssize_t\"",
+        "fn str_iterator_setstate_receiver_error(",
+        "\"str_iterator.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str_iterator __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`str_iterator.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "negative state clamping to zero",
+            "oversized non-overflowing state exhaustion",
+            "bool and int-subclass state handling",
+            "ASCII `str_ascii_iterator` receiver rejection",
+            "`TypeError: an integer is required`",
+            "`OverflowError: Python int too large to convert to C ssize_t`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "str_iterator __setstate__ docs must contain `{required}`"
             );
         }
     }
@@ -54810,7 +54931,6 @@ fn str_ascii_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "fn string_iterator_type_name(chars: &[String]) -> &'static str",
         "chars.iter().all(|ch| ch.is_ascii())",
         "\"str_ascii_iterator\"",
-        "Value::StringIterator { chars, .. }\n                        if string_iterator_type_name(chars) != \"str_ascii_iterator\" =>",
         "string_iterator_type_name(&chars)",
         "Value::StringIterator { chars, index } => (Value::String(chars.concat()), Some(index))",
         "str_ascii_iterator_protocol_method(Value::StringIterator { chars, index }, name)",
