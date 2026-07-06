@@ -55568,6 +55568,28 @@ fn cpython_slice_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public memoryview type-metadata dir surface. The metadata
+// remains directly readable, but CPython does not list it in dir(memoryview) or
+// dir(memoryview(b"")).
+#[test]
+fn cpython_memoryview_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "view = memoryview(b'')\n",
+            "print('visible-type', '__base__' in dir(memoryview), '__bases__' in dir(memoryview), '__name__' in dir(memoryview), hasattr(memoryview, '__base__'), hasattr(memoryview, '__bases__'), hasattr(memoryview, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(view), '__bases__' in dir(view), '__name__' in dir(view))\n",
+            "print('readable', memoryview.__base__ is object, memoryview.__bases__ == (object,), memoryview.__name__, object.__getattribute__(memoryview, '__name__'))\n",
+            "print('method-kept', 'tobytes' in dir(memoryview), 'tobytes' in dir(view), 'format' in dir(view), 'itemsize' in dir(view))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True memoryview memoryview",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

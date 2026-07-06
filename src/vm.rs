@@ -54391,6 +54391,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "dict"
             | "frozenset"
             | "list"
+            | "memoryview"
             | "range"
             | "set"
             | "slice"

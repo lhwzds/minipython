@@ -19108,6 +19108,19 @@ print('method-kept', 'indices' in dir(slice), 'indices' in dir(slice(None)), 'st
 }
 
 #[test]
+fn cpython_memoryview_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public memoryview type metadata dir surface",
+        name: "memoryview-type-metadata-dir-surface",
+        source: r#"view = memoryview(b'')
+print('visible-type', '__base__' in dir(memoryview), '__bases__' in dir(memoryview), '__name__' in dir(memoryview), hasattr(memoryview, '__base__'), hasattr(memoryview, '__bases__'), hasattr(memoryview, '__name__'))
+print('visible-inst', '__base__' in dir(view), '__bases__' in dir(view), '__name__' in dir(view))
+print('readable', memoryview.__base__ is object, memoryview.__bases__ == (object,), memoryview.__name__, object.__getattribute__(memoryview, '__name__'))
+print('method-kept', 'tobytes' in dir(memoryview), 'tobytes' in dir(view), 'format' in dir(view), 'itemsize' in dir(view))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
