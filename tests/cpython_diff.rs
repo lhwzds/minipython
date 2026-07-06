@@ -25736,6 +25736,20 @@ print('same-value', u.__abstractmethods__ == UserDict.__abstractmethods__)"#,
 }
 
 #[test]
+fn cpython_collections_userdict_slots_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserDict __slots__ metadata",
+        name: "collections-userdict-slots-metadata",
+        source: r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('visible', '__slots__' in dir(UserDict), '__slots__' in dir(u), hasattr(UserDict, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserDict.__slots__).__name__, repr(UserDict.__slots__), len(UserDict.__slots__), getattr(UserDict, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserDict.__slots__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserDict public direct base metadata subset",

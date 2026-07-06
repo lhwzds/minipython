@@ -169,14 +169,19 @@ Recent runtime migration notes:
   `cpython_collections_userdict_module_metadata_diff_subset`, now pins
   `UserDict.__module__`, `UserDict(...).__module__`, and
   `dir(UserDict)` and `dir(UserDict(...))` visibility to `collections`,
-  without adding `__slots__`, `__weakref__`, or new UserDict mapping-method
-  surface.
+  without adding `__weakref__` or new UserDict mapping-method surface.
 - `cpython_collections_userdict_abstractmethods_metadata_subset`, backed by
   `cpython_collections_userdict_abstractmethods_metadata_diff_subset`, now pins
   `UserDict.__abstractmethods__`, `UserDict(...).__abstractmethods__`, and
   `dir(UserDict)` and `dir(UserDict(...))` visibility to an empty
-  `frozenset()`, without adding `__dict__`, `__slots__`, `__weakref__`, full
-  abstractmethod machinery, or new UserDict mapping-method surface.
+  `frozenset()`, without adding `__dict__`, `__weakref__`, full abstractmethod
+  machinery, or new UserDict mapping-method surface.
+- `cpython_collections_userdict_slots_metadata_subset`, backed by
+  `cpython_collections_userdict_slots_metadata_diff_subset`, now pins
+  `UserDict.__slots__`, `UserDict(...).__slots__`, and `dir(UserDict)` and
+  `dir(UserDict(...))` visibility to an empty tuple, without adding
+  `__dict__`, `__weakref__`, real slots layout, or new UserDict mapping-method
+  surface.
 - `cpython_collections_userstring_module_metadata_subset`, backed by
   `cpython_collections_userstring_module_metadata_diff_subset`, now pins
   `UserString.__module__`, `UserString(...).__module__`, and
@@ -1676,6 +1681,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_type_doc_attribute_diff_subset`,
   `cpython_collections_userdict_module_metadata_diff_subset`,
   `cpython_collections_userdict_abstractmethods_metadata_diff_subset`,
+  `cpython_collections_userdict_slots_metadata_diff_subset`,
   `cpython_collections_userdict_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
@@ -7538,15 +7544,21 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userdict_module_metadata_subset`, covering
   `UserDict.__module__`, `UserDict(...).__module__`, and
   `dir(UserDict)` and `dir(UserDict(...))` visibility to `collections`,
-  without adding `__slots__`, `__weakref__`, or new UserDict mapping-method
-  surface.
+  without adding `__weakref__` or new UserDict mapping-method surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_abstractmethods_metadata_diff_subset` and
   `cpython_collections_userdict_abstractmethods_metadata_subset`, covering
   `UserDict.__abstractmethods__`, `UserDict(...).__abstractmethods__`, and
   `dir(UserDict)` and `dir(UserDict(...))` visibility to an empty
-  `frozenset()`, without adding `__dict__`, `__slots__`, `__weakref__`, full
-  abstractmethod machinery, or new UserDict mapping-method surface.
+  `frozenset()`, without adding `__dict__`, `__weakref__`, full abstractmethod
+  machinery, or new UserDict mapping-method surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_slots_metadata_diff_subset` and
+  `cpython_collections_userdict_slots_metadata_subset`, covering
+  `UserDict.__slots__`, `UserDict(...).__slots__`, and `dir(UserDict)` and
+  `dir(UserDict(...))` visibility to an empty tuple, without adding
+  `__dict__`, `__weakref__`, real slots layout, or new UserDict mapping-method
+  surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_type_base_metadata_diff_subset` and
   `cpython_collections_userdict_type_base_metadata_subset`, covering

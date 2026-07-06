@@ -54304,6 +54304,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "UserDict" {
         names.push("__module__".to_string());
         names.push("__abstractmethods__".to_string());
+        names.push("__slots__".to_string());
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
     }
@@ -63280,6 +63281,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__abstractmethods__" => Ok(frozen_set_value(Vec::new())),
                 "__doc__" => Ok(Value::None),
                 "__module__" => Ok(Value::String("collections".to_string())),
+                "__slots__" => Ok(tuple_value(Vec::new())),
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserDict".to_string(),
                 ))),
@@ -64633,6 +64635,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserDict" && name == "__abstractmethods__" =>
         {
             Ok(frozen_set_value(Vec::new()))
+        }
+        Value::Builtin(function_name) if function_name == "UserDict" && name == "__slots__" => {
+            Ok(tuple_value(Vec::new()))
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "UserString" => {
             Ok(Value::None)

@@ -69300,6 +69300,26 @@ print('same-value', u.__abstractmethods__ == UserDict.__abstractmethods__)"#,
     );
 }
 
+// Mirrors CPython's public UserDict __slots__ metadata on the type and
+// instances. This only covers the empty-slots metadata value and discoverability.
+#[test]
+fn cpython_collections_userdict_slots_metadata_subset() {
+    assert_output(
+        r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('visible', '__slots__' in dir(UserDict), '__slots__' in dir(u), hasattr(UserDict, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserDict.__slots__).__name__, repr(UserDict.__slots__), len(UserDict.__slots__), getattr(UserDict, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserDict.__slots__)"#,
+        &[
+            "visible True True True True",
+            "type-slots tuple () 0 True",
+            "inst-slots tuple () 0 () True",
+            "same-value True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserDict` direct base metadata.
 #[test]
 fn cpython_collections_userdict_type_base_metadata_subset() {
