@@ -1756,7 +1756,7 @@ fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1843,7 +1843,7 @@ fn tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1930,7 +1930,7 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2017,7 +2017,7 @@ fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2104,7 +2104,7 @@ fn frozenset_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2191,7 +2191,7 @@ fn str_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2278,7 +2278,7 @@ fn bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2365,7 +2365,7 @@ fn bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2453,7 +2453,7 @@ fn range_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2542,7 +2542,7 @@ fn slice_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2631,7 +2631,7 @@ fn memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2720,7 +2720,7 @@ fn complex_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2809,7 +2809,7 @@ fn float_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2900,7 +2900,7 @@ fn int_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2993,7 +2993,7 @@ fn bool_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
-        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -3025,6 +3025,107 @@ fn bool_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "bool type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn object_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_object_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_object_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "object type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "object type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "value = object()",
+        "direct = object.__dir__(value)",
+        "'__base__' in dir(object)",
+        "'__bases__' in dir(object)",
+        "'__name__' in dir(object)",
+        "hasattr(object, '__base__')",
+        "hasattr(object, '__bases__')",
+        "hasattr(object, '__name__')",
+        "'__base__' in dir(value)",
+        "'__bases__' in dir(value)",
+        "'__name__' in dir(value)",
+        "'__base__' in direct",
+        "'__bases__' in direct",
+        "'__name__' in direct",
+        "object.__base__ is None",
+        "object.__bases__ == ()",
+        "object.__name__",
+        "object.__getattribute__(object, '__name__')",
+        "'__repr__' in dir(object)",
+        "'__repr__' in dir(value)",
+        "'__str__' in dir(value)",
+        "'__format__' in dir(value)",
+        "'__dir__' in dir(value)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "object type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"visible-direct list False False False\"",
+        "\"readable True True object object\"",
+        "\"method-kept True True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "object type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "\"object\" | \"tuple\" | \"UserString\"",
+        "fn remove_type_metadata_dir_names(",
+        "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
+        "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
+        "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+        "fn call_object_dir(&mut self, args: Vec<Value>) -> Result<Value, String>",
+        "self.default_dir_names_value(object.clone())?",
+        "is_exact_builtin_object_instance(class_name, class_attrs, class_bases)",
+        "remove_type_metadata_dir_names(&mut names);",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(object)`",
+            "`dir(object())`",
+            "`object.__dir__(object())`",
+            "`object.__base__`",
+            "`object.__bases__`",
+            "`object.__name__`",
+            "without hiding direct object type metadata lookup",
+            "without changing object method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "object type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
@@ -46549,6 +46650,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_function_type_params_assignment_subset",
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
+            "cpython_object_type_metadata_dir_surface_subset",
             "cpython_bool_instance_doc_attribute_subset",
             "cpython_bool_type_metadata_dir_surface_subset",
             "cpython_int_instance_doc_attribute_subset",
@@ -46674,6 +46776,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_function_type_params_assignment_diff_subset",
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
+        "cpython_object_type_metadata_dir_surface_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
         "cpython_bool_type_metadata_dir_surface_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",

@@ -16274,7 +16274,7 @@ impl Vm {
                 ),
             [] if self.is_module => Ok(sorted_name_list(scope_names(&self.globals))),
             [] => Ok(sorted_name_list(scope_names(&self.locals))),
-            [object] if matches!(object, Value::Builtin(name) if matches!(name.as_str(), "tuple" | "UserString")) => {
+            [object] if matches!(object, Value::Builtin(name) if matches!(name.as_str(), "object" | "tuple" | "UserString")) => {
                 Ok(sorted_name_list(
                     self.default_dir_names_value(object.clone())?,
                 ))
@@ -16339,6 +16339,7 @@ impl Vm {
     fn default_dir_names_value(&mut self, object: Value) -> Result<Vec<String>, String> {
         match &object {
             Value::Instance {
+                class_name,
                 fields,
                 class_attrs,
                 class_bases,
@@ -16354,14 +16355,18 @@ impl Vm {
                     .filter(|name| !slot_names.iter().any(|slot_name| slot_name == name))
                     .collect::<Vec<_>>();
 
-                let visible_class =
-                    match self.load_attribute_without_custom_getattribute(object, "__class__") {
-                        Ok(value) => Some(value),
-                        Err(message) if message.starts_with("AttributeError:") => None,
-                        Err(message) => return Err(message),
-                    };
+                let visible_class = match self
+                    .load_attribute_without_custom_getattribute(object.clone(), "__class__")
+                {
+                    Ok(value) => Some(value),
+                    Err(message) if message.starts_with("AttributeError:") => None,
+                    Err(message) => return Err(message),
+                };
                 if let Some(class_value) = visible_class {
                     append_visible_class_dir_names(&mut names, &class_value);
+                }
+                if is_exact_builtin_object_instance(class_name, class_attrs, class_bases) {
+                    remove_type_metadata_dir_names(&mut names);
                 }
                 Ok(names)
             }
@@ -54396,6 +54401,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "int"
             | "list"
             | "memoryview"
+            | "object"
             | "range"
             | "set"
             | "slice"

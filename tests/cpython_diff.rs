@@ -19173,6 +19173,21 @@ print('method-kept', 'bit_length' in dir(bool), 'bit_length' in dir(value), 'rea
 }
 
 #[test]
+fn cpython_object_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object type metadata dir surface",
+        name: "object-type-metadata-dir-surface",
+        source: r#"value = object()
+direct = object.__dir__(value)
+print('visible-type', '__base__' in dir(object), '__bases__' in dir(object), '__name__' in dir(object), hasattr(object, '__base__'), hasattr(object, '__bases__'), hasattr(object, '__name__'))
+print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))
+print('visible-direct', type(direct).__name__, '__base__' in direct, '__bases__' in direct, '__name__' in direct)
+print('readable', object.__base__ is None, object.__bases__ == (), object.__name__, object.__getattribute__(object, '__name__'))
+print('method-kept', '__repr__' in dir(object), '__repr__' in dir(value), '__str__' in dir(value), '__format__' in dir(value), '__dir__' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
