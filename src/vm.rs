@@ -54386,7 +54386,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("cell_contents".to_string());
     } else if matches!(
         name,
-        "bytearray"
+        "bool"
+            | "bytearray"
             | "bytes"
             | "complex"
             | "dict"

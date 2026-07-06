@@ -55653,6 +55653,27 @@ fn cpython_int_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public bool type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(bool) or dir(True).
+#[test]
+fn cpython_bool_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "value = True\n",
+            "print('visible-type', '__base__' in dir(bool), '__bases__' in dir(bool), '__name__' in dir(bool), hasattr(bool, '__base__'), hasattr(bool, '__bases__'), hasattr(bool, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))\n",
+            "print('readable', bool.__base__ is int, bool.__bases__ == (int,), bool.__name__, object.__getattribute__(bool, '__name__'))\n",
+            "print('method-kept', 'bit_length' in dir(bool), 'bit_length' in dir(value), 'real' in dir(value), 'imag' in dir(value), 'numerator' in dir(value), 'denominator' in dir(value))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True bool bool",
+            "method-kept True True True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

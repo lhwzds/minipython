@@ -861,6 +861,13 @@ Recent runtime migration notes:
   without hiding direct int type metadata lookup,
   without changing int method or data-attribute visibility, without widening
   host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_bool_type_metadata_dir_surface_subset`, backed by
+  `cpython_bool_type_metadata_dir_surface_diff_subset`, now pins `dir(bool)`
+  and `dir(True)` hiding `__base__`, `__bases__`, and `__name__` while keeping
+  `bool.__base__`, `bool.__bases__`, and `bool.__name__` directly readable,
+  without hiding direct bool type metadata lookup,
+  without changing bool inherited int method or data-attribute visibility,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1590,6 +1597,7 @@ Recent runtime migration notes:
   `cpython_object_getstate_direct_diff_subset`,
   `cpython_object_getstate_builtin_instance_diff_subset`,
   `cpython_bool_instance_doc_attribute_diff_subset`,
+  `cpython_bool_type_metadata_dir_surface_diff_subset`,
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_int_type_metadata_dir_surface_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,

@@ -19160,6 +19160,19 @@ print('method-kept', 'bit_length' in dir(int), 'bit_length' in dir(value), 'real
 }
 
 #[test]
+fn cpython_bool_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public bool type metadata dir surface",
+        name: "bool-type-metadata-dir-surface",
+        source: r#"value = True
+print('visible-type', '__base__' in dir(bool), '__bases__' in dir(bool), '__name__' in dir(bool), hasattr(bool, '__base__'), hasattr(bool, '__bases__'), hasattr(bool, '__name__'))
+print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))
+print('readable', bool.__base__ is int, bool.__bases__ == (int,), bool.__name__, object.__getattribute__(bool, '__name__'))
+print('method-kept', 'bit_length' in dir(bool), 'bit_length' in dir(value), 'real' in dir(value), 'imag' in dir(value), 'numerator' in dir(value), 'denominator' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
