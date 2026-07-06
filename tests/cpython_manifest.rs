@@ -26515,6 +26515,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
+            "cpython_collections_userlist_name_dir_surface_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
@@ -29073,6 +29074,77 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList direct base metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_name_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __name__ dir surface"
+    );
+    let userlist_name_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_name_dir_surface_diff_subset",
+    );
+    let userlist_name_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_name_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "UserList.__name__",
+        "getattr(UserList, '__name__')",
+        "object.__getattribute__(UserList, '__name__')",
+        "('inst-direct', lambda: u.__name__)",
+        "('inst-getattr', lambda: getattr(u, '__name__'))",
+        "type(error).__name__",
+        "'__name__' in dir(UserList)",
+        "'__name__' in dir(u)",
+        "hasattr(UserList, '__name__')",
+        "hasattr(u, '__name__')",
+    ] {
+        assert!(
+            userlist_name_dir_diff_body.contains(required)
+                && userlist_name_dir_subset_body.contains(required),
+            "UserList __name__ dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"type-name UserList str UserList UserList\"",
+        "\"inst-direct AttributeError\"",
+        "\"inst-getattr AttributeError\"",
+        "\"visible False False True False\"",
+    ] {
+        assert!(
+            userlist_name_dir_subset_body.contains(required),
+            "UserList __name__ dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserList\"",
+        "names.retain(|attr| !matches!(attr.as_str(), \"__base__\" | \"__bases__\"))",
+        "names.retain(|attr| attr != \"__name__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __name__ dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_name_dir_surface_subset",
+            "cpython_collections_userlist_name_dir_surface_diff_subset",
+            "`UserList.__name__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "`__name__`",
+            "without changing `UserList.__name__` lookup",
+            "without changing direct base metadata lookup",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __name__ dir-surface docs must contain `{required}`"
             );
         }
     }

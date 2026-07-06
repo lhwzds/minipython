@@ -69441,6 +69441,29 @@ print('visible', '__base__' in dir(UserList), '__bases__' in dir(UserList), '__b
     );
 }
 
+// Mirrors CPython's public UserList __name__ dir surface. The type-level
+// metadata remains readable, but CPython does not list __name__ in dir().
+#[test]
+fn cpython_collections_userlist_name_dir_surface_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('type-name', UserList.__name__, type(UserList.__name__).__name__, getattr(UserList, '__name__'), object.__getattribute__(UserList, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__)
+print('visible', '__name__' in dir(UserList), '__name__' in dir(u), hasattr(UserList, '__name__'), hasattr(u, '__name__'))"#,
+        &[
+            "type-name UserList str UserList UserList",
+            "inst-direct AttributeError",
+            "inst-getattr AttributeError",
+            "visible False False True False",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserString` direct base metadata.
 #[test]
 fn cpython_collections_userstring_type_base_metadata_subset() {

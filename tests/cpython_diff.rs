@@ -25841,6 +25841,23 @@ print('visible', '__base__' in dir(UserList), '__bases__' in dir(UserList), '__b
 }
 
 #[test]
+fn cpython_collections_userlist_name_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __name__ dir surface",
+        name: "collections-userlist-name-dir-surface",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('type-name', UserList.__name__, type(UserList.__name__).__name__, getattr(UserList, '__name__'), object.__getattribute__(UserList, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__)
+print('visible', '__name__' in dir(UserList), '__name__' in dir(u), hasattr(UserList, '__name__'), hasattr(u, '__name__'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserString public direct base metadata subset",
