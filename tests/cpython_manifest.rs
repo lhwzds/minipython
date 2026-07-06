@@ -46718,6 +46718,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_list_iterator_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
             "cpython_bytes_iterator_type_metadata_dir_surface_subset",
+            "cpython_bytearray_iterator_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
             "cpython_builtin_print_keyword_subset",
@@ -46970,6 +46971,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytes_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
@@ -53232,7 +53234,7 @@ fn bytes_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "Value::BytesIterator { .. } => names.extend(builtin_type_dir_names(\"bytes_iterator\"))",
         "Value::BytesIterator { bytes, index } => (bytes_value(bytes), Some(index))",
         "Value::BytesIterator { .. } => Some(\"bytes_iterator\")",
-        "| \"bytes_iterator\"\n            | \"property\"",
+        "| \"bytes_iterator\"\n            | \"bytearray_iterator\"",
         "function_name == \"bytes_iterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53273,6 +53275,135 @@ fn bytes_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "bytes_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn bytearray_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_bytearray_iterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray_iterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray_iterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "inst = iter(bytearray(b'abc'))",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__length_hint__(inst)",
+        "typ.__next__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "reduced[0] is iter",
+        "reduced[1] == (bytearray(b'abc'),)",
+        "reduced[2]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytearray_iterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name bytearray_iterator builtins bytearray_iterator\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True bytearray_iterator\"",
+        "\"readable-module builtins bytearray_iterator\"",
+        "\"iter-next-hint True 97 2 98 1\"",
+        "\"reduce-shape 3 True True 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytearray_iterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"bytearray_iterator\"",
+        "\"bytearray_iterator\" => vec![builtin_type_value(\"object\")]",
+        "\"bytearray_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::ByteArrayIterator { .. })",
+        "Value::ByteArrayIterator { .. } => names.extend(builtin_type_dir_names(\"bytearray_iterator\"))",
+        "(byte_array_value(bytearray_bytes(&bytes)), Some(index))",
+        "Value::ByteArrayIterator { .. } => Some(\"bytearray_iterator\")",
+        "| \"bytearray_iterator\"\n            | \"property\"",
+        "function_name == \"bytearray_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytearray_iterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`iter(bytearray(b'abc'))`",
+            "`type(inst)`",
+            "`bytearray_iterator.__base__`",
+            "`bytearray_iterator.__bases__`",
+            "`bytearray_iterator.__module__`",
+            "`bytearray_iterator.__qualname__`",
+            "`dir(type(iter(bytearray(...))))`",
+            "`dir(iter(bytearray(...)))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__next__(inst)`",
+            "`inst.__length_hint__()`",
+            "`typ.__reduce__(inst)`",
+            "`reduce-shape 3 True True 2`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "bytearray_iterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

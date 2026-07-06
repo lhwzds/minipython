@@ -16900,6 +16900,25 @@ print('reduce-shape', len(reduced), reduced[0] is iter, reduced[1] == (b'abc',),
 }
 
 #[test]
+fn cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public bytearray_iterator type metadata dir surface",
+        name: "bytearray-iterator-type-metadata-dir-surface",
+        source: r#"inst = iter(bytearray(b'abc'))
+typ = type(inst)
+print('type-name', typ.__name__, typ.__module__, typ.__qualname__)
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst), '__length_hint__' in dir(inst), '__reduce__' in dir(inst))
+print('has-reduce', hasattr(typ, '__reduce__'), hasattr(inst, '__reduce__'))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+print('readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+print('iter-next-hint', iter(inst) is inst, next(inst), typ.__length_hint__(inst), typ.__next__(inst), inst.__length_hint__())
+reduced = typ.__reduce__(inst)
+print('reduce-shape', len(reduced), reduced[0] is iter, reduced[1] == (bytearray(b'abc'),), reduced[2])"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",
