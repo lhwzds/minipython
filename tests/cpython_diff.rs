@@ -16959,6 +16959,37 @@ print('reduce-shape', len(reduced), reduced[0] is iter, reduced[1] == (bytearray
 }
 
 #[test]
+fn cpython_set_iterator_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public set_iterator type metadata dir surface",
+        name: "set-iterator-type-metadata-dir-surface",
+        source: r#"source = {1, 2, 3}
+inst = iter(source)
+typ = type(inst)
+print('type-name', typ.__name__, typ.__module__, typ.__qualname__)
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst), '__length_hint__' in dir(inst), '__reduce__' in dir(inst))
+print('has-reduce', hasattr(typ, '__reduce__'), hasattr(inst, '__reduce__'))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+print('readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+first = typ.__next__(inst)
+print('iter-next-hint', iter(inst) is inst, first in source, typ.__length_hint__(inst), inst.__length_hint__())
+reduced = typ.__reduce__(inst)
+remaining = reduced[1][0]
+print('reduce-shape', len(reduced), reduced[0] is iter, len(reduced[1]), type(remaining).__name__, set(remaining).issubset(source), len(remaining), len(reduced) == 2)
+changed = {1, 2, 3}
+changed_inst = iter(changed)
+next(changed_inst)
+changed.add(4)
+try:
+    type(changed_inst).__reduce__(changed_inst)
+except Exception as error:
+    print('mutated-reduce', error.__class__.__name__, str(error))
+print('mutated-hint', changed_inst.__length_hint__())"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",

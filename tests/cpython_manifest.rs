@@ -46721,6 +46721,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_str_ascii_iterator_type_metadata_dir_surface_subset",
             "cpython_bytes_iterator_type_metadata_dir_surface_subset",
             "cpython_bytearray_iterator_type_metadata_dir_surface_subset",
+            "cpython_set_iterator_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
             "cpython_builtin_print_keyword_subset",
@@ -46976,6 +46977,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytes_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_set_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
@@ -53627,10 +53629,10 @@ fn bytearray_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"bytearray_iterator\" => vec![builtin_type_value(\"object\")]",
         "\"bytearray_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::ByteArrayIterator { .. })",
-        "Value::ByteArrayIterator { .. } => names.extend(builtin_type_dir_names(\"bytearray_iterator\"))",
+        "Value::ByteArrayIterator { .. } => {\n            names.extend(builtin_type_dir_names(\"bytearray_iterator\"))",
         "(byte_array_value(bytearray_bytes(&bytes)), Some(index))",
         "Value::ByteArrayIterator { .. } => Some(\"bytearray_iterator\")",
-        "| \"bytearray_iterator\"\n            | \"property\"",
+        "| \"bytearray_iterator\"\n            | \"set_iterator\"",
         "function_name == \"bytearray_iterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53671,6 +53673,146 @@ fn bytearray_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "bytearray_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn set_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_set_iterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_set_iterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "set_iterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "set_iterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = {1, 2, 3}",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "typ.__next__(inst)",
+        "iter(inst) is inst",
+        "first in source",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "remaining = reduced[1][0]",
+        "reduced[0] is iter",
+        "type(remaining).__name__",
+        "set(remaining).issubset(source)",
+        "len(remaining)",
+        "len(reduced) == 2",
+        "type(changed_inst).__reduce__(changed_inst)",
+        "changed.add(4)",
+        "changed_inst.__length_hint__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "set_iterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name set_iterator builtins set_iterator\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True set_iterator\"",
+        "\"readable-module builtins set_iterator\"",
+        "\"iter-next-hint True True 2 2\"",
+        "\"reduce-shape 2 True 1 list True 2 True\"",
+        "\"mutated-reduce RuntimeError Set changed size during iteration\"",
+        "\"mutated-hint 0\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "set_iterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"set_iterator\"",
+        "\"set_iterator\" => vec![builtin_type_value(\"object\")]",
+        "\"set_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::SetIterator { .. })",
+        "Value::SetIterator { .. } => names.extend(builtin_type_dir_names(\"set_iterator\"))",
+        "items.iter().skip(index).cloned().collect()",
+        "Value::SetIterator { .. } => Some(\"set_iterator\")",
+        "| \"set_iterator\"\n            | \"property\"",
+        "function_name == \"set_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+        "RuntimeError: Set changed size during iteration",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set_iterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`iter({1, 2, 3})`",
+            "`type(inst)`",
+            "`set_iterator.__base__`",
+            "`set_iterator.__bases__`",
+            "`set_iterator.__module__`",
+            "`set_iterator.__qualname__`",
+            "`dir(type(iter(set(...))))`",
+            "`dir(iter(set(...)))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__next__(inst)`",
+            "`inst.__length_hint__()`",
+            "`typ.__reduce__(inst)`",
+            "`reduce-shape 2 True 1 list True 2 True`",
+            "`RuntimeError: Set changed size during iteration`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "set_iterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
