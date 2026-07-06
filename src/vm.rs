@@ -35464,7 +35464,7 @@ impl Vm {
             return Err(format!("{method}() expected a UserList receiver"));
         };
 
-        if method == "copy" {
+        if matches!(method, "copy" | "__copy__") {
             reject_method_keywords(name, &keywords)?;
             if !rest.is_empty() {
                 return Err(format!(
@@ -54401,6 +54401,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__add__",
             "__class_getitem__",
             "__contains__",
+            "__copy__",
             "__delitem__",
             "__eq__",
             "__getitem__",
@@ -57260,6 +57261,7 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
             | "extend"
             | "clear"
             | "copy"
+            | "__copy__"
             | "pop"
             | "reverse"
             | "sort"
@@ -62979,12 +62981,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserList".to_string(),
                 ))),
-                "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
-                | "index" | "insert" | "remove" | "__add__" | "__contains__" | "__delitem__"
-                | "__eq__" | "__format__" | "__getitem__" | "__iadd__" | "__imul__"
-                | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
-                | "__mul__" | "__ne__" | "__repr__" | "__radd__" | "__rmul__" | "__setitem__"
-                | "__str__" => Ok(Value::BoundMethod {
+                "append" | "extend" | "clear" | "copy" | "__copy__" | "pop" | "reverse"
+                | "sort" | "count" | "index" | "insert" | "remove" | "__add__"
+                | "__contains__" | "__delitem__" | "__eq__" | "__format__" | "__getitem__"
+                | "__iadd__" | "__imul__" | "__iter__" | "__len__" | "__lt__" | "__le__"
+                | "__gt__" | "__ge__" | "__mul__" | "__ne__" | "__repr__" | "__radd__"
+                | "__rmul__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserList.{name}"))),
                     receiver: Box::new(Value::UserList { data, attrs }),
                     identity: Rc::new(()),

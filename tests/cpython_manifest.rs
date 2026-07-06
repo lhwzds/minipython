@@ -26517,6 +26517,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_abstractmethods_metadata_subset",
             "cpython_collections_userlist_slots_metadata_subset",
             "cpython_collections_userlist_hash_metadata_subset",
+            "cpython_collections_userlist_copy_method_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29226,6 +29227,86 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __hash__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_copy_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __copy__ method behavior"
+    );
+    let userlist_copy_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_copy_method_diff_subset",
+    );
+    let userlist_copy_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_copy_method_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__copy__' in dir(UserList)",
+        "'__copy__' in dir(u)",
+        "hasattr(UserList, '__copy__')",
+        "hasattr(u, '__copy__')",
+        "u.__copy__()",
+        "UserList.__copy__(u)",
+        "u.copy()",
+        "UserList.copy(u)",
+        "result.data is u.data",
+        "u.append(3)",
+        "copied = u.__copy__()",
+        "u.append(4)",
+    ] {
+        assert!(
+            userlist_copy_diff_body.contains(required)
+                && userlist_copy_subset_body.contains(required),
+            "UserList __copy__ method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"inst-copy UserList [1, 2] False False True\"",
+        "\"type-copy UserList [1, 2] False False True\"",
+        "\"copy-method UserList [1, 2] False False True\"",
+        "\"type-copy-method UserList [1, 2] False False True\"",
+        "\"after-mutate [1, 2, 3] [1, 2, 3, 4] False False\"",
+    ] {
+        assert!(
+            userlist_copy_subset_body.contains(required),
+            "UserList __copy__ method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "if matches!(method, \"copy\" | \"__copy__\")",
+        "Value::UserList { data, attrs } => {",
+        "data: Rc::new(RefCell::new(data.borrow().clone()))",
+        "attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,",
+        "is_builtin_user_list_type_method(name)",
+        "function_name == \"UserList\" && is_builtin_user_list_type_method(name)",
+        "\"__copy__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __copy__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_copy_method_subset",
+            "cpython_collections_userlist_copy_method_diff_subset",
+            "`UserList.__copy__`",
+            "`UserList(...).__copy__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "shallow copy",
+            "without changing UserList copy error-message shape",
+            "without adding full copy protocol",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __copy__ docs must contain `{required}`"
             );
         }
     }

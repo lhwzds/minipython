@@ -228,6 +228,12 @@ Recent runtime migration notes:
   `dir(UserList(...))` visibility to `None`, while keeping
   `hash(UserList(...))` unhashable, without making `UserList` hashable or
   adding new UserList sequence-method surface.
+- `cpython_collections_userlist_copy_method_subset`, backed by
+  `cpython_collections_userlist_copy_method_diff_subset`, now pins
+  `UserList.__copy__`, `UserList(...).__copy__`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility plus successful shallow copy behavior,
+  without changing UserList copy error-message shape, without adding full copy protocol,
+  or adding new UserList sequence-method surface.
 - `cpython_collections_userstring_type_base_dir_surface_subset`, backed by
   `cpython_collections_userstring_type_base_dir_surface_diff_subset`, now keeps
   `UserString.__base__` and `UserString.__bases__` readable while keeping them
@@ -1742,6 +1748,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_abstractmethods_metadata_diff_subset`,
   `cpython_collections_userlist_slots_metadata_diff_subset`,
   `cpython_collections_userlist_hash_metadata_diff_subset`,
+  `cpython_collections_userlist_copy_method_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_type_base_dir_surface_diff_subset`,
   `cpython_collections_userlist_name_dir_surface_diff_subset`,
@@ -7685,6 +7692,13 @@ without adding general custom encoder/decoder class support.
   `dir(UserList(...))` visibility to `None`, while keeping
   `hash(UserList(...))` unhashable, without making `UserList` hashable or
   adding new UserList sequence-method surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_copy_method_diff_subset` and
+  `cpython_collections_userlist_copy_method_subset`, covering
+  `UserList.__copy__`, `UserList(...).__copy__`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility plus successful shallow copy behavior,
+  without changing UserList copy error-message shape, without adding full copy protocol,
+  or adding new UserList sequence-method surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_type_base_metadata_diff_subset` and
   `cpython_collections_userstring_type_base_metadata_subset`, covering

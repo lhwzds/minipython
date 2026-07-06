@@ -69480,6 +69480,37 @@ print('same-value', u.__hash__ is UserList.__hash__)"#,
     );
 }
 
+// Mirrors CPython's public UserList __copy__ method on the type and instances.
+// This only covers successful shallow-copy behavior and discoverability.
+#[test]
+fn cpython_collections_userlist_copy_method_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__copy__' in dir(UserList), '__copy__' in dir(u), hasattr(UserList, '__copy__'), hasattr(u, '__copy__'))
+for label, call in [
+    ('inst-copy', lambda: u.__copy__()),
+    ('type-copy', lambda: UserList.__copy__(u)),
+    ('copy-method', lambda: u.copy()),
+    ('type-copy-method', lambda: UserList.copy(u)),
+]:
+    result = call()
+    print(label, type(result).__name__, result, result is u, result.data is u.data, result == u)
+u.append(3)
+copied = u.__copy__()
+u.append(4)
+print('after-mutate', copied, u, copied is u, copied.data is u.data)"#,
+        &[
+            "visible True True True True",
+            "inst-copy UserList [1, 2] False False True",
+            "type-copy UserList [1, 2] False False True",
+            "copy-method UserList [1, 2] False False True",
+            "type-copy-method UserList [1, 2] False False True",
+            "after-mutate [1, 2, 3] [1, 2, 3, 4] False False",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {

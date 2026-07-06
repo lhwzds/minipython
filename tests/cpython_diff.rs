@@ -25865,6 +25865,29 @@ print('same-value', u.__hash__ is UserList.__hash__)"#,
 }
 
 #[test]
+fn cpython_collections_userlist_copy_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __copy__ method behavior",
+        name: "collections-userlist-copy-method",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__copy__' in dir(UserList), '__copy__' in dir(u), hasattr(UserList, '__copy__'), hasattr(u, '__copy__'))
+for label, call in [
+    ('inst-copy', lambda: u.__copy__()),
+    ('type-copy', lambda: UserList.__copy__(u)),
+    ('copy-method', lambda: u.copy()),
+    ('type-copy-method', lambda: UserList.copy(u)),
+]:
+    result = call()
+    print(label, type(result).__name__, result, result is u, result.data is u.data, result == u)
+u.append(3)
+copied = u.__copy__()
+u.append(4)
+print('after-mutate', copied, u, copied is u, copied.data is u.data)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",
