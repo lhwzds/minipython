@@ -25764,6 +25764,20 @@ print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') ==
 }
 
 #[test]
+fn cpython_collections_userstring_slots_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __slots__ metadata",
+        name: "collections-userstring-slots-metadata",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__slots__' in dir(UserString), '__slots__' in dir(u), hasattr(UserString, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserString.__slots__).__name__, repr(UserString.__slots__), len(UserString.__slots__), getattr(UserString, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserString.__slots__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_class_getitem_generic_alias_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString __class_getitem__ GenericAlias behavior",

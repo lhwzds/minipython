@@ -69330,6 +69330,26 @@ print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') ==
     );
 }
 
+// Mirrors CPython's public UserString __slots__ metadata on the type and
+// instances. This only covers the empty-slots metadata value and discoverability.
+#[test]
+fn cpython_collections_userstring_slots_metadata_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__slots__' in dir(UserString), '__slots__' in dir(u), hasattr(UserString, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserString.__slots__).__name__, repr(UserString.__slots__), len(UserString.__slots__), getattr(UserString, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserString.__slots__)"#,
+        &[
+            "visible True True True True",
+            "type-slots tuple () 0 True",
+            "inst-slots tuple () 0 () True",
+            "same-value True",
+        ],
+    );
+}
+
 // Mirrors CPython public collections.UserString __class_getitem__ behavior. This
 // pins GenericAlias origin/args, direct type calls, and inherited subclass
 // lookup without implementing full UserString string-method proxying.

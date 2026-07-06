@@ -26514,6 +26514,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_module_metadata_subset",
+            "cpython_collections_userstring_slots_metadata_subset",
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_basic_construction_subset",
             "cpython_collections_userstring_init_method_subset",
@@ -28758,6 +28759,78 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString __module__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_slots_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __slots__ metadata"
+    );
+    let userstring_slots_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_slots_metadata_diff_subset",
+    );
+    let userstring_slots_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_slots_metadata_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "'__slots__' in dir(UserString)",
+        "'__slots__' in dir(u)",
+        "hasattr(UserString, '__slots__')",
+        "hasattr(u, '__slots__')",
+        "UserString.__slots__",
+        "getattr(UserString, '__slots__') == ()",
+        "u.__slots__",
+        "object.__getattribute__(u, '__slots__')",
+        "getattr(u, '__slots__') == ()",
+        "u.__slots__ == UserString.__slots__",
+    ] {
+        assert!(
+            userstring_slots_diff_body.contains(required)
+                && userstring_slots_subset_body.contains(required),
+            "UserString __slots__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-slots tuple () 0 True\"",
+        "\"inst-slots tuple () 0 () True\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userstring_slots_subset_body.contains(required),
+            "UserString __slots__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserString\" && name == \"__slots__\"",
+        "\"__slots__\" => Ok(tuple_value(Vec::new()))",
+        "names.push(\"__slots__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString __slots__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_slots_metadata_subset",
+            "cpython_collections_userstring_slots_metadata_diff_subset",
+            "`UserString.__slots__`",
+            "`UserString(...).__slots__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "empty tuple",
+            "without adding `__weakref__`, `__abstractmethods__`, `__init_subclass__`",
+            "`__subclasshook__`, `__new__`, pickle",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString __slots__ metadata docs must contain `{required}`"
             );
         }
     }

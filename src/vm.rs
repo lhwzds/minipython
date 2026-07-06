@@ -55015,6 +55015,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__rmul__".to_string());
         names.push("__setattr__".to_string());
         names.push("__sizeof__".to_string());
+        names.push("__slots__".to_string());
         names.push("__str__".to_string());
     }
     names
@@ -63017,6 +63018,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     attrs,
                 })),
                 "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
+                "__slots__" => Ok(tuple_value(Vec::new())),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
                     receiver: Box::new(Value::UserString { data, attrs }),
@@ -64967,6 +64969,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && name == "__class_getitem__" =>
         {
             Ok(generic_alias_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__slots__" => {
+            Ok(tuple_value(Vec::new()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__ne__" => {
             Ok(Value::Builtin("object.__ne__".to_string()))
