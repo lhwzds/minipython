@@ -34972,6 +34972,14 @@ impl Vm {
                 };
                 return self.reverse_iterator_reduce_result(list_value(items), index);
             }
+            Value::SequenceReverseIterator { object, index } => {
+                if index < 0 {
+                    return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None);
+                }
+                let index = usize::try_from(index)
+                    .map_err(|_| "OverflowError: iterator index is too large".to_string())?;
+                return self.reverse_iterator_reduce_result(*object, Some(index));
+            }
             value => {
                 return Err(format!(
                     "TypeError: copy protocol does not support '{}'",
@@ -38617,12 +38625,7 @@ impl Vm {
                     return Ok(IteratorAdvance::Complete(Value::None));
                 }
 
-                let item = self.call_iterator_method_catching(
-                    instance_special_method(object, "__getitem__")
-                        .ok_or_else(|| format!("{} is not an iterator", object))?,
-                    vec![Value::Number(*index)],
-                    &["IndexError", "StopIteration"],
-                )?;
+                let item = self.sequence_reverse_iterator_item(object.as_ref(), *index)?;
                 return match item {
                     IteratorAdvance::Yield(value) => {
                         *index = index.checked_sub(1).ok_or_else(|| {
@@ -38791,6 +38794,29 @@ impl Vm {
         }
 
         Ok(IteratorAdvance::Complete(completion))
+    }
+
+    fn sequence_reverse_iterator_item(
+        &mut self,
+        object: &Value,
+        index: i64,
+    ) -> Result<IteratorAdvance, String> {
+        if let Value::Tuple(items) = object {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            };
+            return Ok(match items.get(index) {
+                Some(value) => IteratorAdvance::Yield(value.clone()),
+                None => IteratorAdvance::Complete(Value::None),
+            });
+        }
+
+        self.call_iterator_method_catching(
+            instance_special_method(object, "__getitem__")
+                .ok_or_else(|| format!("{} is not an iterator", object))?,
+            vec![Value::Number(index)],
+            &["IndexError", "StopIteration"],
+        )
     }
 
     fn call_iterator_method_catching(
@@ -54273,6 +54299,11 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::ReverseIterator { .. }) => {
             names.extend(builtin_type_dir_names("list_reverseiterator"))
         }
+        Value::Iterator(state)
+            if matches!(&*state.borrow(), Value::SequenceReverseIterator { .. }) =>
+        {
+            names.extend(builtin_type_dir_names("reversed"))
+        }
         Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
         Value::ZipIterator { .. } => names.extend(builtin_type_dir_names("zip")),
         Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
@@ -54300,6 +54331,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::ReverseIterator { .. } => {
             names.extend(builtin_type_dir_names("list_reverseiterator"))
         }
+        Value::SequenceReverseIterator { .. } => names.extend(builtin_type_dir_names("reversed")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -54648,6 +54680,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "dict_reversekeyiterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "list_reverseiterator" {
+        remove_type_metadata_dir_names(&mut names);
+    } else if name == "reversed" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
@@ -55026,6 +55060,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "dict_keyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_reversekeyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "list_reverseiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "reversed" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -56180,6 +56215,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "dict_keyiterator" => vec![builtin_type_value("object")],
         "dict_reversekeyiterator" => vec![builtin_type_value("object")],
         "list_reverseiterator" => vec![builtin_type_value("object")],
+        "reversed" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -64368,7 +64404,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Value::SequenceIterator { object, index },
             name,
         ),
-        Value::SequenceReverseIterator { object, index } => length_hint_iterator_protocol_method(
+        Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(
             "reversed",
             Value::SequenceReverseIterator { object, index },
             name,
@@ -64393,6 +64429,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         ..
                     } => Some("dict_reversekeyiterator"),
                     Value::ReverseIterator { .. } => Some("list_reverseiterator"),
+                    Value::SequenceReverseIterator { .. } => Some("reversed"),
                     _ => None,
                 };
                 (is_enumerate, iterator_has_length_hint(&iterator), reduce_type_name)
@@ -65344,6 +65381,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "list_reverseiterator"
+                && matches!(name, "__length_hint__" | "__reduce__") =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "reversed"
                 && matches!(name, "__length_hint__" | "__reduce__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
@@ -70514,6 +70557,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "dict_keyiterator"
             | "dict_reversekeyiterator"
             | "list_reverseiterator"
+            | "reversed"
             | "property"
             | "super"
             | "staticmethod"
@@ -78447,10 +78491,15 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             items: data.borrow().clone(),
             index: 0,
         })),
-        Value::Tuple(items) => Ok(shared_iterator(Value::ReverseIterator {
-            items: items.as_ref().clone(),
-            index: 0,
-        })),
+        Value::Tuple(items) => {
+            let index = i64::try_from(items.len())
+                .map_err(|_| "reversed() length is too large".to_string())?
+                - 1;
+            Ok(shared_iterator(Value::SequenceReverseIterator {
+                object: Box::new(Value::Tuple(items)),
+                index,
+            }))
+        }
         Value::String(value) => Ok(shared_iterator(Value::ReverseIterator {
             items: value
                 .chars()

@@ -16897,6 +16897,39 @@ print('exhausted-reduce', len(exhausted_reduced), exhausted_reduced[0] is revers
 }
 
 #[test]
+fn cpython_reversed_tuple_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public reversed tuple type metadata dir surface",
+        name: "reversed-tuple-type-metadata-dir-surface",
+        source: r#"source = (1, 2, 3)
+inst = reversed(source)
+typ = type(inst)
+print('type-name', typ.__name__, typ.__module__, typ.__qualname__)
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst), '__length_hint__' in dir(inst), '__reduce__' in dir(inst))
+print('has-reduce', hasattr(typ, '__reduce__'), hasattr(inst, '__reduce__'))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+print('readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+fresh = reversed(source).__reduce__()
+print('fresh-reduce', len(fresh), fresh[0] is reversed, len(fresh[1]), fresh[1][0] == source, fresh[2], len(fresh) == 3)
+print('iter-next-hint', iter(inst) is inst, next(inst), typ.__length_hint__(inst), inst.__length_hint__())
+reduced = typ.__reduce__(inst)
+print('reduce-shape', len(reduced), reduced[0] is reversed, len(reduced[1]), reduced[1][0] == source, reduced[2], len(reduced) == 3)
+late = reversed(source)
+next(late)
+next(late)
+late_reduced = late.__reduce__()
+print('late-reduce', len(late_reduced), late_reduced[0] is reversed, len(late_reduced[1]), late_reduced[1][0] == source, late_reduced[2], len(late_reduced) == 3)
+empty = reversed(()).__reduce__()
+print('empty-reduce', len(empty), empty[0] is reversed, len(empty[1]), empty[1][0] == (), type(empty[1][0]).__name__, len(empty) == 2)
+exhausted = reversed((1,))
+next(exhausted)
+exhausted_reduced = exhausted.__reduce__()
+print('exhausted-reduce', len(exhausted_reduced), exhausted_reduced[0] is reversed, len(exhausted_reduced[1]), exhausted_reduced[1][0] == (), type(exhausted_reduced[1][0]).__name__, len(exhausted_reduced) == 2)"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_iterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public tuple_iterator type metadata dir surface",
