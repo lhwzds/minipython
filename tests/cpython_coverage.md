@@ -991,6 +991,16 @@ Recent runtime migration notes:
   `reduce-shape 3 True True 2`; this slice does not cover CPython's
   `str_ascii_iterator`, and does so without widening host IO, network, process,
   C ABI, or full stdlib scope.
+- `cpython_str_ascii_iterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset`, now pins
+  `iter(ASCII str)`, `type(inst)`, `dir(type(iter(ASCII str)))`, and
+  `dir(iter(ASCII str))` for `str_ascii_iterator.__base__`,
+  `str_ascii_iterator.__bases__`, `str_ascii_iterator.__module__`,
+  `str_ascii_iterator.__qualname__`, `__iter__`, `__next__`,
+  `__length_hint__`, `__reduce__`, direct `typ.__length_hint__(inst)` /
+  `typ.__next__(inst)` / `typ.__reduce__(inst)` dispatch,
+  `inst.__length_hint__()`, and `reduce-shape 3 True True 2`, without widening
+  host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_bytes_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_bytes_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter(b'abc')`, `type(inst)`, `dir(type(iter(b'...')))`, and
@@ -1801,6 +1811,7 @@ Recent runtime migration notes:
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_tuple_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_bytes_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
