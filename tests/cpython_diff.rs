@@ -16801,6 +16801,18 @@ print('iter-kept', iter(inst) is inst, list(filter(None, [0, 1, '', 'x'])), list
 }
 
 #[test]
+fn cpython_builtin_iterator_dir_protocol_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public builtin iterator dir protocol method visibility",
+        name: "builtin-iterator-dir-protocol-methods",
+        source: r#"items = [('enumerate', enumerate, enumerate(['a'])), ('zip', zip, zip([1], [2])), ('map', map, map(lambda x: x + 1, [1])), ('filter', filter, filter(None, [0, 1]))]
+for label, typ, inst in items:
+    print(label, '__iter__' in dir(typ), '__next__' in dir(typ), '__iter__' in dir(inst), '__next__' in dir(inst), hasattr(typ, '__iter__'), hasattr(typ, '__next__'), hasattr(inst, '__iter__'), hasattr(inst, '__next__'), iter(inst) is inst)
+print('direct-next', enumerate.__next__(enumerate(['a'])), zip.__next__(zip([1], [2])), map.__next__(map(lambda x: x + 1, [1])), filter.__next__(filter(None, [0, 1])))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",

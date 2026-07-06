@@ -54098,7 +54098,19 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::EnumerateIterator { .. }) => {
             names.extend(builtin_type_dir_names("enumerate"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::ZipIterator { .. }) => {
+            names.extend(builtin_type_dir_names("zip"))
+        }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::MapIterator { .. }) => {
+            names.extend(builtin_type_dir_names("map"))
+        }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::FilterIterator { .. }) => {
+            names.extend(builtin_type_dir_names("filter"))
+        }
         Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
+        Value::ZipIterator { .. } => names.extend(builtin_type_dir_names("zip")),
+        Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
+        Value::FilterIterator { .. } => names.extend(builtin_type_dir_names("filter")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -54788,7 +54800,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "tolist",
             "toreadonly",
         ],
-        "enumerate" => &["__class_getitem__"],
+        "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
+        "zip" | "map" | "filter" => &["__iter__", "__next__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -65008,6 +65021,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "enumerate" && name == "__class_getitem__" =>
         {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name)
+            if is_builtin_iterator_type_name(&function_name)
+                && matches!(name, "__iter__" | "__next__") =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name) if function_name == "tuple" && name == "__str__" => {
             Ok(Value::Builtin("object.__str__".to_string()))

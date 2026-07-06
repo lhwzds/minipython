@@ -46712,6 +46712,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_map_filter_builtin_subset",
             "cpython_map_type_metadata_dir_surface_subset",
             "cpython_filter_type_metadata_dir_surface_subset",
+            "cpython_builtin_iterator_dir_protocol_methods_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
             "cpython_builtin_print_keyword_subset",
@@ -46958,6 +46959,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_stop_iteration_value_diff_subset",
         "cpython_map_filter_builtin_diff_subset",
         "cpython_filter_type_metadata_dir_surface_diff_subset",
+        "cpython_builtin_iterator_dir_protocol_methods_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
@@ -52247,7 +52249,7 @@ fn enumerate_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"enumerate\" => vec![builtin_type_value(\"object\")]",
         "name == \"enumerate\"",
         "remove_type_metadata_dir_names(&mut names);",
-        "| \"enumerate\"\n            | \"property\"",
+        "| \"enumerate\"\n            | \"zip\"",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names(\"enumerate\"))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -52272,7 +52274,7 @@ fn enumerate_type_metadata_dir_surface_docs_cover_core_runtime() {
             "`enumerate.__module__`",
             "`enumerate.__qualname__`",
             "`enumerate.__class_getitem__`",
-            "without adding enumerate instance `__iter__` / `__next__` dir visibility",
+            "iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
@@ -52343,7 +52345,7 @@ fn zip_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"zip\" => vec![builtin_type_value(\"object\")]",
         "name == \"zip\"",
         "remove_type_metadata_dir_names(&mut names);",
-        "| \"zip\"\n            | \"property\"",
+        "| \"zip\"\n            | \"map\"",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -52367,7 +52369,7 @@ fn zip_type_metadata_dir_surface_docs_cover_core_runtime() {
             "`zip.__module__`",
             "`zip.__qualname__`",
             "`zip(..., strict=True)`",
-            "without adding zip instance `__iter__` / `__next__` dir visibility",
+            "iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
@@ -52462,7 +52464,7 @@ fn map_type_metadata_dir_surface_docs_cover_core_runtime() {
             "`map.__module__`",
             "`map.__qualname__`",
             "`map(lambda x: x + 1, [1])`",
-            "without adding map instance `__iter__` / `__next__` dir visibility",
+            "iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
@@ -52557,12 +52559,118 @@ fn filter_type_metadata_dir_surface_docs_cover_core_runtime() {
             "`filter.__module__`",
             "`filter.__qualname__`",
             "`filter(None, [0, 1, '', 'x'])`",
-            "without adding filter instance `__iter__` / `__next__` dir visibility",
+            "iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
                 document.contains(required),
                 "filter type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
+    let diff_name = "cpython_builtin_iterator_dir_protocol_methods_diff_subset";
+    let subset_name = "cpython_builtin_iterator_dir_protocol_methods_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "builtin iterator dir protocol-method CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "builtin iterator dir protocol-method runtime subset evidence must exist"
+    );
+
+    for required in [
+        "('enumerate', enumerate, enumerate(['a']))",
+        "('zip', zip, zip([1], [2]))",
+        "('map', map, map(lambda x: x + 1, [1]))",
+        "('filter', filter, filter(None, [0, 1]))",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "hasattr(typ, '__iter__')",
+        "hasattr(typ, '__next__')",
+        "hasattr(inst, '__iter__')",
+        "hasattr(inst, '__next__')",
+        "iter(inst) is inst",
+        "enumerate.__next__(enumerate(['a']))",
+        "zip.__next__(zip([1], [2]))",
+        "map.__next__(map(lambda x: x + 1, [1]))",
+        "filter.__next__(filter(None, [0, 1]))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "builtin iterator dir protocol-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"enumerate True True True True True True True True True\"",
+        "\"zip True True True True True True True True True\"",
+        "\"map True True True True True True True True True\"",
+        "\"filter True True True True True True True True True\"",
+        "\"direct-next (0, 'a') (1, 2) 2 1\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "builtin iterator dir protocol-method subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\"]",
+        "\"zip\" | \"map\" | \"filter\" => &[\"__iter__\", \"__next__\"]",
+        "is_builtin_iterator_type_name(&function_name)",
+        "matches!(name, \"__iter__\" | \"__next__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names(\"enumerate\"))",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::ZipIterator { .. })",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::MapIterator { .. })",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::FilterIterator { .. })",
+        "Value::ZipIterator { .. } => names.extend(builtin_type_dir_names(\"zip\"))",
+        "Value::MapIterator { .. } => names.extend(builtin_type_dir_names(\"map\"))",
+        "Value::FilterIterator { .. } => names.extend(builtin_type_dir_names(\"filter\"))",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+        "Value::ZipIterator { iterators, strict } =>",
+        "iterator_protocol_method(\"zip\", Value::ZipIterator { iterators, strict }, name)",
+        "iterator_protocol_method(",
+        "\"map\"",
+        "\"filter\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "builtin iterator dir protocol-method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(enumerate)`",
+            "`dir(enumerate(...))`",
+            "`dir(zip)`",
+            "`dir(zip(...))`",
+            "`dir(map)`",
+            "`dir(map(...))`",
+            "`dir(filter)`",
+            "`dir(filter(...))`",
+            "`__iter__`",
+            "`__next__`",
+            "`enumerate.__next__(enumerate(['a']))`",
+            "`zip.__next__(zip([1], [2]))`",
+            "`map.__next__(map(lambda x: x + 1, [1]))`",
+            "`filter.__next__(filter(None, [0, 1]))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "builtin iterator dir protocol-method docs must contain `{required}`"
             );
         }
     }

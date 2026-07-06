@@ -913,27 +913,36 @@ Recent runtime migration notes:
   `dir(enumerate)` and `dir(enumerate(...))` hiding type metadata names while
   keeping `enumerate.__base__`, `enumerate.__bases__`,
   `enumerate.__module__`, and `enumerate.__qualname__` directly readable,
-  preserves `enumerate.__class_getitem__` visibility, without adding enumerate instance `__iter__` / `__next__` dir visibility,
+  preserves `enumerate.__class_getitem__` visibility, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_zip_type_metadata_dir_surface_subset`, backed by
   `cpython_zip_type_metadata_dir_surface_diff_subset`, now pins `dir(zip)` and
   `dir(zip(...))` hiding type metadata names while keeping `zip.__base__`,
   `zip.__bases__`, `zip.__module__`, and `zip.__qualname__` directly readable,
-  preserves existing `zip(..., strict=True)` behavior, without adding zip instance `__iter__` / `__next__` dir visibility,
+  preserves existing `zip(..., strict=True)` behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_map_type_metadata_dir_surface_subset`, backed by
   `cpython_map_type_metadata_dir_surface_diff_subset`, now pins `dir(map)` and
   `dir(map(...))` hiding type metadata names while keeping `map.__base__`,
   `map.__bases__`, `map.__module__`, and `map.__qualname__` directly readable,
-  preserves existing `map(lambda x: x + 1, [1])` iteration behavior, without adding map instance `__iter__` / `__next__` dir visibility,
+  preserves existing `map(lambda x: x + 1, [1])` iteration behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_filter_type_metadata_dir_surface_subset`, backed by
   `cpython_filter_type_metadata_dir_surface_diff_subset`, now pins `dir(filter)`
   and `dir(filter(...))` hiding type metadata names while keeping
   `filter.__base__`, `filter.__bases__`, `filter.__module__`, and
   `filter.__qualname__` directly readable, preserves existing
-  `filter(None, [0, 1, '', 'x'])` iteration behavior, without adding filter instance `__iter__` / `__next__` dir visibility,
+  `filter(None, [0, 1, '', 'x'])` iteration behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_builtin_iterator_dir_protocol_methods_subset`, backed by
+  `cpython_builtin_iterator_dir_protocol_methods_diff_subset`, now pins
+  `dir(enumerate)`, `dir(enumerate(...))`, `dir(zip)`, `dir(zip(...))`,
+  `dir(map)`, `dir(map(...))`, `dir(filter)`, and `dir(filter(...))` exposing
+  `__iter__` and `__next__`, plus direct protocol dispatch through
+  `enumerate.__next__(enumerate(['a']))`, `zip.__next__(zip([1], [2]))`,
+  `map.__next__(map(lambda x: x + 1, [1]))`, and
+  `filter.__next__(filter(None, [0, 1]))`, without widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1718,6 +1727,7 @@ Recent runtime migration notes:
   `cpython_map_filter_builtin_diff_subset`,
   `cpython_map_type_metadata_dir_surface_diff_subset`,
   `cpython_filter_type_metadata_dir_surface_diff_subset`,
+  `cpython_builtin_iterator_dir_protocol_methods_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,
