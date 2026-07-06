@@ -46717,6 +46717,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_range_iterator_type_metadata_dir_surface_subset",
             "cpython_list_iterator_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
+            "cpython_str_iterator_type_metadata_dir_surface_subset",
             "cpython_bytes_iterator_type_metadata_dir_surface_subset",
             "cpython_bytearray_iterator_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
@@ -46970,6 +46971,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_range_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_str_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytes_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
@@ -53106,7 +53108,7 @@ fn tuple_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"tuple_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::TupleIterator { .. })",
         "Value::TupleIterator { .. } => names.extend(builtin_type_dir_names(\"tuple_iterator\"))",
-        "| \"tuple_iterator\"\n            | \"bytes_iterator\"",
+        "| \"tuple_iterator\"\n            | \"str_iterator\"",
         "function_name == \"tuple_iterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53146,6 +53148,138 @@ fn tuple_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "tuple_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn str_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_str_iterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_str_iterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "str_iterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "str_iterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "value = ",
+        "inst = iter(value)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__length_hint__(inst)",
+        "ord(typ.__next__(inst))",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "reduced[0] is iter",
+        "reduced[1] == (value,)",
+        "reduced[2]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "str_iterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name str_iterator builtins str_iterator\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True str_iterator\"",
+        "\"readable-module builtins str_iterator\"",
+        "\"iter-next-hint True a 2 233 1\"",
+        "\"reduce-shape 3 True True 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "str_iterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"str_iterator\"",
+        "\"str_iterator\" => vec![builtin_type_value(\"object\")]",
+        "\"str_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::StringIterator { .. })",
+        "Value::StringIterator { .. } => names.extend(builtin_type_dir_names(\"str_iterator\"))",
+        "Value::StringIterator { chars, index } => (Value::String(chars.concat()), Some(index))",
+        "Value::StringIterator { .. } => Some(\"str_iterator\")",
+        "| \"str_iterator\"\n            | \"bytes_iterator\"",
+        "function_name == \"str_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str_iterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`iter(non-ASCII str)`",
+            "`type(inst)`",
+            "`str_iterator.__base__`",
+            "`str_iterator.__bases__`",
+            "`str_iterator.__module__`",
+            "`str_iterator.__qualname__`",
+            "`dir(type(iter(non-ASCII str)))`",
+            "`dir(iter(non-ASCII str))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__next__(inst)`",
+            "`inst.__length_hint__()`",
+            "`typ.__reduce__(inst)`",
+            "`reduce-shape 3 True True 2`",
+            "does not cover CPython's",
+            "`str_ascii_iterator`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "str_iterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

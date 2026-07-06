@@ -34873,6 +34873,7 @@ impl Vm {
                 }
             }
             Value::TupleIterator { items, index } => (tuple_value(items), Some(index)),
+            Value::StringIterator { chars, index } => (Value::String(chars.concat()), Some(index)),
             Value::BytesIterator { bytes, index } => (bytes_value(bytes), Some(index)),
             Value::ByteArrayIterator {
                 bytes,
@@ -54131,6 +54132,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::TupleIterator { .. }) => {
             names.extend(builtin_type_dir_names("tuple_iterator"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::StringIterator { .. }) => {
+            names.extend(builtin_type_dir_names("str_iterator"))
+        }
         Value::Iterator(state) if matches!(&*state.borrow(), Value::BytesIterator { .. }) => {
             names.extend(builtin_type_dir_names("bytes_iterator"))
         }
@@ -54145,6 +54149,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::RangeIterator { .. } => names.extend(builtin_type_dir_names("range_iterator")),
         Value::ListIterator { .. } => names.extend(builtin_type_dir_names("list_iterator")),
         Value::TupleIterator { .. } => names.extend(builtin_type_dir_names("tuple_iterator")),
+        Value::StringIterator { .. } => names.extend(builtin_type_dir_names("str_iterator")),
         Value::BytesIterator { .. } => names.extend(builtin_type_dir_names("bytes_iterator")),
         Value::ByteArrayIterator { .. } => {
             names.extend(builtin_type_dir_names("bytearray_iterator"))
@@ -54481,6 +54486,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "list_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "tuple_iterator" {
+        remove_type_metadata_dir_names(&mut names);
+    } else if name == "str_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "bytes_iterator" {
         remove_type_metadata_dir_names(&mut names);
@@ -54855,6 +54862,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "range_iterator" => &["__iter__", "__next__", "__length_hint__"],
         "list_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "tuple_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "str_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytearray_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "io.BytesIO" => &[
@@ -56003,6 +56011,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "range_iterator" => vec![builtin_type_value("object")],
         "list_iterator" => vec![builtin_type_value("object")],
         "tuple_iterator" => vec![builtin_type_value("object")],
+        "str_iterator" => vec![builtin_type_value("object")],
         "bytes_iterator" => vec![builtin_type_value("object")],
         "bytearray_iterator" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
@@ -64056,7 +64065,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Value::TemplateIterator { items, index },
             name,
         ),
-        Value::StringIterator { chars, index } => length_hint_iterator_protocol_method(
+        Value::StringIterator { chars, index } => list_tuple_iterator_protocol_method(
             "str_iterator",
             Value::StringIterator { chars, index },
             name,
@@ -64199,6 +64208,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let reduce_type_name = match &*iterator {
                     Value::ListIterator { .. } => Some("list_iterator"),
                     Value::TupleIterator { .. } => Some("tuple_iterator"),
+                    Value::StringIterator { .. } => Some("str_iterator"),
                     Value::BytesIterator { .. } => Some("bytes_iterator"),
                     Value::ByteArrayIterator { .. } => Some("bytearray_iterator"),
                     _ => None,
@@ -65104,6 +65114,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "tuple_iterator"
+                && matches!(name, "__length_hint__" | "__reduce__") =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "str_iterator"
                 && matches!(name, "__length_hint__" | "__reduce__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
@@ -70278,6 +70294,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "range_iterator"
             | "list_iterator"
             | "tuple_iterator"
+            | "str_iterator"
             | "bytes_iterator"
             | "bytearray_iterator"
             | "property"
