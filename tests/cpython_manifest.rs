@@ -46711,6 +46711,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_zip_type_metadata_dir_surface_subset",
             "cpython_map_filter_builtin_subset",
             "cpython_map_type_metadata_dir_surface_subset",
+            "cpython_filter_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
             "cpython_builtin_print_keyword_subset",
@@ -46956,6 +46957,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_aiter_anext_keyword_error_diff_subset",
         "cpython_stop_iteration_value_diff_subset",
         "cpython_map_filter_builtin_diff_subset",
+        "cpython_filter_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
@@ -52436,7 +52438,7 @@ fn map_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"map\" => vec![builtin_type_value(\"object\")]",
         "name == \"map\"",
         "remove_type_metadata_dir_names(&mut names);",
-        "| \"map\"\n            | \"property\"",
+        "| \"map\"\n            | \"filter\"",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -52466,6 +52468,101 @@ fn map_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "map type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn filter_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_filter_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_filter_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "filter type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "filter type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = filter",
+        "inst = filter(None, [0, 1, '', 'x'])",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "typ.__name__",
+        "object.__getattribute__(typ, '__name__')",
+        "typ.__module__",
+        "typ.__qualname__",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "iter(inst) is inst",
+        "list(filter(None, [0, 1, '', 'x']))",
+        "list(filter(lambda x: x % 2, [0, 1, 2, 3]))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "filter type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False False False\"",
+        "\"visible-inst False False False\"",
+        "\"readable-base True True filter filter\"",
+        "\"readable-module builtins filter builtins filter\"",
+        "\"iter-kept True [1, 'x'] [1, 3]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "filter type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"filter\" => vec![builtin_type_value(\"object\")]",
+        "name == \"filter\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "| \"filter\"\n            | \"property\"",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "filter type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(filter)`",
+            "`dir(filter(...))`",
+            "`filter.__base__`",
+            "`filter.__bases__`",
+            "`filter.__module__`",
+            "`filter.__qualname__`",
+            "`filter(None, [0, 1, '', 'x'])`",
+            "without adding filter instance `__iter__` / `__next__` dir visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "filter type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

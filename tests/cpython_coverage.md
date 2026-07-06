@@ -927,6 +927,13 @@ Recent runtime migration notes:
   `map.__bases__`, `map.__module__`, and `map.__qualname__` directly readable,
   preserves existing `map(lambda x: x + 1, [1])` iteration behavior, without adding map instance `__iter__` / `__next__` dir visibility,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_filter_type_metadata_dir_surface_subset`, backed by
+  `cpython_filter_type_metadata_dir_surface_diff_subset`, now pins `dir(filter)`
+  and `dir(filter(...))` hiding type metadata names while keeping
+  `filter.__base__`, `filter.__bases__`, `filter.__module__`, and
+  `filter.__qualname__` directly readable, preserves existing
+  `filter(None, [0, 1, '', 'x'])` iteration behavior, without adding filter instance `__iter__` / `__next__` dir visibility,
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1710,6 +1717,7 @@ Recent runtime migration notes:
   `cpython_stop_iteration_value_diff_subset`,
   `cpython_map_filter_builtin_diff_subset`,
   `cpython_map_type_metadata_dir_surface_diff_subset`,
+  `cpython_filter_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,

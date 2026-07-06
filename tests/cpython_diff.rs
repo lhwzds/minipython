@@ -16786,6 +16786,21 @@ print('iter-kept', iter(inst) is inst, next(map(lambda x: x + 1, [1])), list(map
 }
 
 #[test]
+fn cpython_filter_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public filter type metadata dir surface",
+        name: "filter-type-metadata-dir-surface",
+        source: r#"typ = filter
+inst = filter(None, [0, 1, '', 'x'])
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), typ.__name__, object.__getattribute__(typ, '__name__'))
+print('readable-module', typ.__module__, typ.__qualname__, object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+print('iter-kept', iter(inst) is inst, list(filter(None, [0, 1, '', 'x'])), list(filter(lambda x: x % 2, [0, 1, 2, 3])))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",
