@@ -19134,6 +19134,19 @@ print('method-kept', 'conjugate' in dir(complex), 'conjugate' in dir(value), 're
 }
 
 #[test]
+fn cpython_float_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public float type metadata dir surface",
+        name: "float-type-metadata-dir-surface",
+        source: r#"value = 0.0
+print('visible-type', '__base__' in dir(float), '__bases__' in dir(float), '__name__' in dir(float), hasattr(float, '__base__'), hasattr(float, '__bases__'), hasattr(float, '__name__'))
+print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))
+print('readable', float.__base__ is object, float.__bases__ == (object,), float.__name__, object.__getattribute__(float, '__name__'))
+print('method-kept', 'is_integer' in dir(float), 'is_integer' in dir(value), 'real' in dir(value), 'imag' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

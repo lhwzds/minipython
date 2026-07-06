@@ -54390,6 +54390,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "bytes"
             | "complex"
             | "dict"
+            | "float"
             | "frozenset"
             | "list"
             | "memoryview"

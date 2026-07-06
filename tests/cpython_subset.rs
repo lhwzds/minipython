@@ -55611,6 +55611,27 @@ fn cpython_complex_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public float type-metadata dir surface. The metadata
+// remains directly readable, but CPython does not list it in dir(float) or dir(0.0).
+#[test]
+fn cpython_float_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "value = 0.0\n",
+            "print('visible-type', '__base__' in dir(float), '__bases__' in dir(float), '__name__' in dir(float), hasattr(float, '__base__'), hasattr(float, '__bases__'), hasattr(float, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))\n",
+            "print('readable', float.__base__ is object, float.__bases__ == (object,), float.__name__, object.__getattribute__(float, '__name__'))\n",
+            "print('method-kept', 'is_integer' in dir(float), 'is_integer' in dir(value), 'real' in dir(value), 'imag' in dir(value))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True float float",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
