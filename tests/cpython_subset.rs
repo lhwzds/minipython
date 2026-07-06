@@ -55366,6 +55366,26 @@ fn cpython_list_class_getitem_generic_alias_subset() {
     );
 }
 
+// Mirrors CPython's public list type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(list) or dir([]).
+#[test]
+fn cpython_list_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(list), '__bases__' in dir(list), '__name__' in dir(list), hasattr(list, '__base__'), hasattr(list, '__bases__'), hasattr(list, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir([]), '__bases__' in dir([]), '__name__' in dir([]))\n",
+            "print('readable', list.__base__ is object, list.__bases__ == (object,), list.__name__, object.__getattribute__(list, '__name__'))\n",
+            "print('method-kept', '__class_getitem__' in dir(list), 'append' in dir([]), '__len__' in dir([]))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True list list",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

@@ -1704,6 +1704,91 @@ fn tuple_inherited_init_direct_docs_cover_core_runtime() {
 }
 
 #[test]
+fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_list_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'__base__' in dir(list)",
+        "'__bases__' in dir(list)",
+        "'__name__' in dir(list)",
+        "hasattr(list, '__base__')",
+        "hasattr(list, '__bases__')",
+        "hasattr(list, '__name__')",
+        "'__base__' in dir([])",
+        "'__bases__' in dir([])",
+        "'__name__' in dir([])",
+        "list.__base__ is object",
+        "list.__bases__ == (object,)",
+        "list.__name__",
+        "object.__getattribute__(list, '__name__')",
+        "'__class_getitem__' in dir(list)",
+        "'append' in dir([])",
+        "'__len__' in dir([])",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"readable True True list list\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn remove_type_metadata_dir_names(",
+        "name == \"list\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(list)`",
+            "`dir([])`",
+            "`list.__base__`",
+            "`list.__bases__`",
+            "`list.__name__`",
+            "without hiding direct list type metadata lookup",
+            "without changing list method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "list type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_class_getitem_generic_alias_docs_cover_core_runtime() {
     let diff_name = "cpython_list_class_getitem_generic_alias_diff_subset";
     let subset_name = "cpython_list_class_getitem_generic_alias_subset";
@@ -45234,6 +45319,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_str_instance_doc_attribute_subset",
             "cpython_list_instance_doc_attribute_subset",
+            "cpython_list_type_metadata_dir_surface_subset",
             "cpython_tuple_instance_doc_attribute_subset",
             "cpython_bytes_instance_doc_attribute_subset",
             "cpython_bytearray_instance_doc_attribute_subset",
@@ -45344,6 +45430,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_str_instance_doc_attribute_diff_subset",
         "cpython_list_instance_doc_attribute_diff_subset",
+        "cpython_list_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_instance_doc_attribute_diff_subset",
         "cpython_bytes_instance_doc_attribute_diff_subset",
         "cpython_bytearray_instance_doc_attribute_diff_subset",

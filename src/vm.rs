@@ -54364,6 +54364,10 @@ fn cell_dir_names() -> Vec<String> {
     .collect()
 }
 
+fn remove_type_metadata_dir_names(names: &mut Vec<String>) {
+    names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
+}
+
 fn builtin_type_dir_names(name: &str) -> Vec<String> {
     let mut names = [
         "__base__",
@@ -54380,6 +54384,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     if name == "CellType" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
         names.push("cell_contents".to_string());
+    } else if name == "list" {
+        remove_type_metadata_dir_names(&mut names);
     } else if name == "UserDict" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));

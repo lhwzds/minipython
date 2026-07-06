@@ -18988,6 +18988,18 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_list_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public list type metadata dir surface",
+        name: "list-type-metadata-dir-surface",
+        source: r#"print('visible-type', '__base__' in dir(list), '__bases__' in dir(list), '__name__' in dir(list), hasattr(list, '__base__'), hasattr(list, '__bases__'), hasattr(list, '__name__'))
+print('visible-inst', '__base__' in dir([]), '__bases__' in dir([]), '__name__' in dir([]))
+print('readable', list.__base__ is object, list.__bases__ == (object,), list.__name__, object.__getattribute__(list, '__name__'))
+print('method-kept', '__class_getitem__' in dir(list), 'append' in dir([]), '__len__' in dir([]))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
