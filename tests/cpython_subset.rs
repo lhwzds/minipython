@@ -55590,6 +55590,27 @@ fn cpython_memoryview_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public complex type-metadata dir surface. The metadata
+// remains directly readable, but CPython does not list it in dir(complex) or dir(0j).
+#[test]
+fn cpython_complex_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "value = 0j\n",
+            "print('visible-type', '__base__' in dir(complex), '__bases__' in dir(complex), '__name__' in dir(complex), hasattr(complex, '__base__'), hasattr(complex, '__bases__'), hasattr(complex, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))\n",
+            "print('readable', complex.__base__ is object, complex.__bases__ == (object,), complex.__name__, object.__getattribute__(complex, '__name__'))\n",
+            "print('method-kept', 'conjugate' in dir(complex), 'conjugate' in dir(value), 'real' in dir(value), 'imag' in dir(value))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True complex complex",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

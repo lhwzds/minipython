@@ -19121,6 +19121,19 @@ print('method-kept', 'tobytes' in dir(memoryview), 'tobytes' in dir(view), 'form
 }
 
 #[test]
+fn cpython_complex_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public complex type metadata dir surface",
+        name: "complex-type-metadata-dir-surface",
+        source: r#"value = 0j
+print('visible-type', '__base__' in dir(complex), '__bases__' in dir(complex), '__name__' in dir(complex), hasattr(complex, '__base__'), hasattr(complex, '__bases__'), hasattr(complex, '__name__'))
+print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))
+print('readable', complex.__base__ is object, complex.__bases__ == (object,), complex.__name__, object.__getattribute__(complex, '__name__'))
+print('method-kept', 'conjugate' in dir(complex), 'conjugate' in dir(value), 'real' in dir(value), 'imag' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

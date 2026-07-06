@@ -1755,7 +1755,7 @@ fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -1842,7 +1842,7 @@ fn tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -1929,7 +1929,7 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2016,7 +2016,7 @@ fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2103,7 +2103,7 @@ fn frozenset_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2190,7 +2190,7 @@ fn str_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2277,7 +2277,7 @@ fn bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2364,7 +2364,7 @@ fn bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2452,7 +2452,7 @@ fn range_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2541,7 +2541,7 @@ fn slice_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2630,7 +2630,7 @@ fn memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytearray\"\n            | \"bytes\"",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
         "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
@@ -2660,6 +2660,95 @@ fn memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "memoryview type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn complex_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_complex_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_complex_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "complex type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "complex type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "value = 0j",
+        "'__base__' in dir(complex)",
+        "'__bases__' in dir(complex)",
+        "'__name__' in dir(complex)",
+        "hasattr(complex, '__base__')",
+        "hasattr(complex, '__bases__')",
+        "hasattr(complex, '__name__')",
+        "'__base__' in dir(value)",
+        "'__bases__' in dir(value)",
+        "'__name__' in dir(value)",
+        "complex.__base__ is object",
+        "complex.__bases__ == (object,)",
+        "complex.__name__",
+        "object.__getattribute__(complex, '__name__')",
+        "'conjugate' in dir(complex)",
+        "'conjugate' in dir(value)",
+        "'real' in dir(value)",
+        "'imag' in dir(value)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "complex type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"readable True True complex complex\"",
+        "\"method-kept True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "complex type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn remove_type_metadata_dir_names(",
+        "\"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
+        "| \"dict\"\n            | \"frozenset\"\n            | \"list\"\n            | \"memoryview\"\n            | \"range\"",
+        "| \"set\"\n            | \"slice\"\n            | \"str\"\n            | \"tuple\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "complex type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(complex)`",
+            "`dir(0j)`",
+            "`complex.__base__`",
+            "`complex.__bases__`",
+            "`complex.__name__`",
+            "without hiding direct complex type metadata lookup",
+            "without changing complex method or data-attribute visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "complex type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
@@ -46188,6 +46277,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_int_instance_doc_attribute_subset",
             "cpython_float_instance_doc_attribute_subset",
             "cpython_complex_instance_doc_attribute_subset",
+            "cpython_complex_type_metadata_dir_surface_subset",
             "cpython_dict_instance_doc_attribute_subset",
             "cpython_dict_type_metadata_dir_surface_subset",
             "cpython_set_instance_doc_attribute_subset",
@@ -46309,6 +46399,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_int_instance_doc_attribute_diff_subset",
         "cpython_float_instance_doc_attribute_diff_subset",
         "cpython_complex_instance_doc_attribute_diff_subset",
+        "cpython_complex_type_metadata_dir_surface_diff_subset",
         "cpython_dict_instance_doc_attribute_diff_subset",
         "cpython_dict_type_metadata_dir_surface_diff_subset",
         "cpython_set_instance_doc_attribute_diff_subset",

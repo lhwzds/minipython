@@ -839,6 +839,14 @@ Recent runtime migration notes:
   without hiding direct memoryview type metadata lookup,
   without changing memoryview method or data-attribute visibility, without
   widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_complex_type_metadata_dir_surface_subset`, backed by
+  `cpython_complex_type_metadata_dir_surface_diff_subset`, now pins
+  `dir(complex)` and `dir(0j)` hiding `__base__`, `__bases__`, and `__name__`
+  while keeping `complex.__base__`, `complex.__bases__`, and
+  `complex.__name__` directly readable,
+  without hiding direct complex type metadata lookup,
+  without changing complex method or data-attribute visibility, without widening
+  host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1571,6 +1579,7 @@ Recent runtime migration notes:
   `cpython_int_instance_doc_attribute_diff_subset`,
   `cpython_float_instance_doc_attribute_diff_subset`,
   `cpython_complex_instance_doc_attribute_diff_subset`,
+  `cpython_complex_type_metadata_dir_surface_diff_subset`,
   `cpython_dict_instance_doc_attribute_diff_subset`,
   `cpython_dict_type_metadata_dir_surface_diff_subset`,
   `cpython_set_instance_doc_attribute_diff_subset`,
