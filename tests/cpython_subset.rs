@@ -55548,6 +55548,26 @@ fn cpython_range_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public slice type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(slice) or dir(slice(None)).
+#[test]
+fn cpython_slice_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(slice), '__bases__' in dir(slice), '__name__' in dir(slice), hasattr(slice, '__base__'), hasattr(slice, '__bases__'), hasattr(slice, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(slice(None)), '__bases__' in dir(slice(None)), '__name__' in dir(slice(None)))\n",
+            "print('readable', slice.__base__ is object, slice.__bases__ == (object,), slice.__name__, object.__getattribute__(slice, '__name__'))\n",
+            "print('method-kept', 'indices' in dir(slice), 'indices' in dir(slice(None)), 'start' in dir(slice(None)), 'stop' in dir(slice(None)), 'step' in dir(slice(None)))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True slice slice",
+            "method-kept True True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
