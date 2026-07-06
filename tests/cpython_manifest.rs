@@ -46720,6 +46720,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_reversed_tuple_type_metadata_dir_surface_subset",
             "cpython_reversed_str_type_metadata_dir_surface_subset",
             "cpython_reversed_bytes_type_metadata_dir_surface_subset",
+            "cpython_reversed_bytearray_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
             "cpython_str_iterator_type_metadata_dir_surface_subset",
             "cpython_str_ascii_iterator_type_metadata_dir_surface_subset",
@@ -46982,6 +46983,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_reversed_tuple_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_str_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_bytes_type_metadata_dir_surface_diff_subset",
+        "cpython_reversed_bytearray_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset",
@@ -53668,6 +53670,167 @@ fn reversed_bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "reversed bytes type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn reversed_bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_reversed_bytearray_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_reversed_bytearray_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "reversed bytearray type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "reversed bytearray type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = bytearray(",
+        "inst = reversed(source)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "fresh = reversed(source).__reduce__()",
+        "fresh[0] is reversed",
+        "fresh[1][0] == source",
+        "type(fresh[1][0]).__name__",
+        "fresh[2]",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "reduced[0] is reversed",
+        "reduced[1][0] == source",
+        "type(reduced[1][0]).__name__",
+        "late = reversed(source)",
+        "late_reduced = late.__reduce__()",
+        "late_reduced[0] is reversed",
+        "late_reduced[1][0] == source",
+        "type(late_reduced[1][0]).__name__",
+        "late_reduced[2]",
+        "empty = reversed(bytearray()).__reduce__()",
+        "empty[1][0] == ()",
+        "exhausted = reversed(bytearray(b'a'))",
+        "exhausted.__reduce__()",
+        "exhausted_reduced[1][0] == ()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "reversed bytearray type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name reversed builtins reversed\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True reversed\"",
+        "\"readable-module builtins reversed\"",
+        "\"fresh-reduce 3 True 1 True bytearray 2 True\"",
+        "\"iter-next-hint True 0 2 2\"",
+        "\"reduce-shape 3 True 1 True bytearray 1 True\"",
+        "\"late-reduce 3 True 1 True bytearray 0 True\"",
+        "\"empty-reduce 2 True 1 True tuple True\"",
+        "\"exhausted-reduce 2 True 1 True tuple True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "reversed bytearray type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"reversed\"",
+        "\"reversed\" => vec![builtin_type_value(\"object\")]",
+        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::SequenceReverseIterator { object, index } => {",
+        "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
+        "return self.reverse_iterator_reduce_result(*object, Some(index));",
+        "sequence_reverse_iterator_item(object.as_ref(), *index)",
+        "if let Value::ByteArray(value) = object",
+        "let bytes = bytearray_bytes(value);",
+        "bytes.get(index)",
+        "Value::Number(*byte as i64)",
+        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
+        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "function_name == \"reversed\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "Value::ByteArray(value) => {\n            let index = i64::try_from(bytearray_bytes(&value).len())",
+        "object: Box::new(Value::ByteArray(value))",
+        "| \"list_reverseiterator\"\n            | \"reversed\"\n            | \"property\"",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "reversed bytearray type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`reversed(bytearray)`",
+            "`type(inst)`",
+            "`reversed.__base__`",
+            "`reversed.__bases__`",
+            "`reversed.__module__`",
+            "`reversed.__qualname__`",
+            "`dir(type(reversed(bytearray)))`",
+            "`dir(reversed(bytearray))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__reduce__(inst)`",
+            "`inst.__length_hint__()`",
+            "`fresh-reduce 3 True 1 True bytearray 2 True`",
+            "`iter-next-hint True 0 2 2`",
+            "`reduce-shape 3 True 1 True bytearray 1 True`",
+            "`late-reduce 3 True 1 True bytearray 0 True`",
+            "`empty-reduce 2 True 1 True tuple True`",
+            "`exhausted-reduce 2 True 1 True tuple True`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "reversed bytearray type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

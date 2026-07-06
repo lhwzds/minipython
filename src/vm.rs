@@ -38828,6 +38828,16 @@ impl Vm {
                 None => IteratorAdvance::Complete(Value::None),
             });
         }
+        if let Value::ByteArray(value) = object {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            };
+            let bytes = bytearray_bytes(value);
+            return Ok(match bytes.get(index) {
+                Some(byte) => IteratorAdvance::Yield(Value::Number(*byte as i64)),
+                None => IteratorAdvance::Complete(Value::None),
+            });
+        }
 
         self.call_iterator_method_catching(
             instance_special_method(object, "__getitem__")
@@ -78544,13 +78554,15 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 index,
             }))
         }
-        Value::ByteArray(value) => Ok(shared_iterator(Value::ReverseIterator {
-            items: bytearray_bytes(&value)
-                .into_iter()
-                .map(|byte| Value::Number(byte as i64))
-                .collect(),
-            index: 0,
-        })),
+        Value::ByteArray(value) => {
+            let index = i64::try_from(bytearray_bytes(&value).len())
+                .map_err(|_| "reversed() length is too large".to_string())?
+                - 1;
+            Ok(shared_iterator(Value::SequenceReverseIterator {
+                object: Box::new(Value::ByteArray(value)),
+                index,
+            }))
+        }
         Value::Deque { data, .. } => {
             let items_ref = data.borrow();
             i64::try_from(items_ref.len())
