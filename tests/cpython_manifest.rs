@@ -26510,6 +26510,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_abstractmethods_metadata_subset",
             "cpython_collections_userdict_slots_metadata_subset",
             "cpython_collections_userdict_name_dir_surface_subset",
+            "cpython_collections_userdict_type_base_dir_surface_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
@@ -28786,6 +28787,84 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict __name__ dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_type_base_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict direct base metadata dir surface"
+    );
+    let userdict_type_base_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_type_base_dir_surface_diff_subset",
+    );
+    let userdict_type_base_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_type_base_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "from collections.abc import MutableMapping",
+        "u = UserDict({'a': 1})",
+        "getattr(UserDict, '__base__')",
+        "getattr(UserDict, '__bases__')",
+        "object.__getattribute__(UserDict, '__base__')",
+        "object.__getattribute__(UserDict, '__bases__')",
+        "getattr(u, attr)",
+        "'__base__' in dir(UserDict)",
+        "'__bases__' in dir(UserDict)",
+        "'__base__' in dir(u)",
+        "'__bases__' in dir(u)",
+        "hasattr(UserDict, '__base__')",
+        "hasattr(UserDict, '__bases__')",
+        "hasattr(u, '__base__')",
+        "hasattr(u, '__bases__')",
+    ] {
+        assert!(
+            userdict_type_base_dir_diff_body.contains(required)
+                && userdict_type_base_dir_subset_body.contains(required),
+            "UserDict direct base metadata dir-surface diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"direct-base True collections.abc MutableMapping\"",
+        "\"direct-bases tuple 1 True collections.abc MutableMapping\"",
+        "\"object True True\"",
+        "\"inst __base__ AttributeError\"",
+        "\"inst __bases__ AttributeError\"",
+        "\"visible False False False False True True False False\"",
+    ] {
+        assert!(
+            userdict_type_base_dir_subset_body.contains(required),
+            "UserDict direct base metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserDict\"",
+        "names.retain(|attr| !matches!(attr.as_str(), \"__base__\" | \"__bases__\"))",
+        "collections_type_direct_base_name",
+        "\"UserDict\" => Some(\"MutableMapping\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict direct base metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_type_base_dir_surface_subset",
+            "cpython_collections_userdict_type_base_dir_surface_diff_subset",
+            "`UserDict.__base__` and `UserDict.__bases__`",
+            "`dir(UserDict)` and `dir(UserDict(...))`",
+            "`MutableMapping`",
+            "without changing direct base metadata lookup",
+            "without expanding full `__mro__` parity",
+            "UserDict mapping-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict direct base metadata dir-surface docs must contain `{required}`"
             );
         }
     }
