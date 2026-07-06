@@ -71020,6 +71020,53 @@ for op_label, name in ops:
     );
 }
 
+// Mirrors CPython's public UserString protocol method dir surface. This only
+// covers dir() discoverability for already-supported pure-memory methods.
+#[test]
+fn cpython_collections_userstring_protocol_method_dir_surface_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+protocol = [
+    '__add__', '__contains__', '__eq__', '__ge__', '__getitem__', '__gt__',
+    '__hash__', '__iter__', '__le__', '__len__', '__lt__', '__mod__', '__mul__',
+    '__repr__', '__radd__', '__rmod__', '__rmul__', '__str__',
+]
+class_dir = dir(UserString)
+inst_dir = dir(u)
+print('class-visible', all(name in class_dir for name in protocol), [name for name in protocol if name not in class_dir])
+print('inst-visible', all(name in inst_dir for name in protocol), [name for name in protocol if name not in inst_dir])
+print('class-callable', all(callable(getattr(UserString, name)) for name in protocol))
+print('inst-callable', all(callable(getattr(u, name)) for name in protocol))
+for name in protocol:
+    print('entry', name, name in class_dir, name in inst_dir, hasattr(UserString, name), hasattr(u, name))"#,
+        &[
+            "class-visible True []",
+            "inst-visible True []",
+            "class-callable True",
+            "inst-callable True",
+            "entry __add__ True True True True",
+            "entry __contains__ True True True True",
+            "entry __eq__ True True True True",
+            "entry __ge__ True True True True",
+            "entry __getitem__ True True True True",
+            "entry __gt__ True True True True",
+            "entry __hash__ True True True True",
+            "entry __iter__ True True True True",
+            "entry __le__ True True True True",
+            "entry __len__ True True True True",
+            "entry __lt__ True True True True",
+            "entry __mod__ True True True True",
+            "entry __mul__ True True True True",
+            "entry __repr__ True True True True",
+            "entry __radd__ True True True True",
+            "entry __rmod__ True True True True",
+            "entry __rmul__ True True True True",
+            "entry __str__ True True True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString no-argument case-transform methods.
 // MiniPython preserves exact UserString result behavior here while still
 // excluding broader UserString subclass result-type preservation.

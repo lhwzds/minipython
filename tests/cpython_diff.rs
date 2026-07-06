@@ -26865,6 +26865,29 @@ for op_label, name in ops:
 }
 
 #[test]
+fn cpython_collections_userstring_protocol_method_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString protocol method dir surface",
+        name: "collections-userstring-protocol-method-dir-surface",
+        source: r#"from collections import UserString
+u = UserString('abé')
+protocol = [
+    '__add__', '__contains__', '__eq__', '__ge__', '__getitem__', '__gt__',
+    '__hash__', '__iter__', '__le__', '__len__', '__lt__', '__mod__', '__mul__',
+    '__repr__', '__radd__', '__rmod__', '__rmul__', '__str__',
+]
+class_dir = dir(UserString)
+inst_dir = dir(u)
+print('class-visible', all(name in class_dir for name in protocol), [name for name in protocol if name not in class_dir])
+print('inst-visible', all(name in inst_dir for name in protocol), [name for name in protocol if name not in inst_dir])
+print('class-callable', all(callable(getattr(UserString, name)) for name in protocol))
+print('inst-callable', all(callable(getattr(u, name)) for name in protocol))
+for name in protocol:
+    print('entry', name, name in class_dir, name in inst_dir, hasattr(UserString, name), hasattr(u, name))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_case_transform_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString case-transform method behavior",

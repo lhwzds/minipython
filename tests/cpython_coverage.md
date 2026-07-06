@@ -375,6 +375,13 @@ Recent runtime migration notes:
   `string=` keyword binding, bad receiver errors, and CPython string-style TypeErrors for non-string operands, without implementing full UserString
   string-method proxying or widening host IO, network, process, C ABI, or full
   stdlib scope.
+- `cpython_collections_userstring_protocol_method_dir_surface_subset`, backed by
+  `cpython_collections_userstring_protocol_method_dir_surface_diff_subset`, now
+  pins UserString protocol method dir surface for already-supported pure-memory
+  UserString protocol methods, including `dir(UserString)`,
+  `dir(UserString(...))`, `__add__`, `__contains__`, `__repr__`, and `__str__`,
+  without adding `__new__`, `__reduce__`, `__reduce_ex__`, pickle, or full
+  string-method proxying.
 - `cpython_collections_userstring_case_transform_methods_subset`, backed by
   `cpython_collections_userstring_case_transform_methods_diff_subset`, now pins
   `UserString.lower`, `UserString.upper`, `UserString.capitalize`,
@@ -1657,6 +1664,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_mod_methods_diff_subset`,
   `cpython_collections_userstring_mul_method_diff_subset`,
   `cpython_collections_userstring_order_methods_diff_subset`,
+  `cpython_collections_userstring_protocol_method_dir_surface_diff_subset`,
   `cpython_collections_userstring_case_transform_methods_diff_subset`,
   `cpython_collections_userstring_predicate_methods_diff_subset`,
   `cpython_collections_userstring_search_methods_diff_subset`,
@@ -7710,6 +7718,14 @@ without adding general custom encoder/decoder class support.
   `UserString.__ge__` ordered comparisons, expression dispatch in both operand
   orders, reverse string comparison, `UserString` and str-subclass operands,
   `string=` keyword binding, bad receiver errors, and CPython string-style TypeErrors for non-string operands, without implementing full UserString
+  string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_protocol_method_dir_surface_diff_subset` and
+  `cpython_collections_userstring_protocol_method_dir_surface_subset`, covering
+  UserString protocol method dir surface for already-supported pure-memory
+  UserString protocol methods, including `dir(UserString)`,
+  `dir(UserString(...))`, `__add__`, `__contains__`, `__repr__`, and `__str__`,
+  without adding `__new__`, `__reduce__`, `__reduce_ex__`, pickle, or full
   string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_case_transform_methods_diff_subset` and

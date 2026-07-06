@@ -26541,6 +26541,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_mod_methods_subset",
             "cpython_collections_userstring_mul_method_subset",
             "cpython_collections_userstring_order_methods_subset",
+            "cpython_collections_userstring_protocol_method_dir_surface_subset",
             "cpython_collections_userstring_case_transform_methods_subset",
             "cpython_collections_userstring_predicate_methods_subset",
             "cpython_collections_userstring_search_methods_subset",
@@ -31696,6 +31697,135 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString order-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_protocol_method_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString protocol method dir surface"
+    );
+    let userstring_protocol_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_protocol_method_dir_surface_diff_subset",
+    );
+    let userstring_protocol_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_protocol_method_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "protocol = [",
+        "'__add__'",
+        "'__contains__'",
+        "'__eq__'",
+        "'__ge__'",
+        "'__getitem__'",
+        "'__gt__'",
+        "'__hash__'",
+        "'__iter__'",
+        "'__le__'",
+        "'__len__'",
+        "'__lt__'",
+        "'__mod__'",
+        "'__mul__'",
+        "'__repr__'",
+        "'__radd__'",
+        "'__rmod__'",
+        "'__rmul__'",
+        "'__str__'",
+        "class_dir = dir(UserString)",
+        "inst_dir = dir(u)",
+        "all(name in class_dir for name in protocol)",
+        "all(name in inst_dir for name in protocol)",
+        "all(callable(getattr(UserString, name)) for name in protocol)",
+        "all(callable(getattr(u, name)) for name in protocol)",
+        "hasattr(UserString, name)",
+        "hasattr(u, name)",
+    ] {
+        assert!(
+            userstring_protocol_dir_diff_body.contains(required)
+                && userstring_protocol_dir_subset_body.contains(required),
+            "UserString protocol dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"class-visible True []\"",
+        "\"inst-visible True []\"",
+        "\"class-callable True\"",
+        "\"inst-callable True\"",
+        "\"entry __add__ True True True True\"",
+        "\"entry __contains__ True True True True\"",
+        "\"entry __eq__ True True True True\"",
+        "\"entry __ge__ True True True True\"",
+        "\"entry __getitem__ True True True True\"",
+        "\"entry __gt__ True True True True\"",
+        "\"entry __hash__ True True True True\"",
+        "\"entry __iter__ True True True True\"",
+        "\"entry __le__ True True True True\"",
+        "\"entry __len__ True True True True\"",
+        "\"entry __lt__ True True True True\"",
+        "\"entry __mod__ True True True True\"",
+        "\"entry __mul__ True True True True\"",
+        "\"entry __repr__ True True True True\"",
+        "\"entry __radd__ True True True True\"",
+        "\"entry __rmod__ True True True True\"",
+        "\"entry __rmul__ True True True True\"",
+        "\"entry __str__ True True True True\"",
+    ] {
+        assert!(
+            userstring_protocol_dir_subset_body.contains(required),
+            "UserString protocol dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "if name == \"UserString\"",
+        "names.push(\"__add__\".to_string())",
+        "names.push(\"__contains__\".to_string())",
+        "names.push(\"__eq__\".to_string())",
+        "names.push(\"__ge__\".to_string())",
+        "names.push(\"__getitem__\".to_string())",
+        "names.push(\"__gt__\".to_string())",
+        "names.push(\"__hash__\".to_string())",
+        "names.push(\"__iter__\".to_string())",
+        "names.push(\"__le__\".to_string())",
+        "names.push(\"__len__\".to_string())",
+        "names.push(\"__lt__\".to_string())",
+        "names.push(\"__mod__\".to_string())",
+        "names.push(\"__mul__\".to_string())",
+        "names.push(\"__repr__\".to_string())",
+        "names.push(\"__radd__\".to_string())",
+        "names.push(\"__rmod__\".to_string())",
+        "names.push(\"__rmul__\".to_string())",
+        "names.push(\"__str__\".to_string())",
+        "Value::UserString {",
+        "names.extend(builtin_type_dir_names(\"UserString\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString protocol dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_protocol_method_dir_surface_subset",
+            "cpython_collections_userstring_protocol_method_dir_surface_diff_subset",
+            "UserString protocol method dir surface",
+            "`dir(UserString)`",
+            "`dir(UserString(...))`",
+            "`__add__`",
+            "`__contains__`",
+            "`__repr__`",
+            "`__str__`",
+            "already-supported pure-memory",
+            "UserString protocol methods",
+            "without adding `__new__`, `__reduce__`, `__reduce_ex__`, pickle, or full",
+            "string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString protocol dir-surface docs must contain `{required}`"
             );
         }
     }

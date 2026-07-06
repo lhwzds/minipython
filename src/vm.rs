@@ -54983,21 +54983,37 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
 
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "UserString" {
+        names.push("__add__".to_string());
         names.push("__class_getitem__".to_string());
+        names.push("__contains__".to_string());
         names.push("__complex__".to_string());
+        names.push("__eq__".to_string());
         names.push("__float__".to_string());
         names.push("__format__".to_string());
+        names.push("__ge__".to_string());
         names.push("__getattribute__".to_string());
         names.push("__getnewargs__".to_string());
         names.push("__getstate__".to_string());
+        names.push("__getitem__".to_string());
+        names.push("__gt__".to_string());
+        names.push("__hash__".to_string());
         names.push("__init__".to_string());
         names.push("__int__".to_string());
+        names.push("__iter__".to_string());
+        names.push("__le__".to_string());
+        names.push("__len__".to_string());
+        names.push("__lt__".to_string());
         names.push("__mod__".to_string());
+        names.push("__mul__".to_string());
         names.push("__delattr__".to_string());
+        names.push("__repr__".to_string());
+        names.push("__radd__".to_string());
         names.push("__reversed__".to_string());
         names.push("__rmod__".to_string());
+        names.push("__rmul__".to_string());
         names.push("__setattr__".to_string());
         names.push("__sizeof__".to_string());
+        names.push("__str__".to_string());
     }
     names
 }
