@@ -26514,6 +26514,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_module_metadata_subset",
+            "cpython_collections_userstring_doc_metadata_subset",
             "cpython_collections_userstring_slots_metadata_subset",
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_basic_construction_subset",
@@ -28759,6 +28760,76 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString __module__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_doc_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __doc__ metadata"
+    );
+    let userstring_doc_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_doc_metadata_diff_subset",
+    );
+    let userstring_doc_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_doc_metadata_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "'__doc__' in dir(UserString)",
+        "'__doc__' in dir(u)",
+        "hasattr(UserString, '__doc__')",
+        "hasattr(u, '__doc__')",
+        "UserString.__doc__",
+        "object.__getattribute__(UserString, '__doc__') is None",
+        "u.__doc__",
+        "object.__getattribute__(u, '__doc__') is None",
+        "getattr(u, '__doc__')",
+        "getattr(UserString, '__doc__')",
+    ] {
+        assert!(
+            userstring_doc_diff_body.contains(required)
+                && userstring_doc_subset_body.contains(required),
+            "UserString __doc__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-doc NoneType None True True\"",
+        "\"inst-doc NoneType None True True\"",
+        "\"same-value True True\"",
+    ] {
+        assert!(
+            userstring_doc_subset_body.contains(required),
+            "UserString __doc__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"__doc__\" && function_name == \"UserString\"",
+        "\"__doc__\" => Ok(Value::None)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString __doc__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_doc_metadata_subset",
+            "cpython_collections_userstring_doc_metadata_diff_subset",
+            "`UserString.__doc__`",
+            "`UserString(...).__doc__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "`None`",
+            "without adding `__dict__`, `__weakref__`, pickle",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString __doc__ metadata docs must contain `{required}`"
             );
         }
     }

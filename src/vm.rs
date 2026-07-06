@@ -62986,11 +62986,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
-                "__doc__" => Ok(Value::String(
-                    builtin_type_doc("UserString")
-                        .expect("UserString type doc is defined")
-                        .to_string(),
-                )),
+                "__doc__" => Ok(Value::None),
                 "__module__" => Ok(Value::String("collections".to_string())),
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
@@ -64622,6 +64618,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "UserDict" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "UserString" => {
             Ok(Value::None)
         }
         Value::Builtin(function_name)

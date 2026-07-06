@@ -25764,6 +25764,20 @@ print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') ==
 }
 
 #[test]
+fn cpython_collections_userstring_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __doc__ metadata",
+        name: "collections-userstring-doc-metadata",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__doc__' in dir(UserString), '__doc__' in dir(u), hasattr(UserString, '__doc__'), hasattr(u, '__doc__'))
+print('type-doc', type(UserString.__doc__).__name__, repr(UserString.__doc__), UserString.__doc__ is None, object.__getattribute__(UserString, '__doc__') is None)
+print('inst-doc', type(u.__doc__).__name__, repr(u.__doc__), u.__doc__ is None, object.__getattribute__(u, '__doc__') is None)
+print('same-value', u.__doc__ is UserString.__doc__, getattr(u, '__doc__') is getattr(UserString, '__doc__'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_slots_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString __slots__ metadata",

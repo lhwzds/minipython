@@ -69330,6 +69330,26 @@ print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') ==
     );
 }
 
+// Mirrors CPython's public UserString __doc__ metadata on the type and
+// instances. This only covers the None metadata value and discoverability.
+#[test]
+fn cpython_collections_userstring_doc_metadata_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__doc__' in dir(UserString), '__doc__' in dir(u), hasattr(UserString, '__doc__'), hasattr(u, '__doc__'))
+print('type-doc', type(UserString.__doc__).__name__, repr(UserString.__doc__), UserString.__doc__ is None, object.__getattribute__(UserString, '__doc__') is None)
+print('inst-doc', type(u.__doc__).__name__, repr(u.__doc__), u.__doc__ is None, object.__getattribute__(u, '__doc__') is None)
+print('same-value', u.__doc__ is UserString.__doc__, getattr(u, '__doc__') is getattr(UserString, '__doc__'))"#,
+        &[
+            "visible True True True True",
+            "type-doc NoneType None True True",
+            "inst-doc NoneType None True True",
+            "same-value True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString __slots__ metadata on the type and
 // instances. This only covers the empty-slots metadata value and discoverability.
 #[test]

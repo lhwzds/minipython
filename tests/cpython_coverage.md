@@ -170,6 +170,12 @@ Recent runtime migration notes:
   `UserString.__module__`, `UserString(...).__module__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
   without adding `__new__`, pickle, or full UserString string-method proxying.
+- `cpython_collections_userstring_doc_metadata_subset`, backed by
+  `cpython_collections_userstring_doc_metadata_diff_subset`, now pins
+  `UserString.__doc__`, `UserString(...).__doc__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to `None`,
+  without adding `__dict__`, `__weakref__`, pickle, or full UserString
+  string-method proxying.
 - `cpython_collections_userstring_slots_metadata_subset`, backed by
   `cpython_collections_userstring_slots_metadata_diff_subset`, now pins
   `UserString.__slots__`, `UserString(...).__slots__`, and
@@ -1655,6 +1661,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_module_metadata_diff_subset`,
+  `cpython_collections_userstring_doc_metadata_diff_subset`,
   `cpython_collections_userstring_slots_metadata_diff_subset`,
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userstring_basic_construction_diff_subset`,
@@ -7522,6 +7529,13 @@ without adding general custom encoder/decoder class support.
   `UserString.__module__`, `UserString(...).__module__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
   without adding `__new__`, pickle, or full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_doc_metadata_diff_subset` and
+  `cpython_collections_userstring_doc_metadata_subset`, covering
+  `UserString.__doc__`, `UserString(...).__doc__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to `None`,
+  without adding `__dict__`, `__weakref__`, pickle, or full UserString
+  string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_slots_metadata_diff_subset` and
   `cpython_collections_userstring_slots_metadata_subset`, covering
