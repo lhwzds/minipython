@@ -54985,6 +54985,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
 
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "UserString" {
+        names.push("__abstractmethods__".to_string());
         names.push("__add__".to_string());
         names.push("__class_getitem__".to_string());
         names.push("__contains__".to_string());
@@ -62988,6 +62989,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
+                "__abstractmethods__" => Ok(frozen_set_value(Vec::new())),
                 "__doc__" => Ok(Value::None),
                 "__module__" => Ok(Value::String("collections".to_string())),
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
@@ -64624,6 +64626,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "UserString" => {
             Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserString" && name == "__abstractmethods__" =>
+        {
+            Ok(frozen_set_value(Vec::new()))
         }
         Value::Builtin(function_name)
             if name == "__doc__" && builtin_type_doc(&function_name).is_some() =>

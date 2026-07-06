@@ -26514,6 +26514,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
             "cpython_collections_userstring_name_dir_surface_subset",
+            "cpython_collections_userstring_abstractmethods_metadata_subset",
             "cpython_collections_userstring_module_metadata_subset",
             "cpython_collections_userstring_doc_metadata_subset",
             "cpython_collections_userstring_slots_metadata_subset",
@@ -28749,12 +28750,83 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`UserString.__name__`",
             "`dir(UserString)` and `dir(UserString(...))`",
             "`__name__`",
-            "without adding `__dict__`, `__abstractmethods__`, `__weakref__`",
+            "without adding `__dict__`, `__weakref__`, ABCMeta parity",
             "full UserString string-method proxying",
         ] {
             assert!(
                 document.contains(required),
                 "UserString __name__ dir surface docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_abstractmethods_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __abstractmethods__ metadata"
+    );
+    let userstring_abstractmethods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_abstractmethods_metadata_diff_subset",
+    );
+    let userstring_abstractmethods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_abstractmethods_metadata_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "'__abstractmethods__' in dir(UserString)",
+        "'__abstractmethods__' in dir(u)",
+        "hasattr(UserString, '__abstractmethods__')",
+        "hasattr(u, '__abstractmethods__')",
+        "UserString.__abstractmethods__",
+        "object.__getattribute__(UserString, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__",
+        "object.__getattribute__(u, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__ == UserString.__abstractmethods__",
+    ] {
+        assert!(
+            userstring_abstractmethods_diff_body.contains(required)
+                && userstring_abstractmethods_subset_body.contains(required),
+            "UserString __abstractmethods__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-abstract frozenset frozenset() 0 True True\"",
+        "\"inst-abstract frozenset frozenset() 0 True True\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userstring_abstractmethods_subset_body.contains(required),
+            "UserString __abstractmethods__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserString\" && name == \"__abstractmethods__\"",
+        "\"__abstractmethods__\" => Ok(frozen_set_value(Vec::new()))",
+        "names.push(\"__abstractmethods__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString __abstractmethods__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_abstractmethods_metadata_subset",
+            "cpython_collections_userstring_abstractmethods_metadata_diff_subset",
+            "`UserString.__abstractmethods__`",
+            "`UserString(...).__abstractmethods__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "empty `frozenset()`",
+            "without adding `__dict__`, `__weakref__`, ABCMeta parity",
+            "full abstractmethod machinery",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString __abstractmethods__ metadata docs must contain `{required}`"
             );
         }
     }
@@ -28963,8 +29035,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`UserString(...).__slots__`",
             "`dir(UserString)` and `dir(UserString(...))`",
             "empty tuple",
-            "without adding `__weakref__`, `__abstractmethods__`, `__init_subclass__`",
-            "`__subclasshook__`, `__new__`, pickle",
+            "without adding `__weakref__`, `__init_subclass__`, `__subclasshook__`",
+            "`__new__`, pickle",
             "full UserString string-method proxying",
         ] {
             assert!(

@@ -173,7 +173,12 @@ Recent runtime migration notes:
 - `cpython_collections_userstring_name_dir_surface_subset`, backed by
   `cpython_collections_userstring_name_dir_surface_diff_subset`, now pins
   `UserString.__name__` lookup while keeping `__name__` out of
-  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__abstractmethods__`, `__weakref__`, or full UserString string-method proxying.
+  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__weakref__`, ABCMeta parity, or full UserString string-method proxying.
+- `cpython_collections_userstring_abstractmethods_metadata_subset`, backed by
+  `cpython_collections_userstring_abstractmethods_metadata_diff_subset`, now pins
+  `UserString.__abstractmethods__`, `UserString(...).__abstractmethods__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to an empty `frozenset()`,
+  without adding `__dict__`, `__weakref__`, ABCMeta parity, full abstractmethod machinery, or full UserString string-method proxying.
 - `cpython_collections_userstring_doc_metadata_subset`, backed by
   `cpython_collections_userstring_doc_metadata_diff_subset`, now pins
   `UserString.__doc__`, `UserString(...).__doc__`, and
@@ -184,8 +189,8 @@ Recent runtime migration notes:
   `cpython_collections_userstring_slots_metadata_diff_subset`, now pins
   `UserString.__slots__`, `UserString(...).__slots__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to an empty tuple,
-  without adding `__weakref__`, `__abstractmethods__`, `__init_subclass__`,
-  `__subclasshook__`, `__new__`, pickle, or full UserString string-method proxying.
+  without adding `__weakref__`, `__init_subclass__`, `__subclasshook__`,
+  `__new__`, pickle, or full UserString string-method proxying.
 - `cpython_collections_userstring_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`, now pins
   `UserString.__class_getitem__(int)`, `UserString[int]`, `collections.UserString[int]`
@@ -1665,6 +1670,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
   `cpython_collections_userstring_name_dir_surface_diff_subset`,
+  `cpython_collections_userstring_abstractmethods_metadata_diff_subset`,
   `cpython_collections_userstring_module_metadata_diff_subset`,
   `cpython_collections_userstring_doc_metadata_diff_subset`,
   `cpython_collections_userstring_slots_metadata_diff_subset`,
@@ -7538,7 +7544,13 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_name_dir_surface_diff_subset` and
   `cpython_collections_userstring_name_dir_surface_subset`, covering
   `UserString.__name__` lookup while keeping `__name__` out of
-  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__abstractmethods__`, `__weakref__`, or full UserString string-method proxying.
+  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__weakref__`, ABCMeta parity, or full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_abstractmethods_metadata_diff_subset` and
+  `cpython_collections_userstring_abstractmethods_metadata_subset`, covering
+  `UserString.__abstractmethods__`, `UserString(...).__abstractmethods__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to an empty `frozenset()`,
+  without adding `__dict__`, `__weakref__`, ABCMeta parity, full abstractmethod machinery, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_doc_metadata_diff_subset` and
   `cpython_collections_userstring_doc_metadata_subset`, covering
@@ -7551,8 +7563,8 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_slots_metadata_subset`, covering
   `UserString.__slots__`, `UserString(...).__slots__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to an empty tuple,
-  without adding `__weakref__`, `__abstractmethods__`, `__init_subclass__`,
-  `__subclasshook__`, `__new__`, pickle, or full UserString string-method proxying.
+  without adding `__weakref__`, `__init_subclass__`, `__subclasshook__`,
+  `__new__`, pickle, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset` and
   `cpython_collections_userstring_class_getitem_generic_alias_subset`, covering

@@ -25767,6 +25767,20 @@ print('visible', '__name__' in dir(UserString), '__name__' in dir(u), hasattr(Us
 }
 
 #[test]
+fn cpython_collections_userstring_abstractmethods_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __abstractmethods__ metadata",
+        name: "collections-userstring-abstractmethods-metadata",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__abstractmethods__' in dir(UserString), '__abstractmethods__' in dir(u), hasattr(UserString, '__abstractmethods__'), hasattr(u, '__abstractmethods__'))
+print('type-abstract', type(UserString.__abstractmethods__).__name__, repr(UserString.__abstractmethods__), len(UserString.__abstractmethods__), UserString.__abstractmethods__ == frozenset(), object.__getattribute__(UserString, '__abstractmethods__') == frozenset())
+print('inst-abstract', type(u.__abstractmethods__).__name__, repr(u.__abstractmethods__), len(u.__abstractmethods__), u.__abstractmethods__ == frozenset(), object.__getattribute__(u, '__abstractmethods__') == frozenset())
+print('same-value', u.__abstractmethods__ == UserString.__abstractmethods__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString __module__ metadata",
