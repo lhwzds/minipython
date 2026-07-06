@@ -1649,6 +1649,7 @@ Recent runtime migration notes:
   `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
+  `cpython_staticmethod_type_metadata_dir_surface_diff_subset`,
   `cpython_classmethod_metadata_diff_subset`,
   `cpython_staticmethod_classmethod_abstractmethod_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
@@ -10590,6 +10591,13 @@ that current CPython exposes on staticmethod objects: `__wrapped__`,
 `__func__`, `__name__`, `__qualname__`, `__module__`, `__doc__`,
 `__annotations__`, and `dir()` visibility for that supported metadata. Custom
 staticmethod `__dict__` mutation remains outside this focused metadata slice.
+`cpython_staticmethod_type_metadata_dir_surface_subset`, backed by
+`cpython_staticmethod_type_metadata_dir_surface_diff_subset`, covers
+`dir(staticmethod)` hiding `__base__`, `__bases__`, and `__name__` while
+keeping `staticmethod.__base__`, `staticmethod.__bases__`, and
+`staticmethod.__name__` directly readable, preserves `staticmethod(func)`
+descriptor-object `dir()` visibility, without hiding wrapped staticmethod metadata,
+and without widening host IO, network, process, C ABI, or full stdlib scope.
 `cpython_classmethod_metadata_subset` and gated direct CPython evidence in
 `cpython_classmethod_metadata_diff_subset` cover the matching wrapped callable
 metadata surface on classmethod objects: `__wrapped__`, `__func__`,

@@ -30677,6 +30677,23 @@ fn cpython_staticmethod_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public staticmethod type-metadata dir surface. The
+// metadata remains directly readable on the type, but CPython does not list it
+// in dir(staticmethod). Wrapped staticmethod objects keep their callable
+// metadata dir surface covered by cpython_staticmethod_metadata_subset.
+#[test]
+fn cpython_staticmethod_type_metadata_dir_surface_subset() {
+    assert_output(
+        "def sample():\n    pass\nwrapped = staticmethod(sample)\nprint('visible-type', '__base__' in dir(staticmethod), '__bases__' in dir(staticmethod), '__name__' in dir(staticmethod), hasattr(staticmethod, '__base__'), hasattr(staticmethod, '__bases__'), hasattr(staticmethod, '__name__'))\nprint('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__func__' in dir(wrapped), '__get__' in dir(wrapped))\nprint('readable', staticmethod.__base__ is object, staticmethod.__bases__ == (object,), staticmethod.__name__, object.__getattribute__(staticmethod, '__name__'))\nprint('method-kept', '__get__' in dir(wrapped), '__func__' in dir(wrapped), '__class_getitem__' in dir(staticmethod))",
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False True True True",
+            "readable True True staticmethod staticmethod",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public metadata copied by classmethod() for the wrapped
 // callable. Custom classmethod __dict__ mutation remains a separate surface.
 #[test]

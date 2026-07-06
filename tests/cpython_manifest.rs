@@ -46788,6 +46788,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_descriptor_constructor_arity_errors_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
+            "cpython_staticmethod_type_metadata_dir_surface_subset",
             "cpython_classmethod_metadata_subset",
             "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
@@ -46915,6 +46916,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_descriptor_constructor_arity_errors_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
+        "cpython_staticmethod_type_metadata_dir_surface_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
         "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
@@ -48312,6 +48314,88 @@ fn staticmethod_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("__annotations__"),
             "staticmethod metadata evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn staticmethod_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_staticmethod_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_staticmethod_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "staticmethod type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "staticmethod type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "wrapped = staticmethod(sample)",
+        "'__base__' in dir(staticmethod)",
+        "'__bases__' in dir(staticmethod)",
+        "'__name__' in dir(staticmethod)",
+        "hasattr(staticmethod, '__base__')",
+        "hasattr(staticmethod, '__bases__')",
+        "hasattr(staticmethod, '__name__')",
+        "'__base__' in dir(wrapped)",
+        "'__bases__' in dir(wrapped)",
+        "'__name__' in dir(wrapped)",
+        "'__func__' in dir(wrapped)",
+        "'__get__' in dir(wrapped)",
+        "staticmethod.__base__ is object",
+        "staticmethod.__bases__ == (object,)",
+        "staticmethod.__name__",
+        "object.__getattribute__(staticmethod, '__name__')",
+        "'__class_getitem__' in dir(staticmethod)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "staticmethod type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False True True True\"",
+        "\"readable True True staticmethod staticmethod\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "staticmethod type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "| \"slice\"\n            | \"staticmethod\"\n            | \"str\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "staticmethod type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(staticmethod)`",
+            "`staticmethod.__base__`",
+            "`staticmethod.__bases__`",
+            "`staticmethod.__name__`",
+            "`staticmethod(func)`",
+            "without hiding wrapped staticmethod metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "staticmethod type metadata dir-surface docs must contain `{required}`"
+            );
+        }
     }
 }
 

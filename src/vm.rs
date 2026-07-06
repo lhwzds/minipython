@@ -54410,6 +54410,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "range"
             | "set"
             | "slice"
+            | "staticmethod"
             | "str"
             | "tuple"
     ) {

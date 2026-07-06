@@ -11434,6 +11434,21 @@ print([name in dir(wrapped) for name in names])"#,
 }
 
 #[test]
+fn cpython_staticmethod_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public staticmethod type metadata dir surface",
+        name: "staticmethod-type-metadata-dir-surface",
+        source: r#"def sample():
+    pass
+wrapped = staticmethod(sample)
+print('visible-type', '__base__' in dir(staticmethod), '__bases__' in dir(staticmethod), '__name__' in dir(staticmethod), hasattr(staticmethod, '__base__'), hasattr(staticmethod, '__bases__'), hasattr(staticmethod, '__name__'))
+print('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__func__' in dir(wrapped), '__get__' in dir(wrapped))
+print('readable', staticmethod.__base__ is object, staticmethod.__bases__ == (object,), staticmethod.__name__, object.__getattribute__(staticmethod, '__name__'))
+print('method-kept', '__get__' in dir(wrapped), '__func__' in dir(wrapped), '__class_getitem__' in dir(staticmethod))"#,
+    });
+}
+
+#[test]
 fn cpython_classmethod_metadata_diff_subset() {
     let probe = run_cpython("print(hasattr(classmethod(lambda cls: None), '__wrapped__'))")
         .expect("failed to probe CPython classmethod metadata support");
