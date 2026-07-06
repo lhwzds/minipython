@@ -998,6 +998,20 @@ Recent runtime migration notes:
   `empty-reduce 2 True 1 True tuple True`, and
   `exhausted-reduce 2 True 1 True tuple True`, without widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_reversed_str_type_metadata_dir_surface_subset`, backed by
+  `cpython_reversed_str_type_metadata_dir_surface_diff_subset`, now pins
+  `reversed(non-ASCII str)`, `type(inst)`, `dir(type(reversed(str)))`, and
+  `dir(reversed(str))` for `reversed.__base__`, `reversed.__bases__`,
+  `reversed.__module__`, `reversed.__qualname__`, `__iter__`, `__next__`,
+  `__length_hint__`, `__reduce__`, direct `typ.__length_hint__(inst)` /
+  `typ.__reduce__(inst)` dispatch, `inst.__length_hint__()`,
+  `fresh-reduce 3 True 1 True 2 True`,
+  `iter-next-hint True 𐍈 2 2`,
+  `reduce-shape 3 True 1 True 1 True`,
+  `late-reduce 3 True 1 True 0 True`,
+  `empty-reduce 2 True 1 True tuple True`, and
+  `exhausted-reduce 2 True 1 True tuple True`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_tuple_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter((1, 2, 3))`, `type(inst)`, `dir(type(iter((...))))`, and
@@ -1874,6 +1888,7 @@ Recent runtime migration notes:
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_reversed_tuple_type_metadata_dir_surface_diff_subset`,
+  `cpython_reversed_str_type_metadata_dir_surface_diff_subset`,
   `cpython_tuple_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset`,

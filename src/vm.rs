@@ -38810,6 +38810,15 @@ impl Vm {
                 None => IteratorAdvance::Complete(Value::None),
             });
         }
+        if let Value::String(value) = object {
+            let Ok(index) = usize::try_from(index) else {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            };
+            return Ok(match value.chars().nth(index) {
+                Some(ch) => IteratorAdvance::Yield(Value::String(ch.to_string())),
+                None => IteratorAdvance::Complete(Value::None),
+            });
+        }
 
         self.call_iterator_method_catching(
             instance_special_method(object, "__getitem__")
@@ -78500,13 +78509,15 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 index,
             }))
         }
-        Value::String(value) => Ok(shared_iterator(Value::ReverseIterator {
-            items: value
-                .chars()
-                .map(|ch| Value::String(ch.to_string()))
-                .collect(),
-            index: 0,
-        })),
+        Value::String(value) => {
+            let index = i64::try_from(value.chars().count())
+                .map_err(|_| "reversed() length is too large".to_string())?
+                - 1;
+            Ok(shared_iterator(Value::SequenceReverseIterator {
+                object: Box::new(Value::String(value)),
+                index,
+            }))
+        }
         Value::UserString { data, .. } => Ok(shared_iterator(Value::ReverseIterator {
             items: data
                 .borrow()
