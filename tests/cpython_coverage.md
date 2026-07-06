@@ -182,6 +182,12 @@ Recent runtime migration notes:
   `dir(UserDict(...))` visibility to an empty tuple, without adding
   `__dict__`, `__weakref__`, real slots layout, or new UserDict mapping-method
   surface.
+- `cpython_collections_userdict_name_dir_surface_subset`, backed by
+  `cpython_collections_userdict_name_dir_surface_diff_subset`, now pins
+  `UserDict.__name__` lookup while keeping `__name__` out of
+  `dir(UserDict)` and `dir(UserDict(...))`, without changing
+  `UserDict.__name__` lookup, without adding `__dict__`, `__weakref__`, or new
+  UserDict mapping-method surface.
 - `cpython_collections_userstring_module_metadata_subset`, backed by
   `cpython_collections_userstring_module_metadata_diff_subset`, now pins
   `UserString.__module__`, `UserString(...).__module__`, and
@@ -1682,6 +1688,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_module_metadata_diff_subset`,
   `cpython_collections_userdict_abstractmethods_metadata_diff_subset`,
   `cpython_collections_userdict_slots_metadata_diff_subset`,
+  `cpython_collections_userdict_name_dir_surface_diff_subset`,
   `cpython_collections_userdict_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
@@ -7558,6 +7565,13 @@ without adding general custom encoder/decoder class support.
   `UserDict.__slots__`, `UserDict(...).__slots__`, and `dir(UserDict)` and
   `dir(UserDict(...))` visibility to an empty tuple, without adding
   `__dict__`, `__weakref__`, real slots layout, or new UserDict mapping-method
+  surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userdict_name_dir_surface_diff_subset` and
+  `cpython_collections_userdict_name_dir_surface_subset`, covering
+  `UserDict.__name__` lookup while keeping `__name__` out of `dir(UserDict)`
+  and `dir(UserDict(...))`, without changing `UserDict.__name__` lookup,
+  without adding `__dict__`, `__weakref__`, or new UserDict mapping-method
   surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_type_base_metadata_diff_subset` and

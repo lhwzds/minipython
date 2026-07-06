@@ -69320,6 +69320,29 @@ print('same-value', u.__slots__ == UserDict.__slots__)"#,
     );
 }
 
+// Mirrors CPython's public UserDict __name__ dir surface. The type-level
+// metadata remains readable, but CPython does not list __name__ in dir().
+#[test]
+fn cpython_collections_userdict_name_dir_surface_subset() {
+    assert_output(
+        r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('type-name', UserDict.__name__, type(UserDict.__name__).__name__, getattr(UserDict, '__name__'), object.__getattribute__(UserDict, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__)
+print('visible', '__name__' in dir(UserDict), '__name__' in dir(u), hasattr(UserDict, '__name__'), hasattr(u, '__name__'))"#,
+        &[
+            "type-name UserDict str UserDict UserDict",
+            "inst-direct AttributeError",
+            "inst-getattr AttributeError",
+            "visible False False True False",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserDict` direct base metadata.
 #[test]
 fn cpython_collections_userdict_type_base_metadata_subset() {

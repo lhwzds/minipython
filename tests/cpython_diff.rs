@@ -25750,6 +25750,23 @@ print('same-value', u.__slots__ == UserDict.__slots__)"#,
 }
 
 #[test]
+fn cpython_collections_userdict_name_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserDict __name__ dir surface",
+        name: "collections-userdict-name-dir-surface",
+        source: r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('type-name', UserDict.__name__, type(UserDict.__name__).__name__, getattr(UserDict, '__name__'), object.__getattribute__(UserDict, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__)
+print('visible', '__name__' in dir(UserDict), '__name__' in dir(u), hasattr(UserDict, '__name__'), hasattr(u, '__name__'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserDict public direct base metadata subset",

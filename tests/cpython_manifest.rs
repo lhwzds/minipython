@@ -26509,6 +26509,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_module_metadata_subset",
             "cpython_collections_userdict_abstractmethods_metadata_subset",
             "cpython_collections_userdict_slots_metadata_subset",
+            "cpython_collections_userdict_name_dir_surface_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
@@ -28715,6 +28716,76 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict __slots__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_name_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict __name__ dir surface"
+    );
+    let userdict_name_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_name_dir_surface_diff_subset",
+    );
+    let userdict_name_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_name_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "u = UserDict({'a': 1})",
+        "UserDict.__name__",
+        "getattr(UserDict, '__name__')",
+        "object.__getattribute__(UserDict, '__name__')",
+        "('inst-direct', lambda: u.__name__)",
+        "('inst-getattr', lambda: getattr(u, '__name__'))",
+        "type(error).__name__",
+        "'__name__' in dir(UserDict)",
+        "'__name__' in dir(u)",
+        "hasattr(UserDict, '__name__')",
+        "hasattr(u, '__name__')",
+    ] {
+        assert!(
+            userdict_name_dir_diff_body.contains(required)
+                && userdict_name_dir_subset_body.contains(required),
+            "UserDict __name__ dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"type-name UserDict str UserDict UserDict\"",
+        "\"inst-direct AttributeError\"",
+        "\"inst-getattr AttributeError\"",
+        "\"visible False False True False\"",
+    ] {
+        assert!(
+            userdict_name_dir_subset_body.contains(required),
+            "UserDict __name__ dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserDict\"",
+        "names.retain(|attr| attr != \"__name__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict __name__ dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_name_dir_surface_subset",
+            "cpython_collections_userdict_name_dir_surface_diff_subset",
+            "`UserDict.__name__`",
+            "`dir(UserDict)` and `dir(UserDict(...))`",
+            "`__name__`",
+            "without changing `UserDict.__name__` lookup",
+            "without adding `__dict__`, `__weakref__`",
+            "UserDict mapping-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict __name__ dir-surface docs must contain `{required}`"
             );
         }
     }

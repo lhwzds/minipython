@@ -54302,6 +54302,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
         names.push("cell_contents".to_string());
     } else if name == "UserDict" {
+        names.retain(|attr| attr != "__name__");
         names.push("__module__".to_string());
         names.push("__abstractmethods__".to_string());
         names.push("__slots__".to_string());
