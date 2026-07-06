@@ -69412,6 +69412,27 @@ print('same', u.__module__ == UserList.__module__, getattr(u, '__module__') == '
     );
 }
 
+// Mirrors CPython's public UserList __abstractmethods__ metadata on the type
+// and instances. This only covers the empty-frozenset metadata value and
+// discoverability.
+#[test]
+fn cpython_collections_userlist_abstractmethods_metadata_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__abstractmethods__' in dir(UserList), '__abstractmethods__' in dir(u), hasattr(UserList, '__abstractmethods__'), hasattr(u, '__abstractmethods__'))
+print('type-abstract', type(UserList.__abstractmethods__).__name__, repr(UserList.__abstractmethods__), len(UserList.__abstractmethods__), UserList.__abstractmethods__ == frozenset(), object.__getattribute__(UserList, '__abstractmethods__') == frozenset())
+print('inst-abstract', type(u.__abstractmethods__).__name__, repr(u.__abstractmethods__), len(u.__abstractmethods__), u.__abstractmethods__ == frozenset(), object.__getattribute__(u, '__abstractmethods__') == frozenset())
+print('same-value', u.__abstractmethods__ == UserList.__abstractmethods__)"#,
+        &[
+            "visible True True True True",
+            "type-abstract frozenset frozenset() 0 True True",
+            "inst-abstract frozenset frozenset() 0 True True",
+            "same-value True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {

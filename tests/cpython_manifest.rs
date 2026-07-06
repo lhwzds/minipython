@@ -26514,6 +26514,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_module_metadata_subset",
+            "cpython_collections_userlist_abstractmethods_metadata_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29007,6 +29008,77 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __module__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_abstractmethods_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __abstractmethods__ metadata"
+    );
+    let userlist_abstractmethods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_abstractmethods_metadata_diff_subset",
+    );
+    let userlist_abstractmethods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_abstractmethods_metadata_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__abstractmethods__' in dir(UserList)",
+        "'__abstractmethods__' in dir(u)",
+        "hasattr(UserList, '__abstractmethods__')",
+        "hasattr(u, '__abstractmethods__')",
+        "UserList.__abstractmethods__",
+        "object.__getattribute__(UserList, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__",
+        "object.__getattribute__(u, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__ == UserList.__abstractmethods__",
+    ] {
+        assert!(
+            userlist_abstractmethods_diff_body.contains(required)
+                && userlist_abstractmethods_subset_body.contains(required),
+            "UserList __abstractmethods__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-abstract frozenset frozenset() 0 True True\"",
+        "\"inst-abstract frozenset frozenset() 0 True True\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userlist_abstractmethods_subset_body.contains(required),
+            "UserList __abstractmethods__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserList\" && name == \"__abstractmethods__\"",
+        "\"__abstractmethods__\" => Ok(frozen_set_value(Vec::new()))",
+        "names.push(\"__abstractmethods__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __abstractmethods__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_abstractmethods_metadata_subset",
+            "cpython_collections_userlist_abstractmethods_metadata_diff_subset",
+            "`UserList.__abstractmethods__`",
+            "`UserList(...).__abstractmethods__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "empty `frozenset()`",
+            "without adding `__slots__`",
+            "full abstractmethod machinery",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __abstractmethods__ metadata docs must contain `{required}`"
             );
         }
     }
