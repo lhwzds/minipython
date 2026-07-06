@@ -46720,6 +46720,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_callable_iterator_type_metadata_dir_surface_subset",
             "cpython_range_iterator_type_metadata_dir_surface_subset",
             "cpython_list_iterator_type_metadata_dir_surface_subset",
+            "cpython_list_iterator_setstate_subset",
             "cpython_list_reverseiterator_type_metadata_dir_surface_subset",
             "cpython_reversed_tuple_type_metadata_dir_surface_subset",
             "cpython_reversed_str_type_metadata_dir_surface_subset",
@@ -46985,6 +46986,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_callable_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_range_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_list_iterator_setstate_diff_subset",
         "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_tuple_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_str_type_metadata_dir_surface_diff_subset",
@@ -53085,12 +53087,12 @@ fn list_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"list_iterator\"",
         "\"list_iterator\" => vec![builtin_type_value(\"object\")]",
-        "\"list_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"list_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::ListIterator { .. })",
         "Value::ListIterator { .. } => names.extend(builtin_type_dir_names(\"list_iterator\"))",
         "| \"list_iterator\"\n            | \"tuple_iterator\"",
         "function_name == \"list_iterator\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -53128,6 +53130,116 @@ fn list_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "list_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn list_iterator_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_iterator_setstate_diff_subset";
+    let subset_name = "cpython_list_iterator_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list_iterator __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list_iterator __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = [10, 20, 30]",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "next(probe)",
+        "bad-setstate-",
+        "10**200",
+        "iter(source).__setstate__()",
+        "iter(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "typ.__setstate__(object(), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list_iterator __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None StopIteration\"",
+        "\"setstate-next 0 None 10\"",
+        "\"setstate-next 2 None 30\"",
+        "\"setstate-next 99 None StopIteration\"",
+        "\"setstate-next True None 20\"",
+        "\"bad-setstate-Index TypeError an integer is required\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C ssize_t\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C ssize_t\"",
+        "\"missing TypeError list_iterator.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError list_iterator.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-next 30\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'list_iterator' objects doesn't apply to a 'object' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list_iterator __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"list_iterator.__setstate__\"",
+        "self.call_list_iterator_setstate(receiver.clone(), index.clone())",
+        "fn call_list_iterator_setstate(",
+        "list_iterator_setstate_index(&index)",
+        "Value::ListIterator {",
+        "*current = index;",
+        "*exhausted = false;",
+        "*exhausted = true;",
+        "list_iterator_setstate_receiver_error(&*iterator)",
+        "\"list_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "fn list_iterator_protocol_method(",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "list_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"list_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "fn list_iterator_setstate_index(",
+        "Value::Bool(value) => Value::Number(bool_as_i64(*value))",
+        "\"OverflowError: Python int too large to convert to C ssize_t\"",
+        "fn list_iterator_setstate_receiver_error(",
+        "\"list_iterator.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list_iterator __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`list_iterator.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "negative state exhaustion",
+            "oversized non-overflowing state exhaustion",
+            "bool and int-subclass state handling",
+            "`TypeError: an integer is required`",
+            "`OverflowError: Python int too large to convert to C ssize_t`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "list_iterator __setstate__ docs must contain `{required}`"
             );
         }
     }

@@ -1002,6 +1002,14 @@ Recent runtime migration notes:
   `typ.__length_hint__(inst)` / `typ.__next__(inst)` dispatch, and
   `inst.__length_hint__()`, without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `cpython_list_iterator_setstate_subset`, backed by
+  `cpython_list_iterator_setstate_diff_subset`, now pins
+  `list_iterator.__setstate__`, `__setstate__` visibility on the type and instance,
+  negative state exhaustion, oversized non-overflowing state exhaustion, bool and int-subclass state handling,
+  `TypeError: an integer is required`,
+  `OverflowError: Python int too large to convert to C ssize_t`, and descriptor
+  receiver error behavior, without widening host IO, network, process, C ABI,
+  or full stdlib scope.
 - `cpython_list_reverseiterator_type_metadata_dir_surface_subset`, backed by
   `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`, now
   pins `reversed([1, 2, 3])`, `type(inst)`,
@@ -1978,6 +1986,7 @@ Recent runtime migration notes:
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_range_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_list_iterator_setstate_diff_subset`,
   `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_reversed_tuple_type_metadata_dir_surface_diff_subset`,
   `cpython_reversed_str_type_metadata_dir_surface_diff_subset`,
