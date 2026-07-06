@@ -17126,6 +17126,61 @@ print('exhausted-reduce', len(exhausted_reduced), exhausted_reduced[0] is revers
 }
 
 #[test]
+fn cpython_reversed_setstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public reversed __setstate__ behavior",
+        name: "reversed-setstate",
+        source: r#"def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+class Index:
+    def __index__(self):
+        print('index-called')
+        return 1
+
+class IntSub(int):
+    pass
+
+source = (10, 20, 30)
+inst = reversed(source)
+typ = type(inst)
+print('visible-setstate', '__setstate__' in dir(typ), '__setstate__' in dir(inst), hasattr(typ, '__setstate__'), hasattr(inst, '__setstate__'))
+for state in [-1, 0, 1, 2, 3, 99, True, False, IntSub(2)]:
+    probe = reversed(source)
+    result = probe.__setstate__(state)
+    try:
+        value = next(probe)
+    except StopIteration:
+        value = 'StopIteration'
+    print('setstate-next', repr(state), result, value)
+for bad in [None, 1.5, '1', [], Index()]:
+    probe = reversed(source)
+    show('bad-setstate-' + type(bad).__name__, lambda probe=probe, bad=bad: probe.__setstate__(bad))
+for state in [10**200, -(10**200)]:
+    probe = reversed(source)
+    show('big-setstate-' + ('neg' if state < 0 else 'pos'), lambda probe=probe, state=state: probe.__setstate__(state))
+for empty_state in [-1, 0, 1, 99]:
+    probe = reversed(())
+    result = probe.__setstate__(empty_state)
+    try:
+        value = next(probe)
+    except StopIteration:
+        value = 'StopIteration'
+    print('empty-setstate', empty_state, result, value, probe.__length_hint__())
+show('missing', lambda: reversed(source).__setstate__())
+show('extra', lambda: reversed(source).__setstate__(0, 1))
+shifted = reversed(source)
+print('unbound-setstate', typ.__setstate__(shifted, 2))
+print('unbound-next', next(shifted))
+show('unbound-bad', lambda: typ.__setstate__(object(), 0))
+show('unbound-list-reverse', lambda: typ.__setstate__(reversed([1, 2, 3]), 0))"#,
+    });
+}
+
+#[test]
 fn cpython_reversed_str_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public reversed str type metadata dir surface",

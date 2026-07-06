@@ -46724,6 +46724,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_list_reverseiterator_type_metadata_dir_surface_subset",
             "cpython_list_reverseiterator_setstate_subset",
             "cpython_reversed_tuple_type_metadata_dir_surface_subset",
+            "cpython_reversed_setstate_subset",
             "cpython_reversed_str_type_metadata_dir_surface_subset",
             "cpython_reversed_bytes_type_metadata_dir_surface_subset",
             "cpython_reversed_bytearray_type_metadata_dir_surface_subset",
@@ -46996,6 +46997,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_reverseiterator_setstate_diff_subset",
         "cpython_reversed_tuple_type_metadata_dir_surface_diff_subset",
+        "cpython_reversed_setstate_diff_subset",
         "cpython_reversed_str_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_bytes_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_bytearray_type_metadata_dir_surface_diff_subset",
@@ -53619,7 +53621,13 @@ fn reversed_tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::Iterator(state)\n            if matches!(&*state.borrow(), Value::SequenceReverseIterator { .. })",
         "Value::SequenceReverseIterator { .. } => names.extend(builtin_type_dir_names(\"reversed\"))",
         "Value::SequenceReverseIterator { object, index } => {",
@@ -53628,10 +53636,13 @@ fn reversed_tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
         "sequence_reverse_iterator_item(object.as_ref(), *index)",
         "if let Value::Tuple(items) = object",
         "items.get(index)",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "Value::Tuple(items) => {\n            let index = i64::try_from(items.len())",
         "Value::SequenceReverseIterator {\n                object: Box::new(Value::Tuple(items)),",
@@ -53676,6 +53687,125 @@ fn reversed_tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "reversed tuple type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn reversed_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_reversed_setstate_diff_subset";
+    let subset_name = "cpython_reversed_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "reversed __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "reversed __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = (10, 20, 30)",
+        "inst = reversed(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "next(probe)",
+        "bad-setstate-",
+        "10**200",
+        "empty-setstate",
+        "reversed(source).__setstate__()",
+        "reversed(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "typ.__setstate__(object(), 0)",
+        "typ.__setstate__(reversed([1, 2, 3]), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "reversed __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None StopIteration\"",
+        "\"setstate-next 0 None 10\"",
+        "\"setstate-next 2 None 30\"",
+        "\"setstate-next 3 None 30\"",
+        "\"setstate-next 99 None 30\"",
+        "\"setstate-next True None 20\"",
+        "\"bad-setstate-Index TypeError an integer is required\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C ssize_t\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C ssize_t\"",
+        "\"empty-setstate -1 None StopIteration 0\"",
+        "\"empty-setstate 99 None StopIteration 0\"",
+        "\"missing TypeError reversed.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError reversed.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-next 30\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'reversed' objects doesn't apply to a 'object' object\"",
+        "\"unbound-list-reverse TypeError descriptor '__setstate__' for 'reversed' objects doesn't apply to a 'list_reverseiterator' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "reversed __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"reversed.__setstate__\"",
+        "self.call_reversed_setstate(receiver.clone(), index.clone())",
+        "fn call_reversed_setstate(",
+        "self.reversed_setstate_index(object, &index)?",
+        "fn reversed_setstate_index(&mut self, object: Value, value: &Value)",
+        "self.sequence_iterator_length(object)?.unwrap_or(0)",
+        "reversed_setstate_index(length, value)",
+        "fn reversed_setstate_index(length: usize, value: &Value)",
+        "Value::SequenceReverseIterator {",
+        "*current = index;",
+        "reversed_setstate_receiver_error(&*iterator)",
+        "\"reversed\" => &[",
+        "\"__setstate__\",",
+        "fn reversed_iterator_protocol_method(",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"reversed\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "Value::Bool(value) => Value::Number(bool_as_i64(*value))",
+        "\"OverflowError: Python int too large to convert to C ssize_t\"",
+        "fn reversed_setstate_receiver_error(",
+        "\"reversed.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "reversed __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`reversed.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "negative state exhaustion",
+            "oversized non-overflowing state clamps to the last source element",
+            "empty sequence state exhaustion",
+            "bool and int-subclass state handling",
+            "`TypeError: an integer is required`",
+            "`OverflowError: Python int too large to convert to C ssize_t`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "reversed __setstate__ docs must contain `{required}`"
             );
         }
     }
@@ -53776,7 +53906,13 @@ fn reversed_str_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::SequenceReverseIterator { object, index } => {",
         "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
         "return self.reverse_iterator_reduce_result(*object, Some(index));",
@@ -53784,10 +53920,13 @@ fn reversed_str_type_metadata_dir_surface_docs_cover_core_runtime() {
         "if let Value::String(value) = object",
         "value.chars().nth(index)",
         "Value::String(ch.to_string())",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "Value::String(value) => {\n            let index = i64::try_from(value.chars().count())",
         "object: Box::new(Value::String(value))",
@@ -53933,7 +54072,13 @@ fn reversed_bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::SequenceReverseIterator { object, index } => {",
         "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
         "return self.reverse_iterator_reduce_result(*object, Some(index));",
@@ -53941,10 +54086,13 @@ fn reversed_bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
         "if let Value::Bytes(value) = object",
         "value.get(index)",
         "Value::Number(*byte as i64)",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "Value::Bytes(value) => {\n            let index = i64::try_from(value.len())",
         "object: Box::new(Value::Bytes(value))",
@@ -54093,7 +54241,13 @@ fn reversed_bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::SequenceReverseIterator { object, index } => {",
         "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
         "return self.reverse_iterator_reduce_result(*object, Some(index));",
@@ -54102,10 +54256,13 @@ fn reversed_bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
         "let bytes = bytearray_bytes(value);",
         "bytes.get(index)",
         "Value::Number(*byte as i64)",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "Value::ByteArray(value) => {\n            let index = i64::try_from(bytearray_bytes(&value).len())",
         "object: Box::new(Value::ByteArray(value))",
@@ -54254,7 +54411,13 @@ fn reversed_memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::SequenceReverseIterator { object, index } => {",
         "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
         "return self.reverse_iterator_reduce_result(*object, Some(index));",
@@ -54264,10 +54427,13 @@ fn reversed_memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
         "Ok(value) => IteratorAdvance::Yield(value)",
         "Value::MemoryView(view) => {\n            let index = i64::try_from(memoryview_len(&view)?)",
         "object: Box::new(Value::MemoryView(view))",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "| \"list_reverseiterator\"\n            | \"reversed\"\n            | \"property\"",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -54416,7 +54582,13 @@ fn reversed_array_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"reversed\"",
         "\"reversed\" => vec![builtin_type_value(\"object\")]",
-        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"reversed\" => &[
+            \"__iter__\",
+            \"__next__\",
+            \"__length_hint__\",
+            \"__reduce__\",
+            \"__setstate__\",
+        ]",
         "Value::SequenceReverseIterator { object, index } => {",
         "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
         "return self.reverse_iterator_reduce_result(*object, Some(index));",
@@ -54425,10 +54597,13 @@ fn reversed_array_type_metadata_dir_surface_docs_cover_core_runtime() {
         "array_array_len(&value).expect(\"array storage exists after guard\")",
         "Value::SequenceReverseIterator {",
         "object: Box::new(value)",
-        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
-        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "fn reversed_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "reversed_iterator_protocol_method(Value::SequenceReverseIterator",
+        "let is_reversed_iterator =
+                    matches!(&*iterator, Value::SequenceReverseIterator { .. });",
+        "reversed_iterator_protocol_method(Value::Iterator(state), name)",
         "function_name == \"reversed\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "| \"list_reverseiterator\"\n            | \"reversed\"\n            | \"property\"",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
