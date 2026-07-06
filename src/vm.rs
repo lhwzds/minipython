@@ -54310,6 +54310,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "UserList" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
         names.retain(|attr| attr != "__name__");
+        names.push("__module__".to_string());
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
@@ -62963,6 +62964,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
+                "__module__" => Ok(Value::String("collections".to_string())),
                 "__doc__" => Ok(Value::String(
                     builtin_type_doc("UserList")
                         .expect("UserList type doc is defined")

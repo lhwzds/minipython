@@ -25804,6 +25804,20 @@ print('bases', type(bases).__name__, len(bases), bases[0] is MutableMapping, bas
 }
 
 #[test]
+fn cpython_collections_userlist_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __module__ metadata",
+        name: "collections-userlist-module-metadata",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__module__' in dir(UserList), '__module__' in dir(u), hasattr(UserList, '__module__'), hasattr(u, '__module__'))
+print('type-module', UserList.__module__, type(UserList.__module__).__name__, object.__getattribute__(UserList, '__module__'))
+print('inst-module', u.__module__, type(u.__module__).__name__, getattr(u, '__module__'), object.__getattribute__(u, '__module__'))
+print('same', u.__module__ == UserList.__module__, getattr(u, '__module__') == 'collections')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

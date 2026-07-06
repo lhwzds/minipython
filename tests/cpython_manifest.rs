@@ -26513,6 +26513,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_type_base_dir_surface_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
+            "cpython_collections_userlist_module_metadata_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -28932,6 +28933,80 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserDict direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_module_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __module__ metadata"
+    );
+    let userlist_module_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_module_metadata_diff_subset",
+    );
+    let userlist_module_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_module_metadata_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__module__' in dir(UserList)",
+        "'__module__' in dir(u)",
+        "hasattr(UserList, '__module__')",
+        "hasattr(u, '__module__')",
+        "UserList.__module__",
+        "object.__getattribute__(UserList, '__module__')",
+        "u.__module__",
+        "getattr(u, '__module__')",
+        "object.__getattribute__(u, '__module__')",
+        "u.__module__ == UserList.__module__",
+    ] {
+        assert!(
+            userlist_module_diff_body.contains(required)
+                && userlist_module_subset_body.contains(required),
+            "UserList __module__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-module collections str collections\"",
+        "\"inst-module collections str collections collections\"",
+        "\"same True True\"",
+    ] {
+        assert!(
+            userlist_module_subset_body.contains(required),
+            "UserList __module__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserList\"",
+        "names.push(\"__module__\".to_string())",
+        "Value::UserList { data, attrs } => {",
+        "\"__module__\" => Ok(Value::String(\"collections\".to_string()))",
+        "function_name == \"UserList\"",
+        "name == \"__module__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __module__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_module_metadata_subset",
+            "cpython_collections_userlist_module_metadata_diff_subset",
+            "`UserList.__module__`",
+            "`UserList(...).__module__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "`collections`",
+            "without changing direct base metadata lookup",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __module__ metadata docs must contain `{required}`"
             );
         }
     }
