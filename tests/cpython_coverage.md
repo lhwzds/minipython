@@ -200,6 +200,12 @@ Recent runtime migration notes:
   of `dir(UserList)` and `dir(UserList(...))`, pinned to `MutableSequence`,
   without changing direct base metadata lookup, without expanding full
   `__mro__` parity, or adding new UserList sequence-method surface.
+- `cpython_collections_userstring_type_base_dir_surface_subset`, backed by
+  `cpython_collections_userstring_type_base_dir_surface_diff_subset`, now keeps
+  `UserString.__base__` and `UserString.__bases__` readable while keeping them
+  out of `dir(UserString)` and `dir(UserString(...))`, pinned to `Sequence`,
+  without changing direct base metadata lookup, without expanding full
+  `__mro__` parity, or full UserString string-method proxying.
 - `cpython_collections_userstring_module_metadata_subset`, backed by
   `cpython_collections_userstring_module_metadata_diff_subset`, now pins
   `UserString.__module__`, `UserString(...).__module__`, and
@@ -1710,6 +1716,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
+  `cpython_collections_userstring_type_base_dir_surface_diff_subset`,
   `cpython_collections_userstring_name_dir_surface_diff_subset`,
   `cpython_collections_userstring_abstractmethods_metadata_diff_subset`,
   `cpython_collections_userstring_module_metadata_diff_subset`,
@@ -7617,6 +7624,13 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_type_base_metadata_subset`, covering
   `UserString` direct base metadata through `__base__` and `__bases__`, pinned
   to `collections.abc.Sequence` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_type_base_dir_surface_diff_subset` and
+  `cpython_collections_userstring_type_base_dir_surface_subset`, covering
+  `UserString.__base__` and `UserString.__bases__` readability while keeping
+  them out of `dir(UserString)` and `dir(UserString(...))`, pinned to
+  `Sequence`, without changing direct base metadata lookup, without expanding
+  full `__mro__` parity, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_module_metadata_diff_subset` and
   `cpython_collections_userstring_module_metadata_subset`, covering

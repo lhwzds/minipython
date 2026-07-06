@@ -54311,6 +54311,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
+        names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
     }
 
     let methods: &[&str] = match name {

@@ -26519,6 +26519,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
+            "cpython_collections_userstring_type_base_dir_surface_subset",
             "cpython_collections_userstring_name_dir_surface_subset",
             "cpython_collections_userstring_abstractmethods_metadata_subset",
             "cpython_collections_userstring_module_metadata_subset",
@@ -29136,6 +29137,85 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_type_base_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString direct base metadata dir surface"
+    );
+    let userstring_type_base_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_type_base_dir_surface_diff_subset",
+    );
+    let userstring_type_base_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_type_base_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "from collections.abc import Sequence",
+        "u = UserString('ab')",
+        "getattr(UserString, '__base__')",
+        "getattr(UserString, '__bases__')",
+        "object.__getattribute__(UserString, '__base__')",
+        "object.__getattribute__(UserString, '__bases__')",
+        "getattr(u, attr)",
+        "'__base__' in dir(UserString)",
+        "'__bases__' in dir(UserString)",
+        "'__base__' in dir(u)",
+        "'__bases__' in dir(u)",
+        "hasattr(UserString, '__base__')",
+        "hasattr(UserString, '__bases__')",
+        "hasattr(u, '__base__')",
+        "hasattr(u, '__bases__')",
+    ] {
+        assert!(
+            userstring_type_base_dir_diff_body.contains(required)
+                && userstring_type_base_dir_subset_body.contains(required),
+            "UserString direct base metadata dir-surface diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"direct-base True collections.abc Sequence\"",
+        "\"direct-bases tuple 1 True collections.abc Sequence\"",
+        "\"object True True\"",
+        "\"inst __base__ AttributeError\"",
+        "\"inst __bases__ AttributeError\"",
+        "\"visible False False False False True True False False\"",
+    ] {
+        assert!(
+            userstring_type_base_dir_subset_body.contains(required),
+            "UserString direct base metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserString\"",
+        "names.retain(|attr| attr != \"__name__\")",
+        "names.retain(|attr| !matches!(attr.as_str(), \"__base__\" | \"__bases__\"))",
+        "collections_type_direct_base_name",
+        "\"UserString\" => Some(\"Sequence\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString direct base metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_type_base_dir_surface_subset",
+            "cpython_collections_userstring_type_base_dir_surface_diff_subset",
+            "`UserString.__base__` and `UserString.__bases__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "`Sequence`",
+            "without changing direct base metadata lookup",
+            "without expanding full `__mro__` parity",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString direct base metadata dir-surface docs must contain `{required}`"
             );
         }
     }
