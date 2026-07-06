@@ -26532,6 +26532,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_inherited_sizeof_method_subset",
             "cpython_collections_userstring_inherited_getstate_method_subset",
             "cpython_collections_userstring_inherited_setattr_method_subset",
+            "cpython_collections_userstring_inherited_delattr_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -30546,6 +30547,109 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString setattr-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_delattr_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __delattr__"
+    );
+    let userstring_delattr_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_delattr_method_diff_subset",
+    );
+    let userstring_delattr_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_delattr_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "u.extra = 'x'",
+        "u.extra2 = 'y'",
+        "hasattr(UserString, '__delattr__')",
+        "hasattr(u, '__delattr__')",
+        "'__delattr__' in dir(UserString)",
+        "'__delattr__' in dir(u)",
+        "UserString.__delattr__ is object.__delattr__",
+        "type(UserString.__delattr__).__name__",
+        "type(u.__delattr__).__name__",
+        "u.__delattr__('extra')",
+        "object.__delattr__(u, 'extra2')",
+        "u.__delattr__('missing')",
+        "UserString.__delattr__('abé', 'extra')",
+        "u.__delattr__(1)",
+        "UserString.__delattr__()",
+        "UserString.__delattr__(u)",
+        "UserString.__delattr__(u, 'extra3', 1)",
+        "UserString.__delattr__(u, name='extra3')",
+        "UserString.__delattr__(self=u, name='extra3')",
+        "print('final', hasattr(u, 'extra'), hasattr(u, 'extra2'), u.data)",
+    ] {
+        assert!(
+            userstring_delattr_method_diff_body.contains(required)
+                && userstring_delattr_method_subset_body.contains(required),
+            "UserString delattr-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True wrapper_descriptor method-wrapper\"",
+        "\"bound-extra NoneType None has_extra= False has_extra2= True has_data= True\"",
+        "\"object-extra2 NoneType None has_extra= False has_extra2= False has_data= True\"",
+        "\"missing AttributeError 'UserString' object has no attribute 'missing'",
+        "\"bad-receiver AttributeError 'str' object has no attribute 'extra' and no __dict__ for setting new attributes",
+        "\"bad-name TypeError attribute name must be string, not 'int'",
+        "\"noargs TypeError descriptor '__delattr__' of 'object' object needs an argument",
+        "\"self-only TypeError expected 1 argument, got 0",
+        "\"extra TypeError expected 1 argument, got 2",
+        "\"badkw TypeError wrapper __delattr__() takes no keyword arguments",
+        "\"keyword-only TypeError descriptor '__delattr__' of 'object' object needs an argument",
+        "\"final False False abé\"",
+    ] {
+        assert!(
+            userstring_delattr_method_subset_body.contains(required),
+            "UserString delattr-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "names.push(\"__delattr__\".to_string())",
+        "function_name == \"UserString\" && name == \"__delattr__\"",
+        "Ok(Value::Builtin(\"object.__delattr__\".to_string()))",
+        "object_delattr_bound_method(Value::UserString",
+        "Value::Builtin(name) if name == \"object.__delattr__\"",
+        "self.call_object_delattr(args)",
+        "fn call_object_delattr(",
+        "self.delete_attribute_without_custom_delattr(object.clone(), &name)",
+        "Value::UserString { attrs, .. }",
+        "mark_dict_changed(&mut attrs)",
+        "\"TypeError: wrapper __delattr__() takes no keyword arguments\"",
+        "\"TypeError: descriptor '__delattr__' of 'object' object needs an argument\"",
+        "\"TypeError: expected 1 argument, got {}\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString delattr-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_delattr_method_subset",
+            "cpython_collections_userstring_inherited_delattr_method_diff_subset",
+            "`UserString.__delattr__`",
+            "inherited `object.__delattr__`",
+            "`UserString.__delattr__ is object.__delattr__`",
+            "wrapper_descriptor",
+            "method-wrapper",
+            "user attribute deletion",
+            "bad receiver, bad name, and missing attribute errors",
+            "CPython `object.__delattr__` TypeError text",
+            "without changing UserString's structural `.data` storage or adding host-backed state",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString delattr-method docs must contain `{required}`"
             );
         }
     }

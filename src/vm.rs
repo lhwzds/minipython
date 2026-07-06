@@ -10125,6 +10125,12 @@ impl Vm {
             }
             Value::Builtin(name) if name == "object.__delattr__" => {
                 if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__delattr__' of 'object' object needs an argument"
+                                .to_string(),
+                        );
+                    }
                     return Err(
                         "TypeError: wrapper __delattr__() takes no keyword arguments".to_string(),
                     );
@@ -17035,10 +17041,16 @@ impl Vm {
     }
 
     fn call_object_delattr(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [object, name] = args.as_slice() else {
+        let Some((object, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__delattr__' of 'object' object needs an argument"
+                    .to_string(),
+            );
+        };
+        let [name] = rest else {
             return Err(format!(
-                "object.__delattr__ expected 2 arguments, got {}",
-                args.len()
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
             ));
         };
 
@@ -54970,6 +54982,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__init__".to_string());
         names.push("__int__".to_string());
         names.push("__mod__".to_string());
+        names.push("__delattr__".to_string());
         names.push("__reversed__".to_string());
         names.push("__rmod__".to_string());
         names.push("__setattr__".to_string());
@@ -62969,6 +62982,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     data,
                     attrs,
                 })),
+                "__delattr__" => Ok(object_delattr_bound_method(Value::UserString {
+                    data,
+                    attrs,
+                })),
                 "__sizeof__" => Ok(object_sizeof_bound_method(Value::UserString { data, attrs })),
                 "__ne__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("object.__ne__".to_string())),
@@ -64937,6 +64954,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__setattr__" => {
             Ok(Value::Builtin("object.__setattr__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__delattr__" => {
+            Ok(Value::Builtin("object.__delattr__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__sizeof__" => {
             Ok(Value::Builtin("object.__sizeof__".to_string()))
@@ -68380,6 +68400,21 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             } else {
                 Err(format!(
                     "AttributeError: '{kind}' object has no attribute '{name}'"
+                ))
+            }
+        }
+        Value::UserString { attrs, .. } => {
+            let mut attrs = attrs.borrow_mut();
+            if let Some(position) = attrs
+                .iter()
+                .position(|(key, _)| matches!(key, Value::String(key_name) if key_name == name))
+            {
+                attrs.remove(position);
+                mark_dict_changed(&mut attrs);
+                Ok(())
+            } else {
+                Err(format!(
+                    "AttributeError: 'UserString' object has no attribute '{name}'"
                 ))
             }
         }

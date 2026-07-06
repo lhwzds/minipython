@@ -26386,6 +26386,39 @@ print('final', u.data, u.extra, u.extra2, hasattr(u, 'extra3'))"#,
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_delattr_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__delattr__ behavior",
+        name: "collections-userstring-inherited-delattr-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+u.extra = 'x'
+u.extra2 = 'y'
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, type(value).__name__, repr(value), 'has_extra=', hasattr(u, 'extra'), 'has_extra2=', hasattr(u, 'extra2'), 'has_data=', hasattr(u, 'data'))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args, 'has_extra=', hasattr(u, 'extra'), 'has_extra2=', hasattr(u, 'extra2'), 'has_data=', hasattr(u, 'data'))
+print('visible', hasattr(UserString, '__delattr__'), hasattr(u, '__delattr__'), '__delattr__' in dir(UserString), '__delattr__' in dir(u), UserString.__delattr__ is object.__delattr__, type(UserString.__delattr__).__name__, type(u.__delattr__).__name__)
+for label, expr in [
+    ('bound-extra', lambda: u.__delattr__('extra')),
+    ('object-extra2', lambda: object.__delattr__(u, 'extra2')),
+    ('missing', lambda: u.__delattr__('missing')),
+    ('bad-receiver', lambda: UserString.__delattr__('abé', 'extra')),
+    ('bad-name', lambda: u.__delattr__(1)),
+    ('noargs', lambda: UserString.__delattr__()),
+    ('self-only', lambda: UserString.__delattr__(u)),
+    ('extra', lambda: UserString.__delattr__(u, 'extra3', 1)),
+    ('badkw', lambda: UserString.__delattr__(u, name='extra3')),
+    ('keyword-only', lambda: UserString.__delattr__(self=u, name='extra3')),
+]:
+    show(label, expr)
+print('final', hasattr(u, 'extra'), hasattr(u, 'extra2'), u.data)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",
