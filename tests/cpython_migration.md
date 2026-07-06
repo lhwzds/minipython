@@ -952,7 +952,9 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `list_reverseiterator.__module__`, `list_reverseiterator.__qualname__`,
   `__iter__`, `__next__`, `__length_hint__`, `__reduce__`, direct
   `typ.__length_hint__(inst)` / `typ.__reduce__(inst)` dispatch,
-  `inst.__length_hint__()`, `reduce-shape 3 True 1 True 1 True`,
+  `inst.__length_hint__()`, `fresh-reduce 3 True 1 True 2 True`,
+  `reduce-shape 3 True 1 True 1 True`,
+  `late-reduce 3 True 1 True 0 True`,
   `empty-reduce 2 True 1 True list True`, and
   `exhausted-reduce 2 True 1 True list True`, without widening host IO,
   network, process, C ABI, or full stdlib scope.

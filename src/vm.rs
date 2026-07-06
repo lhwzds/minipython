@@ -34965,9 +34965,10 @@ impl Vm {
             }
             Value::ReverseIterator { items, index } => {
                 let (items, index) = if index >= items.len() {
-                    (Vec::new(), 0)
+                    (Vec::new(), None)
                 } else {
-                    (items, index)
+                    let index = items.len() - 1 - index;
+                    (items, Some(index))
                 };
                 return self.reverse_iterator_reduce_result(list_value(items), index);
             }
@@ -35002,14 +35003,14 @@ impl Vm {
     fn reverse_iterator_reduce_result(
         &mut self,
         sequence: Value,
-        index: usize,
+        index: Option<usize>,
     ) -> Result<Value, String> {
         let reversed = self
             .load_builtin_name("reversed")?
             .ok_or_else(|| "AttributeError: reversed".to_string())?;
         let args = tuple_value(vec![sequence]);
         let mut items = vec![reversed, args];
-        if index > 0 {
+        if let Some(index) = index {
             let index =
                 i64::try_from(index).map_err(|_| "OverflowError: iterator index is too large")?;
             items.push(Value::Number(index));
