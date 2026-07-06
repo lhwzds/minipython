@@ -69310,6 +69310,26 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
     );
 }
 
+// Mirrors CPython's public UserString __module__ metadata on the type and
+// instances. This only covers pure metadata lookup and dir() discoverability.
+#[test]
+fn cpython_collections_userstring_module_metadata_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__module__' in dir(UserString), '__module__' in dir(u), hasattr(UserString, '__module__'), hasattr(u, '__module__'))
+print('type-module', UserString.__module__, type(UserString.__module__).__name__, object.__getattribute__(UserString, '__module__'))
+print('inst-module', u.__module__, type(u.__module__).__name__, getattr(u, '__module__'), object.__getattribute__(u, '__module__'))
+print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') == 'collections')"#,
+        &[
+            "visible True True True True",
+            "type-module collections str collections",
+            "inst-module collections str collections collections",
+            "same True True",
+        ],
+    );
+}
+
 // Mirrors CPython public collections.UserString __class_getitem__ behavior. This
 // pins GenericAlias origin/args, direct type calls, and inherited subclass
 // lookup without implementing full UserString string-method proxying.

@@ -165,6 +165,11 @@ Recent runtime migration notes:
   exact UserDict instance lookup, inherited UserDict subclass lookup, GenericAlias origin/args,
   and GenericAlias arity and keyword error propagation, without adding new UserDict mapping-method surface,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_module_metadata_subset`, backed by
+  `cpython_collections_userstring_module_metadata_diff_subset`, now pins
+  `UserString.__module__`, `UserString(...).__module__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
+  without adding `__new__`, pickle, or full UserString string-method proxying.
 - `cpython_collections_userstring_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`, now pins
   `UserString.__class_getitem__(int)`, `UserString[int]`, `collections.UserString[int]`
@@ -1637,6 +1642,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
+  `cpython_collections_userstring_module_metadata_diff_subset`,
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset`,
   `cpython_collections_userstring_basic_construction_diff_subset`,
   `cpython_collections_userstring_init_method_diff_subset`,
@@ -7496,6 +7502,12 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_type_base_metadata_subset`, covering
   `UserString` direct base metadata through `__base__` and `__bases__`, pinned
   to `collections.abc.Sequence` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_module_metadata_diff_subset` and
+  `cpython_collections_userstring_module_metadata_subset`, covering
+  `UserString.__module__`, `UserString(...).__module__`, and
+  `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
+  without adding `__new__`, pickle, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_class_getitem_generic_alias_diff_subset` and
   `cpython_collections_userstring_class_getitem_generic_alias_subset`, covering

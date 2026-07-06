@@ -26513,6 +26513,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
+            "cpython_collections_userstring_module_metadata_subset",
             "cpython_collections_userstring_class_getitem_generic_alias_subset",
             "cpython_collections_userstring_basic_construction_subset",
             "cpython_collections_userstring_init_method_subset",
@@ -28683,6 +28684,79 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_module_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __module__ metadata"
+    );
+    let userstring_module_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_module_metadata_diff_subset",
+    );
+    let userstring_module_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_module_metadata_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "'__module__' in dir(UserString)",
+        "'__module__' in dir(u)",
+        "hasattr(UserString, '__module__')",
+        "hasattr(u, '__module__')",
+        "UserString.__module__",
+        "object.__getattribute__(UserString, '__module__')",
+        "u.__module__",
+        "getattr(u, '__module__')",
+        "object.__getattribute__(u, '__module__')",
+        "getattr(u, '__module__') == 'collections'",
+    ] {
+        assert!(
+            userstring_module_diff_body.contains(required)
+                && userstring_module_subset_body.contains(required),
+            "UserString __module__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-module collections str collections\"",
+        "\"inst-module collections str collections collections\"",
+        "\"same True True\"",
+    ] {
+        assert!(
+            userstring_module_subset_body.contains(required),
+            "UserString __module__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserString\"",
+        "name == \"__module__\"",
+        "Ok(Value::String(\"collections\".to_string()))",
+        "\"__module__\" => Ok(Value::String(\"collections\".to_string()))",
+        "if name == \"UserString\"",
+        "names.push(\"__module__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString __module__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_module_metadata_subset",
+            "cpython_collections_userstring_module_metadata_diff_subset",
+            "`UserString.__module__`",
+            "`UserString(...).__module__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "`collections`",
+            "without adding `__new__`, pickle, or full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString __module__ metadata docs must contain `{required}`"
             );
         }
     }

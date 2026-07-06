@@ -25750,6 +25750,20 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
 }
 
 #[test]
+fn cpython_collections_userstring_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __module__ metadata",
+        name: "collections-userstring-module-metadata",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__module__' in dir(UserString), '__module__' in dir(u), hasattr(UserString, '__module__'), hasattr(u, '__module__'))
+print('type-module', UserString.__module__, type(UserString.__module__).__name__, object.__getattribute__(UserString, '__module__'))
+print('inst-module', u.__module__, type(u.__module__).__name__, getattr(u, '__module__'), object.__getattribute__(u, '__module__'))
+print('same', u.__module__ == UserString.__module__, getattr(u, '__module__') == 'collections')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_class_getitem_generic_alias_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString __class_getitem__ GenericAlias behavior",

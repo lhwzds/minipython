@@ -55004,6 +55004,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__len__".to_string());
         names.push("__lt__".to_string());
         names.push("__mod__".to_string());
+        names.push("__module__".to_string());
         names.push("__mul__".to_string());
         names.push("__delattr__".to_string());
         names.push("__repr__".to_string());
@@ -62988,6 +62989,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         .expect("UserString type doc is defined")
                         .to_string(),
                 )),
+                "__module__" => Ok(Value::String("collections".to_string())),
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserString".to_string(),
                 ))),
