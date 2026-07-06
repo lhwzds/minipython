@@ -19188,6 +19188,21 @@ print('method-kept', '__repr__' in dir(object), '__repr__' in dir(value), '__str
 }
 
 #[test]
+fn cpython_object_instance_class_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object instance class metadata dir surface",
+        name: "object-instance-class-metadata-dir-surface",
+        source: r#"value = object()
+direct = object.__dir__(value)
+print('visible-type', '__module__' in dir(object), '__qualname__' in dir(object), hasattr(object, '__module__'), hasattr(object, '__qualname__'))
+print('visible-inst', '__module__' in dir(value), '__qualname__' in dir(value))
+print('visible-direct', type(direct).__name__, '__module__' in direct, '__qualname__' in direct)
+print('readable', object.__module__, object.__qualname__, object.__getattribute__(object, '__module__'), object.__getattribute__(object, '__qualname__'))
+print('method-kept', '__repr__' in dir(value), '__str__' in dir(value), '__format__' in dir(value), '__dir__' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

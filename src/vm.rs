@@ -54370,7 +54370,12 @@ fn cell_dir_names() -> Vec<String> {
 }
 
 fn remove_type_metadata_dir_names(names: &mut Vec<String>) {
-    names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
+    names.retain(|attr| {
+        !matches!(
+            attr.as_str(),
+            "__base__" | "__bases__" | "__module__" | "__name__" | "__qualname__"
+        )
+    });
 }
 
 fn builtin_type_dir_names(name: &str) -> Vec<String> {

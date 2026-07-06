@@ -55699,6 +55699,31 @@ fn cpython_object_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public object instance class-metadata dir surface. The
+// class metadata remains directly readable on object, but CPython does not
+// list it on exact object() instances or object.__dir__(object()).
+#[test]
+fn cpython_object_instance_class_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "value = object()\n",
+            "direct = object.__dir__(value)\n",
+            "print('visible-type', '__module__' in dir(object), '__qualname__' in dir(object), hasattr(object, '__module__'), hasattr(object, '__qualname__'))\n",
+            "print('visible-inst', '__module__' in dir(value), '__qualname__' in dir(value))\n",
+            "print('visible-direct', type(direct).__name__, '__module__' in direct, '__qualname__' in direct)\n",
+            "print('readable', object.__module__, object.__qualname__, object.__getattribute__(object, '__module__'), object.__getattribute__(object, '__qualname__'))\n",
+            "print('method-kept', '__repr__' in dir(value), '__str__' in dir(value), '__format__' in dir(value), '__dir__' in dir(value))",
+        ),
+        &[
+            "visible-type False False True True",
+            "visible-inst False False",
+            "visible-direct list False False",
+            "readable builtins object builtins object",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

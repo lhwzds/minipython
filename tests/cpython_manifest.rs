@@ -3132,6 +3132,107 @@ fn object_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn object_instance_class_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_object_instance_class_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_object_instance_class_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "object instance class metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "object instance class metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "value = object()",
+        "direct = object.__dir__(value)",
+        "'__module__' in dir(object)",
+        "'__qualname__' in dir(object)",
+        "hasattr(object, '__module__')",
+        "hasattr(object, '__qualname__')",
+        "'__module__' in dir(value)",
+        "'__qualname__' in dir(value)",
+        "'__module__' in direct",
+        "'__qualname__' in direct",
+        "object.__module__",
+        "object.__qualname__",
+        "object.__getattribute__(object, '__module__')",
+        "object.__getattribute__(object, '__qualname__')",
+        "'__repr__' in dir(value)",
+        "'__str__' in dir(value)",
+        "'__format__' in dir(value)",
+        "'__dir__' in dir(value)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "object instance class metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False True True\"",
+        "\"visible-inst False False\"",
+        "\"visible-direct list False False\"",
+        "\"readable builtins object builtins object\"",
+        "\"method-kept True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "object instance class metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    let remove_start = VM_SOURCE
+        .find("fn remove_type_metadata_dir_names(")
+        .expect("type metadata dir-name remover must exist");
+    let remove_end = (remove_start + 360).min(VM_SOURCE.len());
+    let remove_body = &VM_SOURCE[remove_start..remove_end];
+    for required in [
+        "\"__base__\"",
+        "\"__bases__\"",
+        "\"__module__\"",
+        "\"__name__\"",
+        "\"__qualname__\"",
+    ] {
+        assert!(
+            remove_body.contains(required),
+            "type metadata dir-name remover must hide `{required}`"
+        );
+    }
+    for required in [
+        "self.default_dir_names_value(object.clone())?",
+        "is_exact_builtin_object_instance(class_name, class_attrs, class_bases)",
+        "remove_type_metadata_dir_names(&mut names);",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object instance class metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(object())`",
+            "`object.__dir__(object())`",
+            "`object.__module__`",
+            "`object.__qualname__`",
+            "without hiding direct object class metadata lookup",
+            "without changing object method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "object instance class metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn list_class_getitem_generic_alias_docs_cover_core_runtime() {
     let diff_name = "cpython_list_class_getitem_generic_alias_diff_subset";
     let subset_name = "cpython_list_class_getitem_generic_alias_subset";
@@ -46651,6 +46752,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_object_getstate_direct_subset",
             "cpython_object_getstate_builtin_instance_subset",
             "cpython_object_type_metadata_dir_surface_subset",
+            "cpython_object_instance_class_metadata_dir_surface_subset",
             "cpython_bool_instance_doc_attribute_subset",
             "cpython_bool_type_metadata_dir_surface_subset",
             "cpython_int_instance_doc_attribute_subset",
@@ -46777,6 +46879,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_object_getstate_direct_diff_subset",
         "cpython_object_getstate_builtin_instance_diff_subset",
         "cpython_object_type_metadata_dir_surface_diff_subset",
+        "cpython_object_instance_class_metadata_dir_surface_diff_subset",
         "cpython_bool_instance_doc_attribute_diff_subset",
         "cpython_bool_type_metadata_dir_surface_diff_subset",
         "cpython_int_instance_doc_attribute_diff_subset",
@@ -60827,7 +60930,8 @@ fn types_celltype_base_metadata_docs_cover_core_runtime() {
 
     for required in [
         "if name == \"CellType\"",
-        "matches!(attr.as_str(), \"__base__\" | \"__bases__\" | \"__name__\")",
+        "\"__module__\"",
+        "\"__qualname__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -60996,7 +61100,8 @@ fn types_celltype_name_metadata_docs_cover_core_runtime() {
     for required in [
         "if class_name != \"CellType\"",
         "if name == \"CellType\"",
-        "matches!(attr.as_str(), \"__base__\" | \"__bases__\" | \"__name__\")",
+        "\"__module__\"",
+        "\"__qualname__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
