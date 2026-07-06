@@ -26518,6 +26518,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_slots_metadata_subset",
             "cpython_collections_userlist_hash_metadata_subset",
             "cpython_collections_userlist_copy_method_subset",
+            "cpython_collections_userlist_reversed_method_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29307,6 +29308,95 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __copy__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_reversed_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __reversed__ method behavior"
+    );
+    let userlist_reversed_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_reversed_method_diff_subset",
+    );
+    let userlist_reversed_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_reversed_method_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2, 3])",
+        "hasattr(UserList, '__reversed__')",
+        "hasattr(u, '__reversed__')",
+        "'__reversed__' in dir(UserList)",
+        "'__reversed__' in dir(u)",
+        "callable(UserList.__reversed__)",
+        "callable(u.__reversed__)",
+        "reversed(u)",
+        "u.__reversed__()",
+        "UserList.__reversed__(u)",
+        "UserList.__reversed__(self=u)",
+        "UserList.__reversed__('abc')",
+        "UserList.__reversed__(u, 1)",
+        "UserList.__reversed__(u, receiver=u)",
+        "UserList.__reversed__(u, self=u)",
+        "UserList.__reversed__()",
+    ] {
+        assert!(
+            userlist_reversed_diff_body.contains(required)
+                && userlist_reversed_subset_body.contains(required),
+            "UserList __reversed__ method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True True\"",
+        "\"builtin-reversed list [3, 2, 1]\"",
+        "\"bound list [3, 2, 1]\"",
+        "\"type list [3, 2, 1]\"",
+        "\"type-selfkw list [3, 2, 1]\"",
+        "\"bad-receiver list ['c', 'b', 'a']\"",
+        "\"extra TypeError Sequence.__reversed__() takes 1 positional argument but 2 were given ('Sequence.__reversed__() takes 1 positional argument but 2 were given',)\"",
+        "\"badkw TypeError Sequence.__reversed__() got an unexpected keyword argument 'receiver' (\\\"Sequence.__reversed__() got an unexpected keyword argument 'receiver'\\\",)\"",
+        "\"multi-self TypeError Sequence.__reversed__() got multiple values for argument 'self' (\\\"Sequence.__reversed__() got multiple values for argument 'self'\\\",)\"",
+        "\"noargs TypeError Sequence.__reversed__() missing 1 required positional argument: 'self' (\\\"Sequence.__reversed__() missing 1 required positional argument: 'self'\\\",)\"",
+        "\"self-only-kw list [3, 2, 1]\"",
+    ] {
+        assert!(
+            userlist_reversed_subset_body.contains(required),
+            "UserList __reversed__ method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"__reversed__\" => Ok(Value::BoundMethod {",
+        "function: Box::new(Value::Builtin(\"Sequence.__reversed__\".to_string()))",
+        "receiver: Box::new(Value::UserList { data, attrs })",
+        "function_name == \"UserList\" && name == \"__reversed__\"",
+        "Ok(Value::Builtin(\"Sequence.__reversed__\".to_string()))",
+        "Value::UserList { data, .. } => Ok(shared_iterator(Value::ReverseIterator {",
+        "items: data.borrow().clone(),",
+        "sequence_abc_bind_reversed_self_arg(args, keywords)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __reversed__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_reversed_method_subset",
+            "cpython_collections_userlist_reversed_method_diff_subset",
+            "`UserList.__reversed__`",
+            "`UserList(...).__reversed__`",
+            "`reversed(UserList(...))`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "`Sequence.__reversed__`",
+            "without pinning CPython's generator object implementation shape",
+            "without adding new UserList mutation APIs",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __reversed__ docs must contain `{required}`"
             );
         }
     }

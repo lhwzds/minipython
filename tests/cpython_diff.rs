@@ -25888,6 +25888,38 @@ print('after-mutate', copied, u, copied is u, copied.data is u.data)"#,
 }
 
 #[test]
+fn cpython_collections_userlist_reversed_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public inherited collections.UserList Sequence.__reversed__ behavior",
+        name: "collections-userlist-reversed-method",
+        source: r#"from collections import UserList
+u = UserList([1, 2, 3])
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, '__iter__') and type(value).__name__ not in ('str', 'UserList', 'list', 'tuple'):
+            value = list(value)
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserList, '__reversed__'), hasattr(u, '__reversed__'), '__reversed__' in dir(UserList), '__reversed__' in dir(u), callable(UserList.__reversed__), callable(u.__reversed__))
+for label, expr in [
+    ('builtin-reversed', lambda: reversed(u)),
+    ('bound', lambda: u.__reversed__()),
+    ('type', lambda: UserList.__reversed__(u)),
+    ('type-selfkw', lambda: UserList.__reversed__(self=u)),
+    ('bad-receiver', lambda: UserList.__reversed__('abc')),
+    ('extra', lambda: UserList.__reversed__(u, 1)),
+    ('badkw', lambda: UserList.__reversed__(u, receiver=u)),
+    ('multi-self', lambda: UserList.__reversed__(u, self=u)),
+    ('noargs', lambda: UserList.__reversed__()),
+    ('self-only-kw', lambda: UserList.__reversed__(self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

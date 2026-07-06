@@ -29492,7 +29492,10 @@ impl Vm {
             }
             "__reversed__" => {
                 let receiver = sequence_abc_bind_reversed_self_arg(args, keywords)?;
-                if matches!(receiver, Value::String(_) | Value::UserString { .. }) {
+                if matches!(
+                    receiver,
+                    Value::String(_) | Value::UserString { .. } | Value::UserList { .. }
+                ) {
                     return reversed_value(receiver);
                 }
                 let len = self.sequence_abc_len_i64(receiver.clone())?;
@@ -54413,6 +54416,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__ne__",
             "__new__",
             "__radd__",
+            "__reversed__",
             "__rmul__",
             "__setitem__",
             "append",
@@ -62981,6 +62985,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__class_getitem__" => Ok(generic_alias_bound_method(Value::Builtin(
                     "UserList".to_string(),
                 ))),
+                "__reversed__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("Sequence.__reversed__".to_string())),
+                    receiver: Box::new(Value::UserList { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 "append" | "extend" | "clear" | "copy" | "__copy__" | "pop" | "reverse"
                 | "sort" | "count" | "index" | "insert" | "remove" | "__add__"
                 | "__contains__" | "__delitem__" | "__eq__" | "__format__" | "__getitem__"
@@ -65014,6 +65023,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && is_builtin_user_list_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserList.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserList" && name == "__reversed__" =>
+        {
+            Ok(Value::Builtin("Sequence.__reversed__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "UserList" && name == "__class_getitem__" =>
@@ -77911,6 +77925,10 @@ fn reversed_value(value: Value) -> Result<Value, String> {
     match value {
         Value::List(items) => Ok(shared_iterator(Value::ReverseIterator {
             items: items.borrow().clone(),
+            index: 0,
+        })),
+        Value::UserList { data, .. } => Ok(shared_iterator(Value::ReverseIterator {
+            items: data.borrow().clone(),
             index: 0,
         })),
         Value::Tuple(items) => Ok(shared_iterator(Value::ReverseIterator {

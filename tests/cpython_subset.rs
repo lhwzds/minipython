@@ -69511,6 +69511,51 @@ print('after-mutate', copied, u, copied is u, copied.data is u.data)"#,
     );
 }
 
+// Mirrors CPython's public inherited Sequence.__reversed__ behavior for
+// UserList without pinning CPython's generator object implementation shape.
+#[test]
+fn cpython_collections_userlist_reversed_method_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2, 3])
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, '__iter__') and type(value).__name__ not in ('str', 'UserList', 'list', 'tuple'):
+            value = list(value)
+        print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserList, '__reversed__'), hasattr(u, '__reversed__'), '__reversed__' in dir(UserList), '__reversed__' in dir(u), callable(UserList.__reversed__), callable(u.__reversed__))
+for label, expr in [
+    ('builtin-reversed', lambda: reversed(u)),
+    ('bound', lambda: u.__reversed__()),
+    ('type', lambda: UserList.__reversed__(u)),
+    ('type-selfkw', lambda: UserList.__reversed__(self=u)),
+    ('bad-receiver', lambda: UserList.__reversed__('abc')),
+    ('extra', lambda: UserList.__reversed__(u, 1)),
+    ('badkw', lambda: UserList.__reversed__(u, receiver=u)),
+    ('multi-self', lambda: UserList.__reversed__(u, self=u)),
+    ('noargs', lambda: UserList.__reversed__()),
+    ('self-only-kw', lambda: UserList.__reversed__(self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True True",
+            "builtin-reversed list [3, 2, 1]",
+            "bound list [3, 2, 1]",
+            "type list [3, 2, 1]",
+            "type-selfkw list [3, 2, 1]",
+            "bad-receiver list ['c', 'b', 'a']",
+            "extra TypeError Sequence.__reversed__() takes 1 positional argument but 2 were given ('Sequence.__reversed__() takes 1 positional argument but 2 were given',)",
+            "badkw TypeError Sequence.__reversed__() got an unexpected keyword argument 'receiver' (\"Sequence.__reversed__() got an unexpected keyword argument 'receiver'\",)",
+            "multi-self TypeError Sequence.__reversed__() got multiple values for argument 'self' (\"Sequence.__reversed__() got multiple values for argument 'self'\",)",
+            "noargs TypeError Sequence.__reversed__() missing 1 required positional argument: 'self' (\"Sequence.__reversed__() missing 1 required positional argument: 'self'\",)",
+            "self-only-kw list [3, 2, 1]",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {
