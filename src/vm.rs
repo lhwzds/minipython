@@ -54416,6 +54416,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "tuple"
     ) {
         remove_type_metadata_dir_names(&mut names);
+    } else if name == "enumerate" {
+        remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "property" {
@@ -55919,6 +55921,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
     match name {
         "object" => Vec::new(),
         "bool" => vec![builtin_type_value("int")],
+        "enumerate" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -70147,6 +70150,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "bool"
             | "range"
             | "slice"
+            | "enumerate"
             | "property"
             | "super"
             | "staticmethod"

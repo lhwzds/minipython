@@ -16741,6 +16741,21 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_enumerate_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public enumerate type metadata dir surface",
+        name: "enumerate-type-metadata-dir-surface",
+        source: r#"typ = enumerate
+inst = enumerate(['a'])
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__class_getitem__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__class_getitem__' in dir(inst))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), typ.__name__, object.__getattribute__(typ, '__name__'))
+print('readable-module', typ.__module__, typ.__qualname__, object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+print('method-kept', hasattr(typ, '__class_getitem__'), '__class_getitem__' in dir(typ), hasattr(inst, '__class_getitem__'), '__class_getitem__' in dir(inst))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",

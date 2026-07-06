@@ -908,6 +908,13 @@ Recent runtime migration notes:
   alias model, and keyword and arity error propagation,
   without adding full GenericAlias repr parity or enumerate subclassing support,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_enumerate_type_metadata_dir_surface_subset`, backed by
+  `cpython_enumerate_type_metadata_dir_surface_diff_subset`, now pins
+  `dir(enumerate)` and `dir(enumerate(...))` hiding type metadata names while
+  keeping `enumerate.__base__`, `enumerate.__bases__`,
+  `enumerate.__module__`, and `enumerate.__qualname__` directly readable,
+  preserves `enumerate.__class_getitem__` visibility, without adding enumerate instance `__iter__` / `__next__` dir visibility,
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1692,6 +1699,7 @@ Recent runtime migration notes:
   `cpython_map_filter_builtin_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
+  `cpython_enumerate_type_metadata_dir_surface_diff_subset`,
   `cpython_builtin_sorted_exact_diff_subset`,
   `cpython_zip_strict_builtin_diff_subset`,
   `cpython_divmod_builtin_diff_subset`,

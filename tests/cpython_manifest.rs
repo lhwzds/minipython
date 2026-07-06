@@ -46705,6 +46705,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_aiter_anext_keyword_error_subset",
             "cpython_stop_iteration_value_subset",
             "cpython_enumerate_zip_sorted_builtin_subset",
+            "cpython_enumerate_type_metadata_dir_surface_subset",
             "cpython_builtin_sorted_exact_subset",
             "cpython_zip_strict_builtin_subset",
             "cpython_map_filter_builtin_subset",
@@ -46955,6 +46956,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_map_filter_builtin_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
+        "cpython_enumerate_type_metadata_dir_surface_diff_subset",
         "cpython_builtin_sorted_exact_diff_subset",
         "cpython_zip_strict_builtin_diff_subset",
         "cpython_divmod_builtin_diff_subset",
@@ -52173,6 +52175,103 @@ fn enumerate_class_getitem_generic_alias_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "enumerate class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn enumerate_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_enumerate_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_enumerate_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "enumerate type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "enumerate type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = enumerate",
+        "inst = enumerate(['a'])",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__class_getitem__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__class_getitem__' in dir(inst)",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "typ.__name__",
+        "object.__getattribute__(typ, '__name__')",
+        "typ.__module__",
+        "typ.__qualname__",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "hasattr(typ, '__class_getitem__')",
+        "hasattr(inst, '__class_getitem__')",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "enumerate type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False False False True\"",
+        "\"visible-inst False False False True\"",
+        "\"readable-base True True enumerate enumerate\"",
+        "\"readable-module builtins enumerate builtins enumerate\"",
+        "\"method-kept True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "enumerate type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"enumerate\" => vec![builtin_type_value(\"object\")]",
+        "name == \"enumerate\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "| \"enumerate\"\n            | \"property\"",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+        "Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names(\"enumerate\"))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "enumerate type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(enumerate)`",
+            "`dir(enumerate(...))`",
+            "`enumerate.__base__`",
+            "`enumerate.__bases__`",
+            "`enumerate.__module__`",
+            "`enumerate.__qualname__`",
+            "`enumerate.__class_getitem__`",
+            "without adding enumerate instance `__iter__` / `__next__` dir visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "enumerate type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
