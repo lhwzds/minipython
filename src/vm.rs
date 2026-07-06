@@ -55006,6 +55006,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__mod__".to_string());
         names.push("__module__".to_string());
         names.push("__mul__".to_string());
+        names.push("__ne__".to_string());
         names.push("__delattr__".to_string());
         names.push("__repr__".to_string());
         names.push("__radd__".to_string());

@@ -340,6 +340,12 @@ Recent runtime migration notes:
   descriptor-style missing-receiver errors, without implementing full
   UserString string-method proxying or widening host IO, network, process, C
   ABI, or full stdlib scope.
+- `cpython_collections_userstring_inherited_ne_dir_surface_subset`, backed by
+  `cpython_collections_userstring_inherited_ne_dir_surface_diff_subset`, now
+  pins `UserString.__ne__` dir surface through `dir(UserString)` and
+  `dir(UserString(...))` for the already-supported inherited `object.__ne__`
+  wrapper, without adding `__init_subclass__`, `__subclasshook__`, `__new__`,
+  pickle, or full UserString string-method proxying.
 - `cpython_collections_userstring_add_method_subset`, backed by
   `cpython_collections_userstring_add_method_diff_subset`, now pins
   `UserString.__add__`, the `+` expression, and the `+=` fallback for left-side
@@ -1665,6 +1671,7 @@ Recent runtime migration notes:
   `cpython_collections_userstring_inherited_delattr_method_diff_subset`,
   `cpython_collections_userstring_eq_method_diff_subset`,
   `cpython_collections_userstring_ne_method_diff_subset`,
+  `cpython_collections_userstring_inherited_ne_dir_surface_diff_subset`,
   `cpython_collections_userstring_add_method_diff_subset`,
   `cpython_collections_userstring_radd_method_diff_subset`,
   `cpython_collections_userstring_mod_methods_diff_subset`,
@@ -7690,6 +7697,13 @@ without adding general custom encoder/decoder class support.
   `NotImplemented`, no keyword arguments, bad receiver behavior, and
   descriptor-style missing-receiver errors, without implementing full
   UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_ne_dir_surface_diff_subset` and
+  `cpython_collections_userstring_inherited_ne_dir_surface_subset`, covering
+  `UserString.__ne__` dir surface through `dir(UserString)` and
+  `dir(UserString(...))` for the already-supported inherited `object.__ne__`
+  wrapper, without adding `__init_subclass__`, `__subclasshook__`, `__new__`,
+  pickle, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_add_method_diff_subset` and
   `cpython_collections_userstring_add_method_subset`, covering

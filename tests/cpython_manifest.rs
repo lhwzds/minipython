@@ -26537,6 +26537,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_inherited_dir_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
+            "cpython_collections_userstring_inherited_ne_dir_surface_subset",
             "cpython_collections_userstring_add_method_subset",
             "cpython_collections_userstring_radd_method_subset",
             "cpython_collections_userstring_mod_methods_subset",
@@ -31063,6 +31064,84 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString ne-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_ne_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString inherited __ne__ dir surface"
+    );
+    let userstring_ne_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_ne_dir_surface_diff_subset",
+    );
+    let userstring_ne_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_ne_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "'__ne__' in dir(UserString)",
+        "'__ne__' in dir(u)",
+        "hasattr(UserString, '__ne__')",
+        "hasattr(u, '__ne__')",
+        "UserString.__ne__ is object.__ne__",
+        "type(UserString.__ne__).__name__",
+        "callable(UserString.__ne__)",
+        "type(u.__ne__).__name__",
+        "callable(u.__ne__)",
+        "u.__ne__('abé')",
+        "u.__ne__('ab')",
+        "u != 'abé'",
+        "u != 'ab'",
+    ] {
+        assert!(
+            userstring_ne_dir_diff_body.contains(required)
+                && userstring_ne_dir_subset_body.contains(required),
+            "UserString inherited __ne__ dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"class-method True wrapper_descriptor True\"",
+        "\"inst-method method-wrapper True False True\"",
+        "\"expr False True\"",
+    ] {
+        assert!(
+            userstring_ne_dir_subset_body.contains(required),
+            "UserString inherited __ne__ dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserString\" && name == \"__ne__\"",
+        "Value::Builtin(\"object.__ne__\".to_string())",
+        "function: Box::new(Value::Builtin(\"object.__ne__\".to_string()))",
+        "if name == \"UserString\"",
+        "names.push(\"__ne__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString inherited __ne__ dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_ne_dir_surface_subset",
+            "cpython_collections_userstring_inherited_ne_dir_surface_diff_subset",
+            "`UserString.__ne__` dir surface",
+            "`dir(UserString)`",
+            "`dir(UserString(...))`",
+            "inherited `object.__ne__`",
+            "wrapper",
+            "without adding `__init_subclass__`, `__subclasshook__`, `__new__`",
+            "pickle",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString inherited __ne__ dir-surface docs must contain `{required}`"
             );
         }
     }

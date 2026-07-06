@@ -26574,6 +26574,20 @@ for label, expr in cases:
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_ne_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited __ne__ dir surface",
+        name: "collections-userstring-inherited-ne-dir-surface",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('visible', '__ne__' in dir(UserString), '__ne__' in dir(u), hasattr(UserString, '__ne__'), hasattr(u, '__ne__'))
+print('class-method', UserString.__ne__ is object.__ne__, type(UserString.__ne__).__name__, callable(UserString.__ne__))
+print('inst-method', type(u.__ne__).__name__, callable(u.__ne__), u.__ne__('abé'), u.__ne__('ab'))
+print('expr', u != 'abé', u != 'ab')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_add_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString left concatenation method behavior",
