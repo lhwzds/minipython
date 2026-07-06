@@ -55528,6 +55528,26 @@ fn cpython_bytearray_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public range type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(range) or dir(range(0)).
+#[test]
+fn cpython_range_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(range), '__bases__' in dir(range), '__name__' in dir(range), hasattr(range, '__base__'), hasattr(range, '__bases__'), hasattr(range, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(range(0)), '__bases__' in dir(range(0)), '__name__' in dir(range(0)))\n",
+            "print('readable', range.__base__ is object, range.__bases__ == (object,), range.__name__, object.__getattribute__(range, '__name__'))\n",
+            "print('method-kept', 'count' in dir(range), 'count' in dir(range(0)), 'index' in dir(range(0)), 'start' in dir(range(0)))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True range range",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
