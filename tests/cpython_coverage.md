@@ -791,6 +791,13 @@ Recent runtime migration notes:
   `set.__base__`, `set.__bases__`, and `set.__name__` directly readable,
   without hiding direct set type metadata lookup, without changing set method visibility,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_frozenset_type_metadata_dir_surface_subset`, backed by
+  `cpython_frozenset_type_metadata_dir_surface_diff_subset`, now pins
+  `dir(frozenset)` and `dir(frozenset())` hiding `__base__`, `__bases__`, and
+  `__name__` while keeping `frozenset.__base__`, `frozenset.__bases__`, and
+  `frozenset.__name__` directly readable, without hiding direct frozenset type metadata lookup,
+  without changing frozenset method visibility, without widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1528,6 +1535,7 @@ Recent runtime migration notes:
   `cpython_set_instance_doc_attribute_diff_subset`,
   `cpython_set_type_metadata_dir_surface_diff_subset`,
   `cpython_frozenset_instance_doc_attribute_diff_subset`,
+  `cpython_frozenset_type_metadata_dir_surface_diff_subset`,
   `cpython_memoryview_instance_doc_attribute_diff_subset`,
   `cpython_memoryview_getstate_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,

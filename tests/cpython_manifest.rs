@@ -1755,7 +1755,7 @@ fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1840,7 +1840,7 @@ fn tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1925,7 +1925,7 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2010,7 +2010,7 @@ fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2038,6 +2038,91 @@ fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "set type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn frozenset_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_frozenset_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_frozenset_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "frozenset type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "frozenset type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'__base__' in dir(frozenset)",
+        "'__bases__' in dir(frozenset)",
+        "'__name__' in dir(frozenset)",
+        "hasattr(frozenset, '__base__')",
+        "hasattr(frozenset, '__bases__')",
+        "hasattr(frozenset, '__name__')",
+        "'__base__' in dir(frozenset())",
+        "'__bases__' in dir(frozenset())",
+        "'__name__' in dir(frozenset())",
+        "frozenset.__base__ is object",
+        "frozenset.__bases__ == (object,)",
+        "frozenset.__name__",
+        "object.__getattribute__(frozenset, '__name__')",
+        "'__class_getitem__' in dir(frozenset)",
+        "'copy' in dir(frozenset())",
+        "'union' in dir(frozenset())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "frozenset type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"readable True True frozenset frozenset\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "frozenset type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn remove_type_metadata_dir_names(",
+        "matches!(name, \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"tuple\")",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "frozenset type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(frozenset)`",
+            "`dir(frozenset())`",
+            "`frozenset.__base__`",
+            "`frozenset.__bases__`",
+            "`frozenset.__name__`",
+            "without hiding direct frozenset type metadata lookup",
+            "without changing frozenset method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "frozenset type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
@@ -45571,6 +45656,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_set_instance_doc_attribute_subset",
             "cpython_set_type_metadata_dir_surface_subset",
             "cpython_frozenset_instance_doc_attribute_subset",
+            "cpython_frozenset_type_metadata_dir_surface_subset",
             "cpython_memoryview_instance_doc_attribute_subset",
             "cpython_memoryview_getstate_subset",
             "cpython_str_builtin_custom_dunder_subset",
@@ -45685,6 +45771,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_set_instance_doc_attribute_diff_subset",
         "cpython_set_type_metadata_dir_surface_diff_subset",
         "cpython_frozenset_instance_doc_attribute_diff_subset",
+        "cpython_frozenset_type_metadata_dir_surface_diff_subset",
         "cpython_memoryview_instance_doc_attribute_diff_subset",
         "cpython_memoryview_getstate_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
