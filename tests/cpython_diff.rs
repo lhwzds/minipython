@@ -11601,6 +11601,21 @@ print([name in dir(cases[0][1]) for name in names])"#,
 }
 
 #[test]
+fn cpython_property_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property type metadata dir surface",
+        name: "property-type-metadata-dir-surface",
+        source: r#"def getter(self):
+    return 1
+wrapped = property(getter)
+print('visible-type', '__base__' in dir(property), '__bases__' in dir(property), '__name__' in dir(property), hasattr(property, '__base__'), hasattr(property, '__bases__'), hasattr(property, '__name__'))
+print('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__get__' in dir(wrapped), 'fget' in dir(wrapped))
+print('readable', property.__base__ is object, property.__bases__ == (object,), property.__name__, object.__getattribute__(property, '__name__'))
+print('method-kept', '__get__' in dir(wrapped), 'getter' in dir(wrapped), 'setter' in dir(wrapped), 'deleter' in dir(wrapped))"#,
+    });
+}
+
+#[test]
 fn cpython_property_attribute_assignment_errors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property attribute assignment errors",

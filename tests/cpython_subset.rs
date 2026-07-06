@@ -30814,6 +30814,22 @@ fn cpython_property_abstractmethod_subset() {
     );
 }
 
+// Mirrors CPython's public property type-metadata dir surface. The base
+// metadata remains directly readable on the type, but CPython does not list it
+// in dir(property); unlike staticmethod/classmethod, __name__ remains visible.
+#[test]
+fn cpython_property_type_metadata_dir_surface_subset() {
+    assert_output(
+        "def getter(self):\n    return 1\nwrapped = property(getter)\nprint('visible-type', '__base__' in dir(property), '__bases__' in dir(property), '__name__' in dir(property), hasattr(property, '__base__'), hasattr(property, '__bases__'), hasattr(property, '__name__'))\nprint('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__get__' in dir(wrapped), 'fget' in dir(wrapped))\nprint('readable', property.__base__ is object, property.__bases__ == (object,), property.__name__, object.__getattribute__(property, '__name__'))\nprint('method-kept', '__get__' in dir(wrapped), 'getter' in dir(wrapped), 'setter' in dir(wrapped), 'deleter' in dir(wrapped))",
+        &[
+            "visible-type False False True True True True",
+            "visible-inst False False True True True",
+            "readable True True property property",
+            "method-kept True True True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public AttributeError text for read-only property object
 // attributes without adding property instance dictionaries.
 #[test]

@@ -1654,6 +1654,7 @@ Recent runtime migration notes:
   `cpython_classmethod_type_metadata_dir_surface_diff_subset`,
   `cpython_staticmethod_classmethod_abstractmethod_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
+  `cpython_property_type_metadata_dir_surface_diff_subset`,
   `cpython_property_attribute_assignment_errors_diff_subset`,
   `cpython_property_name_metadata_diff_subset`,
   `cpython_property_set_name_metadata_diff_subset`,
@@ -10631,6 +10632,13 @@ and without widening host IO, network, process, C ABI, or full stdlib scope.
 `property.__isabstractmethod__` aggregation across getter, setter, and deleter
 callables, plus `dir()` visibility for the supported property descriptor
 surface.
+`cpython_property_type_metadata_dir_surface_subset`, backed by
+`cpython_property_type_metadata_dir_surface_diff_subset`, covers
+`dir(property)` hiding `__base__` and `__bases__` while keeping
+`property.__base__`, `property.__bases__`, and `property.__name__` directly
+readable, preserves `property(func)` descriptor-object `dir()` visibility,
+without hiding `property.__name__` from `dir(property)`, and without widening
+host IO, network, process, C ABI, or full stdlib scope.
 `cpython_property_attribute_assignment_errors_subset` and direct CPython
 evidence in `cpython_property_attribute_assignment_errors_diff_subset` cover
 CPython's public read-only property slot attributes (`fget`, `fset`, `fdel`),

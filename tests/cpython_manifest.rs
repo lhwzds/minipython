@@ -46793,6 +46793,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_classmethod_type_metadata_dir_surface_subset",
             "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
+            "cpython_property_type_metadata_dir_surface_subset",
             "cpython_property_attribute_assignment_errors_subset",
             "cpython_property_name_metadata_subset",
             "cpython_property_set_name_metadata_subset",
@@ -46922,6 +46923,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_classmethod_type_metadata_dir_surface_diff_subset",
         "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
+        "cpython_property_type_metadata_dir_surface_diff_subset",
         "cpython_property_attribute_assignment_errors_diff_subset",
         "cpython_property_name_metadata_diff_subset",
         "cpython_property_set_name_metadata_diff_subset",
@@ -48747,6 +48749,90 @@ fn property_abstractmethod_subset_has_focused_diff_evidence() {
                 && document.contains("property.__name__"),
             "property abstractmethod evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn property_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_property_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_property_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "property type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "property type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "wrapped = property(getter)",
+        "'__base__' in dir(property)",
+        "'__bases__' in dir(property)",
+        "'__name__' in dir(property)",
+        "hasattr(property, '__base__')",
+        "hasattr(property, '__bases__')",
+        "hasattr(property, '__name__')",
+        "'__base__' in dir(wrapped)",
+        "'__bases__' in dir(wrapped)",
+        "'__name__' in dir(wrapped)",
+        "'__get__' in dir(wrapped)",
+        "'fget' in dir(wrapped)",
+        "property.__base__ is object",
+        "property.__bases__ == (object,)",
+        "property.__name__",
+        "object.__getattribute__(property, '__name__')",
+        "'getter' in dir(wrapped)",
+        "'setter' in dir(wrapped)",
+        "'deleter' in dir(wrapped)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "property type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False True True True True\"",
+        "\"visible-inst False False True True True\"",
+        "\"readable True True property property\"",
+        "\"method-kept True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"property\"",
+        "names.retain(|attr| !matches!(attr.as_str(), \"__base__\" | \"__bases__\"));",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "property type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(property)`",
+            "`property.__base__`",
+            "`property.__bases__`",
+            "`property.__name__`",
+            "`property(func)`",
+            "without hiding `property.__name__` from `dir(property)`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "property type metadata dir-surface docs must contain `{required}`"
+            );
+        }
     }
 }
 

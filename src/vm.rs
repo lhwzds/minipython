@@ -54416,6 +54416,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "tuple"
     ) {
         remove_type_metadata_dir_names(&mut names);
+    } else if name == "property" {
+        names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
     } else if name == "UserDict" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
