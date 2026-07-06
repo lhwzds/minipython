@@ -19147,6 +19147,19 @@ print('method-kept', 'is_integer' in dir(float), 'is_integer' in dir(value), 're
 }
 
 #[test]
+fn cpython_int_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public int type metadata dir surface",
+        name: "int-type-metadata-dir-surface",
+        source: r#"value = 0
+print('visible-type', '__base__' in dir(int), '__bases__' in dir(int), '__name__' in dir(int), hasattr(int, '__base__'), hasattr(int, '__bases__'), hasattr(int, '__name__'))
+print('visible-inst', '__base__' in dir(value), '__bases__' in dir(value), '__name__' in dir(value))
+print('readable', int.__base__ is object, int.__bases__ == (object,), int.__name__, object.__getattribute__(int, '__name__'))
+print('method-kept', 'bit_length' in dir(int), 'bit_length' in dir(value), 'real' in dir(value), 'imag' in dir(value), 'numerator' in dir(value), 'denominator' in dir(value))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",
