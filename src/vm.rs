@@ -54386,7 +54386,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("cell_contents".to_string());
     } else if matches!(
         name,
-        "dict" | "frozenset" | "list" | "set" | "str" | "tuple"
+        "bytes" | "dict" | "frozenset" | "list" | "set" | "str" | "tuple"
     ) {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "UserDict" {

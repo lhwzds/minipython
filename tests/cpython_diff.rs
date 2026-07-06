@@ -19060,6 +19060,18 @@ print('method-kept', 'upper' in dir(str), 'upper' in dir(''), 'split' in dir('')
 }
 
 #[test]
+fn cpython_bytes_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public bytes type metadata dir surface",
+        name: "bytes-type-metadata-dir-surface",
+        source: r#"print('visible-type', '__base__' in dir(bytes), '__bases__' in dir(bytes), '__name__' in dir(bytes), hasattr(bytes, '__base__'), hasattr(bytes, '__bases__'), hasattr(bytes, '__name__'))
+print('visible-inst', '__base__' in dir(b''), '__bases__' in dir(b''), '__name__' in dir(b''))
+print('readable', bytes.__base__ is object, bytes.__bases__ == (object,), bytes.__name__, object.__getattribute__(bytes, '__name__'))
+print('method-kept', 'decode' in dir(bytes), 'decode' in dir(b''), 'hex' in dir(b''))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

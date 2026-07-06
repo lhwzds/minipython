@@ -55487,6 +55487,26 @@ fn cpython_str_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public bytes type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(bytes) or dir(b"").
+#[test]
+fn cpython_bytes_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(bytes), '__bases__' in dir(bytes), '__name__' in dir(bytes), hasattr(bytes, '__base__'), hasattr(bytes, '__bases__'), hasattr(bytes, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(b''), '__bases__' in dir(b''), '__name__' in dir(b''))\n",
+            "print('readable', bytes.__base__ is object, bytes.__bases__ == (object,), bytes.__name__, object.__getattribute__(bytes, '__name__'))\n",
+            "print('method-kept', 'decode' in dir(bytes), 'decode' in dir(b''), 'hex' in dir(b''))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True bytes bytes",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

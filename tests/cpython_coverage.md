@@ -804,6 +804,12 @@ Recent runtime migration notes:
   `str.__base__`, `str.__bases__`, and `str.__name__` directly readable,
   without hiding direct str type metadata lookup, without changing str method visibility,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_bytes_type_metadata_dir_surface_subset`, backed by
+  `cpython_bytes_type_metadata_dir_surface_diff_subset`, now pins `dir(bytes)`
+  and `dir(b"")` hiding `__base__`, `__bases__`, and `__name__` while keeping
+  `bytes.__base__`, `bytes.__bases__`, and `bytes.__name__` directly readable,
+  without hiding direct bytes type metadata lookup, without changing bytes method visibility,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1552,6 +1558,7 @@ Recent runtime migration notes:
   `cpython_tuple_instance_doc_attribute_diff_subset`,
   `cpython_tuple_type_metadata_dir_surface_diff_subset`,
   `cpython_bytes_instance_doc_attribute_diff_subset`,
+  `cpython_bytes_type_metadata_dir_surface_diff_subset`,
   `cpython_bytearray_instance_doc_attribute_diff_subset`,
   `cpython_range_instance_doc_attribute_diff_subset`,
   `cpython_slice_instance_doc_attribute_diff_subset`,
