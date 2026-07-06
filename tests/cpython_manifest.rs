@@ -46735,6 +46735,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_bytes_iterator_type_metadata_dir_surface_subset",
             "cpython_bytes_iterator_setstate_subset",
             "cpython_bytearray_iterator_type_metadata_dir_surface_subset",
+            "cpython_bytearray_iterator_setstate_subset",
             "cpython_set_iterator_type_metadata_dir_surface_subset",
             "cpython_dict_keyiterator_type_metadata_dir_surface_subset",
             "cpython_dict_reversekeyiterator_type_metadata_dir_surface_subset",
@@ -47003,6 +47004,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_bytes_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_bytes_iterator_setstate_diff_subset",
         "cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_bytearray_iterator_setstate_diff_subset",
         "cpython_set_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset",
@@ -55174,14 +55176,15 @@ fn bytearray_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"bytearray_iterator\"",
         "\"bytearray_iterator\" => vec![builtin_type_value(\"object\")]",
-        "\"bytearray_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
-        "Value::Iterator(state) if matches!(&*state.borrow(), Value::ByteArrayIterator { .. })",
+        "\"bytearray_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
         "Value::ByteArrayIterator { .. } => {\n            names.extend(builtin_type_dir_names(\"bytearray_iterator\"))",
+        "bytearray_iterator_protocol_method(\n            Value::ByteArrayIterator {",
+        "is_bytearray_iterator",
+        "bytearray_iterator_protocol_method(Value::Iterator(state), name)",
         "(byte_array_value(bytearray_bytes(&bytes)), Some(index))",
-        "Value::ByteArrayIterator { .. } => Some(\"bytearray_iterator\")",
         "| \"bytearray_iterator\"\n            | \"set_iterator\"",
         "function_name == \"bytearray_iterator\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -55220,6 +55223,120 @@ fn bytearray_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "bytearray_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn bytearray_iterator_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_bytearray_iterator_setstate_diff_subset";
+    let subset_name = "cpython_bytearray_iterator_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray_iterator __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray_iterator __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = bytearray(b'abc')",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "next(probe)",
+        "bad-setstate-",
+        "10**200",
+        "iter(source).__setstate__()",
+        "iter(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "typ.__setstate__(object(), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytearray_iterator __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None StopIteration\"",
+        "\"setstate-next 0 None 97\"",
+        "\"setstate-next 1 None 98\"",
+        "\"setstate-next 2 None 99\"",
+        "\"setstate-next 3 None StopIteration\"",
+        "\"setstate-next 99 None StopIteration\"",
+        "\"setstate-next True None 98\"",
+        "\"setstate-next False None 97\"",
+        "\"bad-setstate-Index TypeError an integer is required\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C ssize_t\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C ssize_t\"",
+        "\"missing TypeError bytearray_iterator.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError bytearray_iterator.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-setstate None\"",
+        "\"unbound-next 99\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'bytearray_iterator' objects doesn't apply to a 'object' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytearray_iterator __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"bytearray_iterator.__setstate__\"",
+        "self.call_bytearray_iterator_setstate(receiver.clone(), index.clone())",
+        "fn call_bytearray_iterator_setstate(",
+        "bytearray_iterator_setstate_index(&index)",
+        "Value::ByteArrayIterator {",
+        "*current = index;",
+        "*exhausted = false;",
+        "*exhausted = true;",
+        "bytearray_iterator_setstate_receiver_error(&*iterator)",
+        "\"bytearray_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "fn bytearray_iterator_protocol_method(",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "bytearray_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"bytearray_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "fn bytearray_iterator_setstate_index(",
+        "Value::Bool(value) => Value::Number(bool_as_i64(*value))",
+        "\"OverflowError: Python int too large to convert to C ssize_t\"",
+        "fn bytearray_iterator_setstate_receiver_error(",
+        "\"bytearray_iterator.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytearray_iterator __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`bytearray_iterator.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "negative state exhaustion",
+            "oversized non-overflowing state exhaustion",
+            "bool and int-subclass state handling",
+            "`TypeError: an integer is required`",
+            "`OverflowError: Python int too large to convert to C ssize_t`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "bytearray_iterator __setstate__ docs must contain `{required}`"
             );
         }
     }
