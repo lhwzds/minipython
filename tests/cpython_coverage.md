@@ -1152,6 +1152,15 @@ Recent runtime migration notes:
   `typ.__next__(inst)` / `typ.__reduce__(inst)` dispatch,
   `inst.__length_hint__()`, and `reduce-shape 3 True True 2`, without widening
   host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_str_ascii_iterator_setstate_subset`, backed by
+  `cpython_str_ascii_iterator_setstate_diff_subset`, now pins
+  `str_ascii_iterator.__setstate__`, `__setstate__` visibility on the type and instance,
+  negative state clamping to zero, oversized non-overflowing state exhaustion,
+  bool and int-subclass state handling, non-ASCII `str_iterator` receiver rejection,
+  `TypeError: an integer is required`,
+  `OverflowError: Python int too large to convert to C ssize_t`, and
+  descriptor receiver error behavior, without widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_bytes_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_bytes_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter(b'abc')`, `type(inst)`, `dir(type(iter(b'...')))`, and
@@ -2025,6 +2034,7 @@ Recent runtime migration notes:
   `cpython_tuple_iterator_setstate_diff_subset`,
   `cpython_str_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_str_ascii_iterator_setstate_diff_subset`,
   `cpython_bytes_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_bytes_iterator_setstate_diff_subset`,
   `cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset`,
