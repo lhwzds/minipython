@@ -54420,6 +54420,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "zip" {
         remove_type_metadata_dir_names(&mut names);
+    } else if name == "map" {
+        remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "property" {
@@ -55925,6 +55927,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "bool" => vec![builtin_type_value("int")],
         "enumerate" => vec![builtin_type_value("object")],
         "zip" => vec![builtin_type_value("object")],
+        "map" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -70155,6 +70158,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "slice"
             | "enumerate"
             | "zip"
+            | "map"
             | "property"
             | "super"
             | "staticmethod"
