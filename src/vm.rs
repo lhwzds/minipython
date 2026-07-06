@@ -35034,7 +35034,7 @@ impl Vm {
                 return self.iterator_reduce_result(list_value(remaining), None);
             }
             Value::DictReverseIterator {
-                kind: DictViewKind::Keys,
+                kind,
                 entries,
                 keys,
                 index,
@@ -35059,9 +35059,9 @@ impl Vm {
                             .iter()
                             .enumerate()
                             .find(|(_, (candidate, _))| dict_keys_equal(candidate, &keys[position]))
-                            .and_then(|(current_index, (key, _))| {
+                            .and_then(|(current_index, (key, value))| {
                                 if current_index <= position {
-                                    Some(key.clone())
+                                    Some(dict_iterator_item(kind, key.clone(), value.clone()))
                                 } else {
                                     None
                                 }
@@ -54772,16 +54772,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::DictIterator { .. }) => {
             names.extend(builtin_type_dir_names(iterator_type_name(&state.borrow())))
         }
-        Value::Iterator(state)
-            if matches!(
-                &*state.borrow(),
-                Value::DictReverseIterator {
-                    kind: DictViewKind::Keys,
-                    ..
-                }
-            ) =>
-        {
-            names.extend(builtin_type_dir_names("dict_reversekeyiterator"))
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::DictReverseIterator { .. }) => {
+            names.extend(builtin_type_dir_names(iterator_type_name(&state.borrow())))
         }
         Value::Iterator(state) if matches!(&*state.borrow(), Value::ReverseIterator { .. }) => {
             names.extend(builtin_type_dir_names("list_reverseiterator"))
@@ -54811,10 +54803,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::DictIterator { kind, .. } => {
             names.extend(builtin_type_dir_names(dict_view_iterator_type_name(*kind)))
         }
-        Value::DictReverseIterator {
-            kind: DictViewKind::Keys,
-            ..
-        } => names.extend(builtin_type_dir_names("dict_reversekeyiterator")),
+        Value::DictReverseIterator { kind, .. } => names.extend(builtin_type_dir_names(
+            dict_view_reverse_iterator_type_name(*kind),
+        )),
         Value::ReverseIterator { .. } => {
             names.extend(builtin_type_dir_names("list_reverseiterator"))
         }
@@ -55170,7 +55161,10 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "dict_keyiterator" | "dict_valueiterator" | "dict_itemiterator"
     ) {
         remove_type_metadata_dir_names(&mut names);
-    } else if name == "dict_reversekeyiterator" {
+    } else if matches!(
+        name,
+        "dict_reversekeyiterator" | "dict_reversevalueiterator" | "dict_reverseitemiterator"
+    ) {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "list_reverseiterator" {
         remove_type_metadata_dir_names(&mut names);
@@ -55596,7 +55590,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "dict_keyiterator" | "dict_valueiterator" | "dict_itemiterator" => {
             &["__iter__", "__next__", "__length_hint__", "__reduce__"]
         }
-        "dict_reversekeyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "dict_reversekeyiterator" | "dict_reversevalueiterator" | "dict_reverseitemiterator" => {
+            &["__iter__", "__next__", "__length_hint__", "__reduce__"]
+        }
         "list_reverseiterator" => &[
             "__iter__",
             "__next__",
@@ -56767,6 +56763,8 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "dict_valueiterator" => vec![builtin_type_value("object")],
         "dict_itemiterator" => vec![builtin_type_value("object")],
         "dict_reversekeyiterator" => vec![builtin_type_value("object")],
+        "dict_reversevalueiterator" => vec![builtin_type_value("object")],
+        "dict_reverseitemiterator" => vec![builtin_type_value("object")],
         "list_reverseiterator" => vec![builtin_type_value("object")],
         "reversed" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
@@ -57343,6 +57341,8 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "dict_valueiterator"
                 | "dict_itemiterator"
                 | "dict_reversekeyiterator"
+                | "dict_reversevalueiterator"
+                | "dict_reverseitemiterator"
                 | "list_reverseiterator"
                 | "reversed"
                 | "enumerate"
@@ -65424,11 +65424,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 expected_len,
                 expected_version,
             };
-            if kind == DictViewKind::Keys {
-                list_tuple_iterator_protocol_method("dict_reversekeyiterator", receiver, name)
-            } else {
-                length_hint_iterator_protocol_method("dict_reversekeyiterator", receiver, name)
-            }
+            list_tuple_iterator_protocol_method(
+                dict_view_reverse_iterator_type_name(kind),
+                receiver,
+                name,
+            )
         }
         Value::EnumerateIterator { .. } if name == "__class_getitem__" => {
             Ok(class_getitem_bound_method(Value::Builtin(
@@ -65525,10 +65525,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let reduce_type_name = match &*iterator {
                     Value::SetIterator { .. } => Some("set_iterator"),
                     Value::DictIterator { kind, .. } => Some(dict_view_iterator_type_name(*kind)),
-                    Value::DictReverseIterator {
-                        kind: DictViewKind::Keys,
-                        ..
-                    } => Some("dict_reversekeyiterator"),
+                    Value::DictReverseIterator { kind, .. } => {
+                        Some(dict_view_reverse_iterator_type_name(*kind))
+                    }
                     _ => None,
                 };
                 (
@@ -66516,7 +66515,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "dict_reversekeyiterator"
+            if matches!(
+                function_name.as_str(),
+                "dict_reversekeyiterator"
+                    | "dict_reversevalueiterator"
+                    | "dict_reverseitemiterator"
+            )
                 && matches!(name, "__length_hint__" | "__reduce__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
@@ -71718,6 +71722,8 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "dict_valueiterator"
             | "dict_itemiterator"
             | "dict_reversekeyiterator"
+            | "dict_reversevalueiterator"
+            | "dict_reverseitemiterator"
             | "list_reverseiterator"
             | "reversed"
             | "property"
@@ -72849,7 +72855,7 @@ fn type_name(value: &Value) -> &str {
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { kind, .. } => dict_view_iterator_type_name(*kind),
         Value::ReverseIterator { .. } => "list_reverseiterator",
-        Value::DictReverseIterator { .. } => "dict_reversekeyiterator",
+        Value::DictReverseIterator { kind, .. } => dict_view_reverse_iterator_type_name(*kind),
         Value::SequenceReverseIterator { .. } => "reversed",
         Value::EnumerateIterator { .. } => "enumerate",
         Value::ZipIterator { .. } => "zip",
@@ -73015,6 +73021,14 @@ fn dict_view_iterator_type_name(kind: DictViewKind) -> &'static str {
     }
 }
 
+fn dict_view_reverse_iterator_type_name(kind: DictViewKind) -> &'static str {
+    match kind {
+        DictViewKind::Keys => "dict_reversekeyiterator",
+        DictViewKind::Values => "dict_reversevalueiterator",
+        DictViewKind::Items => "dict_reverseitemiterator",
+    }
+}
+
 fn iterator_type_name(iterator: &Value) -> &'static str {
     match iterator {
         Value::RangeIterator { .. } => "range_iterator",
@@ -73028,7 +73042,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { kind, .. } => dict_view_iterator_type_name(*kind),
         Value::ReverseIterator { .. } => "list_reverseiterator",
-        Value::DictReverseIterator { .. } => "dict_reversekeyiterator",
+        Value::DictReverseIterator { kind, .. } => dict_view_reverse_iterator_type_name(*kind),
         Value::SequenceReverseIterator { .. } => "reversed",
         Value::EnumerateIterator { .. } => "enumerate",
         Value::ZipIterator { .. } => "zip",
@@ -77228,6 +77242,8 @@ fn is_builtin_iterator_type_name(name: &str) -> bool {
             | "dict_valueiterator"
             | "dict_itemiterator"
             | "dict_reversekeyiterator"
+            | "dict_reversevalueiterator"
+            | "dict_reverseitemiterator"
             | "list_reverseiterator"
             | "reversed"
             | "enumerate"

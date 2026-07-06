@@ -1269,8 +1269,9 @@ Recent runtime migration notes:
   `values reduce-shape 2 True 1 list [2, 3] True`,
   `items reduce-shape 2 True 1 list [('b', 2), ('c', 3)] True`, and
   size-change `RuntimeError: dictionary changed size during iteration`;
-  reverse value/item iterators remain a separate follow-up slice, without
-  widening host IO, network, process, C ABI, or full stdlib scope.
+  reverse value/item iterators are covered by
+  `cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_subset`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_dict_reversekeyiterator_type_metadata_dir_surface_subset`, backed by
   `cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset`, now
   pins `reversed({'a': 1, 'b': 2, 'c': 3})`, `type(inst)`,
@@ -1281,6 +1282,21 @@ Recent runtime migration notes:
   `__length_hint__`, `__reduce__`, direct `typ.__length_hint__(inst)` /
   `typ.__next__(inst)` / `typ.__reduce__(inst)` dispatch,
   `inst.__length_hint__()`, `reduce-shape 2 True 1 list True 2 True`, and
+  size-change `RuntimeError: dictionary changed size during iteration`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_subset`,
+  backed by
+  `cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_diff_subset`,
+  now pins `reversed(dict.values())`, `reversed(dict.items())`,
+  `dir(type(reversed(dict.values())))`, and `dir(reversed(dict.items()))`
+  for `dict_reversevalueiterator.__base__`,
+  `dict_reverseitemiterator.__base__`,
+  `dict_reversevalueiterator.__module__`,
+  `dict_reverseitemiterator.__qualname__`, `__iter__`, `__next__`,
+  `__length_hint__`, `__reduce__`, direct `typ.__length_hint__(inst)` /
+  `typ.__next__(inst)` / `typ.__reduce__(inst)` dispatch,
+  `rvalues reduce-shape 2 True 1 list [2, 1] True`,
+  `ritems reduce-shape 2 True 1 list [('b', 2), ('a', 1)] True`, and
   size-change `RuntimeError: dictionary changed size during iteration`,
   without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
@@ -2096,6 +2112,7 @@ Recent runtime migration notes:
   `cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_dict_value_itemiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,

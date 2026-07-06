@@ -46745,6 +46745,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_dict_keyiterator_type_metadata_dir_surface_subset",
             "cpython_dict_value_itemiterator_type_metadata_dir_surface_subset",
             "cpython_dict_reversekeyiterator_type_metadata_dir_surface_subset",
+            "cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
             "cpython_builtin_print_keyword_subset",
@@ -47020,6 +47021,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_value_itemiterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset",
+        "cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
@@ -56424,7 +56426,8 @@ fn dict_value_itemiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             "`values reduce-shape 2 True 1 list [2, 3] True`",
             "`items reduce-shape 2 True 1 list [('b', 2), ('c', 3)] True`",
             "`RuntimeError: dictionary changed size during iteration`",
-            "reverse value/item iterators remain a separate follow-up slice",
+            "reverse value/item iterators are covered by",
+            "`cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_subset`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
@@ -56520,15 +56523,15 @@ fn dict_reversekeyiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     }
 
     for required in [
-        "name == \"dict_reversekeyiterator\"",
+        "DictViewKind::Keys => \"dict_reversekeyiterator\"",
         "\"dict_reversekeyiterator\" => vec![builtin_type_value(\"object\")]",
-        "\"dict_reversekeyiterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
-        "Value::DictReverseIterator {\n                    kind: DictViewKind::Keys,",
-        "names.extend(builtin_type_dir_names(\"dict_reversekeyiterator\"))",
+        "\"dict_reversekeyiterator\" | \"dict_reversevalueiterator\" | \"dict_reverseitemiterator\" => {\n            &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::DictReverseIterator { .. })",
+        "dict_view_reverse_iterator_type_name(*kind)",
         "0..keys.len().saturating_sub(index)",
-        "Some(\"dict_reversekeyiterator\")",
-        "| \"dict_reversekeyiterator\"\n            | \"list_reverseiterator\"",
-        "function_name == \"dict_reversekeyiterator\"",
+        "Some(dict_view_reverse_iterator_type_name(*kind))",
+        "\"dict_reversekeyiterator\"\n                    | \"dict_reversevalueiterator\"",
+        "\"dict_reversekeyiterator\" | \"dict_reversevalueiterator\" | \"dict_reverseitemiterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -56571,6 +56574,160 @@ fn dict_reversekeyiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "dict_reversekeyiterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name =
+        "cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_diff_subset";
+    let subset_name =
+        "cpython_dict_reversevalue_reverseitemiterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict reverse value/item iterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict reverse value/item iterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = {'a': 1, 'b': 2, 'c': 3}",
+        "('rvalues', reversed(source.values()))",
+        "('ritems', reversed(source.items()))",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "typ.__next__(inst)",
+        "iter(inst) is inst",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "remaining = reduced[1][0]",
+        "reduced[0] is iter",
+        "type(remaining).__name__",
+        "changed_inst = reversed(changed.values()) if label == 'rvalues' else reversed(changed.items())",
+        "type(changed_inst).__reduce__(changed_inst)",
+        "changed['d'] = 4",
+        "changed_inst.__length_hint__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "dict reverse value/item iterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"rvalues type-name dict_reversevalueiterator builtins dict_reversevalueiterator\"",
+        "\"rvalues visible-type False False False False False True True True True\"",
+        "\"rvalues visible-inst False False False True True True True\"",
+        "\"rvalues has-reduce True True\"",
+        "\"rvalues readable-base True True dict_reversevalueiterator\"",
+        "\"rvalues readable-module builtins dict_reversevalueiterator\"",
+        "\"rvalues iter-next-hint True 3 2 2\"",
+        "\"rvalues reduce-shape 2 True 1 list [2, 1] True\"",
+        "\"rvalues mutated-reduce RuntimeError dictionary changed size during iteration\"",
+        "\"rvalues mutated-hint 0\"",
+        "\"ritems type-name dict_reverseitemiterator builtins dict_reverseitemiterator\"",
+        "\"ritems visible-type False False False False False True True True True\"",
+        "\"ritems visible-inst False False False True True True True\"",
+        "\"ritems has-reduce True True\"",
+        "\"ritems readable-base True True dict_reverseitemiterator\"",
+        "\"ritems readable-module builtins dict_reverseitemiterator\"",
+        "\"ritems iter-next-hint True ('c', 3) 2 2\"",
+        "\"ritems reduce-shape 2 True 1 list [('b', 2), ('a', 1)] True\"",
+        "\"ritems mutated-reduce RuntimeError dictionary changed size during iteration\"",
+        "\"ritems mutated-hint 0\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "dict reverse value/item iterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_view_reverse_iterator_type_name(",
+        "DictViewKind::Values => \"dict_reversevalueiterator\"",
+        "DictViewKind::Items => \"dict_reverseitemiterator\"",
+        "fn dict_iterator_item(",
+        "DictViewKind::Values => value",
+        "DictViewKind::Items => tuple_value(vec![key, value])",
+        "dict_iterator_item(kind, key.clone(), value.clone())",
+        "dict_view_reverse_iterator_type_name(*kind)",
+        "dict_view_reverse_iterator_type_name(kind)",
+        "\"dict_reversekeyiterator\" | \"dict_reversevalueiterator\" | \"dict_reverseitemiterator\"",
+        "\"dict_reversevalueiterator\" => vec![builtin_type_value(\"object\")]",
+        "\"dict_reverseitemiterator\" => vec![builtin_type_value(\"object\")]",
+        "Some(dict_view_reverse_iterator_type_name(*kind))",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+        "RuntimeError: dictionary changed size during iteration",
+        "RuntimeError: dictionary keys changed during iteration",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict reverse value/item iterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`reversed(dict.values())`",
+            "`reversed(dict.items())`",
+            "`dict_reversevalueiterator.__base__`",
+            "`dict_reverseitemiterator.__base__`",
+            "`dict_reversevalueiterator.__module__`",
+            "`dict_reverseitemiterator.__qualname__`",
+            "`dir(type(reversed(dict.values())))`",
+            "`dir(reversed(dict.items()))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__next__(inst)`",
+            "`typ.__reduce__(inst)`",
+            "`rvalues reduce-shape 2 True 1 list [2, 1] True`",
+            "`ritems reduce-shape 2 True 1 list [('b', 2), ('a', 1)] True`",
+            "`RuntimeError: dictionary changed size during iteration`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict reverse value/item iterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
