@@ -25722,6 +25722,20 @@ print('same', u.__module__ == UserDict.__module__, getattr(u, '__module__') == '
 }
 
 #[test]
+fn cpython_collections_userdict_abstractmethods_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserDict __abstractmethods__ metadata",
+        name: "collections-userdict-abstractmethods-metadata",
+        source: r#"from collections import UserDict
+u = UserDict({'a': 1})
+print('visible', '__abstractmethods__' in dir(UserDict), '__abstractmethods__' in dir(u), hasattr(UserDict, '__abstractmethods__'), hasattr(u, '__abstractmethods__'))
+print('type-abstract', type(UserDict.__abstractmethods__).__name__, repr(UserDict.__abstractmethods__), len(UserDict.__abstractmethods__), UserDict.__abstractmethods__ == frozenset(), object.__getattribute__(UserDict, '__abstractmethods__') == frozenset())
+print('inst-abstract', type(u.__abstractmethods__).__name__, repr(u.__abstractmethods__), len(u.__abstractmethods__), u.__abstractmethods__ == frozenset(), object.__getattribute__(u, '__abstractmethods__') == frozenset())
+print('same-value', u.__abstractmethods__ == UserDict.__abstractmethods__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserDict public direct base metadata subset",

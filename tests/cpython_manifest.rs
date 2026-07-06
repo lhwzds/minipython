@@ -26507,6 +26507,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_instance_doc_attribute_subset",
             "cpython_collections_userdict_type_doc_attribute_subset",
             "cpython_collections_userdict_module_metadata_subset",
+            "cpython_collections_userdict_abstractmethods_metadata_subset",
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
@@ -28564,12 +28565,83 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`UserDict(...).__module__`",
             "`dir(UserDict)` and `dir(UserDict(...))`",
             "`collections`",
-            "without adding `__slots__`, `__abstractmethods__`, `__weakref__`",
+            "without adding `__slots__`, `__weakref__`",
             "UserDict mapping-method surface",
         ] {
             assert!(
                 document.contains(required),
                 "UserDict __module__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userdict_abstractmethods_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserDict __abstractmethods__ metadata"
+    );
+    let userdict_abstractmethods_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_abstractmethods_metadata_diff_subset",
+    );
+    let userdict_abstractmethods_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_abstractmethods_metadata_subset",
+    );
+    for required in [
+        "from collections import UserDict",
+        "u = UserDict({'a': 1})",
+        "'__abstractmethods__' in dir(UserDict)",
+        "'__abstractmethods__' in dir(u)",
+        "hasattr(UserDict, '__abstractmethods__')",
+        "hasattr(u, '__abstractmethods__')",
+        "UserDict.__abstractmethods__",
+        "object.__getattribute__(UserDict, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__",
+        "object.__getattribute__(u, '__abstractmethods__') == frozenset()",
+        "u.__abstractmethods__ == UserDict.__abstractmethods__",
+    ] {
+        assert!(
+            userdict_abstractmethods_diff_body.contains(required)
+                && userdict_abstractmethods_subset_body.contains(required),
+            "UserDict __abstractmethods__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-abstract frozenset frozenset() 0 True True\"",
+        "\"inst-abstract frozenset frozenset() 0 True True\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userdict_abstractmethods_subset_body.contains(required),
+            "UserDict __abstractmethods__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserDict\" && name == \"__abstractmethods__\"",
+        "\"__abstractmethods__\" => Ok(frozen_set_value(Vec::new()))",
+        "names.push(\"__abstractmethods__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserDict __abstractmethods__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userdict_abstractmethods_metadata_subset",
+            "cpython_collections_userdict_abstractmethods_metadata_diff_subset",
+            "`UserDict.__abstractmethods__`",
+            "`UserDict(...).__abstractmethods__`",
+            "`dir(UserDict)` and `dir(UserDict(...))`",
+            "empty `frozenset()`",
+            "without adding `__dict__`, `__slots__`, `__weakref__`",
+            "full abstractmethod machinery",
+            "UserDict mapping-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserDict __abstractmethods__ metadata docs must contain `{required}`"
             );
         }
     }
