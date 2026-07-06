@@ -943,6 +943,14 @@ Recent runtime migration notes:
   `map.__next__(map(lambda x: x + 1, [1]))`, and
   `filter.__next__(filter(None, [0, 1]))`, without widening host IO, network,
   process, C ABI, or full stdlib scope.
+- `cpython_callable_iterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`, now pins
+  `iter(make, 2)`, `type(inst)`, `dir(type(iter(...)))`, and
+  `dir(iter(callable, sentinel))` for `callable_iterator.__base__`,
+  `callable_iterator.__bases__`, `callable_iterator.__module__`,
+  `callable_iterator.__qualname__`, `__iter__`, `__next__`, and direct
+  `typ.__next__(inst)` protocol dispatch, without widening host IO, network,
+  process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1728,6 +1736,7 @@ Recent runtime migration notes:
   `cpython_map_type_metadata_dir_surface_diff_subset`,
   `cpython_filter_type_metadata_dir_surface_diff_subset`,
   `cpython_builtin_iterator_dir_protocol_methods_diff_subset`,
+  `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,

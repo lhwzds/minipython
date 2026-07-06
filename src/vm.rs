@@ -54107,10 +54107,14 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::FilterIterator { .. }) => {
             names.extend(builtin_type_dir_names("filter"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. }) => {
+            names.extend(builtin_type_dir_names("callable_iterator"))
+        }
         Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
         Value::ZipIterator { .. } => names.extend(builtin_type_dir_names("zip")),
         Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
         Value::FilterIterator { .. } => names.extend(builtin_type_dir_names("filter")),
+        Value::CallIterator { .. } => names.extend(builtin_type_dir_names("callable_iterator")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -54435,6 +54439,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "map" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "filter" {
+        remove_type_metadata_dir_names(&mut names);
+    } else if name == "callable_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
@@ -54801,7 +54807,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "toreadonly",
         ],
         "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
-        "zip" | "map" | "filter" => &["__iter__", "__next__"],
+        "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -55944,6 +55950,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "zip" => vec![builtin_type_value("object")],
         "map" => vec![builtin_type_value("object")],
         "filter" => vec![builtin_type_value("object")],
+        "callable_iterator" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -70182,6 +70189,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "zip"
             | "map"
             | "filter"
+            | "callable_iterator"
             | "property"
             | "super"
             | "staticmethod"

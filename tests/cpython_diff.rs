@@ -16813,6 +16813,24 @@ print('direct-next', enumerate.__next__(enumerate(['a'])), zip.__next__(zip([1],
 }
 
 #[test]
+fn cpython_callable_iterator_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public callable_iterator type metadata dir surface",
+        name: "callable-iterator-type-metadata-dir-surface",
+        source: r#"def make():
+    return 1
+inst = iter(make, 2)
+typ = type(inst)
+print('type-name', typ.__name__, typ.__module__, typ.__qualname__)
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+print('readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+print('iter-next', iter(inst) is inst, next(inst), typ.__next__(inst))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_sorted_exact_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",
