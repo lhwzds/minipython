@@ -25943,6 +25943,24 @@ show('type-none', lambda: UserList.__init__(u, None))"#,
 }
 
 #[test]
+fn cpython_collections_userlist_inherited_setattr_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList inherited object.__setattr__ behavior",
+        name: "collections-userlist-inherited-setattr-method",
+        source: r#"from collections import UserList
+u = UserList([1])
+print('visible', hasattr(UserList, '__setattr__'), hasattr(u, '__setattr__'), '__setattr__' in dir(UserList), '__setattr__' in dir(u), UserList.__setattr__ is object.__setattr__, type(UserList.__setattr__).__name__, type(u.__setattr__).__name__)
+def show(label, call):
+    result = call()
+    print(label, result, u, u.data, getattr(u, 'tag', None), getattr(u, 'other', None))
+show('bound-tag', lambda: u.__setattr__('tag', 123))
+show('type-other', lambda: UserList.__setattr__(u, 'other', 456))
+show('bound-data-list', lambda: u.__setattr__('data', [7, 8]))
+show('type-data-list', lambda: UserList.__setattr__(u, 'data', [9]))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

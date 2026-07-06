@@ -26520,6 +26520,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_copy_method_subset",
             "cpython_collections_userlist_reversed_method_subset",
             "cpython_collections_userlist_init_method_subset",
+            "cpython_collections_userlist_inherited_setattr_method_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29487,6 +29488,86 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __init__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_inherited_setattr_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList inherited __setattr__ behavior"
+    );
+    let userlist_setattr_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_inherited_setattr_method_diff_subset",
+    );
+    let userlist_setattr_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_inherited_setattr_method_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1])",
+        "hasattr(UserList, '__setattr__')",
+        "hasattr(u, '__setattr__')",
+        "'__setattr__' in dir(UserList)",
+        "'__setattr__' in dir(u)",
+        "UserList.__setattr__ is object.__setattr__",
+        "type(UserList.__setattr__).__name__",
+        "type(u.__setattr__).__name__",
+        "u.__setattr__('tag', 123)",
+        "UserList.__setattr__(u, 'other', 456)",
+        "u.__setattr__('data', [7, 8])",
+        "UserList.__setattr__(u, 'data', [9])",
+    ] {
+        assert!(
+            userlist_setattr_method_diff_body.contains(required)
+                && userlist_setattr_method_subset_body.contains(required),
+            "UserList inherited __setattr__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True wrapper_descriptor method-wrapper\"",
+        "\"bound-tag None [1] [1] 123 None\"",
+        "\"type-other None [1] [1] 123 456\"",
+        "\"bound-data-list None [7, 8] [7, 8] 123 456\"",
+        "\"type-data-list None [9] [9] 123 456\"",
+    ] {
+        assert!(
+            userlist_setattr_method_subset_body.contains(required),
+            "UserList inherited __setattr__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"__setattr__\" => Ok(object_setattr_bound_method(Value::UserList {",
+        "function_name == \"UserList\" && name == \"__setattr__\"",
+        "Ok(Value::Builtin(\"object.__setattr__\".to_string()))",
+        "\"UserList\" => &[",
+        "\"__setattr__\"",
+        "fn object_setattr_bound_method(receiver: Value) -> Value",
+        "Value::Builtin(name) if name == \"object.__setattr__\"",
+        "self.call_object_setattr(args)",
+        "self.store_attribute_without_custom_setattr(object.clone(), &name, value.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList inherited __setattr__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_inherited_setattr_method_subset",
+            "cpython_collections_userlist_inherited_setattr_method_diff_subset",
+            "`UserList.__setattr__`",
+            "`UserList(...).__setattr__`",
+            "`UserList.__setattr__ is object.__setattr__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "pure in-memory attribute assignment",
+            "without adding the full inherited object method matrix",
+            "without changing UserList deletion or getattribute behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList inherited __setattr__ docs must contain `{required}`"
             );
         }
     }

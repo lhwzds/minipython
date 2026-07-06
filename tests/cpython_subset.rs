@@ -69591,6 +69591,32 @@ show('type-none', lambda: UserList.__init__(u, None))"#,
     );
 }
 
+// Mirrors CPython's public UserList inherited object.__setattr__ method. This
+// pins pure in-memory attribute assignment without adding the full inherited
+// object method matrix.
+#[test]
+fn cpython_collections_userlist_inherited_setattr_method_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1])
+print('visible', hasattr(UserList, '__setattr__'), hasattr(u, '__setattr__'), '__setattr__' in dir(UserList), '__setattr__' in dir(u), UserList.__setattr__ is object.__setattr__, type(UserList.__setattr__).__name__, type(u.__setattr__).__name__)
+def show(label, call):
+    result = call()
+    print(label, result, u, u.data, getattr(u, 'tag', None), getattr(u, 'other', None))
+show('bound-tag', lambda: u.__setattr__('tag', 123))
+show('type-other', lambda: UserList.__setattr__(u, 'other', 456))
+show('bound-data-list', lambda: u.__setattr__('data', [7, 8]))
+show('type-data-list', lambda: UserList.__setattr__(u, 'data', [9]))"#,
+        &[
+            "visible True True True True True wrapper_descriptor method-wrapper",
+            "bound-tag None [1] [1] 123 None",
+            "type-other None [1] [1] 123 456",
+            "bound-data-list None [7, 8] [7, 8] 123 456",
+            "type-data-list None [9] [9] 123 456",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {

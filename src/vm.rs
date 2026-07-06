@@ -54495,6 +54495,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__radd__",
             "__reversed__",
             "__rmul__",
+            "__setattr__",
             "__setitem__",
             "append",
             "clear",
@@ -63068,6 +63069,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::UserList { data, attrs }),
                     identity: Rc::new(()),
                 }),
+                "__setattr__" => Ok(object_setattr_bound_method(Value::UserList {
+                    data,
+                    attrs,
+                })),
                 "append" | "extend" | "clear" | "copy" | "__copy__" | "pop" | "reverse"
                 | "sort" | "count" | "index" | "insert" | "remove" | "__add__"
                 | "__contains__" | "__delitem__" | "__eq__" | "__format__" | "__getitem__"
@@ -65106,6 +65111,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserList" && name == "__reversed__" =>
         {
             Ok(Value::Builtin("Sequence.__reversed__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserList" && name == "__setattr__" => {
+            Ok(Value::Builtin("object.__setattr__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "UserList" && name == "__class_getitem__" =>
@@ -68073,12 +68081,26 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             )?;
             Ok(())
         }
-        Value::UserList { attrs, .. } => {
-            insert_live_dict_entry(
-                &mut attrs.borrow_mut(),
-                Value::String(name.to_string()),
-                value,
-            )?;
+        Value::UserList { data, attrs } => {
+            if name == "data" {
+                let values = match value {
+                    Value::List(items) => items.borrow().clone(),
+                    Value::UserList { data: items, .. } => items.borrow().clone(),
+                    value => {
+                        return Err(format!(
+                            "TypeError: UserList.data does not support assignment from '{}'",
+                            type_name(&value)
+                        ));
+                    }
+                };
+                *data.borrow_mut() = values;
+            } else {
+                insert_live_dict_entry(
+                    &mut attrs.borrow_mut(),
+                    Value::String(name.to_string()),
+                    value,
+                )?;
+            }
             Ok(())
         }
         Value::UserString { data, attrs } => {
