@@ -26514,6 +26514,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_type_base_metadata_subset",
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
+            "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
@@ -28993,6 +28994,84 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_type_base_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList direct base metadata dir surface"
+    );
+    let userlist_type_base_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_type_base_dir_surface_diff_subset",
+    );
+    let userlist_type_base_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_type_base_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "from collections.abc import MutableSequence",
+        "u = UserList([1, 2])",
+        "getattr(UserList, '__base__')",
+        "getattr(UserList, '__bases__')",
+        "object.__getattribute__(UserList, '__base__')",
+        "object.__getattribute__(UserList, '__bases__')",
+        "getattr(u, attr)",
+        "'__base__' in dir(UserList)",
+        "'__bases__' in dir(UserList)",
+        "'__base__' in dir(u)",
+        "'__bases__' in dir(u)",
+        "hasattr(UserList, '__base__')",
+        "hasattr(UserList, '__bases__')",
+        "hasattr(u, '__base__')",
+        "hasattr(u, '__bases__')",
+    ] {
+        assert!(
+            userlist_type_base_dir_diff_body.contains(required)
+                && userlist_type_base_dir_subset_body.contains(required),
+            "UserList direct base metadata dir-surface diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"direct-base True collections.abc MutableSequence\"",
+        "\"direct-bases tuple 1 True collections.abc MutableSequence\"",
+        "\"object True True\"",
+        "\"inst __base__ AttributeError\"",
+        "\"inst __bases__ AttributeError\"",
+        "\"visible False False False False True True False False\"",
+    ] {
+        assert!(
+            userlist_type_base_dir_subset_body.contains(required),
+            "UserList direct base metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserList\"",
+        "names.retain(|attr| !matches!(attr.as_str(), \"__base__\" | \"__bases__\"))",
+        "collections_type_direct_base_name",
+        "\"UserList\" => Some(\"MutableSequence\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList direct base metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_type_base_dir_surface_subset",
+            "cpython_collections_userlist_type_base_dir_surface_diff_subset",
+            "`UserList.__base__` and `UserList.__bases__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "`MutableSequence`",
+            "without changing direct base metadata lookup",
+            "without expanding full `__mro__` parity",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList direct base metadata dir-surface docs must contain `{required}`"
             );
         }
     }

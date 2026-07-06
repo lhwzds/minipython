@@ -194,6 +194,12 @@ Recent runtime migration notes:
   of `dir(UserDict)` and `dir(UserDict(...))`, pinned to `MutableMapping`,
   without changing direct base metadata lookup, without expanding full
   `__mro__` parity, or adding new UserDict mapping-method surface.
+- `cpython_collections_userlist_type_base_dir_surface_subset`, backed by
+  `cpython_collections_userlist_type_base_dir_surface_diff_subset`, now keeps
+  `UserList.__base__` and `UserList.__bases__` readable while keeping them out
+  of `dir(UserList)` and `dir(UserList(...))`, pinned to `MutableSequence`,
+  without changing direct base metadata lookup, without expanding full
+  `__mro__` parity, or adding new UserList sequence-method surface.
 - `cpython_collections_userstring_module_metadata_subset`, backed by
   `cpython_collections_userstring_module_metadata_diff_subset`, now pins
   `UserString.__module__`, `UserString(...).__module__`, and
@@ -1699,6 +1705,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_instance_doc_attribute_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
+  `cpython_collections_userlist_type_base_dir_surface_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
@@ -7597,6 +7604,14 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userlist_type_base_metadata_subset`, covering
   `UserList` direct base metadata through `__base__` and `__bases__`, pinned to
   `collections.abc.MutableSequence` without expanding full `__mro__` parity.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_type_base_dir_surface_diff_subset` and
+  `cpython_collections_userlist_type_base_dir_surface_subset`, covering
+  `UserList.__base__` and `UserList.__bases__` readability while keeping them
+  out of `dir(UserList)` and `dir(UserList(...))`, pinned to
+  `MutableSequence`, without changing direct base metadata lookup, without
+  expanding full `__mro__` parity, or adding new UserList sequence-method
+  surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_type_base_metadata_diff_subset` and
   `cpython_collections_userstring_type_base_metadata_subset`, covering

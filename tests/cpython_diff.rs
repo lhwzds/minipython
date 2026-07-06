@@ -25818,6 +25818,29 @@ print('bases', type(bases).__name__, len(bases), bases[0] is MutableSequence, ba
 }
 
 #[test]
+fn cpython_collections_userlist_type_base_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList direct base metadata dir surface",
+        name: "collections-userlist-type-base-dir-surface",
+        source: r#"from collections import UserList
+from collections.abc import MutableSequence
+u = UserList([1, 2])
+base = getattr(UserList, '__base__')
+bases = getattr(UserList, '__bases__')
+print('direct-base', base is MutableSequence, base.__module__, base.__qualname__)
+print('direct-bases', type(bases).__name__, len(bases), bases[0] is MutableSequence, bases[0].__module__, bases[0].__qualname__)
+print('object', object.__getattribute__(UserList, '__base__') is MutableSequence, object.__getattribute__(UserList, '__bases__')[0] is MutableSequence)
+for attr in ['__base__', '__bases__']:
+    try:
+        getattr(u, attr)
+        print('inst', attr, 'ok')
+    except Exception as error:
+        print('inst', attr, type(error).__name__)
+print('visible', '__base__' in dir(UserList), '__bases__' in dir(UserList), '__base__' in dir(u), '__bases__' in dir(u), hasattr(UserList, '__base__'), hasattr(UserList, '__bases__'), hasattr(u, '__base__'), hasattr(u, '__bases__'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserString public direct base metadata subset",

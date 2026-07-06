@@ -54307,6 +54307,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__module__".to_string());
         names.push("__abstractmethods__".to_string());
         names.push("__slots__".to_string());
+    } else if name == "UserList" {
+        names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
     }
