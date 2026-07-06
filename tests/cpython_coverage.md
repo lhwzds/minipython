@@ -960,6 +960,16 @@ Recent runtime migration notes:
   direct `typ.__length_hint__(inst)` / `typ.__next__(inst)` dispatch, and
   `inst.__length_hint__()`, without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `cpython_list_iterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_list_iterator_type_metadata_dir_surface_diff_subset`, now pins
+  `iter([1, 2, 3])`, `type(inst)`, `dir(type(iter([...])))`, and
+  `dir(iter([...]))` for `list_iterator.__base__`,
+  `list_iterator.__bases__`, `list_iterator.__module__`,
+  `list_iterator.__qualname__`, `__iter__`, `__next__`, `__length_hint__`,
+  `__reduce__`, `hasattr(typ, '__reduce__')`, direct
+  `typ.__length_hint__(inst)` / `typ.__next__(inst)` dispatch, and
+  `inst.__length_hint__()`, without widening host IO, network, process, C ABI,
+  or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1747,6 +1757,7 @@ Recent runtime migration notes:
   `cpython_builtin_iterator_dir_protocol_methods_diff_subset`,
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_range_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,
