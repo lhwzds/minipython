@@ -1755,7 +1755,7 @@ fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1840,7 +1840,7 @@ fn tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1925,7 +1925,7 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "matches!(name, \"dict\" | \"list\" | \"tuple\")",
+        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1953,6 +1953,91 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "dict type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_set_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_set_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "set type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "set type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'__base__' in dir(set)",
+        "'__bases__' in dir(set)",
+        "'__name__' in dir(set)",
+        "hasattr(set, '__base__')",
+        "hasattr(set, '__bases__')",
+        "hasattr(set, '__name__')",
+        "'__base__' in dir(set())",
+        "'__bases__' in dir(set())",
+        "'__name__' in dir(set())",
+        "set.__base__ is object",
+        "set.__bases__ == (object,)",
+        "set.__name__",
+        "object.__getattribute__(set, '__name__')",
+        "'__class_getitem__' in dir(set)",
+        "'add' in dir(set())",
+        "'clear' in dir(set())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "set type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"readable True True set set\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "set type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn remove_type_metadata_dir_names(",
+        "matches!(name, \"dict\" | \"list\" | \"set\" | \"tuple\")",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "set type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(set)`",
+            "`dir(set())`",
+            "`set.__base__`",
+            "`set.__bases__`",
+            "`set.__name__`",
+            "without hiding direct set type metadata lookup",
+            "without changing set method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "set type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
@@ -45484,6 +45569,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_dict_instance_doc_attribute_subset",
             "cpython_dict_type_metadata_dir_surface_subset",
             "cpython_set_instance_doc_attribute_subset",
+            "cpython_set_type_metadata_dir_surface_subset",
             "cpython_frozenset_instance_doc_attribute_subset",
             "cpython_memoryview_instance_doc_attribute_subset",
             "cpython_memoryview_getstate_subset",
@@ -45597,6 +45683,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_dict_instance_doc_attribute_diff_subset",
         "cpython_dict_type_metadata_dir_surface_diff_subset",
         "cpython_set_instance_doc_attribute_diff_subset",
+        "cpython_set_type_metadata_dir_surface_diff_subset",
         "cpython_frozenset_instance_doc_attribute_diff_subset",
         "cpython_memoryview_instance_doc_attribute_diff_subset",
         "cpython_memoryview_getstate_diff_subset",

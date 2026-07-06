@@ -785,6 +785,12 @@ Recent runtime migration notes:
   `dict.__base__`, `dict.__bases__`, and `dict.__name__` directly readable,
   without hiding direct dict type metadata lookup, without changing dict method visibility,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_set_type_metadata_dir_surface_subset`, backed by
+  `cpython_set_type_metadata_dir_surface_diff_subset`, now pins `dir(set)` and
+  `dir(set())` hiding `__base__`, `__bases__`, and `__name__` while keeping
+  `set.__base__`, `set.__bases__`, and `set.__name__` directly readable,
+  without hiding direct set type metadata lookup, without changing set method visibility,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1520,6 +1526,7 @@ Recent runtime migration notes:
   `cpython_dict_instance_doc_attribute_diff_subset`,
   `cpython_dict_type_metadata_dir_surface_diff_subset`,
   `cpython_set_instance_doc_attribute_diff_subset`,
+  `cpython_set_type_metadata_dir_surface_diff_subset`,
   `cpython_frozenset_instance_doc_attribute_diff_subset`,
   `cpython_memoryview_instance_doc_attribute_diff_subset`,
   `cpython_memoryview_getstate_diff_subset`,

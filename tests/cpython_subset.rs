@@ -55426,6 +55426,26 @@ fn cpython_dict_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public set type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(set) or dir(set()).
+#[test]
+fn cpython_set_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(set), '__bases__' in dir(set), '__name__' in dir(set), hasattr(set, '__base__'), hasattr(set, '__bases__'), hasattr(set, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(set()), '__bases__' in dir(set()), '__name__' in dir(set()))\n",
+            "print('readable', set.__base__ is object, set.__bases__ == (object,), set.__name__, object.__getattribute__(set, '__name__'))\n",
+            "print('method-kept', '__class_getitem__' in dir(set), 'add' in dir(set()), 'clear' in dir(set()))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True set set",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
