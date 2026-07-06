@@ -69433,6 +69433,26 @@ print('same-value', u.__abstractmethods__ == UserList.__abstractmethods__)"#,
     );
 }
 
+// Mirrors CPython's public UserList __slots__ metadata on the type and
+// instances. This only covers the empty-slots metadata value and discoverability.
+#[test]
+fn cpython_collections_userlist_slots_metadata_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__slots__' in dir(UserList), '__slots__' in dir(u), hasattr(UserList, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserList.__slots__).__name__, repr(UserList.__slots__), len(UserList.__slots__), getattr(UserList, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserList.__slots__)"#,
+        &[
+            "visible True True True True",
+            "type-slots tuple () 0 True",
+            "inst-slots tuple () 0 () True",
+            "same-value True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {

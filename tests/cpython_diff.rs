@@ -25832,6 +25832,20 @@ print('same-value', u.__abstractmethods__ == UserList.__abstractmethods__)"#,
 }
 
 #[test]
+fn cpython_collections_userlist_slots_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __slots__ metadata",
+        name: "collections-userlist-slots-metadata",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__slots__' in dir(UserList), '__slots__' in dir(u), hasattr(UserList, '__slots__'), hasattr(u, '__slots__'))
+print('type-slots', type(UserList.__slots__).__name__, repr(UserList.__slots__), len(UserList.__slots__), getattr(UserList, '__slots__') == ())
+print('inst-slots', type(u.__slots__).__name__, repr(u.__slots__), len(u.__slots__), object.__getattribute__(u, '__slots__'), getattr(u, '__slots__') == ())
+print('same-value', u.__slots__ == UserList.__slots__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

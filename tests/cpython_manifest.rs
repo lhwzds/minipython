@@ -26515,6 +26515,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_instance_doc_attribute_subset",
             "cpython_collections_userlist_module_metadata_subset",
             "cpython_collections_userlist_abstractmethods_metadata_subset",
+            "cpython_collections_userlist_slots_metadata_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29079,6 +29080,78 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __abstractmethods__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_slots_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __slots__ metadata"
+    );
+    let userlist_slots_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_slots_metadata_diff_subset",
+    );
+    let userlist_slots_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_slots_metadata_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__slots__' in dir(UserList)",
+        "'__slots__' in dir(u)",
+        "hasattr(UserList, '__slots__')",
+        "hasattr(u, '__slots__')",
+        "UserList.__slots__",
+        "getattr(UserList, '__slots__') == ()",
+        "u.__slots__",
+        "object.__getattribute__(u, '__slots__')",
+        "getattr(u, '__slots__') == ()",
+        "u.__slots__ == UserList.__slots__",
+    ] {
+        assert!(
+            userlist_slots_diff_body.contains(required)
+                && userlist_slots_subset_body.contains(required),
+            "UserList __slots__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-slots tuple () 0 True\"",
+        "\"inst-slots tuple () 0 () True\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userlist_slots_subset_body.contains(required),
+            "UserList __slots__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserList\" && name == \"__slots__\"",
+        "\"__slots__\" => Ok(tuple_value(Vec::new()))",
+        "names.push(\"__slots__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __slots__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_slots_metadata_subset",
+            "cpython_collections_userlist_slots_metadata_diff_subset",
+            "`UserList.__slots__`",
+            "`UserList(...).__slots__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "empty tuple",
+            "without adding `__dict__`, `__weakref__`",
+            "real slots layout",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __slots__ metadata docs must contain `{required}`"
             );
         }
     }
