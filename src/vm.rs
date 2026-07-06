@@ -29492,6 +29492,15 @@ impl Vm {
                 };
                 self.call_list_iterator_setstate(receiver.clone(), index.clone())
             }
+            "__setstate__" if name == "list_reverseiterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: list_reverseiterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_list_reverseiterator_setstate(receiver.clone(), index.clone())
+            }
             "__setstate__" if name == "tuple_iterator.__setstate__" => {
                 let [receiver, index] = args.as_slice() else {
                     return Err(format!(
@@ -35116,6 +35125,33 @@ impl Vm {
             }
             Value::ListIterator { .. } => Ok(Value::None),
             value => Err(list_iterator_setstate_receiver_error(&value)),
+        }
+    }
+
+    fn call_list_reverseiterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        match receiver {
+            Value::Iterator(state) => {
+                let mut iterator = state.borrow_mut();
+                if let Value::ReverseIterator {
+                    items,
+                    index: current,
+                } = &mut *iterator
+                {
+                    *current = list_reverseiterator_setstate_index(items.len(), &index)?;
+                    Ok(Value::None)
+                } else {
+                    Err(list_reverseiterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::ReverseIterator { items, .. } => {
+                list_reverseiterator_setstate_index(items.len(), &index)?;
+                Ok(Value::None)
+            }
+            value => Err(list_reverseiterator_setstate_receiver_error(&value)),
         }
     }
 
@@ -55442,7 +55478,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "set_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_keyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_reversekeyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
-        "list_reverseiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "list_reverseiterator" => &[
+            "__iter__",
+            "__next__",
+            "__length_hint__",
+            "__reduce__",
+            "__setstate__",
+        ],
         "reversed" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "io.BytesIO" => &[
             "__enter__",
@@ -60529,6 +60571,21 @@ fn list_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, S
     }
 }
 
+fn list_reverseiterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("list_reverseiterator.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            })
+        }
+        _ => Err(format!(
+            "AttributeError: list_reverseiterator has no attribute '{name}'"
+        )),
+    }
+}
+
 fn tuple_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
     match name {
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
@@ -60679,6 +60736,53 @@ fn list_iterator_setstate_index(value: &Value) -> Result<Option<usize>, String> 
 fn list_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'list_iterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn list_reverseiterator_setstate_index(length: usize, value: &Value) -> Result<usize, String> {
+    let integer = if let Some(value) = int_subclass_integer(value) {
+        value
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(*value)),
+            Value::Number(_) => value.clone(),
+            Value::BigInt(value) => {
+                let value = value.to_i64().ok_or_else(|| {
+                    "OverflowError: Python int too large to convert to C ssize_t".to_string()
+                })?;
+                Value::Number(value)
+            }
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    match integer {
+        Value::Number(value) if value < 0 => Ok(length),
+        Value::Number(_) if length == 0 => Ok(0),
+        Value::Number(value) => {
+            let source_index = usize::try_from(value).unwrap_or(usize::MAX).min(length - 1);
+            Ok(length - 1 - source_index)
+        }
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?;
+            if value < 0 {
+                Ok(length)
+            } else if length == 0 {
+                Ok(0)
+            } else {
+                let source_index = usize::try_from(value).unwrap_or(usize::MAX).min(length - 1);
+                Ok(length - 1 - source_index)
+            }
+        }
+        _ => unreachable!("list_reverseiterator __setstate__ accepts only integer values"),
+    }
+}
+
+fn list_reverseiterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'list_reverseiterator' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -65082,11 +65186,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 length_hint_iterator_protocol_method("dict_keyiterator", receiver, name)
             }
         }
-        Value::ReverseIterator { items, index } => list_tuple_iterator_protocol_method(
-            "list_reverseiterator",
-            Value::ReverseIterator { items, index },
-            name,
-        ),
+        Value::ReverseIterator { items, index } => {
+            list_reverseiterator_protocol_method(Value::ReverseIterator { items, index }, name)
+        }
         Value::DictReverseIterator {
             kind,
             entries,
@@ -65176,6 +65278,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 is_bytearray_iterator,
                 is_str_ascii_iterator,
                 is_str_iterator,
+                is_list_reverseiterator,
                 has_length_hint,
                 reduce_type_name,
             ) = {
@@ -65196,6 +65299,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::StringIterator { chars, .. }
                         if string_iterator_type_name(chars) == "str_iterator"
                 );
+                let is_list_reverseiterator = matches!(&*iterator, Value::ReverseIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::RangeIterator { .. } => Some("range_iterator"),
                     Value::SetIterator { .. } => Some("set_iterator"),
@@ -65207,7 +65311,6 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         kind: DictViewKind::Keys,
                         ..
                     } => Some("dict_reversekeyiterator"),
-                    Value::ReverseIterator { .. } => Some("list_reverseiterator"),
                     Value::SequenceReverseIterator { .. } => Some("reversed"),
                     _ => None,
                 };
@@ -65220,6 +65323,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_bytearray_iterator,
                     is_str_ascii_iterator,
                     is_str_iterator,
+                    is_list_reverseiterator,
                     iterator_has_length_hint(&iterator),
                     reduce_type_name,
                 )
@@ -65242,6 +65346,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 str_ascii_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_str_iterator {
                 str_iterator_protocol_method(Value::Iterator(state), name)
+            } else if is_list_reverseiterator {
+                list_reverseiterator_protocol_method(Value::Iterator(state), name)
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -66191,7 +66297,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "list_reverseiterator"
-                && matches!(name, "__length_hint__" | "__reduce__") =>
+                && matches!(name, "__length_hint__" | "__reduce__" | "__setstate__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -89059,6 +89165,7 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         name,
         "arrayiterator.__setstate__"
             | "list_iterator.__setstate__"
+            | "list_reverseiterator.__setstate__"
             | "tuple_iterator.__setstate__"
             | "bytes_iterator.__setstate__"
             | "bytearray_iterator.__setstate__"

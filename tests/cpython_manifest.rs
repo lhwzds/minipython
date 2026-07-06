@@ -46722,6 +46722,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_list_iterator_type_metadata_dir_surface_subset",
             "cpython_list_iterator_setstate_subset",
             "cpython_list_reverseiterator_type_metadata_dir_surface_subset",
+            "cpython_list_reverseiterator_setstate_subset",
             "cpython_reversed_tuple_type_metadata_dir_surface_subset",
             "cpython_reversed_str_type_metadata_dir_surface_subset",
             "cpython_reversed_bytes_type_metadata_dir_surface_subset",
@@ -46993,6 +46994,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_iterator_setstate_diff_subset",
         "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset",
+        "cpython_list_reverseiterator_setstate_diff_subset",
         "cpython_reversed_tuple_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_str_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_bytes_type_metadata_dir_surface_diff_subset",
@@ -53348,11 +53350,13 @@ fn list_reverseiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"list_reverseiterator\"",
         "\"list_reverseiterator\" => vec![builtin_type_value(\"object\")]",
-        "\"list_reverseiterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "\"list_reverseiterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::ReverseIterator { .. })",
         "builtin_type_dir_names(\"list_reverseiterator\")",
-        "list_tuple_iterator_protocol_method(\n            \"list_reverseiterator\"",
-        "Value::ReverseIterator { .. } => Some(\"list_reverseiterator\")",
+        "fn list_reverseiterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String>",
+        "list_reverseiterator_protocol_method(Value::ReverseIterator { items, index }, name)",
+        "let is_list_reverseiterator = matches!(&*iterator, Value::ReverseIterator { .. });",
+        "list_reverseiterator_protocol_method(Value::Iterator(state), name)",
         "Value::ReverseIterator { items, index } => {",
         "let index = items.len() - 1 - index;",
         "(items, Some(index))",
@@ -53360,9 +53364,9 @@ fn list_reverseiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "reverse_iterator_reduce_result",
         "load_builtin_name(\"reversed\")",
         "if let Some(index) = index",
-        "| \"list_reverseiterator\"\n            | \"property\"",
+        "| \"list_reverseiterator\"\n            | \"reversed\"",
         "function_name == \"list_reverseiterator\"",
-        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -53404,6 +53408,117 @@ fn list_reverseiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "list_reverseiterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn list_reverseiterator_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_reverseiterator_setstate_diff_subset";
+    let subset_name = "cpython_list_reverseiterator_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list_reverseiterator __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list_reverseiterator __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = [10, 20, 30]",
+        "inst = reversed(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "next(probe)",
+        "bad-setstate-",
+        "10**200",
+        "reversed(source).__setstate__()",
+        "reversed(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "typ.__setstate__(object(), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list_reverseiterator __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None StopIteration\"",
+        "\"setstate-next 0 None 10\"",
+        "\"setstate-next 2 None 30\"",
+        "\"setstate-next 3 None 30\"",
+        "\"setstate-next 99 None 30\"",
+        "\"setstate-next True None 20\"",
+        "\"bad-setstate-Index TypeError an integer is required\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C ssize_t\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C ssize_t\"",
+        "\"missing TypeError list_reverseiterator.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError list_reverseiterator.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-next 30\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'list_reverseiterator' objects doesn't apply to a 'object' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list_reverseiterator __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"list_reverseiterator.__setstate__\"",
+        "self.call_list_reverseiterator_setstate(receiver.clone(), index.clone())",
+        "fn call_list_reverseiterator_setstate(",
+        "list_reverseiterator_setstate_index(items.len(), &index)",
+        "Value::ReverseIterator {",
+        "*current = list_reverseiterator_setstate_index(items.len(), &index)?;",
+        "list_reverseiterator_setstate_receiver_error(&*iterator)",
+        "\"list_reverseiterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "fn list_reverseiterator_protocol_method(",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "list_reverseiterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"list_reverseiterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "fn list_reverseiterator_setstate_index(",
+        "Value::Bool(value) => Value::Number(bool_as_i64(*value))",
+        "Ok(length)",
+        ".min(length - 1)",
+        "\"OverflowError: Python int too large to convert to C ssize_t\"",
+        "fn list_reverseiterator_setstate_receiver_error(",
+        "\"list_reverseiterator.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list_reverseiterator __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`list_reverseiterator.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "negative state exhaustion",
+            "oversized non-overflowing state clamps to the last source element",
+            "bool and int-subclass state handling",
+            "`TypeError: an integer is required`",
+            "`OverflowError: Python int too large to convert to C ssize_t`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "list_reverseiterator __setstate__ docs must contain `{required}`"
             );
         }
     }
