@@ -1651,6 +1651,7 @@ Recent runtime migration notes:
   `cpython_staticmethod_metadata_diff_subset`,
   `cpython_staticmethod_type_metadata_dir_surface_diff_subset`,
   `cpython_classmethod_metadata_diff_subset`,
+  `cpython_classmethod_type_metadata_dir_surface_diff_subset`,
   `cpython_staticmethod_classmethod_abstractmethod_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
   `cpython_property_attribute_assignment_errors_diff_subset`,
@@ -10604,6 +10605,13 @@ metadata surface on classmethod objects: `__wrapped__`, `__func__`,
 `__name__`, `__qualname__`, `__module__`, `__doc__`, `__annotations__`, and
 `dir()` visibility. Custom classmethod `__dict__` mutation remains outside this
 focused metadata slice.
+`cpython_classmethod_type_metadata_dir_surface_subset`, backed by
+`cpython_classmethod_type_metadata_dir_surface_diff_subset`, covers
+`dir(classmethod)` hiding `__base__`, `__bases__`, and `__name__` while
+keeping `classmethod.__base__`, `classmethod.__bases__`, and
+`classmethod.__name__` directly readable, preserves `classmethod(func)`
+descriptor-object `dir()` visibility, without hiding wrapped classmethod metadata,
+and without widening host IO, network, process, C ABI, or full stdlib scope.
 `cpython_staticmethod_classmethod_abstractmethod_subset` and direct CPython
 evidence in `cpython_staticmethod_classmethod_abstractmethod_diff_subset` cover
 the shared public `staticmethod` / `classmethod` `__isabstractmethod__` marker:

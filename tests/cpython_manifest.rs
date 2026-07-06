@@ -46790,6 +46790,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_staticmethod_metadata_subset",
             "cpython_staticmethod_type_metadata_dir_surface_subset",
             "cpython_classmethod_metadata_subset",
+            "cpython_classmethod_type_metadata_dir_surface_subset",
             "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
             "cpython_property_attribute_assignment_errors_subset",
@@ -46918,6 +46919,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_staticmethod_metadata_diff_subset",
         "cpython_staticmethod_type_metadata_dir_surface_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
+        "cpython_classmethod_type_metadata_dir_surface_diff_subset",
         "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
         "cpython_property_attribute_assignment_errors_diff_subset",
@@ -48447,6 +48449,88 @@ fn classmethod_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("__annotations__"),
             "classmethod metadata evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn classmethod_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_classmethod_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_classmethod_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "classmethod type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "classmethod type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "wrapped = classmethod(sample)",
+        "'__base__' in dir(classmethod)",
+        "'__bases__' in dir(classmethod)",
+        "'__name__' in dir(classmethod)",
+        "hasattr(classmethod, '__base__')",
+        "hasattr(classmethod, '__bases__')",
+        "hasattr(classmethod, '__name__')",
+        "'__base__' in dir(wrapped)",
+        "'__bases__' in dir(wrapped)",
+        "'__name__' in dir(wrapped)",
+        "'__func__' in dir(wrapped)",
+        "'__get__' in dir(wrapped)",
+        "classmethod.__base__ is object",
+        "classmethod.__bases__ == (object,)",
+        "classmethod.__name__",
+        "object.__getattribute__(classmethod, '__name__')",
+        "'__class_getitem__' in dir(classmethod)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "classmethod type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False True True True\"",
+        "\"readable True True classmethod classmethod\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "classmethod type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"classmethod\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "classmethod type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(classmethod)`",
+            "`classmethod.__base__`",
+            "`classmethod.__bases__`",
+            "`classmethod.__name__`",
+            "`classmethod(func)`",
+            "without hiding wrapped classmethod metadata",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "classmethod type metadata dir-surface docs must contain `{required}`"
+            );
+        }
     }
 }
 

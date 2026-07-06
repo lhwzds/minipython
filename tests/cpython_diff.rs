@@ -11475,6 +11475,21 @@ print([name in dir(wrapped) for name in names])"#,
 }
 
 #[test]
+fn cpython_classmethod_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public classmethod type metadata dir surface",
+        name: "classmethod-type-metadata-dir-surface",
+        source: r#"def sample(cls):
+    pass
+wrapped = classmethod(sample)
+print('visible-type', '__base__' in dir(classmethod), '__bases__' in dir(classmethod), '__name__' in dir(classmethod), hasattr(classmethod, '__base__'), hasattr(classmethod, '__bases__'), hasattr(classmethod, '__name__'))
+print('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__func__' in dir(wrapped), '__get__' in dir(wrapped))
+print('readable', classmethod.__base__ is object, classmethod.__bases__ == (object,), classmethod.__name__, object.__getattribute__(classmethod, '__name__'))
+print('method-kept', '__get__' in dir(wrapped), '__func__' in dir(wrapped), '__class_getitem__' in dir(classmethod))"#,
+    });
+}
+
+#[test]
 fn cpython_staticmethod_classmethod_abstractmethod_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public staticmethod/classmethod __isabstractmethod__ behavior",

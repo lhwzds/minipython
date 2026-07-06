@@ -30709,6 +30709,23 @@ fn cpython_classmethod_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public classmethod type-metadata dir surface. The metadata
+// remains directly readable on the type, but CPython does not list it in
+// dir(classmethod). Wrapped classmethod objects keep their callable metadata dir
+// surface covered by cpython_classmethod_metadata_subset.
+#[test]
+fn cpython_classmethod_type_metadata_dir_surface_subset() {
+    assert_output(
+        "def sample(cls):\n    pass\nwrapped = classmethod(sample)\nprint('visible-type', '__base__' in dir(classmethod), '__bases__' in dir(classmethod), '__name__' in dir(classmethod), hasattr(classmethod, '__base__'), hasattr(classmethod, '__bases__'), hasattr(classmethod, '__name__'))\nprint('visible-inst', '__base__' in dir(wrapped), '__bases__' in dir(wrapped), '__name__' in dir(wrapped), '__func__' in dir(wrapped), '__get__' in dir(wrapped))\nprint('readable', classmethod.__base__ is object, classmethod.__bases__ == (object,), classmethod.__name__, object.__getattribute__(classmethod, '__name__'))\nprint('method-kept', '__get__' in dir(wrapped), '__func__' in dir(wrapped), '__class_getitem__' in dir(classmethod))",
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False True True True",
+            "readable True True classmethod classmethod",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Mirrors CPython's public abstract-method marker on staticmethod and
 // classmethod descriptor objects. The marker dynamically reflects the wrapped
 // callable, is read-only on the descriptor, and appears in dir().

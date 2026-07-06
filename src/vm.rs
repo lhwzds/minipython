@@ -54399,6 +54399,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "bool"
             | "bytearray"
             | "bytes"
+            | "classmethod"
             | "complex"
             | "dict"
             | "float"
