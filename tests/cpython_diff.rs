@@ -19012,6 +19012,18 @@ print('method-kept', '__class_getitem__' in dir(tuple), '__len__' in dir(()), '_
 }
 
 #[test]
+fn cpython_dict_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public dict type metadata dir surface",
+        name: "dict-type-metadata-dir-surface",
+        source: r#"print('visible-type', '__base__' in dir(dict), '__bases__' in dir(dict), '__name__' in dir(dict), hasattr(dict, '__base__'), hasattr(dict, '__bases__'), hasattr(dict, '__name__'))
+print('visible-inst', '__base__' in dir({}), '__bases__' in dir({}), '__name__' in dir({}))
+print('readable', dict.__base__ is object, dict.__bases__ == (object,), dict.__name__, object.__getattribute__(dict, '__name__'))
+print('method-kept', '__class_getitem__' in dir(dict), 'keys' in dir({}), '__len__' in dir({}))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

@@ -779,6 +779,12 @@ Recent runtime migration notes:
   `tuple.__base__`, `tuple.__bases__`, and `tuple.__name__` directly readable,
   without hiding direct tuple type metadata lookup, without changing tuple method visibility,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_dict_type_metadata_dir_surface_subset`, backed by
+  `cpython_dict_type_metadata_dir_surface_diff_subset`, now pins `dir(dict)` and
+  `dir({})` hiding `__base__`, `__bases__`, and `__name__` while keeping
+  `dict.__base__`, `dict.__bases__`, and `dict.__name__` directly readable,
+  without hiding direct dict type metadata lookup, without changing dict method visibility,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_set_family_class_getitem_generic_alias_subset`, backed by
   `cpython_set_family_class_getitem_generic_alias_diff_subset`, now pins
   set/frozenset `__class_getitem__`, `set.__class_getitem__(int) == set[int]`,
@@ -1512,6 +1518,7 @@ Recent runtime migration notes:
   `cpython_float_instance_doc_attribute_diff_subset`,
   `cpython_complex_instance_doc_attribute_diff_subset`,
   `cpython_dict_instance_doc_attribute_diff_subset`,
+  `cpython_dict_type_metadata_dir_surface_diff_subset`,
   `cpython_set_instance_doc_attribute_diff_subset`,
   `cpython_frozenset_instance_doc_attribute_diff_subset`,
   `cpython_memoryview_instance_doc_attribute_diff_subset`,
