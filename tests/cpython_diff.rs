@@ -17806,6 +17806,37 @@ print('mutated-hint', changed_inst.__length_hint__())"#,
 }
 
 #[test]
+fn cpython_dict_value_itemiterator_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public dict_valueiterator and dict_itemiterator type metadata dir surface",
+        name: "dict-value-itemiterator-type-metadata-dir-surface",
+        source: r#"source = {'a': 1, 'b': 2, 'c': 3}
+for label, inst in [('values', iter(source.values())), ('items', iter(source.items()))]:
+    typ = type(inst)
+    print(label, 'type-name', typ.__name__, typ.__module__, typ.__qualname__)
+    print(label, 'visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(typ))
+    print(label, 'visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst), '__length_hint__' in dir(inst), '__reduce__' in dir(inst))
+    print(label, 'has-reduce', hasattr(typ, '__reduce__'), hasattr(inst, '__reduce__'))
+    print(label, 'readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+    print(label, 'readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+    first = typ.__next__(inst)
+    print(label, 'iter-next-hint', iter(inst) is inst, first, typ.__length_hint__(inst), inst.__length_hint__())
+    reduced = typ.__reduce__(inst)
+    remaining = reduced[1][0]
+    print(label, 'reduce-shape', len(reduced), reduced[0] is iter, len(reduced[1]), type(remaining).__name__, remaining, len(reduced) == 2)
+    changed = {'a': 1, 'b': 2, 'c': 3}
+    changed_inst = iter(changed.values()) if label == 'values' else iter(changed.items())
+    next(changed_inst)
+    changed['d'] = 4
+    try:
+        type(changed_inst).__reduce__(changed_inst)
+    except Exception as error:
+        print(label, 'mutated-reduce', error.__class__.__name__, str(error))
+    print(label, 'mutated-hint', changed_inst.__length_hint__())"#,
+    });
+}
+
+#[test]
 fn cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public dict_reversekeyiterator type metadata dir surface",

@@ -46743,6 +46743,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_bytearray_iterator_setstate_subset",
             "cpython_set_iterator_type_metadata_dir_surface_subset",
             "cpython_dict_keyiterator_type_metadata_dir_surface_subset",
+            "cpython_dict_value_itemiterator_type_metadata_dir_surface_subset",
             "cpython_dict_reversekeyiterator_type_metadata_dir_surface_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
@@ -47017,6 +47018,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_bytearray_iterator_setstate_diff_subset",
         "cpython_set_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset",
+        "cpython_dict_value_itemiterator_type_metadata_dir_surface_diff_subset",
         "cpython_dict_reversekeyiterator_type_metadata_dir_surface_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
@@ -56224,15 +56226,15 @@ fn dict_keyiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     }
 
     for required in [
-        "name == \"dict_keyiterator\"",
+        "DictViewKind::Keys => \"dict_keyiterator\"",
         "\"dict_keyiterator\" => vec![builtin_type_value(\"object\")]",
-        "\"dict_keyiterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
-        "Value::DictIterator {\n                    kind: DictViewKind::Keys,",
-        "names.extend(builtin_type_dir_names(\"dict_keyiterator\"))",
-        "map(|(key, _)| key.clone())",
-        "Some(\"dict_keyiterator\")",
-        "| \"dict_keyiterator\"\n            | \"dict_reversekeyiterator\"",
-        "function_name == \"dict_keyiterator\"",
+        "\"dict_keyiterator\" | \"dict_valueiterator\" | \"dict_itemiterator\" => {\n            &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::DictIterator { .. })",
+        "dict_view_iterator_type_name(*kind)",
+        "dict_iterator_item(kind, key.clone(), value.clone())",
+        "Some(dict_view_iterator_type_name(*kind))",
+        "| \"dict_keyiterator\"\n                | \"dict_valueiterator\"",
+        "\"dict_keyiterator\" | \"dict_valueiterator\" | \"dict_itemiterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
@@ -56275,6 +56277,159 @@ fn dict_keyiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "dict_keyiterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn dict_value_itemiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_dict_value_itemiterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_dict_value_itemiterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict value/item iterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict value/item iterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = {'a': 1, 'b': 2, 'c': 3}",
+        "('values', iter(source.values()))",
+        "('items', iter(source.items()))",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "typ.__next__(inst)",
+        "iter(inst) is inst",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "remaining = reduced[1][0]",
+        "reduced[0] is iter",
+        "type(remaining).__name__",
+        "changed_inst = iter(changed.values()) if label == 'values' else iter(changed.items())",
+        "type(changed_inst).__reduce__(changed_inst)",
+        "changed['d'] = 4",
+        "changed_inst.__length_hint__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "dict value/item iterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"values type-name dict_valueiterator builtins dict_valueiterator\"",
+        "\"values visible-type False False False False False True True True True\"",
+        "\"values visible-inst False False False True True True True\"",
+        "\"values has-reduce True True\"",
+        "\"values readable-base True True dict_valueiterator\"",
+        "\"values readable-module builtins dict_valueiterator\"",
+        "\"values iter-next-hint True 1 2 2\"",
+        "\"values reduce-shape 2 True 1 list [2, 3] True\"",
+        "\"values mutated-reduce RuntimeError dictionary changed size during iteration\"",
+        "\"values mutated-hint 0\"",
+        "\"items type-name dict_itemiterator builtins dict_itemiterator\"",
+        "\"items visible-type False False False False False True True True True\"",
+        "\"items visible-inst False False False True True True True\"",
+        "\"items has-reduce True True\"",
+        "\"items readable-base True True dict_itemiterator\"",
+        "\"items readable-module builtins dict_itemiterator\"",
+        "\"items iter-next-hint True ('a', 1) 2 2\"",
+        "\"items reduce-shape 2 True 1 list [('b', 2), ('c', 3)] True\"",
+        "\"items mutated-reduce RuntimeError dictionary changed size during iteration\"",
+        "\"items mutated-hint 0\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "dict value/item iterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_view_iterator_type_name(",
+        "DictViewKind::Values => \"dict_valueiterator\"",
+        "DictViewKind::Items => \"dict_itemiterator\"",
+        "fn dict_iterator_item(",
+        "DictViewKind::Values => value",
+        "DictViewKind::Items => tuple_value(vec![key, value])",
+        "dict_iterator_item(kind, key.clone(), value.clone())",
+        "dict_view_iterator_type_name(*kind)",
+        "dict_view_iterator_type_name(kind)",
+        "\"dict_keyiterator\" | \"dict_valueiterator\" | \"dict_itemiterator\"",
+        "\"dict_valueiterator\" => vec![builtin_type_value(\"object\")]",
+        "\"dict_itemiterator\" => vec![builtin_type_value(\"object\")]",
+        "Some(dict_view_iterator_type_name(*kind))",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+        "RuntimeError: dictionary changed size during iteration",
+        "RuntimeError: dictionary keys changed during iteration",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict value/item iterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`iter(dict.values())`",
+            "`iter(dict.items())`",
+            "`dict_valueiterator.__base__`",
+            "`dict_itemiterator.__base__`",
+            "`dict_valueiterator.__module__`",
+            "`dict_itemiterator.__qualname__`",
+            "`dir(type(iter(dict.values())))`",
+            "`dir(iter(dict.items()))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__next__(inst)`",
+            "`typ.__reduce__(inst)`",
+            "`values reduce-shape 2 True 1 list [2, 3] True`",
+            "`items reduce-shape 2 True 1 list [('b', 2), ('c', 3)] True`",
+            "`RuntimeError: dictionary changed size during iteration`",
+            "reverse value/item iterators remain a separate follow-up slice",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict value/item iterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
