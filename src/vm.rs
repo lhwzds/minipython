@@ -29492,6 +29492,15 @@ impl Vm {
                 };
                 self.call_list_iterator_setstate(receiver.clone(), index.clone())
             }
+            "__setstate__" if name == "tuple_iterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: tuple_iterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_tuple_iterator_setstate(receiver.clone(), index.clone())
+            }
             _ => Err(format!("unknown builtin: {name}")),
         }
     }
@@ -35071,6 +35080,27 @@ impl Vm {
             }
             Value::ListIterator { .. } => Ok(Value::None),
             value => Err(list_iterator_setstate_receiver_error(&value)),
+        }
+    }
+
+    fn call_tuple_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        let index = tuple_iterator_setstate_index(&index)?;
+        match receiver {
+            Value::Iterator(state) => {
+                let mut iterator = state.borrow_mut();
+                if let Value::TupleIterator { index: current, .. } = &mut *iterator {
+                    *current = index;
+                    Ok(Value::None)
+                } else {
+                    Err(tuple_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::TupleIterator { .. } => Ok(Value::None),
+            value => Err(tuple_iterator_setstate_receiver_error(&value)),
         }
     }
 
@@ -55216,7 +55246,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__reduce__",
             "__setstate__",
         ],
-        "tuple_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "tuple_iterator" => &[
+            "__iter__",
+            "__next__",
+            "__length_hint__",
+            "__reduce__",
+            "__setstate__",
+        ],
         "str_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "str_ascii_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
@@ -60312,6 +60348,21 @@ fn list_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, S
     }
 }
 
+fn tuple_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("tuple_iterator.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            })
+        }
+        _ => Err(format!(
+            "AttributeError: tuple_iterator has no attribute '{name}'"
+        )),
+    }
+}
+
 fn array_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
     match name {
         "__iter__" | "__next__" | "__reduce__" | "__setstate__" => Ok(Value::BoundMethod {
@@ -60387,6 +60438,46 @@ fn list_iterator_setstate_index(value: &Value) -> Result<Option<usize>, String> 
 fn list_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'list_iterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn tuple_iterator_setstate_index(value: &Value) -> Result<usize, String> {
+    let integer = if let Some(value) = int_subclass_integer(value) {
+        value
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(*value)),
+            Value::Number(_) => value.clone(),
+            Value::BigInt(value) => {
+                let value = value.to_i64().ok_or_else(|| {
+                    "OverflowError: Python int too large to convert to C ssize_t".to_string()
+                })?;
+                Value::Number(value)
+            }
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    match integer {
+        Value::Number(value) if value <= 0 => Ok(0),
+        Value::Number(value) => Ok(usize::try_from(value).unwrap_or(usize::MAX)),
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?;
+            if value <= 0 {
+                Ok(0)
+            } else {
+                Ok(usize::try_from(value).unwrap_or(usize::MAX))
+            }
+        }
+        _ => unreachable!("tuple_iterator __setstate__ accepts only integer values"),
+    }
+}
+
+fn tuple_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'tuple_iterator' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -64521,11 +64612,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
-        Value::TupleIterator { items, index } => list_tuple_iterator_protocol_method(
-            "tuple_iterator",
-            Value::TupleIterator { items, index },
-            name,
-        ),
+        Value::TupleIterator { items, index } => {
+            tuple_iterator_protocol_method(Value::TupleIterator { items, index }, name)
+        }
         Value::TemplateIterator { items, index } => iterator_protocol_method(
             "TemplateIter",
             Value::TemplateIterator { items, index },
@@ -64676,14 +64765,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name,
         ),
         Value::Iterator(state) => {
-            let (is_enumerate, is_array_iterator, is_list_iterator, has_length_hint, reduce_type_name) = {
+            let (
+                is_enumerate,
+                is_array_iterator,
+                is_list_iterator,
+                is_tuple_iterator,
+                has_length_hint,
+                reduce_type_name,
+            ) = {
                 let iterator = state.borrow();
                 let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });
                 let is_array_iterator = matches!(&*iterator, Value::ArrayIterator { .. });
                 let is_list_iterator = matches!(&*iterator, Value::ListIterator { .. });
+                let is_tuple_iterator = matches!(&*iterator, Value::TupleIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::RangeIterator { .. } => Some("range_iterator"),
-                    Value::TupleIterator { .. } => Some("tuple_iterator"),
                     Value::StringIterator { chars, .. } => Some(string_iterator_type_name(chars)),
                     Value::BytesIterator { .. } => Some("bytes_iterator"),
                     Value::ByteArrayIterator { .. } => Some("bytearray_iterator"),
@@ -64704,6 +64800,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_enumerate,
                     is_array_iterator,
                     is_list_iterator,
+                    is_tuple_iterator,
                     iterator_has_length_hint(&iterator),
                     reduce_type_name,
                 )
@@ -64716,6 +64813,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 array_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_list_iterator {
                 list_iterator_protocol_method(Value::Iterator(state), name)
+            } else if is_tuple_iterator {
+                tuple_iterator_protocol_method(Value::Iterator(state), name)
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -65617,7 +65716,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "tuple_iterator"
-                && matches!(name, "__length_hint__" | "__reduce__") =>
+                && matches!(name, "__length_hint__" | "__reduce__" | "__setstate__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -88531,7 +88630,7 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
     ) || matches!(
         name,
-        "arrayiterator.__setstate__" | "list_iterator.__setstate__"
+        "arrayiterator.__setstate__" | "list_iterator.__setstate__" | "tuple_iterator.__setstate__"
     )
 }
 

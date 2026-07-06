@@ -17263,6 +17263,52 @@ print('iter-next-hint', iter(inst) is inst, next(inst), typ.__length_hint__(inst
 }
 
 #[test]
+fn cpython_tuple_iterator_setstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public tuple_iterator __setstate__ behavior",
+        name: "tuple-iterator-setstate",
+        source: r#"def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+class Index:
+    def __index__(self):
+        print('index-called')
+        return 1
+
+class IntSub(int):
+    pass
+
+source = (10, 20, 30)
+inst = iter(source)
+typ = type(inst)
+print('visible-setstate', '__setstate__' in dir(typ), '__setstate__' in dir(inst), hasattr(typ, '__setstate__'), hasattr(inst, '__setstate__'))
+for state in [-1, 0, 1, 2, 3, 99, True, False, IntSub(2)]:
+    probe = iter(source)
+    result = probe.__setstate__(state)
+    try:
+        value = next(probe)
+    except StopIteration:
+        value = 'StopIteration'
+    print('setstate-next', repr(state), result, value)
+for bad in [None, 1.5, '1', [], Index()]:
+    probe = iter(source)
+    show('bad-setstate-' + type(bad).__name__, lambda probe=probe, bad=bad: probe.__setstate__(bad))
+for state in [10**200, -(10**200)]:
+    probe = iter(source)
+    show('big-setstate-' + ('neg' if state < 0 else 'pos'), lambda probe=probe, state=state: probe.__setstate__(state))
+show('missing', lambda: iter(source).__setstate__())
+show('extra', lambda: iter(source).__setstate__(0, 1))
+shifted = iter(source)
+print('unbound-setstate', typ.__setstate__(shifted, 2))
+print('unbound-next', next(shifted))
+show('unbound-bad', lambda: typ.__setstate__(object(), 0))"#,
+    });
+}
+
+#[test]
 fn cpython_str_iterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public non-ASCII str_iterator type metadata dir surface",
