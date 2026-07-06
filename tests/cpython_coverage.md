@@ -309,6 +309,16 @@ Recent runtime migration notes:
   and CPython `object.__delattr__` TypeError text,
   without changing UserString's structural `.data` storage or adding host-backed state
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_collections_userstring_inherited_dir_method_subset`, backed by
+  `cpython_collections_userstring_inherited_dir_method_diff_subset`, now pins
+  `UserString.__dir__` as inherited `object.__dir__`, including type and
+  instance visibility, `dir(UserString)` discoverability,
+  `UserString.__dir__ is object.__dir__`, `method_descriptor` and
+  `builtin_function_or_method` metadata, direct and bound method calls, the
+  default dir list containing `.data` and user attributes, and CPython
+  `object.__dir__` TypeError text, without adding custom descriptors,
+  host-backed state, or exact dir-list ordering and without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_collections_userstring_eq_method_subset`, backed by
   `cpython_collections_userstring_eq_method_diff_subset`, now pins
   `UserString.__eq__` and `==` expression behavior for string, `UserString`,
@@ -7633,6 +7643,17 @@ without adding general custom encoder/decoder class support.
   and CPython `object.__delattr__` TypeError text,
   without changing UserString's structural `.data` storage or adding host-backed state
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_inherited_dir_method_diff_subset` and
+  `cpython_collections_userstring_inherited_dir_method_subset`, covering
+  `UserString.__dir__` as inherited `object.__dir__`, type and instance
+  visibility, `dir(UserString)` discoverability,
+  `UserString.__dir__ is object.__dir__`, `method_descriptor` and
+  `builtin_function_or_method` metadata, direct and bound method calls, the
+  default dir list containing `.data` and user attributes, and CPython
+  `object.__dir__` TypeError text, without adding custom descriptors,
+  host-backed state, or exact dir-list ordering and without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_eq_method_diff_subset` and
   `cpython_collections_userstring_eq_method_subset`, covering

@@ -70306,6 +70306,56 @@ print('final', hasattr(u, 'extra'), hasattr(u, 'extra2'), u.data)"#,
     );
 }
 
+// Mirrors CPython's public UserString inherited object.__dir__ method.
+// This pins pure-memory default introspection without adding custom descriptors,
+// host-backed state, or exact dir-list ordering.
+#[test]
+fn cpython_collections_userstring_inherited_dir_method_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+u.extra = 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        if isinstance(value, list):
+            names = value
+            if label == 'str-receiver':
+                print(label, type(value).__name__, isinstance(value, list), 'data' in names, 'extra' in names, '__class__' in names, 'lower' in names, 'count' in names, len(value) > 20)
+            else:
+                print(label, type(value).__name__, isinstance(value, list), 'data' in names, 'extra' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, '__delattr__' in names, 'lower' in names, 'count' in names, len(value) > 20)
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__dir__'), hasattr(u, '__dir__'), '__dir__' in dir(UserString), '__dir__' in dir(u), UserString.__dir__ is object.__dir__, type(UserString.__dir__).__name__, type(u.__dir__).__name__)
+for label, expr in [
+    ('dir-builtin', lambda: dir(u)),
+    ('bound', lambda: u.__dir__()),
+    ('object-direct', lambda: object.__dir__(u)),
+    ('type-direct', lambda: UserString.__dir__(u)),
+    ('str-receiver', lambda: UserString.__dir__('abé')),
+    ('noargs', lambda: UserString.__dir__()),
+    ('extra', lambda: UserString.__dir__(u, 1)),
+    ('badkw', lambda: UserString.__dir__(u, receiver=u)),
+    ('keyword-only', lambda: UserString.__dir__(self=u)),
+]:
+    show(label, expr)"#,
+        &[
+            "visible True True True True True method_descriptor builtin_function_or_method",
+            "dir-builtin list True True True True True True True True True True",
+            "bound list True True True True True True True True True True",
+            "object-direct list True True True True True True True True True True",
+            "type-direct list True True True True True True True True True True",
+            "str-receiver list True False False True True True True",
+            "noargs TypeError unbound method object.__dir__() needs an argument ('unbound method object.__dir__() needs an argument',)",
+            "extra TypeError object.__dir__() takes no arguments (1 given) ('object.__dir__() takes no arguments (1 given)',)",
+            "badkw TypeError object.__dir__() takes no keyword arguments ('object.__dir__() takes no keyword arguments',)",
+            "keyword-only TypeError unbound method object.__dir__() needs an argument ('unbound method object.__dir__() needs an argument',)",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString equality method dispatch. This keeps the
 // supported surface to `==` and direct `__eq__` calls without promoting the
 // remaining rich-comparison or string-method proxy surface.

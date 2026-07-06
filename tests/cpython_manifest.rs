@@ -26533,6 +26533,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userstring_inherited_getstate_method_subset",
             "cpython_collections_userstring_inherited_setattr_method_subset",
             "cpython_collections_userstring_inherited_delattr_method_subset",
+            "cpython_collections_userstring_inherited_dir_method_subset",
             "cpython_collections_userstring_eq_method_subset",
             "cpython_collections_userstring_ne_method_subset",
             "cpython_collections_userstring_add_method_subset",
@@ -30650,6 +30651,106 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString delattr-method docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_inherited_dir_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __dir__"
+    );
+    let userstring_dir_method_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_inherited_dir_method_diff_subset",
+    );
+    let userstring_dir_method_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_inherited_dir_method_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "u.extra = 'x'",
+        "hasattr(UserString, '__dir__')",
+        "hasattr(u, '__dir__')",
+        "'__dir__' in dir(UserString)",
+        "'__dir__' in dir(u)",
+        "UserString.__dir__ is object.__dir__",
+        "type(UserString.__dir__).__name__",
+        "type(u.__dir__).__name__",
+        "dir(u)",
+        "u.__dir__()",
+        "object.__dir__(u)",
+        "UserString.__dir__(u)",
+        "UserString.__dir__('abé')",
+        "UserString.__dir__()",
+        "UserString.__dir__(u, 1)",
+        "UserString.__dir__(u, receiver=u)",
+        "UserString.__dir__(self=u)",
+    ] {
+        assert!(
+            userstring_dir_method_diff_body.contains(required)
+                && userstring_dir_method_subset_body.contains(required),
+            "UserString dir-method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True method_descriptor builtin_function_or_method\"",
+        "\"dir-builtin list True True True True True True True True True True\"",
+        "\"bound list True True True True True True True True True True\"",
+        "\"object-direct list True True True True True True True True True True\"",
+        "\"type-direct list True True True True True True True True True True\"",
+        "\"str-receiver list True False False True True True True\"",
+        "\"noargs TypeError unbound method object.__dir__() needs an argument",
+        "\"extra TypeError object.__dir__() takes no arguments (1 given)",
+        "\"badkw TypeError object.__dir__() takes no keyword arguments",
+        "\"keyword-only TypeError unbound method object.__dir__() needs an argument",
+    ] {
+        assert!(
+            userstring_dir_method_subset_body.contains(required),
+            "UserString dir-method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "\"object\" | \"tuple\" | \"UserString\"",
+        "matches!(name.as_str(), \"tuple\" | \"UserString\")",
+        "function_name == \"UserString\" && name == \"__dir__\"",
+        "Ok(Value::Builtin(\"object.__dir__\".to_string()))",
+        "Value::Builtin(name) if name == \"object.__dir__\"",
+        "self.call_object_dir(args)",
+        "fn call_object_dir(",
+        "args.split_first()",
+        "rest.len()",
+        "self.default_dir_names_value(object.clone())?",
+        "return Ok(object_dir_bound_method(object));",
+        "\"TypeError: unbound method object.__dir__() needs an argument\"",
+        "\"TypeError: object.__dir__() takes no arguments",
+        "\"TypeError: object.__dir__() takes no keyword arguments\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString dir-method implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_inherited_dir_method_subset",
+            "cpython_collections_userstring_inherited_dir_method_diff_subset",
+            "`UserString.__dir__`",
+            "inherited `object.__dir__`",
+            "`UserString.__dir__ is object.__dir__`",
+            "method_descriptor",
+            "builtin_function_or_method",
+            "default dir list containing `.data` and user attributes",
+            "`object.__dir__` TypeError text",
+            "without adding custom descriptors",
+            "host-backed state",
+            "exact dir-list ordering",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString dir-method docs must contain `{required}`"
             );
         }
     }

@@ -26419,6 +26419,43 @@ print('final', hasattr(u, 'extra'), hasattr(u, 'extra2'), u.data)"#,
 }
 
 #[test]
+fn cpython_collections_userstring_inherited_dir_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString inherited object.__dir__ behavior",
+        name: "collections-userstring-inherited-dir-method",
+        source: r#"from collections import UserString
+u = UserString('abé')
+u.extra = 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        if isinstance(value, list):
+            names = value
+            if label == 'str-receiver':
+                print(label, type(value).__name__, isinstance(value, list), 'data' in names, 'extra' in names, '__class__' in names, 'lower' in names, 'count' in names, len(value) > 20)
+            else:
+                print(label, type(value).__name__, isinstance(value, list), 'data' in names, 'extra' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, '__delattr__' in names, 'lower' in names, 'count' in names, len(value) > 20)
+        else:
+            print(label, type(value).__name__, repr(value))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), exc.args)
+print('visible', hasattr(UserString, '__dir__'), hasattr(u, '__dir__'), '__dir__' in dir(UserString), '__dir__' in dir(u), UserString.__dir__ is object.__dir__, type(UserString.__dir__).__name__, type(u.__dir__).__name__)
+for label, expr in [
+    ('dir-builtin', lambda: dir(u)),
+    ('bound', lambda: u.__dir__()),
+    ('object-direct', lambda: object.__dir__(u)),
+    ('type-direct', lambda: UserString.__dir__(u)),
+    ('str-receiver', lambda: UserString.__dir__('abé')),
+    ('noargs', lambda: UserString.__dir__()),
+    ('extra', lambda: UserString.__dir__(u, 1)),
+    ('badkw', lambda: UserString.__dir__(u, receiver=u)),
+    ('keyword-only', lambda: UserString.__dir__(self=u)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_eq_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString equality method behavior",

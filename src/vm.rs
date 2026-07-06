@@ -10169,6 +10169,12 @@ impl Vm {
             }
             Value::Builtin(name) if name == "object.__dir__" => {
                 if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method object.__dir__() needs an argument"
+                                .to_string(),
+                        );
+                    }
                     return Err(
                         "TypeError: object.__dir__() takes no keyword arguments".to_string()
                     );
@@ -16268,9 +16274,11 @@ impl Vm {
                 ),
             [] if self.is_module => Ok(sorted_name_list(scope_names(&self.globals))),
             [] => Ok(sorted_name_list(scope_names(&self.locals))),
-            [object] if matches!(object, Value::Builtin(name) if name == "tuple") => Ok(
-                sorted_name_list(self.default_dir_names_value(object.clone())?),
-            ),
+            [object] if matches!(object, Value::Builtin(name) if matches!(name.as_str(), "tuple" | "UserString")) => {
+                Ok(sorted_name_list(
+                    self.default_dir_names_value(object.clone())?,
+                ))
+            }
             [object] => match self.load_attribute_catching(object.clone(), "__dir__")? {
                 Ok(dir_method) => match self.call_value_catching(dir_method, Vec::new())? {
                     Ok(value) => self.dir_result_from_value(value),
@@ -16313,12 +16321,15 @@ impl Vm {
     }
 
     fn call_object_dir(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [object] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: __dir__() expected 0 arguments, got {}",
-                method_arg_count(&args)
-            ));
+        let Some((object, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method object.__dir__() needs an argument".to_string());
         };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: object.__dir__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
 
         Ok(sorted_name_list(
             self.default_dir_names_value(object.clone())?,
@@ -61565,7 +61576,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | Value::Function { .. }
                 | Value::BoundMethod { .. }
         )
-        && !matches!(&object, Value::Builtin(builtin) if matches!(builtin.as_str(), "object" | "tuple"))
+        && !matches!(&object, Value::Builtin(builtin) if matches!(builtin.as_str(), "object" | "tuple" | "UserString"))
     {
         return Ok(object_dir_bound_method(object));
     }
@@ -64948,6 +64959,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "UserString" && name == "__getattribute__" =>
         {
             Ok(Value::Builtin("object.__getattribute__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "UserString" && name == "__dir__" => {
+            Ok(Value::Builtin("object.__dir__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "UserString" && name == "__getstate__" => {
             Ok(Value::Builtin("object.__getstate__".to_string()))
