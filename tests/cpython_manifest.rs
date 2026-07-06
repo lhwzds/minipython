@@ -26516,6 +26516,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_module_metadata_subset",
             "cpython_collections_userlist_abstractmethods_metadata_subset",
             "cpython_collections_userlist_slots_metadata_subset",
+            "cpython_collections_userlist_hash_metadata_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29152,6 +29153,79 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __slots__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_hash_metadata_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __hash__ metadata"
+    );
+    let userlist_hash_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_hash_metadata_diff_subset",
+    );
+    let userlist_hash_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_hash_metadata_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__hash__' in dir(UserList)",
+        "'__hash__' in dir(u)",
+        "hasattr(UserList, '__hash__')",
+        "hasattr(u, '__hash__')",
+        "UserList.__hash__ is None",
+        "object.__getattribute__(UserList, '__hash__') is None",
+        "u.__hash__ is None",
+        "object.__getattribute__(u, '__hash__') is None",
+        "hash(u)",
+        "u.__hash__ is UserList.__hash__",
+    ] {
+        assert!(
+            userlist_hash_diff_body.contains(required)
+                && userlist_hash_subset_body.contains(required),
+            "UserList __hash__ metadata diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True\"",
+        "\"type-hash True NoneType None True\"",
+        "\"inst-hash True NoneType None True\"",
+        "\"hash-call TypeError unhashable type: 'UserList'\"",
+        "\"same-value True\"",
+    ] {
+        assert!(
+            userlist_hash_subset_body.contains(required),
+            "UserList __hash__ metadata subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "function_name == \"UserList\" && name == \"__hash__\"",
+        "\"__hash__\" => Ok(Value::None)",
+        "names.push(\"__hash__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __hash__ metadata implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_hash_metadata_subset",
+            "cpython_collections_userlist_hash_metadata_diff_subset",
+            "`UserList.__hash__`",
+            "`UserList(...).__hash__`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "`None`",
+            "without making `UserList` hashable",
+            "`hash(UserList(...))`",
+            "UserList sequence-method surface",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __hash__ metadata docs must contain `{required}`"
             );
         }
     }

@@ -54313,6 +54313,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__module__".to_string());
         names.push("__abstractmethods__".to_string());
         names.push("__slots__".to_string());
+        names.push("__hash__".to_string());
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
@@ -62969,6 +62970,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "__module__" => Ok(Value::String("collections".to_string())),
                 "__abstractmethods__" => Ok(frozen_set_value(Vec::new())),
                 "__slots__" => Ok(tuple_value(Vec::new())),
+                "__hash__" => Ok(Value::None),
                 "__doc__" => Ok(Value::String(
                     builtin_type_doc("UserList")
                         .expect("UserList type doc is defined")
@@ -64666,6 +64668,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserList" && name == "__slots__" => {
             Ok(tuple_value(Vec::new()))
+        }
+        Value::Builtin(function_name) if function_name == "UserList" && name == "__hash__" => {
+            Ok(Value::None)
         }
         Value::Builtin(function_name)
             if name == "__doc__" && builtin_type_doc(&function_name).is_some() =>

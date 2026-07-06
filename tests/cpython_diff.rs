@@ -25846,6 +25846,25 @@ print('same-value', u.__slots__ == UserList.__slots__)"#,
 }
 
 #[test]
+fn cpython_collections_userlist_hash_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __hash__ metadata",
+        name: "collections-userlist-hash-metadata",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__hash__' in dir(UserList), '__hash__' in dir(u), hasattr(UserList, '__hash__'), hasattr(u, '__hash__'))
+print('type-hash', UserList.__hash__ is None, type(UserList.__hash__).__name__, repr(UserList.__hash__), object.__getattribute__(UserList, '__hash__') is None)
+print('inst-hash', u.__hash__ is None, type(u.__hash__).__name__, repr(u.__hash__), object.__getattribute__(u, '__hash__') is None)
+try:
+    hash(u)
+    print('hash-call ok')
+except Exception as error:
+    print('hash-call', type(error).__name__, str(error))
+print('same-value', u.__hash__ is UserList.__hash__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

@@ -222,6 +222,12 @@ Recent runtime migration notes:
   `UserList.__slots__`, `UserList(...).__slots__`, and `dir(UserList)` and
   `dir(UserList(...))` visibility to an empty tuple, without adding `__dict__`, `__weakref__`,
   real slots layout, or new UserList sequence-method surface.
+- `cpython_collections_userlist_hash_metadata_subset`, backed by
+  `cpython_collections_userlist_hash_metadata_diff_subset`, now pins
+  `UserList.__hash__`, `UserList(...).__hash__`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility to `None`, while keeping
+  `hash(UserList(...))` unhashable, without making `UserList` hashable or
+  adding new UserList sequence-method surface.
 - `cpython_collections_userstring_type_base_dir_surface_subset`, backed by
   `cpython_collections_userstring_type_base_dir_surface_diff_subset`, now keeps
   `UserString.__base__` and `UserString.__bases__` readable while keeping them
@@ -1735,6 +1741,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_module_metadata_diff_subset`,
   `cpython_collections_userlist_abstractmethods_metadata_diff_subset`,
   `cpython_collections_userlist_slots_metadata_diff_subset`,
+  `cpython_collections_userlist_hash_metadata_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_type_base_dir_surface_diff_subset`,
   `cpython_collections_userlist_name_dir_surface_diff_subset`,
@@ -7671,6 +7678,13 @@ without adding general custom encoder/decoder class support.
   `UserList.__slots__`, `UserList(...).__slots__`, and `dir(UserList)` and
   `dir(UserList(...))` visibility to an empty tuple, without adding `__dict__`, `__weakref__`,
   real slots layout, or new UserList sequence-method surface.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_hash_metadata_diff_subset` and
+  `cpython_collections_userlist_hash_metadata_subset`, covering
+  `UserList.__hash__`, `UserList(...).__hash__`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility to `None`, while keeping
+  `hash(UserList(...))` unhashable, without making `UserList` hashable or
+  adding new UserList sequence-method surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_type_base_metadata_diff_subset` and
   `cpython_collections_userstring_type_base_metadata_subset`, covering

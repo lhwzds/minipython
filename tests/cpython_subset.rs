@@ -69453,6 +69453,33 @@ print('same-value', u.__slots__ == UserList.__slots__)"#,
     );
 }
 
+// Mirrors CPython's public UserList __hash__ metadata on the type and
+// instances. This only exposes None-valued metadata and keeps UserList
+// unhashable.
+#[test]
+fn cpython_collections_userlist_hash_metadata_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__hash__' in dir(UserList), '__hash__' in dir(u), hasattr(UserList, '__hash__'), hasattr(u, '__hash__'))
+print('type-hash', UserList.__hash__ is None, type(UserList.__hash__).__name__, repr(UserList.__hash__), object.__getattribute__(UserList, '__hash__') is None)
+print('inst-hash', u.__hash__ is None, type(u.__hash__).__name__, repr(u.__hash__), object.__getattribute__(u, '__hash__') is None)
+try:
+    hash(u)
+    print('hash-call ok')
+except Exception as error:
+    print('hash-call', type(error).__name__, str(error))
+print('same-value', u.__hash__ is UserList.__hash__)"#,
+        &[
+            "visible True True True True",
+            "type-hash True NoneType None True",
+            "inst-hash True NoneType None True",
+            "hash-call TypeError unhashable type: 'UserList'",
+            "same-value True",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {
