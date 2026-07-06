@@ -69556,6 +69556,41 @@ for label, expr in [
     );
 }
 
+// Mirrors CPython's public UserList __init__ method on existing instances. This
+// covers pure in-memory data reinitialization without adding more constructor
+// error-message parity.
+#[test]
+fn cpython_collections_userlist_init_method_subset() {
+    assert_output(
+        r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__init__' in dir(UserList), '__init__' in dir(u), hasattr(UserList, '__init__'), hasattr(u, '__init__'), callable(UserList.__init__), callable(u.__init__))
+def show(label, call):
+    u.tag = 'keep'
+    result = call()
+    print(label, result, u, u.data, u.tag)
+show('bound-none', lambda: u.__init__())
+show('bound-list', lambda: u.__init__([3, 4]))
+show('bound-tuple', lambda: u.__init__((5, 6)))
+show('bound-generator', lambda: u.__init__((x for x in [7, 8])))
+show('bound-keyword', lambda: u.__init__(initlist=[9]))
+show('type-userlist', lambda: UserList.__init__(u, UserList([10, 11])))
+show('type-selfkw', lambda: UserList.__init__(self=u, initlist=[12]))
+show('type-none', lambda: UserList.__init__(u, None))"#,
+        &[
+            "visible True True True True True True",
+            "bound-none None [] [] keep",
+            "bound-list None [3, 4] [3, 4] keep",
+            "bound-tuple None [5, 6] [5, 6] keep",
+            "bound-generator None [7, 8] [7, 8] keep",
+            "bound-keyword None [9] [9] keep",
+            "type-userlist None [10, 11] [10, 11] keep",
+            "type-selfkw None [12] [12] keep",
+            "type-none None [] [] keep",
+        ],
+    );
+}
+
 // Mirrors CPython's public `UserList` direct base metadata.
 #[test]
 fn cpython_collections_userlist_type_base_metadata_subset() {

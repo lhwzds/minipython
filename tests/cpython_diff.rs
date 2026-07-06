@@ -25920,6 +25920,29 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_collections_userlist_init_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserList __init__ method behavior",
+        name: "collections-userlist-init-method",
+        source: r#"from collections import UserList
+u = UserList([1, 2])
+print('visible', '__init__' in dir(UserList), '__init__' in dir(u), hasattr(UserList, '__init__'), hasattr(u, '__init__'), callable(UserList.__init__), callable(u.__init__))
+def show(label, call):
+    u.tag = 'keep'
+    result = call()
+    print(label, result, u, u.data, u.tag)
+show('bound-none', lambda: u.__init__())
+show('bound-list', lambda: u.__init__([3, 4]))
+show('bound-tuple', lambda: u.__init__((5, 6)))
+show('bound-generator', lambda: u.__init__((x for x in [7, 8])))
+show('bound-keyword', lambda: u.__init__(initlist=[9]))
+show('type-userlist', lambda: UserList.__init__(u, UserList([10, 11])))
+show('type-selfkw', lambda: UserList.__init__(self=u, initlist=[12]))
+show('type-none', lambda: UserList.__init__(u, None))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userlist_type_base_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py UserList public direct base metadata subset",

@@ -26519,6 +26519,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_hash_metadata_subset",
             "cpython_collections_userlist_copy_method_subset",
             "cpython_collections_userlist_reversed_method_subset",
+            "cpython_collections_userlist_init_method_subset",
             "cpython_collections_userlist_type_base_metadata_subset",
             "cpython_collections_userlist_type_base_dir_surface_subset",
             "cpython_collections_userlist_name_dir_surface_subset",
@@ -29397,6 +29398,95 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserList __reversed__ docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_init_method_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList __init__ method behavior"
+    );
+    let userlist_init_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_init_method_diff_subset",
+    );
+    let userlist_init_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_init_method_subset",
+    );
+    for required in [
+        "from collections import UserList",
+        "u = UserList([1, 2])",
+        "'__init__' in dir(UserList)",
+        "'__init__' in dir(u)",
+        "hasattr(UserList, '__init__')",
+        "hasattr(u, '__init__')",
+        "callable(UserList.__init__)",
+        "callable(u.__init__)",
+        "u.tag = 'keep'",
+        "u.__init__()",
+        "u.__init__([3, 4])",
+        "u.__init__((5, 6))",
+        "u.__init__((x for x in [7, 8]))",
+        "u.__init__(initlist=[9])",
+        "UserList.__init__(u, UserList([10, 11]))",
+        "UserList.__init__(self=u, initlist=[12])",
+        "UserList.__init__(u, None)",
+    ] {
+        assert!(
+            userlist_init_diff_body.contains(required)
+                && userlist_init_subset_body.contains(required),
+            "UserList __init__ method diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"visible True True True True True True\"",
+        "\"bound-none None [] [] keep\"",
+        "\"bound-list None [3, 4] [3, 4] keep\"",
+        "\"bound-tuple None [5, 6] [5, 6] keep\"",
+        "\"bound-generator None [7, 8] [7, 8] keep\"",
+        "\"bound-keyword None [9] [9] keep\"",
+        "\"type-userlist None [10, 11] [10, 11] keep\"",
+        "\"type-selfkw None [12] [12] keep\"",
+        "\"type-none None [] [] keep\"",
+    ] {
+        assert!(
+            userlist_init_subset_body.contains(required),
+            "UserList __init__ method subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn user_list_values_from_initlist(",
+        "self.user_list_values_from_initlist(initlist)?",
+        "if method == \"__init__\"",
+        "fn call_user_list_init_method(",
+        "\"__init__\"",
+        "\"initlist\"",
+        "\"self\"",
+        "Some(Value::None) => Vec::new()",
+        "Some(Value::UserList { data, .. }) => data.borrow().clone()",
+        "*data.borrow_mut() = values;",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserList __init__ implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_init_method_subset",
+            "cpython_collections_userlist_init_method_diff_subset",
+            "`UserList.__init__`",
+            "`UserList(...).__init__`",
+            "`UserList.__init__(self=..., initlist=...)`",
+            "`dir(UserList)` and `dir(UserList(...))`",
+            "pure in-memory data reinitialization",
+            "without adding more constructor error-message parity",
+            "without resetting UserList instance attributes",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList __init__ docs must contain `{required}`"
             );
         }
     }

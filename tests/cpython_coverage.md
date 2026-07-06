@@ -240,6 +240,12 @@ Recent runtime migration notes:
   `reversed(UserList(...))`, and `dir(UserList)` and `dir(UserList(...))`
   visibility through `Sequence.__reversed__`, without pinning CPython's generator object implementation shape
   and without adding new UserList mutation APIs.
+- `cpython_collections_userlist_init_method_subset`, backed by
+  `cpython_collections_userlist_init_method_diff_subset`, now pins
+  `UserList.__init__`, `UserList(...).__init__`,
+  `UserList.__init__(self=..., initlist=...)`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility for pure in-memory data reinitialization,
+  without adding more constructor error-message parity and without resetting UserList instance attributes.
 - `cpython_collections_userstring_type_base_dir_surface_subset`, backed by
   `cpython_collections_userstring_type_base_dir_surface_diff_subset`, now keeps
   `UserString.__base__` and `UserString.__bases__` readable while keeping them
@@ -1756,6 +1762,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_hash_metadata_diff_subset`,
   `cpython_collections_userlist_copy_method_diff_subset`,
   `cpython_collections_userlist_reversed_method_diff_subset`,
+  `cpython_collections_userlist_init_method_diff_subset`,
   `cpython_collections_userlist_type_base_metadata_diff_subset`,
   `cpython_collections_userlist_type_base_dir_surface_diff_subset`,
   `cpython_collections_userlist_name_dir_surface_diff_subset`,
@@ -7713,6 +7720,13 @@ without adding general custom encoder/decoder class support.
   `reversed(UserList(...))`, and `dir(UserList)` and `dir(UserList(...))`
   visibility through `Sequence.__reversed__`, without pinning CPython's generator object implementation shape
   and without adding new UserList mutation APIs.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_init_method_diff_subset` and
+  `cpython_collections_userlist_init_method_subset`, covering
+  `UserList.__init__`, `UserList(...).__init__`,
+  `UserList.__init__(self=..., initlist=...)`, and `dir(UserList)` and
+  `dir(UserList(...))` visibility for pure in-memory data reinitialization,
+  without adding more constructor error-message parity and without resetting UserList instance attributes.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_type_base_metadata_diff_subset` and
   `cpython_collections_userstring_type_base_metadata_subset`, covering

@@ -25968,16 +25968,23 @@ impl Vm {
             initlist = Some(value);
         }
 
-        let values = match initlist {
-            None | Some(Value::None) => Vec::new(),
-            Some(Value::UserList { data, .. }) => data.borrow().clone(),
-            Some(Value::List(items)) => items.borrow().clone(),
-            Some(value) => self.collect_iterable_values(value)?,
-        };
+        let values = self.user_list_values_from_initlist(initlist)?;
 
         Ok(Value::UserList {
             data: Rc::new(RefCell::new(values)),
             attrs: dict_ref_from_entries(Vec::new())?,
+        })
+    }
+
+    fn user_list_values_from_initlist(
+        &mut self,
+        initlist: Option<Value>,
+    ) -> Result<Vec<Value>, String> {
+        Ok(match initlist {
+            None | Some(Value::None) => Vec::new(),
+            Some(Value::UserList { data, .. }) => data.borrow().clone(),
+            Some(Value::List(items)) => items.borrow().clone(),
+            Some(value) => self.collect_iterable_values(value)?,
         })
     }
 
@@ -35463,6 +35470,10 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let method = method_display_name(name);
+        if method == "__init__" {
+            return self.call_user_list_init_method(args, keywords);
+        }
+
         let [Value::UserList { data, attrs }, rest @ ..] = args.as_slice() else {
             return Err(format!("{method}() expected a UserList receiver"));
         };
@@ -35635,6 +35646,71 @@ impl Vm {
         list_args.extend(rest.iter().cloned());
         let list_method = format!("list.{method}");
         self.call_list_method(&list_method, list_args, keywords)
+    }
+
+    fn call_user_list_init_method(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 2 {
+            return Err(format!(
+                "TypeError: UserList.__init__() takes from 1 to 2 positional arguments but {} were given",
+                args.len()
+            ));
+        }
+
+        let mut args = args.into_iter();
+        let mut receiver = args.next();
+        let mut initlist = args.next();
+
+        for (name, value) in keywords {
+            match name.as_str() {
+                "self" => {
+                    if receiver.is_some() {
+                        return Err(
+                            "TypeError: UserList.__init__() got multiple values for argument 'self'"
+                                .to_string(),
+                        );
+                    }
+                    receiver = Some(value);
+                }
+                "initlist" => {
+                    if initlist.is_some() {
+                        return Err(
+                            "TypeError: UserList.__init__() got multiple values for argument 'initlist'"
+                                .to_string(),
+                        );
+                    }
+                    initlist = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: UserList.__init__() got an unexpected keyword argument '{name}'"
+                    ));
+                }
+            }
+        }
+
+        let Some(receiver) = receiver else {
+            return Err(
+                "TypeError: UserList.__init__() missing 1 required positional argument: 'self'"
+                    .to_string(),
+            );
+        };
+        let data = match receiver {
+            Value::UserList { data, .. } => data,
+            value => {
+                return Err(format!(
+                    "TypeError: UserList.__init__() expected a UserList receiver, got {}",
+                    type_name(&value)
+                ));
+            }
+        };
+
+        let values = self.user_list_values_from_initlist(initlist)?;
+        *data.borrow_mut() = values;
+        Ok(Value::None)
     }
 
     fn call_user_string_method(
@@ -54410,6 +54486,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getitem__",
             "__iadd__",
             "__imul__",
+            "__init__",
             "__iter__",
             "__len__",
             "__mul__",
@@ -57281,6 +57358,7 @@ fn is_builtin_user_list_type_method(name: &str) -> bool {
             | "__getitem__"
             | "__iadd__"
             | "__imul__"
+            | "__init__"
             | "__iter__"
             | "__len__"
             | "__lt__"
@@ -62993,9 +63071,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "append" | "extend" | "clear" | "copy" | "__copy__" | "pop" | "reverse"
                 | "sort" | "count" | "index" | "insert" | "remove" | "__add__"
                 | "__contains__" | "__delitem__" | "__eq__" | "__format__" | "__getitem__"
-                | "__iadd__" | "__imul__" | "__iter__" | "__len__" | "__lt__" | "__le__"
-                | "__gt__" | "__ge__" | "__mul__" | "__ne__" | "__repr__" | "__radd__"
-                | "__rmul__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
+                | "__iadd__" | "__imul__" | "__init__" | "__iter__" | "__len__" | "__lt__"
+                | "__le__" | "__gt__" | "__ge__" | "__mul__" | "__ne__" | "__repr__"
+                | "__radd__" | "__rmul__" | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("UserList.{name}"))),
                     receiver: Box::new(Value::UserList { data, attrs }),
                     identity: Rc::new(()),
