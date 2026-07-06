@@ -915,6 +915,12 @@ Recent runtime migration notes:
   `enumerate.__module__`, and `enumerate.__qualname__` directly readable,
   preserves `enumerate.__class_getitem__` visibility, without adding enumerate instance `__iter__` / `__next__` dir visibility,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_zip_type_metadata_dir_surface_subset`, backed by
+  `cpython_zip_type_metadata_dir_surface_diff_subset`, now pins `dir(zip)` and
+  `dir(zip(...))` hiding type metadata names while keeping `zip.__base__`,
+  `zip.__bases__`, `zip.__module__`, and `zip.__qualname__` directly readable,
+  preserves existing `zip(..., strict=True)` behavior, without adding zip instance `__iter__` / `__next__` dir visibility,
+  and without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1702,6 +1708,7 @@ Recent runtime migration notes:
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,
   `cpython_builtin_sorted_exact_diff_subset`,
   `cpython_zip_strict_builtin_diff_subset`,
+  `cpython_zip_type_metadata_dir_surface_diff_subset`,
   `cpython_divmod_builtin_diff_subset`,
   `cpython_pow_builtin_diff_subset`,
   `cpython_abs_builtin_diff_subset`,

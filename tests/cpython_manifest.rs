@@ -46708,6 +46708,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_enumerate_type_metadata_dir_surface_subset",
             "cpython_builtin_sorted_exact_subset",
             "cpython_zip_strict_builtin_subset",
+            "cpython_zip_type_metadata_dir_surface_subset",
             "cpython_map_filter_builtin_subset",
             "cpython_map_strict_builtin_subset",
             "cpython_abs_builtin_subset",
@@ -46959,6 +46960,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_enumerate_type_metadata_dir_surface_diff_subset",
         "cpython_builtin_sorted_exact_diff_subset",
         "cpython_zip_strict_builtin_diff_subset",
+        "cpython_zip_type_metadata_dir_surface_diff_subset",
         "cpython_divmod_builtin_diff_subset",
         "cpython_pow_builtin_diff_subset",
         "cpython_abs_builtin_diff_subset",
@@ -52272,6 +52274,101 @@ fn enumerate_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "enumerate type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn zip_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_zip_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_zip_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "zip type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "zip type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "typ = zip",
+        "inst = zip([1], [2])",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "typ.__name__",
+        "object.__getattribute__(typ, '__name__')",
+        "typ.__module__",
+        "typ.__qualname__",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "iter(inst) is inst",
+        "next(zip([1], [2]))",
+        "list(zip([1], [2], strict=True))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "zip type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False False False\"",
+        "\"visible-inst False False False\"",
+        "\"readable-base True True zip zip\"",
+        "\"readable-module builtins zip builtins zip\"",
+        "\"iter-kept True (1, 2) [(1, 2)]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "zip type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"zip\" => vec![builtin_type_value(\"object\")]",
+        "name == \"zip\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "| \"zip\"\n            | \"property\"",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "zip type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(zip)`",
+            "`dir(zip(...))`",
+            "`zip.__base__`",
+            "`zip.__bases__`",
+            "`zip.__module__`",
+            "`zip.__qualname__`",
+            "`zip(..., strict=True)`",
+            "without adding zip instance `__iter__` / `__next__` dir visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "zip type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
