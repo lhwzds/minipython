@@ -34861,6 +34861,13 @@ impl Vm {
                 let iterator = state.borrow().clone();
                 return self.call_iterator_reduce(iterator);
             }
+            Value::RangeIterator {
+                current,
+                stop,
+                step,
+            } => {
+                return self.range_iterator_reduce_result(current, stop, step);
+            }
             Value::ListIterator {
                 items,
                 index,
@@ -35006,6 +35013,30 @@ impl Vm {
             items.push(Value::Number(index));
         }
         Ok(tuple_value(items))
+    }
+
+    fn range_iterator_reduce_result(
+        &mut self,
+        current: BigInt,
+        stop: BigInt,
+        step: BigInt,
+    ) -> Result<Value, String> {
+        let iter = self
+            .load_builtin_name("iter")?
+            .ok_or_else(|| "AttributeError: iter".to_string())?;
+        let remaining_len = range_len_bigint(&current, &stop, &step);
+        let stop = current.clone() + remaining_len * step.clone();
+        let range = Value::Range {
+            start: current,
+            stop,
+            step,
+            identity: Rc::new(()),
+        };
+        Ok(tuple_value(vec![
+            iter,
+            tuple_value(vec![range]),
+            Value::None,
+        ]))
     }
 
     fn reverse_iterator_reduce_result(
@@ -55077,7 +55108,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
         "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
-        "range_iterator" => &["__iter__", "__next__", "__length_hint__"],
+        "range_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "list_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "tuple_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "str_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
@@ -64264,7 +64295,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             current,
             stop,
             step,
-        } => length_hint_iterator_protocol_method(
+        } => list_tuple_iterator_protocol_method(
             "range_iterator",
             Value::RangeIterator {
                 current,
@@ -64442,6 +64473,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let iterator = state.borrow();
                 let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });
                 let reduce_type_name = match &*iterator {
+                    Value::RangeIterator { .. } => Some("range_iterator"),
                     Value::ListIterator { .. } => Some("list_iterator"),
                     Value::TupleIterator { .. } => Some("tuple_iterator"),
                     Value::StringIterator { chars, .. } => Some(string_iterator_type_name(chars)),
@@ -65349,9 +65381,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "range_iterator" && name == "__length_hint__" =>
+            if function_name == "range_iterator"
+                && matches!(name, "__length_hint__" | "__reduce__") =>
         {
-            Ok(Value::Builtin("range_iterator.__length_hint__".to_string()))
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "list_iterator"
@@ -78582,13 +78615,17 @@ fn reversed_value(value: Value) -> Result<Value, String> {
         }
         Value::Range {
             start, stop, step, ..
-        } => Ok(shared_iterator(Value::ReverseIterator {
-            items: range_values(&start, &stop, &step)?
-                .into_iter()
-                .map(normalize_big_int)
-                .collect(),
-            index: 0,
-        })),
+        } => {
+            let len = range_len_bigint(&start, &stop, &step);
+            let reverse_start = start.clone() + (&len - BigInt::from(1)) * step.clone();
+            let reverse_stop = start - &step;
+            let reverse_step = -step;
+            Ok(shared_iterator(Value::RangeIterator {
+                current: reverse_start,
+                stop: reverse_stop,
+                step: reverse_step,
+            }))
+        }
         Value::Dict(entries)
         | Value::OrderedDict(entries)
         | Value::DefaultDict { entries, .. }

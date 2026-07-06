@@ -953,13 +953,25 @@ Recent runtime migration notes:
   process, C ABI, or full stdlib scope.
 - `cpython_range_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_range_iterator_type_metadata_dir_surface_diff_subset`, now pins
-  `iter(range(3))`, `type(inst)`, `dir(type(iter(range(...))))`, and
-  `dir(iter(range(...)))` for `range_iterator.__base__`,
-  `range_iterator.__bases__`, `range_iterator.__module__`,
-  `range_iterator.__qualname__`, `__iter__`, `__next__`, `__length_hint__`,
-  direct `typ.__length_hint__(inst)` / `typ.__next__(inst)` dispatch, and
-  `inst.__length_hint__()`, without widening host IO, network, process, C ABI,
-  or full stdlib scope.
+  `iter(range(1, 8, 2))`, `reversed(range(1, 8, 2))`, `type(inst)`,
+  `dir(type(iter(range(...))))`, `dir(iter(range(...)))`,
+  `dir(type(reversed(range(...))))`, and `dir(reversed(range(...)))` for
+  `range_iterator.__base__`, `range_iterator.__bases__`,
+  `range_iterator.__module__`, `range_iterator.__qualname__`, `__iter__`,
+  `__next__`, `__length_hint__`, `__reduce__`, direct
+  `typ.__length_hint__(inst)` / `typ.__next__(inst)` /
+  `typ.__reduce__(inst)` dispatch, `inst.__length_hint__()`, and
+  `inst.__reduce__()`. It also pins range-iterator reduce forms
+  `iter-fresh-reduce 3 True 1 True range(1, 9, 2) range None True`,
+  `iter-reduce-shape 3 True 1 True range(5, 9, 2) range None True`,
+  `iter-empty-reduce 3 True 1 True range(0, 0) range None True`,
+  `iter-exhausted-reduce 3 True 1 True range(1, 1) range None True`,
+  `rev-fresh-reduce 3 True 1 True range(7, -1, -2) range None True`,
+  `rev-reduce-shape 3 True 1 True range(5, -1, -2) range None True`,
+  `rev-empty-reduce 3 True 1 True range(-1, -1, -1) range None True`,
+  `rev-exhausted-reduce 3 True 1 True range(-1, -1, -1) range None True`,
+  and `rev-negative-reduce 3 True 1 True range(1, 13, 3) range None True`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_list_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter([1, 2, 3])`, `type(inst)`, `dir(type(iter([...])))`, and
