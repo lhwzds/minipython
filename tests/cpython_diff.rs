@@ -16951,6 +16951,72 @@ print('rev-negative-reduce', len(negative), negative[0] is iter, len(negative[1]
 }
 
 #[test]
+fn cpython_range_iterator_setstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public range_iterator __setstate__",
+        name: "range-iterator-setstate",
+        source: r#"def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+class Index:
+    def __index__(self):
+        print('index-called')
+        return 1
+
+class IntSub(int):
+    pass
+
+def next_value(iterator):
+    try:
+        return next(iterator)
+    except StopIteration:
+        return 'StopIteration'
+
+def reduce_shape(iterator):
+    reduced = iterator.__reduce__()
+    return len(reduced), reduced[0] is iter, len(reduced[1]), repr(reduced[1][0]), type(reduced[1][0]).__name__, reduced[2], len(reduced) == 3
+
+source = range(10, 20, 3)
+inst = iter(source)
+typ = type(inst)
+print('visible-setstate', '__setstate__' in dir(typ), '__setstate__' in dir(inst), hasattr(typ, '__setstate__'), hasattr(inst, '__setstate__'))
+for state in [-1, 0, 1, 2, 3, 4, 99, True, False, IntSub(2)]:
+    probe = iter(source)
+    result = probe.__setstate__(state)
+    print('setstate-next', repr(state), result, next_value(probe), probe.__length_hint__(), reduce_shape(probe))
+for consumed in [1, 2]:
+    probe = iter(source)
+    for _ in range(consumed):
+        next_value(probe)
+    before = reduce_shape(probe)
+    result = probe.__setstate__(1)
+    print('consumed-setstate', consumed, before, result, next_value(probe), probe.__length_hint__(), reduce_shape(probe))
+for bad in [None, 1.5, '1', [], Index()]:
+    probe = iter(source)
+    show('bad-setstate-' + type(bad).__name__, lambda probe=probe, bad=bad: probe.__setstate__(bad))
+for label, state in [('pos', 10**200), ('neg', -(10**200))]:
+    probe = iter(source)
+    show('big-setstate-' + label, lambda probe=probe, state=state: probe.__setstate__(state))
+for empty_state in [-1, 0, 1, 99]:
+    probe = iter(range(0))
+    result = probe.__setstate__(empty_state)
+    print('empty-setstate', empty_state, result, next_value(probe), probe.__length_hint__(), reduce_shape(probe))
+negative = iter(range(20, 10, -3))
+print('negative-setstate', negative.__setstate__(2), next_value(negative), negative.__length_hint__(), reduce_shape(negative))
+show('missing', lambda: iter(source).__setstate__())
+show('extra', lambda: iter(source).__setstate__(0, 1))
+shifted = iter(source)
+print('unbound-setstate', typ.__setstate__(shifted, 2))
+print('unbound-next', next_value(shifted), shifted.__length_hint__(), reduce_shape(shifted))
+show('unbound-bad', lambda: typ.__setstate__(object(), 0))
+show('unbound-list-iter', lambda: typ.__setstate__(iter([1, 2, 3]), 0))"#,
+    });
+}
+
+#[test]
 fn cpython_list_iterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public list_iterator type metadata dir surface",

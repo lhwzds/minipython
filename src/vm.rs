@@ -29483,6 +29483,15 @@ impl Vm {
                 };
                 self.call_array_iterator_setstate(receiver.clone(), index.clone())
             }
+            "__setstate__" if name == "range_iterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: range_iterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_range_iterator_setstate(receiver.clone(), index.clone())
+            }
             "__setstate__" if name == "list_iterator.__setstate__" => {
                 let [receiver, index] = args.as_slice() else {
                     return Err(format!(
@@ -35101,6 +35110,65 @@ impl Vm {
             Value::ArrayIterator { .. } => Ok(Value::None),
             value => Err(array_iterator_setstate_receiver_error(&value)),
         }
+    }
+
+    fn call_range_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        match receiver {
+            Value::Iterator(state) => {
+                let (current, stop, step) = {
+                    let iterator = state.borrow();
+                    let Value::RangeIterator {
+                        current,
+                        stop,
+                        step,
+                    } = &*iterator
+                    else {
+                        return Err(range_iterator_setstate_receiver_error(&*iterator));
+                    };
+                    (current.clone(), stop.clone(), step.clone())
+                };
+                let new_current =
+                    self.range_iterator_setstate_current(current, stop, step, index)?;
+                let mut iterator = state.borrow_mut();
+                if let Value::RangeIterator { current, .. } = &mut *iterator {
+                    *current = new_current;
+                    Ok(Value::None)
+                } else {
+                    Err(range_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::RangeIterator {
+                current,
+                stop,
+                step,
+            } => {
+                self.range_iterator_setstate_current(current, stop, step, index)?;
+                Ok(Value::None)
+            }
+            value => Err(range_iterator_setstate_receiver_error(&value)),
+        }
+    }
+
+    fn range_iterator_setstate_current(
+        &mut self,
+        current: BigInt,
+        stop: BigInt,
+        step: BigInt,
+        index: Value,
+    ) -> Result<BigInt, String> {
+        let mut offset = range_iterator_setstate_offset(self.index_integer_value(index)?)?;
+        if offset.is_negative() {
+            offset = BigInt::zero();
+        }
+        let remaining = range_len_bigint(&current, &stop, &step);
+        if offset > remaining {
+            offset = remaining;
+        }
+        Ok(current + step * offset)
     }
 
     fn call_list_iterator_setstate(
@@ -55472,7 +55540,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
         "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
-        "range_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "range_iterator" => &[
+            "__iter__",
+            "__next__",
+            "__length_hint__",
+            "__reduce__",
+            "__setstate__",
+        ],
         "list_iterator" => &[
             "__iter__",
             "__next__",
@@ -60603,6 +60677,21 @@ fn list_tuple_iterator_protocol_method(
     }
 }
 
+fn range_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("range_iterator.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            })
+        }
+        _ => Err(format!(
+            "AttributeError: range_iterator has no attribute '{name}'"
+        )),
+    }
+}
+
 fn list_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
     match name {
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
@@ -60758,6 +60847,26 @@ fn array_iterator_setstate_index(value: &Value) -> Result<usize, String> {
 fn array_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'array.arrayiterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn range_iterator_setstate_offset(value: Value) -> Result<BigInt, String> {
+    match value {
+        Value::Number(value) => Ok(BigInt::from(value)),
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C long".to_string()
+            })?;
+            Ok(BigInt::from(value))
+        }
+        _ => unreachable!("index_integer_value returns an integer"),
+    }
+}
+
+fn range_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'range_iterator' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -65203,8 +65312,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             current,
             stop,
             step,
-        } => list_tuple_iterator_protocol_method(
-            "range_iterator",
+        } => range_iterator_protocol_method(
             Value::RangeIterator {
                 current,
                 stop,
@@ -65377,6 +65485,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             let (
                 is_enumerate,
                 is_array_iterator,
+                is_range_iterator,
                 is_list_iterator,
                 is_tuple_iterator,
                 is_bytes_iterator,
@@ -65391,6 +65500,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let iterator = state.borrow();
                 let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });
                 let is_array_iterator = matches!(&*iterator, Value::ArrayIterator { .. });
+                let is_range_iterator = matches!(&*iterator, Value::RangeIterator { .. });
                 let is_list_iterator = matches!(&*iterator, Value::ListIterator { .. });
                 let is_tuple_iterator = matches!(&*iterator, Value::TupleIterator { .. });
                 let is_bytes_iterator = matches!(&*iterator, Value::BytesIterator { .. });
@@ -65409,7 +65519,6 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let is_reversed_iterator =
                     matches!(&*iterator, Value::SequenceReverseIterator { .. });
                 let reduce_type_name = match &*iterator {
-                    Value::RangeIterator { .. } => Some("range_iterator"),
                     Value::SetIterator { .. } => Some("set_iterator"),
                     Value::DictIterator {
                         kind: DictViewKind::Keys,
@@ -65424,6 +65533,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 (
                     is_enumerate,
                     is_array_iterator,
+                    is_range_iterator,
                     is_list_iterator,
                     is_tuple_iterator,
                     is_bytes_iterator,
@@ -65442,6 +65552,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )))
             } else if is_array_iterator {
                 array_iterator_protocol_method(Value::Iterator(state), name)
+            } else if is_range_iterator {
+                range_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_list_iterator {
                 list_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_tuple_iterator {
@@ -66347,7 +66459,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "range_iterator"
-                && matches!(name, "__length_hint__" | "__reduce__") =>
+                && matches!(name, "__length_hint__" | "__reduce__" | "__setstate__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -89274,6 +89386,7 @@ fn is_iterator_protocol_method(name: &str) -> bool {
     ) || matches!(
         name,
         "arrayiterator.__setstate__"
+            | "range_iterator.__setstate__"
             | "list_iterator.__setstate__"
             | "list_reverseiterator.__setstate__"
             | "reversed.__setstate__"

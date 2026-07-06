@@ -992,6 +992,15 @@ Recent runtime migration notes:
   `rev-exhausted-reduce 3 True 1 True range(-1, -1, -1) range None True`,
   and `rev-negative-reduce 3 True 1 True range(1, 13, 3) range None True`,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_range_iterator_setstate_subset`, backed by
+  `cpython_range_iterator_setstate_diff_subset`, now pins
+  `range_iterator.__setstate__`, `__setstate__` visibility on the type and
+  instance, current remaining range offset semantics, negative state clamps to zero,
+  oversized non-overflowing state exhaustion, `__index__` state handling,
+  `TypeError: '<type>' object cannot be interpreted as an integer`,
+  `OverflowError: Python int too large to convert to C long`, descriptor
+  receiver error, empty-range handling, and negative-step range handling,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_list_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter([1, 2, 3])`, `type(inst)`, `dir(type(iter([...])))`, and
@@ -2047,6 +2056,7 @@ Recent runtime migration notes:
   `cpython_builtin_iterator_dir_protocol_methods_diff_subset`,
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_range_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_range_iterator_setstate_diff_subset`,
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_list_iterator_setstate_diff_subset`,
   `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`,

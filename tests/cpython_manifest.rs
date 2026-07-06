@@ -46719,6 +46719,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_builtin_iterator_dir_protocol_methods_subset",
             "cpython_callable_iterator_type_metadata_dir_surface_subset",
             "cpython_range_iterator_type_metadata_dir_surface_subset",
+            "cpython_range_iterator_setstate_subset",
             "cpython_list_iterator_type_metadata_dir_surface_subset",
             "cpython_list_iterator_setstate_subset",
             "cpython_list_reverseiterator_type_metadata_dir_surface_subset",
@@ -46992,6 +46993,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_builtin_iterator_dir_protocol_methods_diff_subset",
         "cpython_callable_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_range_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_range_iterator_setstate_diff_subset",
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_iterator_setstate_diff_subset",
         "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset",
@@ -52955,8 +52957,7 @@ fn range_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"range_iterator\"",
         "\"range_iterator\" => vec![builtin_type_value(\"object\")]",
-        "\"range_iterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
-        "Value::Iterator(state) if matches!(&*state.borrow(), Value::RangeIterator { .. })",
+        "\"range_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
         "Value::RangeIterator { .. } => names.extend(builtin_type_dir_names(\"range_iterator\"))",
         "| \"range_iterator\"\n            | \"list_iterator\"",
         "return self.range_iterator_reduce_result(current, stop, step);",
@@ -52964,9 +52965,10 @@ fn range_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "let remaining_len = range_len_bigint(&current, &stop, &step);",
         "let stop = current.clone() + remaining_len * step.clone();",
         "Ok(tuple_value(vec![\n            iter,\n            tuple_value(vec![range]),\n            Value::None,\n        ]))",
-        "Value::RangeIterator { .. } => Some(\"range_iterator\")",
-        "list_tuple_iterator_protocol_method(\n            \"range_iterator\",",
-        "function_name == \"range_iterator\"\n                && matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "fn range_iterator_protocol_method(",
+        "is_range_iterator",
+        "range_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"range_iterator\"\n                && matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
         "Value::Range {\n            start, stop, step, ..\n        } => {",
         "let len = range_len_bigint(&start, &stop, &step);",
@@ -53023,6 +53025,128 @@ fn range_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "range_iterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn range_iterator_setstate_docs_cover_core_runtime() {
+    let diff_name = "cpython_range_iterator_setstate_diff_subset";
+    let subset_name = "cpython_range_iterator_setstate_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "range_iterator __setstate__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "range_iterator __setstate__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = range(10, 20, 3)",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "class Index:",
+        "class IntSub(int):",
+        "'__setstate__' in dir(typ)",
+        "'__setstate__' in dir(inst)",
+        "hasattr(typ, '__setstate__')",
+        "hasattr(inst, '__setstate__')",
+        "probe.__setstate__(state)",
+        "probe.__length_hint__()",
+        "def reduce_shape(iterator):",
+        "reduce_shape(probe)",
+        "consumed-setstate",
+        "bad-setstate-",
+        "10**200",
+        "empty-setstate",
+        "negative-setstate",
+        "iter(source).__setstate__()",
+        "iter(source).__setstate__(0, 1)",
+        "typ.__setstate__(shifted, 2)",
+        "typ.__setstate__(object(), 0)",
+        "typ.__setstate__(iter([1, 2, 3]), 0)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "range_iterator __setstate__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-setstate True True True True\"",
+        "\"setstate-next -1 None 10 3 (3, True, 1, 'range(13, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next 0 None 10 3 (3, True, 1, 'range(13, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next 1 None 13 2 (3, True, 1, 'range(16, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next 2 None 16 1 (3, True, 1, 'range(19, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next 3 None 19 0 (3, True, 1, 'range(22, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next 99 None StopIteration 0 (3, True, 1, 'range(22, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next True None 13 2 (3, True, 1, 'range(16, 22, 3)', 'range', None, True)\"",
+        "\"setstate-next False None 10 3 (3, True, 1, 'range(13, 22, 3)', 'range', None, True)\"",
+        "\"consumed-setstate 1 (3, True, 1, 'range(13, 22, 3)', 'range', None, True) None 16 1 (3, True, 1, 'range(19, 22, 3)', 'range', None, True)\"",
+        "\"bad-setstate-NoneType TypeError 'NoneType' object cannot be interpreted as an integer\"",
+        "\"bad-setstate-Index None\"",
+        "\"big-setstate-pos OverflowError Python int too large to convert to C long\"",
+        "\"big-setstate-neg OverflowError Python int too large to convert to C long\"",
+        "\"empty-setstate 1 None StopIteration 0 (3, True, 1, 'range(0, 0)', 'range', None, True)\"",
+        "\"negative-setstate None 14 1 (3, True, 1, 'range(11, 8, -3)', 'range', None, True)\"",
+        "\"missing TypeError range_iterator.__setstate__() takes exactly one argument (0 given)\"",
+        "\"extra TypeError range_iterator.__setstate__() takes exactly one argument (2 given)\"",
+        "\"unbound-setstate None\"",
+        "\"unbound-next 16 1 (3, True, 1, 'range(19, 22, 3)', 'range', None, True)\"",
+        "\"unbound-bad TypeError descriptor '__setstate__' for 'range_iterator' objects doesn't apply to a 'object' object\"",
+        "\"unbound-list-iter TypeError descriptor '__setstate__' for 'range_iterator' objects doesn't apply to a 'list_iterator' object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "range_iterator __setstate__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"range_iterator.__setstate__\"",
+        "self.call_range_iterator_setstate(receiver.clone(), index.clone())",
+        "fn call_range_iterator_setstate(",
+        "fn range_iterator_setstate_current(",
+        "self.index_integer_value(index)?",
+        "range_iterator_setstate_offset",
+        "range_len_bigint(&current, &stop, &step)",
+        "current + step * offset",
+        "fn range_iterator_protocol_method(",
+        "\"range_iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "range_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"range_iterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "fn range_iterator_setstate_receiver_error(",
+        "\"range_iterator.__setstate__\"",
+        "\"OverflowError: Python int too large to convert to C long\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "range_iterator __setstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`range_iterator.__setstate__`",
+            "`__setstate__` visibility on the type and instance",
+            "current remaining range offset semantics",
+            "negative state clamps to zero",
+            "oversized non-overflowing state exhaustion",
+            "`__index__` state handling",
+            "`TypeError: '<type>' object cannot be interpreted as an integer`",
+            "`OverflowError: Python int too large to convert to C long`",
+            "descriptor receiver error",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "range_iterator __setstate__ docs must contain `{required}`"
             );
         }
     }
