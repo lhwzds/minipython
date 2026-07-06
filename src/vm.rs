@@ -38869,6 +38869,18 @@ impl Vm {
                 None => IteratorAdvance::Complete(Value::None),
             });
         }
+        if let Value::MemoryView(view) = object {
+            return Ok(match memoryview_item_value(view, Value::Number(index)) {
+                Ok(value) => IteratorAdvance::Yield(value),
+                Err(message)
+                    if message.starts_with("IndexError: ")
+                        || message.starts_with("StopIteration") =>
+                {
+                    IteratorAdvance::Complete(Value::None)
+                }
+                Err(message) => return Err(message),
+            });
+        }
 
         self.call_iterator_method_catching(
             instance_special_method(object, "__getitem__")
@@ -78603,10 +78615,15 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             let items = items_ref.iter().cloned().collect();
             Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
         }
-        Value::MemoryView(view) => Ok(shared_iterator(Value::ReverseIterator {
-            items: memoryview_values(&view)?,
-            index: 0,
-        })),
+        Value::MemoryView(view) => {
+            let index = i64::try_from(memoryview_len(&view)?)
+                .map_err(|_| "reversed() length is too large".to_string())?
+                - 1;
+            Ok(shared_iterator(Value::SequenceReverseIterator {
+                object: Box::new(Value::MemoryView(view)),
+                index,
+            }))
+        }
         value if array_array_values(&value).is_some() => {
             Ok(shared_iterator(Value::ReverseIterator {
                 items: array_array_values(&value).expect("array storage exists after guard"),
