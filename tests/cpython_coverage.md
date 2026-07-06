@@ -1032,6 +1032,18 @@ Recent runtime migration notes:
   `reduce-shape 2 True 1 list True 2 True`, and size-change
   `RuntimeError: Set changed size during iteration`, without widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_dict_keyiterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset`, now pins
+  `iter({'a': 1, 'b': 2, 'c': 3})`, `type(inst)`,
+  `dir(type(iter(dict(...))))`, and `dir(iter(dict(...)))` for
+  `dict_keyiterator.__base__`, `dict_keyiterator.__bases__`,
+  `dict_keyiterator.__module__`, `dict_keyiterator.__qualname__`,
+  `__iter__`, `__next__`, `__length_hint__`, `__reduce__`, direct
+  `typ.__length_hint__(inst)` / `typ.__next__(inst)` /
+  `typ.__reduce__(inst)` dispatch, `inst.__length_hint__()`,
+  `reduce-shape 2 True 1 list True 2 True`, and size-change
+  `RuntimeError: dictionary changed size during iteration`, without widening
+  host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_inherited_str_direct_subset`, backed by
   `cpython_tuple_inherited_str_direct_diff_subset`, now pins tuple inherited `__str__`,
   exact and tuple-subclass instance `__str__`, direct `tuple.__str__` dispatch for
@@ -1826,6 +1838,7 @@ Recent runtime migration notes:
   `cpython_bytes_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_bytearray_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_set_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_dict_keyiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
   `cpython_enumerate_type_metadata_dir_surface_diff_subset`,

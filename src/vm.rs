@@ -34901,6 +34901,31 @@ impl Vm {
                 let remaining = items.iter().skip(index).cloned().collect();
                 return self.iterator_reduce_result(list_value(remaining), None);
             }
+            Value::DictIterator {
+                kind: DictViewKind::Keys,
+                entries,
+                index,
+                expected_len,
+                expected_version,
+            } => {
+                let entries = entries.borrow();
+                if entries.len() != expected_len {
+                    return Err(
+                        "RuntimeError: dictionary changed size during iteration".to_string()
+                    );
+                }
+                if entries.version != expected_version {
+                    return Err(
+                        "RuntimeError: dictionary keys changed during iteration".to_string()
+                    );
+                }
+                let remaining = entries
+                    .iter()
+                    .skip(index)
+                    .map(|(key, _)| key.clone())
+                    .collect();
+                return self.iterator_reduce_result(list_value(remaining), None);
+            }
             value => {
                 return Err(format!(
                     "TypeError: copy protocol does not support '{}'",
@@ -54159,6 +54184,17 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::SetIterator { .. }) => {
             names.extend(builtin_type_dir_names("set_iterator"))
         }
+        Value::Iterator(state)
+            if matches!(
+                &*state.borrow(),
+                Value::DictIterator {
+                    kind: DictViewKind::Keys,
+                    ..
+                }
+            ) =>
+        {
+            names.extend(builtin_type_dir_names("dict_keyiterator"))
+        }
         Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names("enumerate")),
         Value::ZipIterator { .. } => names.extend(builtin_type_dir_names("zip")),
         Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
@@ -54175,6 +54211,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names("bytearray_iterator"))
         }
         Value::SetIterator { .. } => names.extend(builtin_type_dir_names("set_iterator")),
+        Value::DictIterator {
+            kind: DictViewKind::Keys,
+            ..
+        } => names.extend(builtin_type_dir_names("dict_keyiterator")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -54517,6 +54557,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "bytearray_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "set_iterator" {
+        remove_type_metadata_dir_names(&mut names);
+    } else if name == "dict_keyiterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "super" {
         remove_type_metadata_dir_names(&mut names);
@@ -54892,6 +54934,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytearray_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "set_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "dict_keyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "io.BytesIO" => &[
             "__enter__",
             "__exit__",
@@ -56043,6 +56086,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "bytes_iterator" => vec![builtin_type_value("object")],
         "bytearray_iterator" => vec![builtin_type_value("object")],
         "set_iterator" => vec![builtin_type_value("object")],
+        "dict_keyiterator" => vec![builtin_type_value("object")],
         _ if is_dict_view_type_object_name(name) => {
             vec![builtin_type_value(dict_view_type_object_base_name(name))]
         }
@@ -64138,17 +64182,20 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             index,
             expected_len,
             expected_version,
-        } => length_hint_iterator_protocol_method(
-            "dict_keyiterator",
-            Value::DictIterator {
+        } => {
+            let receiver = Value::DictIterator {
                 kind,
                 entries,
                 index,
                 expected_len,
                 expected_version,
-            },
-            name,
-        ),
+            };
+            if kind == DictViewKind::Keys {
+                list_tuple_iterator_protocol_method("dict_keyiterator", receiver, name)
+            } else {
+                length_hint_iterator_protocol_method("dict_keyiterator", receiver, name)
+            }
+        }
         Value::ReverseIterator { items, index } => length_hint_iterator_protocol_method(
             "list_reverseiterator",
             Value::ReverseIterator { items, index },
@@ -64241,6 +64288,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::BytesIterator { .. } => Some("bytes_iterator"),
                     Value::ByteArrayIterator { .. } => Some("bytearray_iterator"),
                     Value::SetIterator { .. } => Some("set_iterator"),
+                    Value::DictIterator {
+                        kind: DictViewKind::Keys,
+                        ..
+                    } => Some("dict_keyiterator"),
                     _ => None,
                 };
                 (is_enumerate, iterator_has_length_hint(&iterator), reduce_type_name)
@@ -65174,6 +65225,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "set_iterator"
+                && matches!(name, "__length_hint__" | "__reduce__") =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "dict_keyiterator"
                 && matches!(name, "__length_hint__" | "__reduce__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
@@ -70341,6 +70398,7 @@ fn is_builtins_module_type_object_name(name: &str) -> bool {
             | "bytes_iterator"
             | "bytearray_iterator"
             | "set_iterator"
+            | "dict_keyiterator"
             | "property"
             | "super"
             | "staticmethod"
