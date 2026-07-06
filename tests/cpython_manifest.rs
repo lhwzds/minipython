@@ -46716,6 +46716,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_callable_iterator_type_metadata_dir_surface_subset",
             "cpython_range_iterator_type_metadata_dir_surface_subset",
             "cpython_list_iterator_type_metadata_dir_surface_subset",
+            "cpython_list_reverseiterator_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
             "cpython_str_iterator_type_metadata_dir_surface_subset",
             "cpython_str_ascii_iterator_type_metadata_dir_surface_subset",
@@ -46974,6 +46975,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_callable_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_range_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_list_iterator_type_metadata_dir_surface_diff_subset",
+        "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset",
@@ -53041,6 +53043,144 @@ fn list_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn list_reverseiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_list_reverseiterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list_reverseiterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list_reverseiterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "source = [1, 2, 3]",
+        "inst = reversed(source)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "reduced[0] is reversed",
+        "reduced[1][0] == source",
+        "reversed([]).__reduce__()",
+        "exhausted = reversed([1])",
+        "exhausted.__reduce__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list_reverseiterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name list_reverseiterator builtins list_reverseiterator\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True list_reverseiterator\"",
+        "\"readable-module builtins list_reverseiterator\"",
+        "\"iter-next-hint True 3 2 2\"",
+        "\"reduce-shape 3 True 1 True 1 True\"",
+        "\"empty-reduce 2 True 1 True list True\"",
+        "\"exhausted-reduce 2 True 1 True list True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list_reverseiterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"list_reverseiterator\"",
+        "\"list_reverseiterator\" => vec![builtin_type_value(\"object\")]",
+        "\"list_reverseiterator\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::ReverseIterator { .. })",
+        "builtin_type_dir_names(\"list_reverseiterator\")",
+        "list_tuple_iterator_protocol_method(\n            \"list_reverseiterator\"",
+        "Value::ReverseIterator { .. } => Some(\"list_reverseiterator\")",
+        "Value::ReverseIterator { items, index } => {",
+        "reverse_iterator_reduce_result",
+        "load_builtin_name(\"reversed\")",
+        "if index > 0",
+        "| \"list_reverseiterator\"\n            | \"property\"",
+        "function_name == \"list_reverseiterator\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list_reverseiterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`reversed([1, 2, 3])`",
+            "`type(inst)`",
+            "`list_reverseiterator.__base__`",
+            "`list_reverseiterator.__bases__`",
+            "`list_reverseiterator.__module__`",
+            "`list_reverseiterator.__qualname__`",
+            "`dir(type(reversed(list(...))))`",
+            "`dir(reversed(list(...)))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__reduce__(inst)`",
+            "`inst.__length_hint__()`",
+            "`reduce-shape 3 True 1 True 1 True`",
+            "`empty-reduce 2 True 1 True list True`",
+            "`exhausted-reduce 2 True 1 True list True`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "list_reverseiterator type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_tuple_iterator_type_metadata_dir_surface_subset";
@@ -54055,7 +54195,7 @@ fn dict_reversekeyiterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "names.extend(builtin_type_dir_names(\"dict_reversekeyiterator\"))",
         "0..keys.len().saturating_sub(index)",
         "Some(\"dict_reversekeyiterator\")",
-        "| \"dict_reversekeyiterator\"\n            | \"property\"",
+        "| \"dict_reversekeyiterator\"\n            | \"list_reverseiterator\"",
         "function_name == \"dict_reversekeyiterator\"",
         "matches!(name, \"__length_hint__\" | \"__reduce__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",

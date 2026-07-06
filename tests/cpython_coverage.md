@@ -970,6 +970,18 @@ Recent runtime migration notes:
   `typ.__length_hint__(inst)` / `typ.__next__(inst)` dispatch, and
   `inst.__length_hint__()`, without widening host IO, network, process, C ABI,
   or full stdlib scope.
+- `cpython_list_reverseiterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`, now
+  pins `reversed([1, 2, 3])`, `type(inst)`,
+  `dir(type(reversed(list(...))))`, and `dir(reversed(list(...)))` for
+  `list_reverseiterator.__base__`, `list_reverseiterator.__bases__`,
+  `list_reverseiterator.__module__`, `list_reverseiterator.__qualname__`,
+  `__iter__`, `__next__`, `__length_hint__`, `__reduce__`, direct
+  `typ.__length_hint__(inst)` / `typ.__reduce__(inst)` dispatch,
+  `inst.__length_hint__()`, `reduce-shape 3 True 1 True 1 True`,
+  `empty-reduce 2 True 1 True list True`, and
+  `exhausted-reduce 2 True 1 True list True`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_tuple_iterator_type_metadata_dir_surface_subset`, backed by
   `cpython_tuple_iterator_type_metadata_dir_surface_diff_subset`, now pins
   `iter((1, 2, 3))`, `type(inst)`, `dir(type(iter((...))))`, and
@@ -1844,6 +1856,7 @@ Recent runtime migration notes:
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_range_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_list_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_list_reverseiterator_type_metadata_dir_surface_diff_subset`,
   `cpython_tuple_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset`,
