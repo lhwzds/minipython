@@ -14296,6 +14296,43 @@ print('exhausted-reduce', len(exhausted_reduced), exhausted_reduced[0] is iter, 
 }
 
 #[test]
+fn cpython_array_iterator_setstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public array.arrayiterator __setstate__ behavior",
+        name: "array-iterator-setstate",
+        source: r#"from array import array
+
+def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+source = array('b', [1, -2, 3])
+inst = iter(source)
+typ = type(inst)
+print('visible-setstate', '__setstate__' in dir(typ), '__setstate__' in dir(inst), hasattr(typ, '__setstate__'), hasattr(inst, '__setstate__'))
+for state in [-1, 0, 1, 2, 3, 99, True, False]:
+    probe = iter(source)
+    result = probe.__setstate__(state)
+    try:
+        value = next(probe)
+    except StopIteration:
+        value = 'StopIteration'
+    print('setstate-next', repr(state), result, value)
+for bad in [None, 1.5, '1', []]:
+    probe = iter(source)
+    show('bad-setstate-' + type(bad).__name__, lambda probe=probe, bad=bad: probe.__setstate__(bad))
+show('missing', lambda: iter(source).__setstate__())
+show('extra', lambda: iter(source).__setstate__(0, 1))
+shifted = iter(source)
+print('unbound-setstate', typ.__setstate__(shifted, 2))
+print('unbound-next', next(shifted))
+show('unbound-bad', lambda: typ.__setstate__(object(), 0))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_getstate_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public inherited object.__getstate__ behavior for memoryview instances",

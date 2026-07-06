@@ -148,6 +148,12 @@ Recent runtime migration notes:
   `empty-reduce 3 True 1 array True 0 True`, and
   `exhausted-reduce 3 True 1 array True 1 True`, without widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `cpython_array_iterator_setstate_subset`, backed by
+  `cpython_array_iterator_setstate_diff_subset`, now pins
+  `array.arrayiterator.__setstate__`, `__setstate__` visibility on the type and instance,
+  negative state clamping to zero, oversized state exhaustion, bool state handling,
+  `TypeError: an integer is required`, and descriptor receiver error behavior,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `cpython_collections_deque_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_deque_class_getitem_generic_alias_diff_subset`, now pins
   collections.deque `__class_getitem__`, `collections.deque.__class_getitem__(int) == collections.deque[int]`,
@@ -2381,6 +2387,7 @@ Recent runtime migration notes:
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_subclass_public_construction_diff_subset`,
   `cpython_array_iterator_type_metadata_dir_surface_diff_subset`,
+  `cpython_array_iterator_setstate_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_short_public_sequence_and_mutation_diff_subset`,
   `cpython_array_int_public_sequence_and_mutation_diff_subset`,
@@ -9731,6 +9738,12 @@ without adding general custom encoder/decoder class support.
   `empty-reduce 3 True 1 array True 0 True`, and
   `exhausted-reduce 3 True 1 array True 1 True`, without widening host IO,
   network, process, C ABI, or full stdlib scope.
+- `RUNTIME_BUILTINS` also includes `cpython_array_iterator_setstate_subset`,
+  backed by `cpython_array_iterator_setstate_diff_subset`, covering
+  `array.arrayiterator.__setstate__`, `__setstate__` visibility on the type and instance,
+  negative state clamping to zero, oversized state exhaustion, bool state handling,
+  `TypeError: an integer is required`, and descriptor receiver error behavior,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_sequence_subset`, covering the supported
   public `array.array('B')` / `array.array('b')` sequence and bytes surface:

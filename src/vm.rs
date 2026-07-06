@@ -29474,6 +29474,15 @@ impl Vm {
                 };
                 self.call_iterator_reduce(receiver.clone())
             }
+            "__setstate__" if name == "arrayiterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: arrayiterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_array_iterator_setstate(receiver.clone(), index.clone())
+            }
             _ => Err(format!("unknown builtin: {name}")),
         }
     }
@@ -34997,6 +35006,29 @@ impl Vm {
             }
         };
         self.iterator_reduce_result(sequence, index)
+    }
+
+    fn call_array_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        let index = array_iterator_setstate_index(&index)?;
+        match receiver {
+            Value::Iterator(state) => {
+                let mut iterator = state.borrow_mut();
+                if matches!(&*iterator, Value::ArrayIterator { .. }) {
+                    if let Value::ArrayIterator { index: current, .. } = &mut *iterator {
+                        *current = index;
+                    }
+                    Ok(Value::None)
+                } else {
+                    Err(array_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::ArrayIterator { .. } => Ok(Value::None),
+            value => Err(array_iterator_setstate_receiver_error(&value)),
+        }
     }
 
     fn iterator_reduce_result(
@@ -55140,7 +55172,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "str_ascii_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytearray_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
-        "arrayiterator" => &["__iter__", "__next__", "__reduce__"],
+        "arrayiterator" => &["__iter__", "__next__", "__reduce__", "__setstate__"],
         "set_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_keyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_reversekeyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
@@ -60218,7 +60250,7 @@ fn list_tuple_iterator_protocol_method(
 
 fn array_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
     match name {
-        "__iter__" | "__next__" | "__reduce__" => Ok(Value::BoundMethod {
+        "__iter__" | "__next__" | "__reduce__" | "__setstate__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("arrayiterator.{name}"))),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
@@ -60227,6 +60259,32 @@ fn array_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, 
             "AttributeError: arrayiterator has no attribute '{name}'"
         )),
     }
+}
+
+fn array_iterator_setstate_index(value: &Value) -> Result<usize, String> {
+    let integer = if let Some(value) = int_subclass_integer(value) {
+        value
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(*value)),
+            Value::Number(_) | Value::BigInt(_) => value.clone(),
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    match integer {
+        Value::Number(value) if value <= 0 => Ok(0),
+        Value::Number(value) => Ok(usize::try_from(value).unwrap_or(usize::MAX)),
+        Value::BigInt(value) if value.is_negative() => Ok(0),
+        Value::BigInt(value) => Ok(value.to_usize().unwrap_or(usize::MAX)),
+        _ => unreachable!("arrayiterator __setstate__ accepts only integer values"),
+    }
+}
+
+fn array_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'array.arrayiterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
 }
 
 fn iterator_has_length_hint(value: &Value) -> bool {
@@ -65435,7 +65493,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "arrayiterator" && name == "__reduce__" =>
+            if function_name == "arrayiterator" && matches!(name, "__reduce__" | "__setstate__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -88365,7 +88423,7 @@ fn is_iterator_protocol_method(name: &str) -> bool {
     matches!(
         method_display_name(name),
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
-    )
+    ) || name == "arrayiterator.__setstate__"
 }
 
 fn is_dict_view_builtin_name(name: &str) -> bool {
