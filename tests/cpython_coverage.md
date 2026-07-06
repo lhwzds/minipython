@@ -170,6 +170,10 @@ Recent runtime migration notes:
   `UserString.__module__`, `UserString(...).__module__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
   without adding `__new__`, pickle, or full UserString string-method proxying.
+- `cpython_collections_userstring_name_dir_surface_subset`, backed by
+  `cpython_collections_userstring_name_dir_surface_diff_subset`, now pins
+  `UserString.__name__` lookup while keeping `__name__` out of
+  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__abstractmethods__`, `__weakref__`, or full UserString string-method proxying.
 - `cpython_collections_userstring_doc_metadata_subset`, backed by
   `cpython_collections_userstring_doc_metadata_diff_subset`, now pins
   `UserString.__doc__`, `UserString(...).__doc__`, and
@@ -1660,6 +1664,7 @@ Recent runtime migration notes:
   `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_type_base_metadata_diff_subset`,
+  `cpython_collections_userstring_name_dir_surface_diff_subset`,
   `cpython_collections_userstring_module_metadata_diff_subset`,
   `cpython_collections_userstring_doc_metadata_diff_subset`,
   `cpython_collections_userstring_slots_metadata_diff_subset`,
@@ -7529,6 +7534,11 @@ without adding general custom encoder/decoder class support.
   `UserString.__module__`, `UserString(...).__module__`, and
   `dir(UserString)` and `dir(UserString(...))` visibility to `collections`,
   without adding `__new__`, pickle, or full UserString string-method proxying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_name_dir_surface_diff_subset` and
+  `cpython_collections_userstring_name_dir_surface_subset`, covering
+  `UserString.__name__` lookup while keeping `__name__` out of
+  `dir(UserString)` and `dir(UserString(...))`, without adding `__dict__`, `__abstractmethods__`, `__weakref__`, or full UserString string-method proxying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_doc_metadata_diff_subset` and
   `cpython_collections_userstring_doc_metadata_subset`, covering

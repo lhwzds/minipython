@@ -25750,6 +25750,23 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
 }
 
 #[test]
+fn cpython_collections_userstring_name_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public collections.UserString __name__ dir surface",
+        name: "collections-userstring-name-dir-surface",
+        source: r#"from collections import UserString
+u = UserString('abé')
+print('type-name', UserString.__name__, type(UserString.__name__).__name__, getattr(UserString, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', '__name__' in dir(UserString), '__name__' in dir(u), hasattr(UserString, '__name__'), hasattr(u, '__name__'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_module_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public collections.UserString __module__ metadata",

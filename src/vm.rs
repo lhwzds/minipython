@@ -54301,6 +54301,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     if name == "CellType" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
         names.push("cell_contents".to_string());
+    } else if name == "UserString" {
+        names.retain(|attr| attr != "__name__");
     }
 
     let methods: &[&str] = match name {

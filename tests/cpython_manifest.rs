@@ -26513,6 +26513,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_type_base_metadata_subset",
+            "cpython_collections_userstring_name_dir_surface_subset",
             "cpython_collections_userstring_module_metadata_subset",
             "cpython_collections_userstring_doc_metadata_subset",
             "cpython_collections_userstring_slots_metadata_subset",
@@ -28687,6 +28688,73 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "UserString direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userstring_name_dir_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserString __name__ dir surface"
+    );
+    let userstring_name_dir_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_name_dir_surface_diff_subset",
+    );
+    let userstring_name_dir_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_name_dir_surface_subset",
+    );
+    for required in [
+        "from collections import UserString",
+        "u = UserString('abé')",
+        "UserString.__name__",
+        "getattr(UserString, '__name__')",
+        "lambda: u.__name__",
+        "getattr(u, '__name__')",
+        "'__name__' in dir(UserString)",
+        "'__name__' in dir(u)",
+        "hasattr(UserString, '__name__')",
+        "hasattr(u, '__name__')",
+    ] {
+        assert!(
+            userstring_name_dir_diff_body.contains(required)
+                && userstring_name_dir_subset_body.contains(required),
+            "UserString __name__ dir surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"type-name UserString str UserString\"",
+        "\"inst-direct AttributeError 'UserString' object has no attribute '__name__'",
+        "\"inst-getattr AttributeError 'UserString' object has no attribute '__name__'",
+        "\"visible False False True False\"",
+    ] {
+        assert!(
+            userstring_name_dir_subset_body.contains(required),
+            "UserString __name__ dir surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "name == \"UserString\"",
+        "names.retain(|attr| attr != \"__name__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "UserString __name__ dir surface implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userstring_name_dir_surface_subset",
+            "cpython_collections_userstring_name_dir_surface_diff_subset",
+            "`UserString.__name__`",
+            "`dir(UserString)` and `dir(UserString(...))`",
+            "`__name__`",
+            "without adding `__dict__`, `__abstractmethods__`, `__weakref__`",
+            "full UserString string-method proxying",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserString __name__ dir surface docs must contain `{required}`"
             );
         }
     }

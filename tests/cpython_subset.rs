@@ -69310,6 +69310,29 @@ print('bases', type(bases).__name__, len(bases), bases[0] is Sequence, bases[0].
     );
 }
 
+// Mirrors CPython's public UserString __name__ dir surface. The type-level
+// metadata remains readable, but CPython does not list __name__ in dir().
+#[test]
+fn cpython_collections_userstring_name_dir_surface_subset() {
+    assert_output(
+        r#"from collections import UserString
+u = UserString('abé')
+print('type-name', UserString.__name__, type(UserString.__name__).__name__, getattr(UserString, '__name__'))
+for label, expr in [('inst-direct', lambda: u.__name__), ('inst-getattr', lambda: getattr(u, '__name__'))]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', '__name__' in dir(UserString), '__name__' in dir(u), hasattr(UserString, '__name__'), hasattr(u, '__name__'))"#,
+        &[
+            "type-name UserString str UserString",
+            "inst-direct AttributeError 'UserString' object has no attribute '__name__' (\"'UserString' object has no attribute '__name__'\",)",
+            "inst-getattr AttributeError 'UserString' object has no attribute '__name__' (\"'UserString' object has no attribute '__name__'\",)",
+            "visible False False True False",
+        ],
+    );
+}
+
 // Mirrors CPython's public UserString __module__ metadata on the type and
 // instances. This only covers pure metadata lookup and dir() discoverability.
 #[test]
