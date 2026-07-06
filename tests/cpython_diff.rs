@@ -13291,6 +13291,17 @@ print('supported-order', [name for name in dir(s) if name in supported])"#,
 }
 
 #[test]
+fn cpython_super_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public super type metadata dir surface",
+        name: "super-type-metadata-dir-surface",
+        source: r#"print('visible-type', '__base__' in dir(super), '__bases__' in dir(super), '__name__' in dir(super), hasattr(super, '__base__'), hasattr(super, '__bases__'), hasattr(super, '__name__'))
+print('readable', super.__base__ is object, super.__bases__ == (object,), super.__name__, object.__getattribute__(super, '__name__'))
+print('descriptors-kept', [name in dir(super) for name in ['__thisclass__', '__self__', '__self_class__', '__get__', '__repr__', '__getattribute__']])"#,
+    });
+}
+
+#[test]
 fn cpython_super_type_public_descriptors_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_super.py public super type descriptors",

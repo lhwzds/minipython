@@ -46802,6 +46802,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_doc_metadata_subset",
             "cpython_super_attribute_assignment_errors_subset",
             "cpython_super_object_dir_supported_attributes_subset",
+            "cpython_super_type_metadata_dir_surface_subset",
             "cpython_super_type_public_descriptors_subset",
             "cpython_super_repr_wrapper_descriptor_subset",
             "cpython_super_getattribute_wrapper_descriptor_subset",
@@ -46932,6 +46933,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_doc_metadata_diff_subset",
         "cpython_super_attribute_assignment_errors_diff_subset",
         "cpython_super_object_dir_supported_attributes_diff_subset",
+        "cpython_super_type_metadata_dir_surface_diff_subset",
         "cpython_super_type_public_descriptors_diff_subset",
         "cpython_super_repr_wrapper_descriptor_diff_subset",
         "cpython_super_getattribute_wrapper_descriptor_diff_subset",
@@ -49554,6 +49556,83 @@ fn super_object_dir_supported_attributes_subset_has_focused_diff_evidence() {
                 && document.contains("super instance dictionaries"),
             "super object dir evidence must be documented in coverage and migration notes"
         );
+    }
+}
+
+#[test]
+fn super_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_super_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_super_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "super type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "super type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'__base__' in dir(super)",
+        "'__bases__' in dir(super)",
+        "'__name__' in dir(super)",
+        "hasattr(super, '__base__')",
+        "hasattr(super, '__bases__')",
+        "hasattr(super, '__name__')",
+        "super.__base__ is object",
+        "super.__bases__ == (object,)",
+        "super.__name__",
+        "object.__getattribute__(super, '__name__')",
+        "['__thisclass__', '__self__', '__self_class__', '__get__', '__repr__', '__getattribute__']",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "super type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"readable True True super super\"",
+        "\"descriptors-kept [True, True, True, True, True, True]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "super type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"super\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
+        "\"super\" => &[",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "super type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(super)`",
+            "`super.__base__`",
+            "`super.__bases__`",
+            "`super.__name__`",
+            "`super.__get__`",
+            "`super.__repr__`",
+            "`super.__getattribute__`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "super type metadata dir-surface docs must contain `{required}`"
+            );
+        }
     }
 }
 

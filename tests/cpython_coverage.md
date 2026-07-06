@@ -1166,6 +1166,13 @@ Recent runtime migration notes:
   `cpython_super_object_dir_supported_attributes_diff_subset`, now pins super object dir() supported attributes
   for `__thisclass__`, `__self__`, `__self_class__`, `__get__`, and
   `__class__` without adding super instance dictionaries or target class methods to `dir(super_obj)`.
+- `cpython_super_type_metadata_dir_surface_subset`, backed by
+  `cpython_super_type_metadata_dir_surface_diff_subset`, now pins `dir(super)`
+  hiding `__base__`, `__bases__`, and `__name__` while keeping
+  `super.__base__`, `super.__bases__`, and `super.__name__` directly readable,
+  preserves supported descriptor visibility for `super.__get__`,
+  `super.__repr__`, and `super.__getattribute__`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_super_type_public_descriptors_subset`, backed by
   `cpython_super_type_public_descriptors_diff_subset`, now pins super type public descriptors
   for `__thisclass__`, `__self__`, `__self_class__`, and `__get__`, including
@@ -1663,6 +1670,7 @@ Recent runtime migration notes:
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_super_attribute_assignment_errors_diff_subset`,
   `cpython_super_object_dir_supported_attributes_diff_subset`,
+  `cpython_super_type_metadata_dir_surface_diff_subset`,
   `cpython_super_type_public_descriptors_diff_subset`,
   `cpython_super_repr_wrapper_descriptor_diff_subset`,
   `cpython_super_getattribute_wrapper_descriptor_diff_subset`,
