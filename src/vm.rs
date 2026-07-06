@@ -29501,6 +29501,15 @@ impl Vm {
                 };
                 self.call_tuple_iterator_setstate(receiver.clone(), index.clone())
             }
+            "__setstate__" if name == "bytes_iterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: bytes_iterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_bytes_iterator_setstate(receiver.clone(), index.clone())
+            }
             _ => Err(format!("unknown builtin: {name}")),
         }
     }
@@ -35101,6 +35110,27 @@ impl Vm {
             }
             Value::TupleIterator { .. } => Ok(Value::None),
             value => Err(tuple_iterator_setstate_receiver_error(&value)),
+        }
+    }
+
+    fn call_bytes_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        let index = bytes_iterator_setstate_index(&index)?;
+        match receiver {
+            Value::Iterator(state) => {
+                let mut iterator = state.borrow_mut();
+                if let Value::BytesIterator { index: current, .. } = &mut *iterator {
+                    *current = index;
+                    Ok(Value::None)
+                } else {
+                    Err(bytes_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::BytesIterator { .. } => Ok(Value::None),
+            value => Err(bytes_iterator_setstate_receiver_error(&value)),
         }
     }
 
@@ -55255,7 +55285,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         ],
         "str_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "str_ascii_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
-        "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "bytes_iterator" => &[
+            "__iter__",
+            "__next__",
+            "__length_hint__",
+            "__reduce__",
+            "__setstate__",
+        ],
         "bytearray_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "arrayiterator" => &["__iter__", "__next__", "__reduce__", "__setstate__"],
         "set_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
@@ -60363,6 +60399,21 @@ fn tuple_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, 
     }
 }
 
+fn bytes_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("bytes_iterator.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            })
+        }
+        _ => Err(format!(
+            "AttributeError: bytes_iterator has no attribute '{name}'"
+        )),
+    }
+}
+
 fn array_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
     match name {
         "__iter__" | "__next__" | "__reduce__" | "__setstate__" => Ok(Value::BoundMethod {
@@ -60478,6 +60529,46 @@ fn tuple_iterator_setstate_index(value: &Value) -> Result<usize, String> {
 fn tuple_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'tuple_iterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn bytes_iterator_setstate_index(value: &Value) -> Result<usize, String> {
+    let integer = if let Some(value) = int_subclass_integer(value) {
+        value
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(*value)),
+            Value::Number(_) => value.clone(),
+            Value::BigInt(value) => {
+                let value = value.to_i64().ok_or_else(|| {
+                    "OverflowError: Python int too large to convert to C ssize_t".to_string()
+                })?;
+                Value::Number(value)
+            }
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    match integer {
+        Value::Number(value) if value <= 0 => Ok(0),
+        Value::Number(value) => Ok(usize::try_from(value).unwrap_or(usize::MAX)),
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?;
+            if value <= 0 {
+                Ok(0)
+            } else {
+                Ok(usize::try_from(value).unwrap_or(usize::MAX))
+            }
+        }
+        _ => unreachable!("bytes_iterator __setstate__ accepts only integer values"),
+    }
+}
+
+fn bytes_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'bytes_iterator' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -64624,11 +64715,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             let type_name = string_iterator_type_name(&chars);
             list_tuple_iterator_protocol_method(type_name, Value::StringIterator { chars, index }, name)
         }
-        Value::BytesIterator { bytes, index } => list_tuple_iterator_protocol_method(
-            "bytes_iterator",
-            Value::BytesIterator { bytes, index },
-            name,
-        ),
+        Value::BytesIterator { bytes, index } => {
+            bytes_iterator_protocol_method(Value::BytesIterator { bytes, index }, name)
+        }
         Value::ByteArrayIterator {
             bytes,
             index,
@@ -64770,6 +64859,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 is_array_iterator,
                 is_list_iterator,
                 is_tuple_iterator,
+                is_bytes_iterator,
                 has_length_hint,
                 reduce_type_name,
             ) = {
@@ -64778,10 +64868,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let is_array_iterator = matches!(&*iterator, Value::ArrayIterator { .. });
                 let is_list_iterator = matches!(&*iterator, Value::ListIterator { .. });
                 let is_tuple_iterator = matches!(&*iterator, Value::TupleIterator { .. });
+                let is_bytes_iterator = matches!(&*iterator, Value::BytesIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::RangeIterator { .. } => Some("range_iterator"),
                     Value::StringIterator { chars, .. } => Some(string_iterator_type_name(chars)),
-                    Value::BytesIterator { .. } => Some("bytes_iterator"),
                     Value::ByteArrayIterator { .. } => Some("bytearray_iterator"),
                     Value::SetIterator { .. } => Some("set_iterator"),
                     Value::DictIterator {
@@ -64801,6 +64891,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_array_iterator,
                     is_list_iterator,
                     is_tuple_iterator,
+                    is_bytes_iterator,
                     iterator_has_length_hint(&iterator),
                     reduce_type_name,
                 )
@@ -64815,6 +64906,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 list_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_tuple_iterator {
                 tuple_iterator_protocol_method(Value::Iterator(state), name)
+            } else if is_bytes_iterator {
+                bytes_iterator_protocol_method(Value::Iterator(state), name)
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -65734,7 +65827,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "bytes_iterator"
-                && matches!(name, "__length_hint__" | "__reduce__") =>
+                && matches!(name, "__length_hint__" | "__reduce__" | "__setstate__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -88630,7 +88723,10 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
     ) || matches!(
         name,
-        "arrayiterator.__setstate__" | "list_iterator.__setstate__" | "tuple_iterator.__setstate__"
+        "arrayiterator.__setstate__"
+            | "list_iterator.__setstate__"
+            | "tuple_iterator.__setstate__"
+            | "bytes_iterator.__setstate__"
     )
 }
 
