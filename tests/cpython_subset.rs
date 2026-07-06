@@ -55507,6 +55507,27 @@ fn cpython_bytes_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public bytearray type-metadata dir surface. The metadata
+// remains directly readable, but CPython does not list it in dir(bytearray) or
+// dir(bytearray()).
+#[test]
+fn cpython_bytearray_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(bytearray), '__bases__' in dir(bytearray), '__name__' in dir(bytearray), hasattr(bytearray, '__base__'), hasattr(bytearray, '__bases__'), hasattr(bytearray, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(bytearray()), '__bases__' in dir(bytearray()), '__name__' in dir(bytearray()))\n",
+            "print('readable', bytearray.__base__ is object, bytearray.__bases__ == (object,), bytearray.__name__, object.__getattribute__(bytearray, '__name__'))\n",
+            "print('method-kept', 'decode' in dir(bytearray), 'decode' in dir(bytearray()), 'hex' in dir(bytearray()))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True bytearray bytearray",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.

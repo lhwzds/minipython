@@ -1755,7 +1755,7 @@ fn list_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1840,7 +1840,7 @@ fn tuple_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -1925,7 +1925,7 @@ fn dict_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2010,7 +2010,7 @@ fn set_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2095,7 +2095,7 @@ fn frozenset_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2180,7 +2180,7 @@ fn str_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2265,7 +2265,7 @@ fn bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
 
     for required in [
         "fn remove_type_metadata_dir_names(",
-        "\"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
         "remove_type_metadata_dir_names(&mut names);",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -2293,6 +2293,91 @@ fn bytes_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "bytes type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn bytearray_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_bytearray_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_bytearray_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'__base__' in dir(bytearray)",
+        "'__bases__' in dir(bytearray)",
+        "'__name__' in dir(bytearray)",
+        "hasattr(bytearray, '__base__')",
+        "hasattr(bytearray, '__bases__')",
+        "hasattr(bytearray, '__name__')",
+        "'__base__' in dir(bytearray())",
+        "'__bases__' in dir(bytearray())",
+        "'__name__' in dir(bytearray())",
+        "bytearray.__base__ is object",
+        "bytearray.__bases__ == (object,)",
+        "bytearray.__name__",
+        "object.__getattribute__(bytearray, '__name__')",
+        "'decode' in dir(bytearray)",
+        "'decode' in dir(bytearray())",
+        "'hex' in dir(bytearray())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytearray type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"visible-type False False False True True True\"",
+        "\"visible-inst False False False\"",
+        "\"readable True True bytearray bytearray\"",
+        "\"method-kept True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytearray type metadata dir-surface subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn remove_type_metadata_dir_names(",
+        "\"bytearray\" | \"bytes\" | \"dict\" | \"frozenset\" | \"list\" | \"set\" | \"str\" | \"tuple\"",
+        "remove_type_metadata_dir_names(&mut names);",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "Value::Builtin(function_name) if name == \"__name__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "bytearray type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`dir(bytearray)`",
+            "`dir(bytearray())`",
+            "`bytearray.__base__`",
+            "`bytearray.__bases__`",
+            "`bytearray.__name__`",
+            "without hiding direct bytearray type metadata lookup",
+            "without changing bytearray method visibility",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "bytearray type metadata dir-surface docs must contain `{required}`"
             );
         }
     }
@@ -45839,6 +45924,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_bytes_instance_doc_attribute_subset",
             "cpython_bytes_type_metadata_dir_surface_subset",
             "cpython_bytearray_instance_doc_attribute_subset",
+            "cpython_bytearray_type_metadata_dir_surface_subset",
             "cpython_range_instance_doc_attribute_subset",
             "cpython_slice_instance_doc_attribute_subset",
             "cpython_descriptor_constructor_arity_errors_subset",
@@ -45956,6 +46042,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_bytes_instance_doc_attribute_diff_subset",
         "cpython_bytes_type_metadata_dir_surface_diff_subset",
         "cpython_bytearray_instance_doc_attribute_diff_subset",
+        "cpython_bytearray_type_metadata_dir_surface_diff_subset",
         "cpython_range_instance_doc_attribute_diff_subset",
         "cpython_slice_instance_doc_attribute_diff_subset",
         "cpython_descriptor_constructor_arity_errors_diff_subset",
