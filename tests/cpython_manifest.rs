@@ -46722,6 +46722,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_reversed_bytes_type_metadata_dir_surface_subset",
             "cpython_reversed_bytearray_type_metadata_dir_surface_subset",
             "cpython_reversed_memoryview_type_metadata_dir_surface_subset",
+            "cpython_reversed_array_type_metadata_dir_surface_subset",
             "cpython_tuple_iterator_type_metadata_dir_surface_subset",
             "cpython_str_iterator_type_metadata_dir_surface_subset",
             "cpython_str_ascii_iterator_type_metadata_dir_surface_subset",
@@ -46986,6 +46987,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_reversed_bytes_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_bytearray_type_metadata_dir_surface_diff_subset",
         "cpython_reversed_memoryview_type_metadata_dir_surface_diff_subset",
+        "cpython_reversed_array_type_metadata_dir_surface_diff_subset",
         "cpython_tuple_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_str_ascii_iterator_type_metadata_dir_surface_diff_subset",
@@ -54069,6 +54071,166 @@ fn reversed_memoryview_type_metadata_dir_surface_docs_cover_core_runtime() {
             assert!(
                 document.contains(required),
                 "reversed memoryview type metadata dir-surface docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn reversed_array_type_metadata_dir_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_reversed_array_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_reversed_array_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "reversed array.array type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "reversed array.array type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from array import array",
+        "source = array(",
+        "inst = reversed(source)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "fresh = reversed(source).__reduce__()",
+        "fresh[0] is reversed",
+        "type(fresh[1][0]).__name__",
+        "fresh[1][0] == source",
+        "fresh[2]",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__length_hint__(inst)",
+        "inst.__length_hint__()",
+        "typ.__reduce__(inst)",
+        "reduced[0] is reversed",
+        "type(reduced[1][0]).__name__",
+        "reduced[1][0] == source",
+        "late = reversed(source)",
+        "late_reduced = late.__reduce__()",
+        "late_reduced[0] is reversed",
+        "type(late_reduced[1][0]).__name__",
+        "late_reduced[1][0] == source",
+        "late_reduced[2]",
+        "empty = reversed(array('b')).__reduce__()",
+        "empty[1][0] == ()",
+        "exhausted = reversed(array('b', [1]))",
+        "exhausted.__reduce__()",
+        "exhausted_reduced[1][0] == ()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "reversed array.array type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name reversed builtins reversed\"",
+        "\"visible-type False False False False False True True True True\"",
+        "\"visible-inst False False False True True True True\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True reversed\"",
+        "\"readable-module builtins reversed\"",
+        "\"fresh-reduce 3 True 1 array True 2 True\"",
+        "\"iter-next-hint True 3 2 2\"",
+        "\"reduce-shape 3 True 1 array True 1 True\"",
+        "\"late-reduce 3 True 1 array True 0 True\"",
+        "\"empty-reduce 2 True 1 True tuple True\"",
+        "\"exhausted-reduce 2 True 1 True tuple True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "reversed array.array type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"reversed\"",
+        "\"reversed\" => vec![builtin_type_value(\"object\")]",
+        "\"reversed\" => &[\"__iter__\", \"__next__\", \"__length_hint__\", \"__reduce__\"]",
+        "Value::SequenceReverseIterator { object, index } => {",
+        "return self.reverse_iterator_reduce_result(tuple_value(Vec::new()), None)",
+        "return self.reverse_iterator_reduce_result(*object, Some(index));",
+        "sequence_reverse_iterator_item(object.as_ref(), *index)",
+        "value if array_array_values(&value).is_some() => {",
+        "array_array_len(&value).expect(\"array storage exists after guard\")",
+        "Value::SequenceReverseIterator {",
+        "object: Box::new(value)",
+        "Value::SequenceReverseIterator { object, index } => list_tuple_iterator_protocol_method(\n            \"reversed\",",
+        "Value::SequenceReverseIterator { .. } => Some(\"reversed\")",
+        "function_name == \"reversed\"",
+        "matches!(name, \"__length_hint__\" | \"__reduce__\")",
+        "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
+        "| \"list_reverseiterator\"\n            | \"reversed\"\n            | \"property\"",
+        "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__module__\" && is_builtins_module_type_object_name(&function_name)",
+        "name == \"__qualname__\" && is_builtins_module_type_object_name(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "reversed array.array type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`reversed(array.array)`",
+            "`type(inst)`",
+            "`reversed.__base__`",
+            "`reversed.__bases__`",
+            "`reversed.__module__`",
+            "`reversed.__qualname__`",
+            "`dir(type(reversed(array.array)))`",
+            "`dir(reversed(array.array))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__length_hint__`",
+            "`__reduce__`",
+            "`typ.__length_hint__(inst)`",
+            "`typ.__reduce__(inst)`",
+            "`inst.__length_hint__()`",
+            "`fresh-reduce 3 True 1 array True 2 True`",
+            "`iter-next-hint True 3 2 2`",
+            "`reduce-shape 3 True 1 array True 1 True`",
+            "`late-reduce 3 True 1 array True 0 True`",
+            "`empty-reduce 2 True 1 True tuple True`",
+            "`exhausted-reduce 2 True 1 True tuple True`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "reversed array.array type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

@@ -78625,9 +78625,13 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             }))
         }
         value if array_array_values(&value).is_some() => {
-            Ok(shared_iterator(Value::ReverseIterator {
-                items: array_array_values(&value).expect("array storage exists after guard"),
-                index: 0,
+            let index =
+                i64::try_from(array_array_len(&value).expect("array storage exists after guard"))
+                    .map_err(|_| "reversed() length is too large".to_string())?
+                    - 1;
+            Ok(shared_iterator(Value::SequenceReverseIterator {
+                object: Box::new(value),
+                index,
             }))
         }
         Value::Range {
