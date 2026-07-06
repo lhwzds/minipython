@@ -728,6 +728,10 @@ pub enum Value {
         index: usize,
         exhausted: bool,
     },
+    ArrayIterator {
+        object: Box<Value>,
+        index: usize,
+    },
     SetIterator {
         items: Vec<Value>,
         index: usize,
@@ -1640,6 +1644,7 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
+            Value::ArrayIterator { .. } => write!(f, "<arrayiterator object at 0x0>"),
             Value::Builtin(name) if json_builtin_function_repr(name).is_some() => {
                 write!(
                     f,

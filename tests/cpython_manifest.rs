@@ -27391,6 +27391,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_unicode_public_sequence_and_mutation_subset",
             "cpython_array_module_package_metadata_subset",
             "cpython_array_module_doc_metadata_subset",
+            "cpython_array_iterator_type_metadata_dir_surface_subset",
             "cpython_array_one_byte_public_mutation_methods_subset",
             "cpython_array_one_byte_public_clear_subset",
             "cpython_array_one_byte_public_subscript_mutation_subset",
@@ -27413,6 +27414,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_array_module_doc_metadata_diff_subset",
         "cpython_array_module_and_constructor_public_surface_diff_subset",
         "cpython_array_subclass_public_construction_diff_subset",
+        "cpython_array_iterator_type_metadata_dir_surface_diff_subset",
         "cpython_array_one_byte_public_sequence_diff_subset",
         "cpython_array_short_public_sequence_and_mutation_diff_subset",
         "cpython_array_int_public_sequence_and_mutation_diff_subset",
@@ -61754,6 +61756,150 @@ fn array_array_class_getitem_generic_alias_docs_cover_runtime() {
             assert!(
                 document.contains(required),
                 "array.array class_getitem GenericAlias docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn array_iterator_type_metadata_dir_surface_docs_cover_runtime() {
+    let diff_name = "cpython_array_iterator_type_metadata_dir_surface_diff_subset";
+    let subset_name = "cpython_array_iterator_type_metadata_dir_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "arrayiterator type metadata dir-surface CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "arrayiterator type metadata dir-surface runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from array import array",
+        "source = array('b', [1, -2, 3])",
+        "inst = iter(source)",
+        "typ = type(inst)",
+        "typ.__name__",
+        "typ.__module__",
+        "typ.__qualname__",
+        "'__base__' in dir(typ)",
+        "'__bases__' in dir(typ)",
+        "'__name__' in dir(typ)",
+        "'__module__' in dir(typ)",
+        "'__qualname__' in dir(typ)",
+        "'__iter__' in dir(typ)",
+        "'__next__' in dir(typ)",
+        "'__length_hint__' in dir(typ)",
+        "'__reduce__' in dir(typ)",
+        "'__base__' in dir(inst)",
+        "'__bases__' in dir(inst)",
+        "'__name__' in dir(inst)",
+        "'__iter__' in dir(inst)",
+        "'__next__' in dir(inst)",
+        "'__length_hint__' in dir(inst)",
+        "'__reduce__' in dir(inst)",
+        "hasattr(typ, '__length_hint__')",
+        "hasattr(inst, '__length_hint__')",
+        "hasattr(typ, '__reduce__')",
+        "hasattr(inst, '__reduce__')",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "object.__getattribute__(typ, '__name__')",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "fresh = iter(source).__reduce__()",
+        "fresh[0] is iter",
+        "type(fresh[1][0]).__name__",
+        "fresh[1][0] == source",
+        "iter(inst) is inst",
+        "next(inst)",
+        "typ.__reduce__(inst)",
+        "late = iter(source)",
+        "late_reduced = late.__reduce__()",
+        "empty_source = array('b')",
+        "empty = iter(empty_source).__reduce__()",
+        "exhausted_source = array('b', [1])",
+        "exhausted_reduced = exhausted.__reduce__()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "arrayiterator type metadata dir-surface diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"type-name arrayiterator array arrayiterator\"",
+        "\"visible-type False False False True False True True False True\"",
+        "\"visible-inst False False False True True False True\"",
+        "\"has-length False False\"",
+        "\"has-reduce True True\"",
+        "\"readable-base True True arrayiterator\"",
+        "\"readable-module array arrayiterator\"",
+        "\"fresh-reduce 3 True 1 array True 0 True\"",
+        "\"iter-next True 1 -2\"",
+        "\"reduce-shape 3 True 1 array True 2 True\"",
+        "\"late-reduce 3 True 1 array True 2 True\"",
+        "\"empty-reduce 3 True 1 array True 0 True\"",
+        "\"exhausted-reduce 3 True 1 array True 1 True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "arrayiterator type metadata dir-surface subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::ArrayIterator {",
+        "object: Box::new(receiver.clone())",
+        "object: Box::new(value)",
+        "array_iterator_protocol_method",
+        "\"arrayiterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+        "function_name == \"arrayiterator\" && name == \"__reduce__\"",
+        "name == \"__module__\" && function_name == \"arrayiterator\"",
+        "Value::String(\"array\".to_string())",
+        "name == \"__qualname__\" && function_name == \"arrayiterator\"",
+        "name == \"__base__\" && function_name == \"arrayiterator\"",
+        "name == \"__bases__\" && function_name == \"arrayiterator\"",
+        "Value::ArrayIterator { object, index } => (*object, Some(index))",
+        "array_array_item(object.as_ref(), Value::Number(index_value))",
+        "Value::ArrayIterator { .. } => \"arrayiterator\"",
+        "Value::ArrayIterator { .. } => names.extend(builtin_type_dir_names(\"arrayiterator\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "arrayiterator type metadata dir-surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "`array.arrayiterator`",
+            "`iter(array.array)`",
+            "`type(inst)`",
+            "`arrayiterator.__base__`",
+            "`arrayiterator.__bases__`",
+            "`arrayiterator.__module__`",
+            "`arrayiterator.__qualname__`",
+            "`dir(type(iter(array.array)))`",
+            "`dir(iter(array.array))`",
+            "`__iter__`",
+            "`__next__`",
+            "`__reduce__`",
+            "`__length_hint__` absence",
+            "`fresh-reduce 3 True 1 array True 0 True`",
+            "`iter-next True 1 -2`",
+            "`reduce-shape 3 True 1 array True 2 True`",
+            "`late-reduce 3 True 1 array True 2 True`",
+            "`empty-reduce 3 True 1 array True 0 True`",
+            "`exhausted-reduce 3 True 1 array True 1 True`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "arrayiterator type metadata dir-surface docs must contain `{required}`"
             );
         }
     }

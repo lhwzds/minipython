@@ -14259,6 +14259,43 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_array_iterator_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public array.arrayiterator type metadata dir surface",
+        name: "array-iterator-type-metadata-dir-surface",
+        source: r#"from array import array
+source = array('b', [1, -2, 3])
+inst = iter(source)
+typ = type(inst)
+print('type-name', typ.__name__, typ.__module__, typ.__qualname__)
+print('visible-type', '__base__' in dir(typ), '__bases__' in dir(typ), '__name__' in dir(typ), '__module__' in dir(typ), '__qualname__' in dir(typ), '__iter__' in dir(typ), '__next__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(typ))
+print('visible-inst', '__base__' in dir(inst), '__bases__' in dir(inst), '__name__' in dir(inst), '__iter__' in dir(inst), '__next__' in dir(inst), '__length_hint__' in dir(inst), '__reduce__' in dir(inst))
+print('has-length', hasattr(typ, '__length_hint__'), hasattr(inst, '__length_hint__'))
+print('has-reduce', hasattr(typ, '__reduce__'), hasattr(inst, '__reduce__'))
+print('readable-base', typ.__base__ is object, typ.__bases__ == (object,), object.__getattribute__(typ, '__name__'))
+print('readable-module', object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'))
+fresh = iter(source).__reduce__()
+print('fresh-reduce', len(fresh), fresh[0] is iter, len(fresh[1]), type(fresh[1][0]).__name__, fresh[1][0] == source, fresh[2], len(fresh) == 3)
+print('iter-next', iter(inst) is inst, next(inst), next(inst))
+reduced = typ.__reduce__(inst)
+print('reduce-shape', len(reduced), reduced[0] is iter, len(reduced[1]), type(reduced[1][0]).__name__, reduced[1][0] == source, reduced[2], len(reduced) == 3)
+late = iter(source)
+next(late)
+next(late)
+late_reduced = late.__reduce__()
+print('late-reduce', len(late_reduced), late_reduced[0] is iter, len(late_reduced[1]), type(late_reduced[1][0]).__name__, late_reduced[1][0] == source, late_reduced[2], len(late_reduced) == 3)
+empty_source = array('b')
+empty = iter(empty_source).__reduce__()
+print('empty-reduce', len(empty), empty[0] is iter, len(empty[1]), type(empty[1][0]).__name__, empty[1][0] == empty_source, empty[2], len(empty) == 3)
+exhausted_source = array('b', [1])
+exhausted = iter(exhausted_source)
+next(exhausted)
+exhausted_reduced = exhausted.__reduce__()
+print('exhausted-reduce', len(exhausted_reduced), exhausted_reduced[0] is iter, len(exhausted_reduced[1]), type(exhausted_reduced[1][0]).__name__, exhausted_reduced[1][0] == exhausted_source, exhausted_reduced[2], len(exhausted_reduced) == 3)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_getstate_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public inherited object.__getstate__ behavior for memoryview instances",

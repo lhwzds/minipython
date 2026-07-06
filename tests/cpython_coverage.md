@@ -134,6 +134,20 @@ Recent runtime migration notes:
   exact array.array instance lookup, inherited array.array subclass lookup,
   GenericAlias origin/args, and keyword and arity error propagation, without adding full GenericAlias repr parity or host file IO,
   without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_array_iterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_array_iterator_type_metadata_dir_surface_diff_subset`, now pins
+  `array.arrayiterator`, `iter(array.array)`, `type(inst)`,
+  `dir(type(iter(array.array)))`, and `dir(iter(array.array))` for
+  `arrayiterator.__base__`, `arrayiterator.__bases__`,
+  `arrayiterator.__module__`, `arrayiterator.__qualname__`, `__iter__`,
+  `__next__`, `__reduce__`, `__length_hint__` absence,
+  `fresh-reduce 3 True 1 array True 0 True`,
+  `iter-next True 1 -2`,
+  `reduce-shape 3 True 1 array True 2 True`,
+  `late-reduce 3 True 1 array True 2 True`,
+  `empty-reduce 3 True 1 array True 0 True`, and
+  `exhausted-reduce 3 True 1 array True 1 True`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `cpython_collections_deque_class_getitem_generic_alias_subset`, backed by
   `cpython_collections_deque_class_getitem_generic_alias_diff_subset`, now pins
   collections.deque `__class_getitem__`, `collections.deque.__class_getitem__(int) == collections.deque[int]`,
@@ -2366,6 +2380,7 @@ Recent runtime migration notes:
   `cpython_array_module_doc_metadata_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_subclass_public_construction_diff_subset`,
+  `cpython_array_iterator_type_metadata_dir_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_short_public_sequence_and_mutation_diff_subset`,
   `cpython_array_int_public_sequence_and_mutation_diff_subset`,
@@ -9702,6 +9717,20 @@ without adding general custom encoder/decoder class support.
   array.array `__class_getitem__`, `array.array.__class_getitem__(int) == array.array[int]`,
   exact array.array instance lookup, inherited array.array subclass lookup,
   GenericAlias origin/args, and keyword and arity error propagation, without adding full GenericAlias repr parity or host file IO.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_array_iterator_type_metadata_dir_surface_subset`, backed by
+  `cpython_array_iterator_type_metadata_dir_surface_diff_subset`, covering
+  `array.arrayiterator`, `iter(array.array)`, `type(inst)`,
+  `dir(type(iter(array.array)))`, `dir(iter(array.array))`,
+  `arrayiterator.__base__`, `arrayiterator.__bases__`,
+  `arrayiterator.__module__`, `arrayiterator.__qualname__`, `__iter__`,
+  `__next__`, `__reduce__`, `__length_hint__` absence, and the reduce-state
+  lines `fresh-reduce 3 True 1 array True 0 True`,
+  `iter-next True 1 -2`, `reduce-shape 3 True 1 array True 2 True`,
+  `late-reduce 3 True 1 array True 2 True`,
+  `empty-reduce 3 True 1 array True 0 True`, and
+  `exhausted-reduce 3 True 1 array True 1 True`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_sequence_subset`, covering the supported
   public `array.array('B')` / `array.array('b')` sequence and bytes surface:

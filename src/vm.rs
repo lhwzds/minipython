@@ -27534,9 +27534,10 @@ impl Vm {
                 if array_array_storage(receiver).is_none() {
                     return Err("__iter__() expected an array receiver".to_string());
                 }
-                Ok(list_iterator_from_values(
-                    array_array_values(receiver).expect("array storage exists after guard"),
-                ))
+                Ok(shared_iterator(Value::ArrayIterator {
+                    object: Box::new(receiver.clone()),
+                    index: 0,
+                }))
             }
             "array.array.__len__" => {
                 let [receiver] = args.as_slice() else {
@@ -34893,6 +34894,7 @@ impl Vm {
                     (byte_array_value(bytearray_bytes(&bytes)), Some(index))
                 }
             }
+            Value::ArrayIterator { object, index } => (*object, Some(index)),
             Value::SetIterator {
                 items,
                 index,
@@ -41753,6 +41755,10 @@ where
                 exhausted: *exhausted,
             })
         }
+        Value::ArrayIterator { object, index } => Ok(Value::ArrayIterator {
+            object: Box::new(deep_copy_value_with_hook(object, memo, hook)?),
+            index: *index,
+        }),
         Value::SetIterator {
             items,
             index,
@@ -54342,6 +54348,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::ByteArrayIterator { .. }) => {
             names.extend(builtin_type_dir_names("bytearray_iterator"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::ArrayIterator { .. }) => {
+            names.extend(builtin_type_dir_names("arrayiterator"))
+        }
         Value::Iterator(state) if matches!(&*state.borrow(), Value::SetIterator { .. }) => {
             names.extend(builtin_type_dir_names("set_iterator"))
         }
@@ -54390,6 +54399,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::ByteArrayIterator { .. } => {
             names.extend(builtin_type_dir_names("bytearray_iterator"))
         }
+        Value::ArrayIterator { .. } => names.extend(builtin_type_dir_names("arrayiterator")),
         Value::SetIterator { .. } => names.extend(builtin_type_dir_names("set_iterator")),
         Value::DictIterator {
             kind: DictViewKind::Keys,
@@ -54744,6 +54754,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "bytearray_iterator" {
         remove_type_metadata_dir_names(&mut names);
+    } else if name == "arrayiterator" {
+        names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
+        names.push("__module__".to_string());
     } else if name == "set_iterator" {
         remove_type_metadata_dir_names(&mut names);
     } else if name == "dict_keyiterator" {
@@ -55127,6 +55140,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "str_ascii_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytes_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "bytearray_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
+        "arrayiterator" => &["__iter__", "__next__", "__reduce__"],
         "set_iterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_keyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
         "dict_reversekeyiterator" => &["__iter__", "__next__", "__length_hint__", "__reduce__"],
@@ -56282,6 +56296,7 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
         "str_ascii_iterator" => vec![builtin_type_value("object")],
         "bytes_iterator" => vec![builtin_type_value("object")],
         "bytearray_iterator" => vec![builtin_type_value("object")],
+        "arrayiterator" => vec![builtin_type_value("object")],
         "set_iterator" => vec![builtin_type_value("object")],
         "dict_keyiterator" => vec![builtin_type_value("object")],
         "dict_reversekeyiterator" => vec![builtin_type_value("object")],
@@ -56855,6 +56870,7 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "str_iterator"
                 | "str_ascii_iterator"
                 | "bytes_iterator"
+                | "arrayiterator"
                 | "set_iterator"
                 | "dict_keyiterator"
                 | "dict_reversekeyiterator"
@@ -56992,6 +57008,7 @@ fn is_iterator_value(value: &Value) -> bool {
             | Value::StringIterator { .. }
             | Value::BytesIterator { .. }
             | Value::ByteArrayIterator { .. }
+            | Value::ArrayIterator { .. }
             | Value::SetIterator { .. }
             | Value::DictIterator { .. }
             | Value::ReverseIterator { .. }
@@ -57028,6 +57045,7 @@ fn is_iterator_abc_value(value: &Value) -> bool {
             | Value::StringIterator { .. }
             | Value::BytesIterator { .. }
             | Value::ByteArrayIterator { .. }
+            | Value::ArrayIterator { .. }
             | Value::SetIterator { .. }
             | Value::DictIterator { .. }
             | Value::ReverseIterator { .. }
@@ -60194,6 +60212,19 @@ fn list_tuple_iterator_protocol_method(
         }),
         _ => Err(format!(
             "AttributeError: {type_name} has no attribute '{name}'"
+        )),
+    }
+}
+
+fn array_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__reduce__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("arrayiterator.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        }),
+        _ => Err(format!(
+            "AttributeError: arrayiterator has no attribute '{name}'"
         )),
     }
 }
@@ -64361,6 +64392,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
+        Value::ArrayIterator { object, index } => {
+            array_iterator_protocol_method(Value::ArrayIterator { object, index }, name)
+        }
         Value::SetIterator {
             items,
             index,
@@ -64481,9 +64515,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name,
         ),
         Value::Iterator(state) => {
-            let (is_enumerate, has_length_hint, reduce_type_name) = {
+            let (is_enumerate, is_array_iterator, has_length_hint, reduce_type_name) = {
                 let iterator = state.borrow();
                 let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });
+                let is_array_iterator = matches!(&*iterator, Value::ArrayIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::RangeIterator { .. } => Some("range_iterator"),
                     Value::ListIterator { .. } => Some("list_iterator"),
@@ -64504,12 +64539,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     Value::SequenceReverseIterator { .. } => Some("reversed"),
                     _ => None,
                 };
-                (is_enumerate, iterator_has_length_hint(&iterator), reduce_type_name)
+                (
+                    is_enumerate,
+                    is_array_iterator,
+                    iterator_has_length_hint(&iterator),
+                    reduce_type_name,
+                )
             };
             if name == "__class_getitem__" && is_enumerate {
                 Ok(class_getitem_bound_method(Value::Builtin(
                     "enumerate".to_string(),
                 )))
+            } else if is_array_iterator {
+                array_iterator_protocol_method(Value::Iterator(state), name)
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -65389,6 +65431,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if is_builtin_iterator_type_name(&function_name)
                 && matches!(name, "__iter__" | "__next__") =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "arrayiterator" && name == "__reduce__" =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
@@ -66988,6 +67035,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("builtins".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && function_name == "arrayiterator" =>
+        {
+            Ok(Value::String("array".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && function_name == "functools._PlaceholderType" =>
         {
             Ok(Value::String("functools".to_string()))
@@ -66998,14 +67050,27 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "arrayiterator" =>
+        {
+            Ok(Value::String("arrayiterator".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__base__" && is_builtins_module_type_object_name(&function_name) =>
         {
             Ok(builtins_module_type_base_value(&function_name))
+        }
+        Value::Builtin(function_name) if name == "__base__" && function_name == "arrayiterator" => {
+            Ok(builtin_type_value("object"))
         }
         Value::Builtin(function_name)
             if name == "__bases__" && is_builtins_module_type_object_name(&function_name) =>
         {
             Ok(builtins_module_type_bases_value(&function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__bases__" && function_name == "arrayiterator" =>
+        {
+            Ok(tuple_value(vec![builtin_type_value("object")]))
         }
         Value::Builtin(function_name)
             if name == "__text_signature__"
@@ -71756,6 +71821,7 @@ fn type_name(value: &Value) -> &str {
         Value::StringIterator { chars, .. } => string_iterator_type_name(chars),
         Value::BytesIterator { .. } => "bytes_iterator",
         Value::ByteArrayIterator { .. } => "bytearray_iterator",
+        Value::ArrayIterator { .. } => "arrayiterator",
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { .. } => "dict_keyiterator",
         Value::ReverseIterator { .. } => "list_reverseiterator",
@@ -71926,6 +71992,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::StringIterator { chars, .. } => string_iterator_type_name(chars),
         Value::BytesIterator { .. } => "bytes_iterator",
         Value::ByteArrayIterator { .. } => "bytearray_iterator",
+        Value::ArrayIterator { .. } => "arrayiterator",
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { .. } => "dict_keyiterator",
         Value::ReverseIterator { .. } => "list_reverseiterator",
@@ -88640,6 +88707,18 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             *index += 1;
             Ok(IteratorAdvance::Yield(value))
         }
+        Value::ArrayIterator { object, index } => {
+            let len = array_array_len(object.as_ref())
+                .ok_or_else(|| "TypeError: arrayiterator source is not an array".to_string())?;
+            if *index >= len {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            let index_value =
+                i64::try_from(*index).map_err(|_| "OverflowError: iterator index is too large")?;
+            let value = array_array_item(object.as_ref(), Value::Number(index_value))?;
+            *index += 1;
+            Ok(IteratorAdvance::Yield(value))
+        }
         Value::BytesIO(bytes_io) => {
             bytes_io_ensure_open(bytes_io)?;
             let line = bytes_io_readline_chunk(bytes_io, None);
@@ -90240,6 +90319,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::StringIterator { .. }
         | Value::BytesIterator { .. }
         | Value::ByteArrayIterator { .. }
+        | Value::ArrayIterator { .. }
         | Value::SetIterator { .. }
         | Value::DictIterator { .. }
         | Value::ReverseIterator { .. }
@@ -90472,6 +90552,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::StringIterator { .. }
         | Value::BytesIterator { .. }
         | Value::ByteArrayIterator { .. }
+        | Value::ArrayIterator { .. }
         | Value::SetIterator { .. }
         | Value::DictIterator { .. }
         | Value::ReverseIterator { .. }
@@ -90675,9 +90756,12 @@ fn get_iter(value: Value) -> Result<Value, String> {
             exhausted: false,
         })),
         value @ Value::BytesIO(_) => Ok(value),
-        value if array_array_values(&value).is_some() => Ok(list_iterator_from_values(
-            array_array_values(&value).expect("array storage exists after guard"),
-        )),
+        value if array_array_values(&value).is_some() => {
+            Ok(shared_iterator(Value::ArrayIterator {
+                object: Box::new(value),
+                index: 0,
+            }))
+        }
         Value::MemoryView(view) => {
             if memoryview_ndim(&view)? == 0 {
                 return Err("TypeError: invalid indexing of 0-dim memory".to_string());
@@ -90801,6 +90885,9 @@ fn get_iter(value: Value) -> Result<Value, String> {
             index,
             exhausted,
         })),
+        Value::ArrayIterator { object, index } => {
+            Ok(shared_iterator(Value::ArrayIterator { object, index }))
+        }
         Value::SetIterator {
             items,
             index,
@@ -99074,6 +99161,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::StringIterator { .. } => Ok(true),
         Value::BytesIterator { .. } => Ok(true),
         Value::ByteArrayIterator { .. } => Ok(true),
+        Value::ArrayIterator { .. } => Ok(true),
         Value::SetIterator { .. } => Ok(true),
         Value::DictIterator { .. } => Ok(true),
         Value::ReverseIterator { .. } => Ok(true),
