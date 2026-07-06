@@ -19048,6 +19048,18 @@ print('method-kept', '__class_getitem__' in dir(frozenset), 'copy' in dir(frozen
 }
 
 #[test]
+fn cpython_str_type_metadata_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str type metadata dir surface",
+        name: "str-type-metadata-dir-surface",
+        source: r#"print('visible-type', '__base__' in dir(str), '__bases__' in dir(str), '__name__' in dir(str), hasattr(str, '__base__'), hasattr(str, '__bases__'), hasattr(str, '__name__'))
+print('visible-inst', '__base__' in dir(''), '__bases__' in dir(''), '__name__' in dir(''))
+print('readable', str.__base__ is object, str.__bases__ == (object,), str.__name__, object.__getattribute__(str, '__name__'))
+print('method-kept', 'upper' in dir(str), 'upper' in dir(''), 'split' in dir(''))"#,
+    });
+}
+
+#[test]
 fn cpython_list_subclass_new_storage_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_descr.py list subclass __new__ storage subset",

@@ -55467,6 +55467,26 @@ fn cpython_frozenset_type_metadata_dir_surface_subset() {
     );
 }
 
+// Mirrors CPython's public str type-metadata dir surface. The metadata remains
+// directly readable, but CPython does not list it in dir(str) or dir("").
+#[test]
+fn cpython_str_type_metadata_dir_surface_subset() {
+    assert_output(
+        concat!(
+            "print('visible-type', '__base__' in dir(str), '__bases__' in dir(str), '__name__' in dir(str), hasattr(str, '__base__'), hasattr(str, '__bases__'), hasattr(str, '__name__'))\n",
+            "print('visible-inst', '__base__' in dir(''), '__bases__' in dir(''), '__name__' in dir(''))\n",
+            "print('readable', str.__base__ is object, str.__bases__ == (object,), str.__name__, object.__getattribute__(str, '__name__'))\n",
+            "print('method-kept', 'upper' in dir(str), 'upper' in dir(''), 'split' in dir(''))",
+        ),
+        &[
+            "visible-type False False False True True True",
+            "visible-inst False False False",
+            "readable True True str str",
+            "method-kept True True True",
+        ],
+    );
+}
+
 // Adapted from CPython public tuple-subclass behavior used by sequence and
 // class-creation tests. This pins the supported immutable sequence protocol
 // without depending on CPython's object layout.
