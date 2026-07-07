@@ -25778,6 +25778,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
+            "cpython_operator_builtin_metadata_subset",
             "cpython_operator_module_doc_intro_metadata_subset",
             "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_signature_helper_subset",
@@ -25868,6 +25869,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_module_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython module metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -27127,6 +27133,95 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION
                 .contains("newer `operator.call` entry has gated direct CPython evidence"),
         "migration notes must describe operator module metadata public behavior and gated direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_builtin_metadata_subset(",
+        "Adapted from CPython _operator public builtin metadata exposed by operator.",
+        "for name in ['truth', 'not_', 'is_', 'is_not', 'is_none', 'is_not_none', 'countOf', 'indexOf', 'contains', 'getitem', 'setitem', 'delitem', 'call', 'length_hint']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__add__.__module__",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"truth _operator truth truth Return True if a is true, False otherwise. ($module, a, /)\"",
+        "\"call _operator call call Same as obj(*args, **kwargs). ($module, obj, /, *args, **kwargs)\"",
+        "\"length_hint _operator length_hint length_hint Return an estimate of the number of items in obj. ($module, obj, default=0, /)\"",
+        "\"_operator True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "_operator public builtin metadata exposed through operator subset",
+        "operator-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__add__.__module__",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"__module__\" && function_name.starts_with(\"operator.\")",
+        "Ok(Value::String(\"_operator\".to_string()))",
+        "name == \"__text_signature__\" && function_name.starts_with(\"operator.\")",
+        "fn operator_builtin_doc(name: &str) -> &'static str",
+        "fn operator_builtin_text_signature(name: &str) -> Option<&'static str>",
+        "\"operator.truth\" => \"Return True if a is true, False otherwise.\"",
+        "\"operator.call\" => \"Same as obj(*args, **kwargs).\"",
+        "\"operator.length_hint\" => Some(\"($module, obj, default=0, /)\")",
+        "\"operator.call\" => Some(\"($module, obj, /, *args, **kwargs)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_builtin_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("CPython `_operator`")
+            && CPYTHON_COVERAGE.contains("builtin metadata exposed through `operator`")
+            && CPYTHON_COVERAGE.contains("`__text_signature__`")
+            && CPYTHON_COVERAGE.contains("predicate/sequence/call helpers"),
+        "coverage notes must describe operator builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_builtin_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("CPython")
+            && CPYTHON_MIGRATION.contains("`_operator` builtin metadata")
+            && CPYTHON_MIGRATION.contains("__text_signature__")
+            && CPYTHON_MIGRATION.contains("predicate/sequence/call helpers")
+            && CPYTHON_MIGRATION.contains("dunder alias module")
+            && CPYTHON_MIGRATION.contains("identity for `operator.__add__`"),
+        "migration notes must describe operator builtin metadata public behavior and direct diff evidence"
     );
 }
 

@@ -30954,6 +30954,20 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "_operator public builtin metadata exposed through operator subset",
+        name: "operator-builtin-metadata",
+        source: r#"import operator
+for name in ['truth', 'not_', 'is_', 'is_not', 'is_none', 'is_not_none', 'countOf', 'indexOf', 'contains', 'getitem', 'setitem', 'delitem', 'call', 'length_hint']:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+print(operator.__add__.__module__, operator.__add__ is operator.add)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_module_doc_intro_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Public operator.__doc__ module metadata stable on CPython 3.14.6",

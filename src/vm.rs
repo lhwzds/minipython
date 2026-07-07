@@ -68578,7 +68578,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__module__" && function_name.starts_with("operator.") =>
         {
-            Ok(Value::String("operator".to_string()))
+            Ok(Value::String("_operator".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("operator.") =>
@@ -68591,6 +68591,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(
                 operator_builtin_doc(&function_name).to_string(),
             ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name.starts_with("operator.") =>
+        {
+            Ok(operator_builtin_text_signature(&function_name)
+                .map(|signature| Value::String(signature.to_string()))
+                .unwrap_or(Value::None))
         }
         Value::OperatorAttrGetter { .. } if name == "__module__" => {
             Ok(Value::String("operator".to_string()))
@@ -69810,8 +69817,38 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.attrgetter" => "Return a callable object that fetches attributes.",
         "operator.itemgetter" => "Return a callable object that fetches items.",
         "operator.methodcaller" => "Return a callable object that calls a method.",
-        "operator.length_hint" => "Return an estimate of the number of items in an object.",
+        "operator.length_hint" => "Return an estimate of the number of items in obj.",
+        "operator.truth" => "Return True if a is true, False otherwise.",
+        "operator.not_" => "Same as not a.",
+        "operator.is_" => "Same as a is b.",
+        "operator.is_not" => "Same as a is not b.",
+        "operator.is_none" => "Same as a is None.",
+        "operator.is_not_none" => "Same as a is not None.",
+        "operator.countOf" => "Return the number of items in a which are, or which equal, b.",
+        "operator.indexOf" => "Return the first index of b in a.",
+        "operator.contains" => "Same as b in a (note reversed operands).",
+        "operator.getitem" => "Same as a[b].",
+        "operator.setitem" => "Same as a[b] = c.",
+        "operator.delitem" => "Same as del a[b].",
+        "operator.call" => "Same as obj(*args, **kwargs).",
         _ => "Operator helper function.",
+    }
+}
+
+fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.truth"
+        | "operator.not_"
+        | "operator.is_none"
+        | "operator.is_not_none"
+        | "operator.index" => Some("($module, a, /)"),
+        "operator.is_" | "operator.is_not" | "operator.countOf" | "operator.indexOf"
+        | "operator.contains" | "operator.getitem" => Some("($module, a, b, /)"),
+        "operator.setitem" => Some("($module, a, b, c, /)"),
+        "operator.delitem" => Some("($module, a, b, /)"),
+        "operator.length_hint" => Some("($module, obj, default=0, /)"),
+        "operator.call" => Some("($module, obj, /, *args, **kwargs)"),
+        _ => None,
     }
 }
 
