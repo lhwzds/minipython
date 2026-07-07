@@ -13693,6 +13693,29 @@ fn cpython_base_exception_bound_method_reduce_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_reduce_ex_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __reduce_ex__ surface",
+        name: "base-exception-bound-method-reduce-ex-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        label = exc.__class__.__name__ + '-' + attr
+        reducer = obj.__reduce_ex__
+        print(label + '-reduce-ex-in-dir', '__reduce_ex__' in dir(obj))
+        print(label + '-reduce-ex-attr', type(reducer).__name__, reducer.__class__.__name__, reducer.__self__ is obj, reducer.__name__, reducer.__qualname__, reducer.__module__, reducer.__text_signature__, reducer.__doc__)
+        for protocol in [0, 5]:
+            reduced = reducer(protocol)
+            print(label + '-reduce-ex-call', protocol, type(reduced).__name__, len(reduced), reduced[0] is getattr, type(reduced[1]).__name__, len(reduced[1]), reduced[1][0] is exc, reduced[1][1])
+        for err_label, call in [('missing', lambda reducer=reducer: reducer()), ('extra', lambda reducer=reducer: reducer(1, 2)), ('keyword', lambda reducer=reducer: reducer(protocol=1))]:
+            try:
+                call()
+            except TypeError as error:
+                print(label + '-' + err_label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_getstate_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __getstate__ surface",

@@ -2059,6 +2059,16 @@ Recent runtime migration notes:
   rejects extra positional and keyword arguments with CPython messages, and
   returns the public `(getattr, (exception, method_name))` tuple shape,
   including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_reduce_ex_subset`, backed by
+  `cpython_base_exception_bound_method_reduce_ex_diff_subset`, keeps
+  BaseException helper bound method `__reduce_ex__` surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `builtin_function_or_method`
+  `__reduce_ex__` wrapper through `dir()`; the wrapper has CPython metadata,
+  accepts one protocol argument, rejects missing, extra, and keyword arguments
+  with CPython messages, and returns the public
+  `(getattr, (exception, method_name))` tuple shape, including
+  `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_getstate_subset`, backed by
   `cpython_base_exception_bound_method_getstate_diff_subset`, keeps
   BaseException helper bound method `__getstate__` surface aligned with
@@ -2097,6 +2107,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_func_absent_diff_subset`,
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_base_exception_bound_method_reduce_diff_subset`,
+  `cpython_base_exception_bound_method_reduce_ex_diff_subset`,
   `cpython_base_exception_bound_method_getstate_diff_subset`,
   `cpython_system_exit_oserror_attributes_diff_subset`,
   `cpython_syntax_error_attributes_diff_subset`,

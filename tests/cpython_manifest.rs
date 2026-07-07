@@ -49307,6 +49307,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
             "cpython_base_exception_bound_method_reduce_subset",
+            "cpython_base_exception_bound_method_reduce_ex_subset",
             "cpython_base_exception_bound_method_getstate_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
@@ -49447,6 +49448,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
         "cpython_base_exception_bound_method_reduce_diff_subset",
+        "cpython_base_exception_bound_method_reduce_ex_diff_subset",
         "cpython_base_exception_bound_method_getstate_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
@@ -61800,6 +61802,87 @@ fn base_exception_bound_method_reduce_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__reduce__` surface")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __reduce__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_reduce_ex_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_reduce_ex_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__reduce_ex__",
+        "'__reduce_ex__' in dir(obj)",
+        "reducer.__self__ is obj",
+        "reducer.__qualname__",
+        "reducer.__text_signature__",
+        "for protocol in [0, 5]",
+        "reduced[0] is getattr",
+        "reduced[1][0] is exc",
+        "builtin_function_or_method.__reduce_ex__() takes exactly one argument",
+        "builtin_function_or_method.__reduce_ex__() takes no keyword arguments",
+        "IndexError-with_traceback-reduce-ex-call 5 tuple 2 True tuple 2 True with_traceback",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __reduce_ex__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_reduce_ex_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __reduce_ex__ surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__reduce_ex__",
+        "'__reduce_ex__' in dir(obj)",
+        "reducer.__self__ is obj",
+        "reducer.__text_signature__",
+        "for protocol in [0, 5]",
+        "reduced[0] is getattr",
+        "reduced[1][0] is exc",
+        "except TypeError as error",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __reduce_ex__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_exception_bound_method_reduce_ex(",
+        "fn exception_bound_method_reduce_result(",
+        "Value::Builtin(\"method.__reduce_ex__\".to_string())",
+        "Self::exception_bound_method_reduce_result(receiver)",
+        "Value::Builtin(\"getattr\".to_string())",
+        "Value::String(method_name.to_string())",
+        "builtin_function_or_method.__reduce_ex__() takes exactly one argument",
+        "builtin_function_or_method.__reduce_ex__() takes no keyword arguments",
+        "builtin_function_or_method.__reduce_ex__",
+        "\"($self, protocol, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __reduce_ex__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_reduce_ex_subset")
+                && document.contains("cpython_base_exception_bound_method_reduce_ex_diff_subset")
+                && document.contains("BaseException helper bound method `__reduce_ex__` surface")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __reduce_ex__ evidence must be documented in coverage and migration notes"
         );
     }
 }
