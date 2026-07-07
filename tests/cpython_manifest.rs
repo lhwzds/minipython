@@ -53512,6 +53512,114 @@ fn builtin_iterator_type_dict_mappingproxy_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn sequence_iterator_reduce_setstate_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_sequence_iterator_reduce_setstate_type_dict_diff_subset";
+    let subset_name = "cpython_sequence_iterator_reduce_setstate_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "sequence-protocol iterator __reduce__/__setstate__/type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "sequence-protocol iterator __reduce__/__setstate__/type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class Seq:",
+        "seq = Seq()",
+        "typ = type(it)",
+        "namespace = typ.__dict__",
+        "r = it.__reduce__()",
+        "r = typ.__reduce__(it)",
+        "typ.__length_hint__(it)",
+        "typ.__setstate__(it, 0)",
+        "it.__setstate__(-5)",
+        "r[1] == ((),)",
+        "typ.__setstate__(probe, state)",
+        "namespace['__reduce__'](iter(seq))",
+        "'__reduce__' in dir(typ)",
+        "'__setstate__' in dir(iter(seq))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "sequence-protocol iterator diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dict-type iterator mappingproxy True True True True True True\"",
+        "\"fresh True 3 1 True 0\"",
+        "\"after1 True 3 1 True 1\"",
+        "\"hint NotImplemented NotImplemented\"",
+        "\"setstate None 10\"",
+        "\"setstate-neg None 10\"",
+        "\"exhausted True 2 1 True\"",
+        "\"state-error 999 None StopIteration True\"",
+        "\"state-set-error 'x' TypeError an integer is required\"",
+        "\"dict-call True True 3 1 True\"",
+        "\"dir-methods True True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "sequence-protocol iterator subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn sequence_iterator_type_dict_value()",
+        "Value::Builtin(\"iterator.__length_hint__\".to_string())",
+        "Value::Builtin(\"iterator.__reduce__\".to_string())",
+        "Value::Builtin(\"iterator.__setstate__\".to_string())",
+        "fn sequence_iterator_protocol_method(receiver: Value, name: &str)",
+        "\"__iter__\" | \"__next__\" | \"__length_hint__\" | \"__reduce__\" | \"__setstate__\"",
+        "Value::Builtin(format!(\"iterator.{name}\"))",
+        "sequence_iterator_protocol_method(Value::SequenceIterator { object, index }, name)",
+        "let is_sequence_iterator = matches!(&*iterator, Value::SequenceIterator { .. });",
+        "sequence_iterator_protocol_method(Value::Iterator(state), name)",
+        "Value::SequenceIterator { object, index } => {",
+        "Value::Number(index)",
+        "fn call_sequence_iterator_setstate(",
+        "fn sequence_iterator_setstate_index(value: &Value)",
+        "fn sequence_iterator_setstate_receiver_error(value: &Value)",
+        "function_name == \"iterator\"\n                && matches!(name, \"__length_hint__\" | \"__reduce__\" | \"__setstate__\")",
+        "name == \"__dict__\" && function_name == \"iterator\"",
+        "Ok(sequence_iterator_type_dict_value())",
+        "\"iterator\" => &[\n            \"__iter__\",\n            \"__next__\",\n            \"__length_hint__\",\n            \"__reduce__\",\n            \"__setstate__\",\n        ]",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::SequenceIterator { .. })",
+        "Value::SequenceIterator { .. } => names.extend(builtin_type_dir_names(\"iterator\"))",
+        "| \"iterator.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "sequence-protocol iterator implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "sequence-protocol `iterator`",
+            "`__reduce__`",
+            "`__setstate__`",
+            "`__length_hint__`",
+            "`__dict__` mappingproxy",
+            "`dir(type(iter(...)))`",
+            "`dir(iter(seq))`",
+            "`iter(())`",
+            "negative state clamps to zero",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "sequence-protocol iterator docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn callable_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_callable_iterator_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_callable_iterator_type_metadata_dir_surface_subset";

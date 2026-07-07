@@ -978,6 +978,13 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   the fact that `__setstate__` remains absent on dict key and reverse-key
   iterators, without widening host IO, network, process, C ABI, or full stdlib
   scope.
+- Added `cpython_sequence_iterator_reduce_setstate_type_dict_subset` and
+  `cpython_sequence_iterator_reduce_setstate_type_dict_diff_subset` for
+  sequence-protocol `iterator` `__reduce__`, `__setstate__`,
+  `__length_hint__`, exhausted reduction through `iter(())`, negative state
+  clamps to zero, type `__dict__` mappingproxy entries, and visibility in
+  `dir(type(iter(...)))` and `dir(iter(seq))`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - Added `cpython_callable_iterator_type_metadata_dir_surface_subset` and
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset` for
   `iter(make, 2)`, `type(inst)`, `dir(type(iter(...)))`, and

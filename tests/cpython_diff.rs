@@ -17066,6 +17066,58 @@ for label, value in samples:
 }
 
 #[test]
+fn cpython_sequence_iterator_reduce_setstate_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public sequence-protocol iterator __reduce__, __setstate__, and type __dict__ surface",
+        name: "sequence-iterator-reduce-setstate-type-dict",
+        source: r#"class Seq:
+    def __init__(self):
+        self.values = [10, 20]
+    def __getitem__(self, index):
+        if index >= len(self.values):
+            raise IndexError
+        return self.values[index]
+
+seq = Seq()
+it = iter(seq)
+typ = type(it)
+namespace = typ.__dict__
+print('dict-type', typ.__name__, type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__length_hint__' in namespace, '__reduce__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+r = it.__reduce__()
+print('fresh', r[0] is iter, len(r), len(r[1]), r[1][0] is seq, r[2])
+print('next', next(it))
+r = typ.__reduce__(it)
+print('after1', r[0] is iter, len(r), len(r[1]), r[1][0] is seq, r[2])
+print('hint', typ.__length_hint__(it), it.__length_hint__())
+print('setstate', typ.__setstate__(it, 0), next(it))
+print('setstate-neg', it.__setstate__(-5), next(it))
+exhausted = iter(Seq())
+next(exhausted)
+next(exhausted)
+try:
+    next(exhausted)
+except StopIteration:
+    print('exhausted-stop')
+r = exhausted.__reduce__()
+print('exhausted', r[0] is iter, len(r), len(r[1]), r[1] == ((),))
+for state in [1, 999, True, 'x']:
+    probe = iter(Seq())
+    try:
+        result = typ.__setstate__(probe, state)
+        try:
+            value = next(probe)
+            print('state', repr(state), result, value)
+        except Exception as error:
+            print('state-error', repr(state), result, type(error).__name__, str(error) == '')
+    except Exception as error:
+        print('state-set-error', repr(state), type(error).__name__, str(error))
+r = namespace['__reduce__'](iter(seq))
+print('dict-call', namespace['__iter__'](it) is it, r[0] is iter, len(r), len(r[1]), r[1][0] is seq)
+print('dir-methods', '__reduce__' in dir(typ), '__setstate__' in dir(typ), '__length_hint__' in dir(typ), '__reduce__' in dir(iter(seq)), '__setstate__' in dir(iter(seq)))"#,
+    });
+}
+
+#[test]
 fn cpython_callable_iterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public callable_iterator type metadata dir surface",

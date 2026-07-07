@@ -29543,6 +29543,15 @@ impl Vm {
                 };
                 self.call_map_iterator_setstate(receiver.clone(), state.clone())
             }
+            "__setstate__" if name == "iterator.__setstate__" => {
+                let [receiver, index] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: iterator.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_sequence_iterator_setstate(receiver.clone(), index.clone())
+            }
             "__setstate__" if name == "arrayiterator.__setstate__" => {
                 let [receiver, index] = args.as_slice() else {
                     return Err(format!(
@@ -35199,6 +35208,19 @@ impl Vm {
                     tuple_value(vec![*callable, *sentinel]),
                 ]));
             }
+            Value::SequenceIterator { object, index } => {
+                if index == i64::MAX {
+                    return self.iterator_reduce_result(tuple_value(Vec::new()), None);
+                }
+                let iter = self
+                    .load_builtin_name("iter")?
+                    .ok_or_else(|| "AttributeError: iter".to_string())?;
+                return Ok(tuple_value(vec![
+                    iter,
+                    tuple_value(vec![*object]),
+                    Value::Number(index),
+                ]));
+            }
             value => {
                 return Err(format!(
                     "TypeError: copy protocol does not support '{}'",
@@ -35254,6 +35276,27 @@ impl Vm {
             }
             Value::MapIterator { .. } => Ok(Value::None),
             value => Err(map_iterator_setstate_receiver_error(&value)),
+        }
+    }
+
+    fn call_sequence_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        index: Value,
+    ) -> Result<Value, String> {
+        let index = sequence_iterator_setstate_index(&index)?;
+        match receiver {
+            Value::Iterator(state) => {
+                let mut iterator = state.borrow_mut();
+                if let Value::SequenceIterator { index: current, .. } = &mut *iterator {
+                    *current = index;
+                    Ok(Value::None)
+                } else {
+                    Err(sequence_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::SequenceIterator { .. } => Ok(Value::None),
+            value => Err(sequence_iterator_setstate_receiver_error(&value)),
         }
     }
 
@@ -43200,6 +43243,32 @@ fn map_type_dict_value() -> Value {
         (
             Value::String("__setstate__".to_string()),
             Value::Builtin("map.__setstate__".to_string()),
+        ),
+    ])
+}
+
+fn sequence_iterator_type_dict_value() -> Value {
+    mapping_proxy_from_entries(vec![
+        (Value::String("__doc__".to_string()), Value::None),
+        (
+            Value::String("__iter__".to_string()),
+            Value::Builtin("iterator.__iter__".to_string()),
+        ),
+        (
+            Value::String("__next__".to_string()),
+            Value::Builtin("iterator.__next__".to_string()),
+        ),
+        (
+            Value::String("__length_hint__".to_string()),
+            Value::Builtin("iterator.__length_hint__".to_string()),
+        ),
+        (
+            Value::String("__reduce__".to_string()),
+            Value::Builtin("iterator.__reduce__".to_string()),
+        ),
+        (
+            Value::String("__setstate__".to_string()),
+            Value::Builtin("iterator.__setstate__".to_string()),
         ),
     ])
 }
@@ -55065,6 +55134,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. }) => {
             names.extend(builtin_type_dir_names("callable_iterator"))
         }
+        Value::Iterator(state) if matches!(&*state.borrow(), Value::SequenceIterator { .. }) => {
+            names.extend(builtin_type_dir_names("iterator"))
+        }
         Value::Iterator(state) if matches!(&*state.borrow(), Value::RangeIterator { .. }) => {
             names.extend(builtin_type_dir_names("range_iterator"))
         }
@@ -55108,6 +55180,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::MapIterator { .. } => names.extend(builtin_type_dir_names("map")),
         Value::FilterIterator { .. } => names.extend(builtin_type_dir_names("filter")),
         Value::CallIterator { .. } => names.extend(builtin_type_dir_names("callable_iterator")),
+        Value::SequenceIterator { .. } => names.extend(builtin_type_dir_names("iterator")),
         Value::RangeIterator { .. } => names.extend(builtin_type_dir_names("range_iterator")),
         Value::ListIterator { .. } => names.extend(builtin_type_dir_names("list_iterator")),
         Value::TupleIterator { .. } => names.extend(builtin_type_dir_names("tuple_iterator")),
@@ -55861,6 +55934,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "callable_iterator" => &["__iter__", "__next__", "__reduce__"],
         "zip" => &["__iter__", "__next__", "__reduce__", "__setstate__"],
         "map" => &["__iter__", "__next__", "__reduce__", "__setstate__"],
+        "iterator" => &[
+            "__iter__",
+            "__next__",
+            "__length_hint__",
+            "__reduce__",
+            "__setstate__",
+        ],
         "range_iterator" => &[
             "__iter__",
             "__next__",
@@ -61121,6 +61201,21 @@ fn length_hint_iterator_protocol_method(
     }
 }
 
+fn sequence_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" | "__setstate__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("iterator.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            })
+        }
+        _ => Err(format!(
+            "AttributeError: iterator has no attribute '{name}'"
+        )),
+    }
+}
+
 fn list_tuple_iterator_protocol_method(
     type_name: &str,
     receiver: Value,
@@ -61322,6 +61417,42 @@ fn zip_iterator_setstate_receiver_error(value: &Value) -> String {
 fn map_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'map' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn sequence_iterator_setstate_index(value: &Value) -> Result<i64, String> {
+    let integer = if let Some(value) = int_subclass_integer(value) {
+        value
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(*value)),
+            Value::Number(_) => value.clone(),
+            Value::BigInt(value) => {
+                let value = value.to_i64().ok_or_else(|| {
+                    "OverflowError: Python int too large to convert to C ssize_t".to_string()
+                })?;
+                Value::Number(value)
+            }
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    match integer {
+        Value::Number(value) if value < 0 => Ok(0),
+        Value::Number(value) => Ok(value),
+        Value::BigInt(value) => {
+            let value = value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?;
+            Ok(value.max(0))
+        }
+        _ => unreachable!("iterator __setstate__ accepts only integer values"),
+    }
+}
+
+fn sequence_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'iterator' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -65970,11 +66101,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
-        Value::SequenceIterator { object, index } => length_hint_iterator_protocol_method(
-            "iterator",
-            Value::SequenceIterator { object, index },
-            name,
-        ),
+        Value::SequenceIterator { object, index } => {
+            sequence_iterator_protocol_method(Value::SequenceIterator { object, index }, name)
+        }
         Value::SequenceReverseIterator { object, index } => {
             reversed_iterator_protocol_method(Value::SequenceReverseIterator { object, index }, name)
         }
@@ -65995,6 +66124,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 is_map,
                 is_filter,
                 is_call_iterator,
+                is_sequence_iterator,
                 has_length_hint,
                 reduce_type_name,
             ) = {
@@ -66023,6 +66153,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let is_map = matches!(&*iterator, Value::MapIterator { .. });
                 let is_filter = matches!(&*iterator, Value::FilterIterator { .. });
                 let is_call_iterator = matches!(&*iterator, Value::CallIterator { .. });
+                let is_sequence_iterator = matches!(&*iterator, Value::SequenceIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::SetIterator { .. } => Some("set_iterator"),
                     Value::DictIterator { kind, .. } => Some(dict_view_iterator_type_name(*kind)),
@@ -66047,6 +66178,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_map,
                     is_filter,
                     is_call_iterator,
+                    is_sequence_iterator,
                     iterator_has_length_hint(&iterator),
                     reduce_type_name,
                 )
@@ -66097,6 +66229,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::Iterator(state)),
                     identity: Rc::new(()),
                 })
+            } else if is_sequence_iterator {
+                sequence_iterator_protocol_method(Value::Iterator(state), name)
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -67026,6 +67160,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 && matches!(name, "__iter__" | "__next__") =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "iterator"
+                && matches!(name, "__length_hint__" | "__reduce__" | "__setstate__") =>
+        {
+            Ok(Value::Builtin(format!("iterator.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "arrayiterator" && matches!(name, "__reduce__" | "__setstate__") =>
@@ -68025,6 +68165,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__dict__" && function_name == "map" => {
             Ok(map_type_dict_value())
+        }
+        Value::Builtin(function_name) if name == "__dict__" && function_name == "iterator" => {
+            Ok(sequence_iterator_type_dict_value())
         }
         Value::Builtin(function_name) if name == "__dict__" && function_name == "filter" => {
             Ok(filter_type_dict_value())
@@ -90021,6 +90164,7 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         name,
         "zip.__setstate__"
             | "map.__setstate__"
+            | "iterator.__setstate__"
             | "arrayiterator.__setstate__"
             | "range_iterator.__setstate__"
             | "list_iterator.__setstate__"
