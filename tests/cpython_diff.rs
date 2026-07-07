@@ -31115,6 +31115,20 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type object metadata subset",
+        name: "operator-helper-type-metadata",
+        source: r#"import operator
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    doc = typ.__doc__
+    print(typ.__name__, typ.__module__, typ.__qualname__, len(doc), doc.splitlines()[0], typ.__text_signature__)
+    print(object.__getattribute__(typ, '__module__'), object.__getattribute__(typ, '__qualname__'), object.__getattribute__(typ, '__text_signature__'))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

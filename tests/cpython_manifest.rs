@@ -25788,6 +25788,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_module_doc_intro_metadata_subset",
             "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_helper_instance_text_signature_metadata_subset",
+            "cpython_operator_helper_type_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25926,6 +25927,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_instance_text_signature_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper instance text signature metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28032,6 +28038,110 @@ fn operator_helper_instance_text_signature_metadata_subset_has_focused_diff_evid
             && CPYTHON_MIGRATION.contains("__text_signature__")
             && CPYTHON_MIGRATION.contains("(obj, /)"),
         "migration notes must describe operator helper instance text signature metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_metadata_subset(",
+        "Adapted from CPython operator helper type object metadata.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "typ = type(helper)",
+        "typ.__module__",
+        "typ.__qualname__",
+        "typ.__doc__",
+        "typ.__text_signature__",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "object.__getattribute__(typ, '__text_signature__')",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter operator attrgetter 316 Return a callable object that fetches the given attribute(s) from its operand. (attr, /, *attrs)\"",
+        "\"operator attrgetter (attr, /, *attrs)\"",
+        "\"itemgetter operator itemgetter 198 Return a callable object that fetches the given item(s) from its operand. (item, /, *items)\"",
+        "\"operator itemgetter (item, /, *items)\"",
+        "\"methodcaller operator methodcaller 224 Return a callable object that calls the given method on its operand. (name, /, *args, **kwargs)\"",
+        "\"operator methodcaller (name, /, *args, **kwargs)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper type object metadata subset",
+        "operator-helper-type-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "typ = type(helper)",
+        "typ.__module__",
+        "typ.__qualname__",
+        "typ.__doc__",
+        "typ.__text_signature__",
+        "object.__getattribute__(typ, '__module__')",
+        "object.__getattribute__(typ, '__qualname__')",
+        "object.__getattribute__(typ, '__text_signature__')",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_operator_helper_type_name(name: &str) -> bool",
+        "fn operator_helper_type_builtin_name(name: &str) -> Option<&'static str>",
+        "\"attrgetter\" => Some(\"operator.attrgetter\")",
+        "\"itemgetter\" => Some(\"operator.itemgetter\")",
+        "\"methodcaller\" => Some(\"operator.methodcaller\")",
+        "name == \"__module__\" && is_operator_helper_type_name(&function_name)",
+        "name == \"__qualname__\" && is_operator_helper_type_name(&function_name)",
+        "name == \"__doc__\" && is_operator_helper_type_name(&function_name)",
+        "name == \"__text_signature__\" && is_operator_helper_type_name(&function_name)",
+        "operator_builtin_doc(operator_name)",
+        "operator_builtin_text_signature(operator_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_helper_type_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper type object")
+            && CPYTHON_COVERAGE.contains("__module__")
+            && CPYTHON_COVERAGE.contains("__qualname__")
+            && CPYTHON_COVERAGE.contains("__doc__")
+            && CPYTHON_COVERAGE.contains("__text_signature__")
+            && CPYTHON_COVERAGE.contains("__base__` / `__mro__"),
+        "coverage notes must describe operator helper type metadata, direct diff evidence, and stop line"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_helper_type_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("helper type object")
+            && CPYTHON_MIGRATION.contains("__module__")
+            && CPYTHON_MIGRATION.contains("__qualname__")
+            && CPYTHON_MIGRATION.contains("__doc__")
+            && CPYTHON_MIGRATION.contains("__text_signature__")
+            && CPYTHON_MIGRATION.contains("__base__` / `__mro__"),
+        "migration notes must describe operator helper type metadata public behavior, direct diff evidence, and stop line"
     );
 }
 

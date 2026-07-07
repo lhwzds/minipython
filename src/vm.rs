@@ -68576,6 +68576,32 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_operator_helper_type_name(&function_name) =>
+        {
+            let operator_name = operator_helper_type_builtin_name(&function_name)
+                .expect("guard checked operator helper type name");
+            Ok(Value::String(operator_builtin_doc(operator_name).to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && is_operator_helper_type_name(&function_name) =>
+        {
+            let operator_name = operator_helper_type_builtin_name(&function_name)
+                .expect("guard checked operator helper type name");
+            Ok(operator_builtin_text_signature(operator_name)
+                .map(|signature| Value::String(signature.to_string()))
+                .unwrap_or(Value::None))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_operator_factory_builtin(&function_name) =>
         {
             Ok(Value::String("operator".to_string()))
@@ -69829,6 +69855,19 @@ fn is_operator_factory_builtin(name: &str) -> bool {
         name,
         "operator.attrgetter" | "operator.itemgetter" | "operator.methodcaller"
     )
+}
+
+fn is_operator_helper_type_name(name: &str) -> bool {
+    operator_helper_type_builtin_name(name).is_some()
+}
+
+fn operator_helper_type_builtin_name(name: &str) -> Option<&'static str> {
+    match name {
+        "attrgetter" => Some("operator.attrgetter"),
+        "itemgetter" => Some("operator.itemgetter"),
+        "methodcaller" => Some("operator.methodcaller"),
+        _ => None,
+    }
 }
 
 fn operator_builtin_doc(name: &str) -> &'static str {

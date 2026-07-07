@@ -6362,6 +6362,15 @@ without adding general custom encoder/decoder class support.
   both expose CPython's `(obj, /)` string. Direct CPython diff evidence is in
   `cpython_operator_helper_instance_text_signature_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_metadata_subset`, covering helper type object
+  `__module__`, `__qualname__`, `__doc__`, and `__text_signature__` metadata
+  for `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. Direct attribute access and
+  `object.__getattribute__` both expose these CPython metadata strings. Direct
+  CPython diff evidence is in
+  `cpython_operator_helper_type_metadata_diff_subset`; `__base__` / `__mro__`
+  remain outside this metadata slice.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
   CPython's `operator` `__module__`, `__name__`, `__qualname__`, first-line
