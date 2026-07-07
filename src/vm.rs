@@ -35136,6 +35136,12 @@ impl Vm {
                     tuple_value(vec![*iterator, normalize_big_int(index)]),
                 ]));
             }
+            Value::FilterIterator { function, iterator } => {
+                return Ok(tuple_value(vec![
+                    Value::Builtin("filter".to_string()),
+                    tuple_value(vec![*function, *iterator]),
+                ]));
+            }
             value => {
                 return Err(format!(
                     "TypeError: copy protocol does not support '{}'",
@@ -43027,6 +43033,24 @@ fn enumerate_type_dict_value() -> Value {
         (
             Value::String("__reduce__".to_string()),
             Value::Builtin("enumerate.__reduce__".to_string()),
+        ),
+    ])
+}
+
+fn filter_type_dict_value() -> Value {
+    mapping_proxy_from_entries(vec![
+        (Value::String("__doc__".to_string()), Value::None),
+        (
+            Value::String("__iter__".to_string()),
+            Value::Builtin("filter.__iter__".to_string()),
+        ),
+        (
+            Value::String("__next__".to_string()),
+            Value::Builtin("filter.__next__".to_string()),
+        ),
+        (
+            Value::String("__reduce__".to_string()),
+            Value::Builtin("filter.__reduce__".to_string()),
         ),
     ])
 }
@@ -55666,7 +55690,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "toreadonly",
         ],
         "enumerate" => &["__class_getitem__", "__iter__", "__next__", "__reduce__"],
-        "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
+        "filter" => &["__iter__", "__next__", "__reduce__"],
+        "zip" | "map" | "callable_iterator" => &["__iter__", "__next__"],
         "range_iterator" => &[
             "__iter__",
             "__next__",
@@ -65705,6 +65730,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
+        Value::FilterIterator { function, iterator } if name == "__reduce__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("filter.__reduce__".to_string())),
+                receiver: Box::new(Value::FilterIterator { function, iterator }),
+                identity: Rc::new(()),
+            })
+        }
         Value::FilterIterator { function, iterator } => {
             iterator_protocol_method("filter", Value::FilterIterator { function, iterator }, name)
         }
@@ -65742,6 +65774,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 is_str_iterator,
                 is_list_reverseiterator,
                 is_reversed_iterator,
+                is_filter,
                 has_length_hint,
                 reduce_type_name,
             ) = {
@@ -65766,6 +65799,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let is_list_reverseiterator = matches!(&*iterator, Value::ReverseIterator { .. });
                 let is_reversed_iterator =
                     matches!(&*iterator, Value::SequenceReverseIterator { .. });
+                let is_filter = matches!(&*iterator, Value::FilterIterator { .. });
                 let reduce_type_name = match &*iterator {
                     Value::SetIterator { .. } => Some("set_iterator"),
                     Value::DictIterator { kind, .. } => Some(dict_view_iterator_type_name(*kind)),
@@ -65786,6 +65820,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_str_iterator,
                     is_list_reverseiterator,
                     is_reversed_iterator,
+                    is_filter,
                     iterator_has_length_hint(&iterator),
                     reduce_type_name,
                 )
@@ -65820,6 +65855,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 list_reverseiterator_protocol_method(Value::Iterator(state), name)
             } else if is_reversed_iterator {
                 reversed_iterator_protocol_method(Value::Iterator(state), name)
+            } else if name == "__reduce__" && is_filter {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("filter.__reduce__".to_string())),
+                    receiver: Box::new(Value::Iterator(state)),
+                    identity: Rc::new(()),
+                })
             } else if let Some(type_name) = reduce_type_name {
                 list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
             } else if has_length_hint {
@@ -66725,6 +66766,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "enumerate" && name == "__reduce__" => {
             Ok(Value::Builtin("enumerate.__reduce__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "filter" && name == "__reduce__" => {
+            Ok(Value::Builtin("filter.__reduce__".to_string()))
         }
         Value::Builtin(function_name)
             if is_builtin_iterator_type_name(&function_name)
@@ -67724,6 +67768,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__dict__" && function_name == "enumerate" => {
             Ok(enumerate_type_dict_value())
+        }
+        Value::Builtin(function_name) if name == "__dict__" && function_name == "filter" => {
+            Ok(filter_type_dict_value())
         }
         Value::Builtin(function_name)
             if name == "__dict__" && is_builtin_iterator_type_dict_name(&function_name) =>

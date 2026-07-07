@@ -52904,6 +52904,101 @@ fn filter_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn filter_reduce_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_filter_reduce_type_dict_diff_subset";
+    let subset_name = "cpython_filter_reduce_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "filter __reduce__ and type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "filter __reduce__ and type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def odd(x):",
+        "filter(None, [0, 1, '', 'x'])",
+        "filter(odd, [0, 1, 2, 3])",
+        "reduced = filt.__reduce__()",
+        "type(filt).__reduce__(filt)",
+        "reduced[0] is filter",
+        "reduced[1][0] is (None if label == 'none' else odd)",
+        "type(reduced[1][1]).__name__",
+        "list(reduced[1][1])",
+        "namespace = filter.__dict__",
+        "'__reduce__' in dir(filter)",
+        "'__reduce__' in dir(filter(None, []))",
+        "type(namespace).__name__",
+        "'__reduce__' in namespace",
+        "'__setstate__' in namespace",
+        "namespace['__iter__'](f) is f",
+        "namespace['__reduce__'](f)[0] is filter",
+        "namespace['__reduce__'](f)[1][0] is None",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "filter __reduce__ and type __dict__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"none fresh True True list_iterator\"",
+        "\"none after1 True True list_iterator ['', 'x']\"",
+        "\"func fresh True True list_iterator\"",
+        "\"func after1 True True list_iterator [2, 3]\"",
+        "\"dir-reduce True True\"",
+        "\"dict-type mappingproxy True True True False True\"",
+        "\"dict-call True True True list_iterator\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "filter __reduce__ and type __dict__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn filter_type_dict_value(",
+        "Value::Builtin(\"filter.__reduce__\".to_string())",
+        "Value::FilterIterator { function, iterator } => {",
+        "tuple_value(vec![*function, *iterator])",
+        "Value::FilterIterator { function, iterator } if name == \"__reduce__\"",
+        "name == \"__reduce__\" && is_filter",
+        "function_name == \"filter\" && name == \"__reduce__\"",
+        "name == \"__dict__\" && function_name == \"filter\"",
+        "Ok(filter_type_dict_value())",
+        "\"filter\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "filter __reduce__ and type __dict__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "filter",
+            "`__reduce__`",
+            "underlying iterator",
+            "predicate",
+            "`__dict__` mappingproxy",
+            "visibility in",
+            "`dir(filter)`",
+            "`dir(filter(...))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "filter __reduce__ and type __dict__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
     let diff_name = "cpython_builtin_iterator_dir_protocol_methods_diff_subset";
     let subset_name = "cpython_builtin_iterator_dir_protocol_methods_subset";
@@ -52957,7 +53052,8 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
 
     for required in [
         "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
-        "\"zip\" | \"map\" | \"filter\" | \"callable_iterator\" => &[\"__iter__\", \"__next__\"]",
+        "\"filter\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+        "\"zip\" | \"map\" | \"callable_iterator\" => &[\"__iter__\", \"__next__\"]",
         "is_builtin_iterator_type_name(&function_name)",
         "matches!(name, \"__iter__\" | \"__next__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",

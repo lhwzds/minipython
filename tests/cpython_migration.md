@@ -934,6 +934,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `filter.__bases__`, `filter.__module__`, and `filter.__qualname__` directly
   readable, preserving existing `filter(None, [0, 1, '', 'x'])` iteration behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_filter_reduce_type_dict_subset` and
+  `cpython_filter_reduce_type_dict_diff_subset` for filter `__reduce__`
+  returning the predicate plus the underlying iterator, filter type `__dict__`
+  mappingproxy entries, and `__reduce__` visibility in `dir(filter)` and
+  `dir(filter(...))`, without widening host IO, network, process, C ABI, or
+  full stdlib scope.
 - Added `cpython_builtin_iterator_dir_protocol_methods_subset` and
   `cpython_builtin_iterator_dir_protocol_methods_diff_subset` for
   `dir(enumerate)`, `dir(enumerate(...))`, `dir(zip)`, `dir(zip(...))`,

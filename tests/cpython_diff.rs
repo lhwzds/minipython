@@ -16895,6 +16895,29 @@ print('iter-kept', iter(inst) is inst, list(filter(None, [0, 1, '', 'x'])), list
 }
 
 #[test]
+fn cpython_filter_reduce_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public filter __reduce__ and type __dict__ surface",
+        name: "filter-reduce-type-dict",
+        source: r#"def odd(x):
+    return x % 2
+
+for label, filt in [('none', filter(None, [0, 1, '', 'x'])), ('func', filter(odd, [0, 1, 2, 3]))]:
+    reduced = filt.__reduce__()
+    print(label, 'fresh', reduced[0] is filter, reduced[1][0] is (None if label == 'none' else odd), type(reduced[1][1]).__name__)
+    next(filt)
+    reduced = type(filt).__reduce__(filt)
+    print(label, 'after1', reduced[0] is filter, reduced[1][0] is (None if label == 'none' else odd), type(reduced[1][1]).__name__, list(reduced[1][1]))
+
+namespace = filter.__dict__
+print('dir-reduce', '__reduce__' in dir(filter), '__reduce__' in dir(filter(None, [])))
+print('dict-type', type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__reduce__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+f = filter(None, [0, 1, 2])
+print('dict-call', namespace['__iter__'](f) is f, namespace['__reduce__'](f)[0] is filter, namespace['__reduce__'](f)[1][0] is None, type(namespace['__reduce__'](f)[1][1]).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_iterator_dir_protocol_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public builtin iterator dir protocol method visibility",
