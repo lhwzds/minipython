@@ -12692,6 +12692,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_itemgetter_alias_subset",
             "cpython_functools_namedtuple_alias_subset",
             "cpython_functools_mappingproxytype_alias_subset",
+            "cpython_functools_genericalias_alias_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12731,6 +12732,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_itemgetter_alias_diff_subset",
         "cpython_functools_namedtuple_alias_diff_subset",
         "cpython_functools_mappingproxytype_alias_diff_subset",
+        "cpython_functools_genericalias_alias_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12816,6 +12818,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && functools_registry.contains("Value::Builtin(\"mappingproxy\""),
         "functools stdlib module registry must expose MappingProxyType alias"
     );
+    assert!(
+        functools_registry.contains("\"GenericAlias\"")
+            && functools_registry.contains("builtin_type_value(\"GenericAlias\")"),
+        "functools stdlib module registry must expose GenericAlias alias"
+    );
     let functools_all_start = STDLIB_SOURCE
         .find("const FUNCTOOLS_ALL")
         .expect("stdlib.rs must define FUNCTOOLS_ALL");
@@ -12840,6 +12847,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         !functools_all.contains("\"MappingProxyType\""),
         "functools.__all__ must not export MappingProxyType"
     );
+    assert!(
+        !functools_all.contains("\"GenericAlias\""),
+        "functools.__all__ must not export GenericAlias"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
@@ -12854,10 +12865,13 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_namedtuple_alias_diff_subset",
             "cpython_functools_mappingproxytype_alias_subset",
             "cpython_functools_mappingproxytype_alias_diff_subset",
+            "cpython_functools_genericalias_alias_subset",
+            "cpython_functools_genericalias_alias_diff_subset",
             "get_cache_token",
             "itemgetter",
             "namedtuple",
             "MappingProxyType",
+            "GenericAlias",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {
@@ -12956,6 +12970,37 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             mappingproxytype_subset.contains(required),
             "functools MappingProxyType alias subset output must pin `{required}`"
+        );
+    }
+    let genericalias_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_genericalias_alias_diff_subset",
+    );
+    let genericalias_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_genericalias_alias_subset",
+    );
+    for required in [
+        "functools.GenericAlias is types.GenericAlias",
+        "'GenericAlias' in functools.__all__",
+        "functools.GenericAlias.__name__",
+        "functools.GenericAlias.__module__",
+        "functools.GenericAlias(list, (int,))",
+    ] {
+        assert!(
+            genericalias_diff.contains(required) && genericalias_subset.contains(required),
+            "functools GenericAlias alias evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"identity True\"",
+        "\"meta GenericAlias types\"",
+        "\"alias list[int] True (<class 'int'>,)\"",
+        "\"kw TypeError GenericAlias() takes no keyword arguments\"",
+    ] {
+        assert!(
+            genericalias_subset.contains(required),
+            "functools GenericAlias alias subset output must pin `{required}`"
         );
     }
     let get_cache_token_diff = extract_rust_test_body(

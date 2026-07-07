@@ -1018,6 +1018,7 @@ pub(crate) fn create_module(
                     "MappingProxyType",
                     Value::Builtin("mappingproxy".to_string()),
                 ),
+                ("GenericAlias", builtin_type_value("GenericAlias")),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",

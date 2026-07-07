@@ -5116,6 +5116,12 @@ without adding general custom encoder/decoder class support.
   including module visibility, exclusion from `functools.__all__`, object
   identity, `__name__` / `__module__` metadata, read-only live mappingproxy
   behavior, and error classification.
+- `cpython_functools_genericalias_alias_subset`, backed by
+  `cpython_functools_genericalias_alias_diff_subset`, covers the public
+  `functools.GenericAlias` imported alias to `types.GenericAlias`, including
+  module visibility, exclusion from `functools.__all__`, object identity,
+  `__name__` / `__module__` metadata, explicit `GenericAlias(list, (int,))`
+  construction, `list[int]` origin/args, and argument error diagnostics.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython

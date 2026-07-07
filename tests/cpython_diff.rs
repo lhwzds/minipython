@@ -32862,6 +32862,27 @@ for label, expr in [('set', lambda: proxy.__setitem__('c', 3)), ('missing', lamb
 }
 
 #[test]
+fn cpython_functools_genericalias_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public imported GenericAlias alias subset",
+        name: "functools-genericalias-alias",
+        source: r#"import functools, types
+print(hasattr(functools, 'GenericAlias'), 'GenericAlias' in dir(functools), 'GenericAlias' in functools.__dict__)
+print('all', 'GenericAlias' in functools.__all__)
+print('identity', functools.GenericAlias is types.GenericAlias)
+print('meta', functools.GenericAlias.__name__, functools.GenericAlias.__module__)
+alias = functools.GenericAlias(list, (int,))
+print('alias', alias, alias.__origin__ is list, alias.__args__)
+print('getitem', list[int].__origin__ is list, list[int].__args__)
+for label, expr in [('missing', lambda: functools.GenericAlias()), ('kw', lambda: functools.GenericAlias(origin=list, args=(int,)))]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",
