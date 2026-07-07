@@ -10352,6 +10352,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__new__" => {
                 self.call_exception_bound_method_new(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__delattr__" => {
+                self.call_exception_bound_method_delattr(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__init__" => {
                 self.call_exception_bound_method_init(args)
             }
@@ -19130,6 +19133,60 @@ impl Vm {
             value => Err(format!(
                 "TypeError: object.__new__(X): X is not a type object ({})",
                 type_name(value)
+            )),
+        }
+    }
+
+    fn call_exception_bound_method_delattr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __delattr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        let Value::BoundMethod {
+            function,
+            receiver: method_receiver,
+            ..
+        } = receiver
+        else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !is_exception_helper_bound_method(function.as_ref(), method_receiver.as_ref()) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+        let name = attribute_name_arg(name)?;
+        match name.as_str() {
+            "__module__" => Ok(Value::None),
+            "__class__" => Err("TypeError: can't delete __class__ attribute".to_string()),
+            "__call__" => Err(
+                "AttributeError: 'builtin_function_or_method' object attribute '__call__' is read-only"
+                    .to_string(),
+            ),
+            "__doc__" | "__name__" | "__qualname__" | "__self__" | "__text_signature__" => {
+                Err(format!(
+                    "AttributeError: attribute '{name}' of 'builtin_function_or_method' objects is not writable"
+                ))
+            }
+            _ => Err(format!(
+                "AttributeError: 'builtin_function_or_method' object has no attribute '{name}' and no __dict__ for setting new attributes"
             )),
         }
     }
@@ -67281,6 +67338,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 })
             }
+            "__delattr__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__delattr__".to_string())),
+                    receiver: Box::new(Value::BoundMethod {
+                        function,
+                        receiver,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             "__init__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("method.__init__".to_string())),
@@ -67547,6 +67615,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__new__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__delattr__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70597,6 +70670,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("($type, *args, **kwargs)".to_string()))
         }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__delattr__" =>
+        {
+            Ok(Value::String("object.__delattr__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "method.__delattr__" =>
+        {
+            Ok(Value::String("Implement delattr(self, name).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__delattr__" =>
+        {
+            Ok(Value::String("($self, name, /)".to_string()))
+        }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__init__" => {
             Ok(Value::String("object.__init__".to_string()))
         }
@@ -71030,6 +71118,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
     [
         "__module__",
         "__name__",
+        "__delattr__",
         "__getstate__",
         "__init__",
         "__init_subclass__",
@@ -73654,8 +73743,10 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 }
 
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
-    matches!(name, "function.__hash__" | "method.__init__")
-        || function_init_wrapper_name(name)
+    matches!(
+        name,
+        "function.__hash__" | "method.__delattr__" | "method.__init__"
+    ) || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
         || function_order_compare_wrapper_name(name)
@@ -73675,6 +73766,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "function.__getattribute__"
             | "function.__setattr__"
             | "function.__delattr__"
+            | "method.__delattr__"
             | "function.__init__"
             | "function.__hash__"
             | "function.__eq__"
