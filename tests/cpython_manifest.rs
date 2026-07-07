@@ -25795,6 +25795,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_dict_metadata_subset",
             "cpython_operator_helper_type_dict_text_signature_descriptor_subset",
             "cpython_operator_helper_type_dict_repr_descriptor_subset",
+            "cpython_operator_helper_type_dict_call_descriptor_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25968,6 +25969,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_dict_repr_descriptor_diff_subset"),
         "operator sandbox manifest must cite CPython helper type dict repr descriptor diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_call_descriptor_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict call descriptor diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28851,6 +28857,157 @@ fn operator_helper_type_dict_repr_descriptor_subset_has_focused_diff_evidence() 
             && CPYTHON_MIGRATION.contains("wrong-object `TypeError`")
             && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary entries"),
         "migration notes must describe operator helper type dict repr descriptor public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_call_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_call_descriptor_subset(",
+        "Adapted from CPython operator helper type `__dict__` `__call__` wrapper",
+        "import operator, types",
+        "class Box:",
+        "box.name = 'Ada'",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(1)",
+        "operator.methodcaller('replace', 'a', 'o')",
+        "desc = typ.__dict__['__call__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper, target)",
+        "desc(helper, target) == helper(target)",
+        "desc(42, target)",
+        "desc()",
+        "desc(helper)",
+        "desc(helper, target, spam=1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict call descriptor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "attrgetter True wrapper_descriptor True __call__ attrgetter.__call__ True Call self as a function. ($self, /, *args, **kwargs)",
+        "attrgetter <slot wrapper '__call__' of 'operator.attrgetter' objects> Ada True",
+        "descriptor '__call__' requires a 'operator.attrgetter' object but received a 'int'",
+        "descriptor '__call__' of 'operator.attrgetter' object needs an argument",
+        "attrgetter TypeError attrgetter expected 1 argument, got 0",
+        "attrgetter TypeError attrgetter() takes no keyword arguments",
+        "itemgetter True wrapper_descriptor True __call__ itemgetter.__call__ True Call self as a function. ($self, /, *args, **kwargs)",
+        "itemgetter <slot wrapper '__call__' of 'operator.itemgetter' objects> b True",
+        "descriptor '__call__' requires a 'operator.itemgetter' object but received a 'int'",
+        "descriptor '__call__' of 'operator.itemgetter' object needs an argument",
+        "itemgetter TypeError itemgetter expected 1 argument, got 0",
+        "itemgetter TypeError itemgetter() takes no keyword arguments",
+        "methodcaller True wrapper_descriptor True __call__ methodcaller.__call__ True Call self as a function. ($self, /, *args, **kwargs)",
+        "methodcaller <slot wrapper '__call__' of 'operator.methodcaller' objects> bonono True",
+        "descriptor '__call__' requires a 'operator.methodcaller' object but received a 'int'",
+        "descriptor '__call__' of 'operator.methodcaller' object needs an argument",
+        "methodcaller TypeError methodcaller expected 1 argument, got 0",
+        "methodcaller TypeError methodcaller() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict call descriptor subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_call_descriptor_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ __call__ wrapper descriptor subset",
+        "operator-helper-type-dict-call-descriptor",
+        "import operator, types",
+        "class Box:",
+        "box.name = 'Ada'",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(1)",
+        "operator.methodcaller('replace', 'a', 'o')",
+        "desc = typ.__dict__['__call__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper, target)",
+        "desc(helper, target) == helper(target)",
+        "desc(42, target)",
+        "desc()",
+        "desc(helper)",
+        "desc(helper, target, spam=1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict call descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_operator_helper_call_wrapper(",
+        "operator_helper_call_wrapper_descriptor_name",
+        "operator_helper_call_wrapper_operator_name",
+        "operator_helper_call_wrapper_type_name",
+        "operator_helper_call_wrapper_descriptor_applies",
+        "operator_helper_wrapper_descriptor_doc",
+        "operator_helper_wrapper_descriptor_text_signature",
+        "operator.attrgetter.__call__",
+        "operator.itemgetter.__call__",
+        "operator.methodcaller.__call__",
+        "Value::String(\"__call__\".to_string())",
+        "Value::Builtin(format!(\"{operator_name}.__call__\"))",
+        "is_builtin_wrapper_descriptor_name(name)",
+        "descriptor '__call__' requires a '{operator_name}' object",
+        "self.call_operator_attrgetter(attrs, rest.to_vec(), keywords)",
+        "self.call_operator_itemgetter(items, rest.to_vec(), keywords)",
+        "self.call_operator_methodcaller(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict call descriptor implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "operator_helper_call_wrapper_descriptor_operator_name",
+        "<slot wrapper '__call__' of '{operator_name}' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type dict call descriptor display implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_dict_call_descriptor_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_dict_call_descriptor_diff_subset")
+            && CPYTHON_COVERAGE.contains("__dict__['__call__']")
+            && CPYTHON_COVERAGE.contains("wrapper_descriptor")
+            && CPYTHON_COVERAGE.contains("delegates direct calls back")
+            && CPYTHON_COVERAGE.contains("missing-receiver")
+            && CPYTHON_COVERAGE.contains("keyword `TypeError`")
+            && CPYTHON_COVERAGE.contains("remaining CPython descriptor dictionary entries"),
+        "coverage notes must describe operator helper type dict call descriptor and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_dict_call_descriptor_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_dict_call_descriptor_diff_subset")
+            && CPYTHON_MIGRATION.contains("__dict__['__call__']")
+            && CPYTHON_MIGRATION.contains("wrapper_descriptor")
+            && CPYTHON_MIGRATION.contains("direct-call helper delegation")
+            && CPYTHON_MIGRATION.contains("missing-receiver")
+            && CPYTHON_MIGRATION.contains("keyword `TypeError`")
+            && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary entries"),
+        "migration notes must describe operator helper type dict call descriptor public behavior and direct diff evidence"
     );
 }
 

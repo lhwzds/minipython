@@ -6409,8 +6409,8 @@ without adding general custom encoder/decoder class support.
   `__module__` and `__doc__` entries through direct attribute access and
   `object.__getattribute__`; direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_metadata_diff_subset`. This does not claim
-  the full CPython descriptor dictionary for `__call__`, `__reduce__`,
-  or `__repr__`.
+  the full CPython descriptor dictionary for `__reduce__` or other descriptor
+  entries.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_helper_type_dict_text_signature_descriptor_subset`,
   covering the helper type `__dict__['__text_signature__']` getset_descriptor
@@ -6421,7 +6421,7 @@ without adding general custom encoder/decoder class support.
   shape. Direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset`.
   This does not claim the remaining CPython descriptor dictionary entries such
-  as `__call__` or `__reduce__`.
+  as `__reduce__`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_helper_type_dict_repr_descriptor_subset`, covering the
   helper type `__dict__['__repr__']` wrapper_descriptor for
@@ -6431,7 +6431,17 @@ without adding general custom encoder/decoder class support.
   the CPython wrong-object `TypeError` shape. Direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_repr_descriptor_diff_subset`. This does
   not claim the remaining CPython descriptor dictionary entries such as
-  `__call__` or `__reduce__`.
+  `__reduce__`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_dict_call_descriptor_subset`, covering the
+  helper type `__dict__['__call__']` wrapper_descriptor for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. The descriptor exposes CPython-aligned
+  public metadata, delegates direct calls back through the helper callable
+  behavior, and preserves CPython wrong-object, missing-receiver, missing-target,
+  and keyword `TypeError` shapes. Direct CPython diff evidence is in
+  `cpython_operator_helper_type_dict_call_descriptor_diff_subset`. This does not
+  claim the remaining CPython descriptor dictionary entries such as `__reduce__`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including

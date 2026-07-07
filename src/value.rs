@@ -1663,6 +1663,13 @@ impl fmt::Display for Value {
                     .expect("guard checked operator helper repr wrapper descriptor");
                 write!(f, "<slot wrapper '__repr__' of '{operator_name}' objects>")
             }
+            Value::Builtin(name)
+                if operator_helper_call_wrapper_descriptor_operator_name(name).is_some() =>
+            {
+                let operator_name = operator_helper_call_wrapper_descriptor_operator_name(name)
+                    .expect("guard checked operator helper call wrapper descriptor");
+                write!(f, "<slot wrapper '__call__' of '{operator_name}' objects>")
+            }
             Value::Builtin(name) if super_wrapper_descriptor_method_name(name).is_some() => {
                 let method = super_wrapper_descriptor_method_name(name)
                     .expect("guard checked super wrapper descriptor name");
@@ -2865,6 +2872,15 @@ fn operator_helper_repr_wrapper_descriptor_operator_name(name: &str) -> Option<&
         "operator.attrgetter.__repr__" => Some("operator.attrgetter"),
         "operator.itemgetter.__repr__" => Some("operator.itemgetter"),
         "operator.methodcaller.__repr__" => Some("operator.methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_call_wrapper_descriptor_operator_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__call__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__call__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__call__" => Some("operator.methodcaller"),
         _ => None,
     }
 }
