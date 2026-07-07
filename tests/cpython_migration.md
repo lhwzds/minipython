@@ -12827,6 +12827,13 @@ Completed in the dict view rich-comparison pass:
   for `__qualname__`, `__module__`, and `__doc__` across built-in dict and
   `OrderedDict` view classes without adding full type hierarchy metadata such
   as `__base__`, `__bases__`, or `__mro__`.
+- Added `cpython_dict_view_dir_type_lookup_surface_subset`, backed by
+  `cpython_dict_view_dir_type_lookup_surface_diff_subset`, covering the dict
+  view dir and type lookup surface for `dir(type(view))`, `dir(view)`,
+  `__iter__`, `__len__`, set-like `__contains__` / `isdisjoint`, the
+  `mapping` getset descriptor, descriptor `__get__`, read-only descriptor
+  write/delete errors, and the fact that `dict_values.__contains__` remains
+  absent.
 - Added `cpython_dict_view_type_text_signature_subset`, backed by
   `cpython_dict_view_type_text_signature_diff_subset`, covering dict view type text signature
   metadata as `None` across built-in dict and `OrderedDict` view classes

@@ -17454,6 +17454,35 @@ impl Vm {
                     .unwrap_or(Value::None))
             }
             CELL_CONTENTS_GETSET_DESCRIPTOR => cell_contents_getset_descriptor_get(object),
+            _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
+                let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
+                    .expect("dict view mapping descriptor owner exists after guard");
+                if type_name(object) != owner {
+                    return Err(format!(
+                        "TypeError: descriptor 'mapping' for '{owner}' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                }
+                match object {
+                    Value::DictView {
+                        entries, ordered, ..
+                    } => {
+                        if *ordered {
+                            Ok(Value::MappingProxyObject {
+                                mapping: Box::new(Value::OrderedDict(entries.clone())),
+                                identity: Rc::new(()),
+                            })
+                        } else {
+                            Ok(mapping_proxy_value(entries.clone()))
+                        }
+                    }
+                    Value::MappingView { mapping, .. } => Ok(Value::MappingProxyObject {
+                        mapping: mapping.clone(),
+                        identity: Rc::new(()),
+                    }),
+                    _ => unreachable!("dict view mapping descriptor receiver type checked"),
+                }
+            }
             _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
         }
     }
@@ -17481,6 +17510,13 @@ impl Vm {
             CELL_CONTENTS_GETSET_DESCRIPTOR => {
                 cell_contents_getset_descriptor_set(object, value.clone())?;
                 Ok(Value::None)
+            }
+            _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
+                let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
+                    .expect("dict view mapping descriptor owner exists after guard");
+                Err(format!(
+                    "AttributeError: attribute 'mapping' of '{owner}' objects is not writable"
+                ))
             }
             _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
         }
@@ -17515,6 +17551,13 @@ impl Vm {
             CELL_CONTENTS_GETSET_DESCRIPTOR => {
                 cell_contents_getset_descriptor_delete(object)?;
                 Ok(Value::None)
+            }
+            _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
+                let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
+                    .expect("dict view mapping descriptor owner exists after guard");
+                Err(format!(
+                    "AttributeError: attribute 'mapping' of '{owner}' objects is not writable"
+                ))
             }
             _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
         }
@@ -54649,6 +54692,12 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::OrderedDict(_) => names.extend(builtin_type_dir_names("OrderedDict")),
         Value::DefaultDict { .. } => names.extend(builtin_type_dir_names("defaultdict")),
         Value::FrameLocalsProxy { .. } => names.extend(builtin_type_dir_names("dict")),
+        Value::DictView { kind, ordered, .. } => names.extend(builtin_type_dir_names(
+            dict_view_display_type_name(*kind, *ordered),
+        )),
+        Value::MappingView { kind, .. } => {
+            names.extend(builtin_type_dir_names(dict_view_type_name(*kind)))
+        }
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
             names.extend(builtin_type_dir_names("mappingproxy"))
         }
@@ -55190,6 +55239,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
+    } else if is_dict_view_type_object_name(name) {
+        remove_type_metadata_dir_names(&mut names);
     }
 
     let methods: &[&str] = match name {
@@ -55593,6 +55644,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "dict_reversekeyiterator" | "dict_reversevalueiterator" | "dict_reverseitemiterator" => {
             &["__iter__", "__next__", "__length_hint__", "__reduce__"]
         }
+        name if is_dict_view_type_object_name(name) => dict_view_type_dir_method_names(name),
         "list_reverseiterator" => &[
             "__iter__",
             "__next__",
@@ -57393,6 +57445,15 @@ fn is_dict_view_type_object_name(name: &str) -> bool {
     )
 }
 
+fn dict_view_kind_from_type_object_name(name: &str) -> Option<DictViewKind> {
+    match name {
+        "dict_keys" | "odict_keys" => Some(DictViewKind::Keys),
+        "dict_values" | "odict_values" => Some(DictViewKind::Values),
+        "dict_items" | "odict_items" => Some(DictViewKind::Items),
+        _ => None,
+    }
+}
+
 fn dict_view_type_object_base_name(name: &str) -> &'static str {
     match name {
         "odict_keys" => "dict_keys",
@@ -57411,6 +57472,85 @@ fn dict_view_type_object_direct_subclasses(name: &str) -> &'static [&'static str
     }
 }
 
+fn dict_view_type_dir_method_names(name: &str) -> &'static [&'static str] {
+    let Some(kind) = dict_view_kind_from_type_object_name(name) else {
+        return &[];
+    };
+    if dict_view_is_set_like(kind) {
+        &[
+            "__and__",
+            "__contains__",
+            "__eq__",
+            "__format__",
+            "__ge__",
+            "__getstate__",
+            "__gt__",
+            "__hash__",
+            "__iter__",
+            "__le__",
+            "__len__",
+            "__lt__",
+            "__ne__",
+            "__or__",
+            "__rand__",
+            "__reduce__",
+            "__reduce_ex__",
+            "__repr__",
+            "__reversed__",
+            "__ror__",
+            "__rsub__",
+            "__rxor__",
+            "__sizeof__",
+            "__str__",
+            "__sub__",
+            "__xor__",
+            "isdisjoint",
+            "mapping",
+        ]
+    } else {
+        &[
+            "__eq__",
+            "__format__",
+            "__ge__",
+            "__getstate__",
+            "__gt__",
+            "__hash__",
+            "__iter__",
+            "__le__",
+            "__len__",
+            "__lt__",
+            "__ne__",
+            "__reduce__",
+            "__reduce_ex__",
+            "__repr__",
+            "__reversed__",
+            "__sizeof__",
+            "__str__",
+            "mapping",
+        ]
+    }
+}
+
+fn is_dict_view_type_method(name: &str, method: &str) -> bool {
+    dict_view_type_dir_method_names(name).contains(&method)
+}
+
+fn is_dict_view_set_like_only_method(method: &str) -> bool {
+    matches!(
+        method,
+        "__and__"
+            | "__contains__"
+            | "__or__"
+            | "__rand__"
+            | "__ror__"
+            | "__rsub__"
+            | "__rxor__"
+            | "__sub__"
+            | "__xor__"
+            | "isdisjoint"
+    )
+}
+
 fn is_data_descriptor(value: &Value) -> bool {
     matches!(
         value,
@@ -57421,38 +57561,55 @@ fn is_data_descriptor(value: &Value) -> bool {
 
 const CELL_CONTENTS_GETSET_DESCRIPTOR: &str = "CellType.cell_contents.getset_descriptor";
 
+fn dict_view_mapping_getset_descriptor_owner(name: &str) -> Option<&str> {
+    let owner = name.strip_suffix(".mapping.getset_descriptor")?;
+    is_dict_view_type_object_name(owner).then_some(owner)
+}
+
 fn is_builtin_getset_descriptor_name(name: &str) -> bool {
     matches!(
         name,
         "deque.maxlen.getset_descriptor" | CELL_CONTENTS_GETSET_DESCRIPTOR
-    )
+    ) || dict_view_mapping_getset_descriptor_owner(name).is_some()
 }
 
-fn getset_descriptor_public_name(name: &str) -> &'static str {
+fn getset_descriptor_public_name(name: &str) -> String {
+    if dict_view_mapping_getset_descriptor_owner(name).is_some() {
+        return "mapping".to_string();
+    }
     match name {
-        "deque.maxlen.getset_descriptor" => "maxlen",
-        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell_contents",
+        "deque.maxlen.getset_descriptor" => "maxlen".to_string(),
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell_contents".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
 
-fn getset_descriptor_qualname(name: &str) -> &'static str {
+fn getset_descriptor_qualname(name: &str) -> String {
+    if let Some(owner) = dict_view_mapping_getset_descriptor_owner(name) {
+        return format!("{owner}.mapping");
+    }
     match name {
-        "deque.maxlen.getset_descriptor" => "deque.maxlen",
-        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell.cell_contents",
+        "deque.maxlen.getset_descriptor" => "deque.maxlen".to_string(),
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "cell.cell_contents".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
 
-fn getset_descriptor_owner_name(name: &str) -> &'static str {
+fn getset_descriptor_owner_name(name: &str) -> String {
+    if let Some(owner) = dict_view_mapping_getset_descriptor_owner(name) {
+        return owner.to_string();
+    }
     match name {
-        "deque.maxlen.getset_descriptor" => "deque",
-        CELL_CONTENTS_GETSET_DESCRIPTOR => "CellType",
+        "deque.maxlen.getset_descriptor" => "deque".to_string(),
+        CELL_CONTENTS_GETSET_DESCRIPTOR => "CellType".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
 
 fn getset_descriptor_doc_value(name: &str) -> Value {
+    if dict_view_mapping_getset_descriptor_owner(name).is_some() {
+        return Value::String("dictionary that this view refers to".to_string());
+    }
     match name {
         "deque.maxlen.getset_descriptor" => {
             Value::String("maximum size of a deque or None if unbounded".to_string())
@@ -66273,6 +66430,33 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && is_dict_view_type_object_name(&function_name) =>
         {
             Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "mapping" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::Builtin(format!(
+                "{function_name}.mapping.getset_descriptor"
+            )))
+        }
+        Value::Builtin(function_name)
+            if is_dict_view_type_object_name(&function_name)
+                && is_dict_view_type_method(&function_name, name) =>
+        {
+            let kind = dict_view_kind_from_type_object_name(&function_name)
+                .expect("dict view type object kind exists after guard");
+            if name == "__hash__" && dict_view_is_set_like(kind) {
+                Ok(Value::None)
+            } else {
+                Ok(Value::Builtin(format!("{function_name}.{name}")))
+            }
+        }
+        Value::Builtin(function_name)
+            if is_dict_view_type_object_name(&function_name)
+                && is_dict_view_set_like_only_method(name) =>
+        {
+            Err(format!(
+                "AttributeError: type object '{function_name}' has no attribute '{name}'"
+            ))
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "mappingproxy" =>

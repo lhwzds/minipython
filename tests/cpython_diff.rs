@@ -47610,6 +47610,37 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_dir_type_lookup_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public dict view dir and type lookup surface",
+        name: "dict-view-dir-type-lookup-surface",
+        source: r#"source = {'a': 1, 'b': 2}
+for label, view in [('keys', source.keys()), ('values', source.values()), ('items', source.items())]:
+    typ = type(view)
+    names = ['__base__', '__bases__', '__name__', '__module__', '__qualname__', '__iter__', '__len__', '__contains__', 'isdisjoint', 'mapping']
+    print(label, 'visible-type', *(name in dir(typ) for name in names))
+    print(label, 'visible-inst', *(name in dir(view) for name in names))
+    print(label, 'type-attr-has', hasattr(typ, 'mapping'), hasattr(typ, '__contains__'), hasattr(typ, 'isdisjoint'))
+    descriptor = typ.mapping
+    print(label, 'mapping-descriptor', type(descriptor).__name__, descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__.__name__, descriptor.__doc__)
+    proxy = descriptor.__get__(view, typ)
+    print(label, 'mapping-get', type(proxy).__name__, proxy['a'])
+try:
+    type(source.keys()).mapping.__get__(source.values(), type(source.values()))
+except Exception as error:
+    print('wrong-descriptor', error.__class__.__name__, str(error))
+try:
+    type(source.keys()).mapping.__set__(source.keys(), {})
+except Exception as error:
+    print('set-descriptor', error.__class__.__name__, str(error))
+try:
+    type(source.keys()).mapping.__delete__(source.keys())
+except Exception as error:
+    print('delete-descriptor', error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_type_text_signature_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view type text signature subset",

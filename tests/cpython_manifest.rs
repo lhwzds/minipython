@@ -5179,6 +5179,105 @@ fn dict_view_type_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_dir_type_lookup_surface_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_dict_view_dir_type_lookup_surface_subset";
+    let diff_name = "cpython_dict_view_dir_type_lookup_surface_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "focused dict view dir/type lookup subset evidence must exist"
+    );
+
+    for required in [
+        "source = {'a': 1, 'b': 2}",
+        "source.keys()",
+        "source.values()",
+        "source.items()",
+        "name in dir(typ)",
+        "name in dir(view)",
+        "hasattr(typ, 'mapping')",
+        "hasattr(typ, '__contains__')",
+        "hasattr(typ, 'isdisjoint')",
+        "descriptor = typ.mapping",
+        "descriptor.__name__",
+        "descriptor.__qualname__",
+        "descriptor.__objclass__.__name__",
+        "descriptor.__doc__",
+        "descriptor.__get__(view, typ)",
+        "type(source.keys()).mapping.__get__(source.values(), type(source.values()))",
+        "type(source.keys()).mapping.__set__(source.keys(), {})",
+        "type(source.keys()).mapping.__delete__(source.keys())",
+        "\"keys visible-type False False False False False True True True True True\"",
+        "\"values visible-type False False False False False True True False False True\"",
+        "\"items visible-type False False False False False True True True True True\"",
+        "\"keys type-attr-has True True True\"",
+        "\"values type-attr-has True False False\"",
+        "\"items type-attr-has True True True\"",
+        "\"keys mapping-descriptor getset_descriptor mapping dict_keys.mapping dict_keys dictionary that this view refers to\"",
+        "\"values mapping-descriptor getset_descriptor mapping dict_values.mapping dict_values dictionary that this view refers to\"",
+        "\"items mapping-descriptor getset_descriptor mapping dict_items.mapping dict_items dictionary that this view refers to\"",
+        "\"wrong-descriptor TypeError descriptor 'mapping' for 'dict_keys' objects doesn't apply to a 'dict_values' object\"",
+        "\"set-descriptor AttributeError attribute 'mapping' of 'dict_keys' objects is not writable\"",
+        "\"delete-descriptor AttributeError attribute 'mapping' of 'dict_keys' objects is not writable\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view dir/type lookup subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    for required in [
+        "CPython public dict view dir and type lookup surface",
+        "name: \"dict-view-dir-type-lookup-surface\"",
+        "name in dir(typ)",
+        "name in dir(view)",
+        "descriptor.__get__(view, typ)",
+        "type(source.keys()).mapping.__set__(source.keys(), {})",
+        "type(source.keys()).mapping.__delete__(source.keys())",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view dir/type lookup CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::DictView { kind, ordered, .. }",
+        "Value::MappingView { kind, .. }",
+        "fn dict_view_type_dir_method_names(",
+        "dict_view_type_dir_method_names(name)",
+        "fn is_dict_view_type_method(",
+        "fn is_dict_view_set_like_only_method(",
+        "fn dict_view_mapping_getset_descriptor_owner(",
+        "name == \"mapping\" && is_dict_view_type_object_name(&function_name)",
+        "is_dict_view_type_method(&function_name, name)",
+        "is_dict_view_set_like_only_method(name)",
+        "\"{function_name}.mapping.getset_descriptor\"",
+        "\"dictionary that this view refers to\"",
+        "descriptor 'mapping' for '{owner}' objects doesn't apply",
+        "attribute 'mapping' of '{owner}' objects is not writable",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view dir/type lookup implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name)
+                && document.contains(diff_name)
+                && document.contains("view dir and type lookup surface")
+                && document.contains("`dict_values.__contains__` remains")
+                && document.contains("absent")
+                && document.contains("`mapping` getset descriptor"),
+            "focused dict view dir/type lookup evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_type_text_signature_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_type_text_signature_subset(",
