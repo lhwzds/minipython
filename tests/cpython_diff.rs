@@ -32814,6 +32814,31 @@ for label, expr in [('missing', lambda: functools.itemgetter()), ('bad-index', l
 }
 
 #[test]
+fn cpython_functools_namedtuple_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public imported namedtuple alias subset",
+        name: "functools-namedtuple-alias",
+        source: r#"import collections, functools
+print(hasattr(functools, 'namedtuple'), 'namedtuple' in dir(functools), 'namedtuple' in functools.__dict__)
+print('all', 'namedtuple' in functools.__all__)
+print('identity', functools.namedtuple is collections.namedtuple)
+print('meta', functools.namedtuple.__name__, functools.namedtuple.__qualname__, functools.namedtuple.__module__)
+Point = functools.namedtuple('Point', 'x y')
+p = Point(3, 4)
+print('point', Point.__name__, p.x, p.y, p._fields, isinstance(p, tuple))
+print('asdict', p._asdict())
+for label, expr in [('missing', lambda: functools.namedtuple()), ('bad-typename', lambda: functools.namedtuple('1Bad', 'x'))]:
+    try:
+        expr()
+    except Exception as error:
+        if label == 'missing':
+            print(label, type(error).__name__)
+        else:
+            print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",

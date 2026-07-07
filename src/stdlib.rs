@@ -1010,6 +1010,10 @@ pub(crate) fn create_module(
                     Value::Builtin("functools.get_cache_token".to_string()),
                 ),
                 ("itemgetter", Value::Builtin("operator.itemgetter".to_string())),
+                (
+                    "namedtuple",
+                    Value::Builtin("collections.namedtuple".to_string()),
+                ),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",

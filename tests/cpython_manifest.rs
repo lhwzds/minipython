@@ -12690,6 +12690,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_get_cache_token_subset",
             "cpython_functools_get_cache_token_metadata_subset",
             "cpython_functools_itemgetter_alias_subset",
+            "cpython_functools_namedtuple_alias_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12727,6 +12728,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_get_cache_token_diff_subset",
         "cpython_functools_get_cache_token_metadata_diff_subset",
         "cpython_functools_itemgetter_alias_diff_subset",
+        "cpython_functools_namedtuple_alias_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12802,6 +12804,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && functools_registry.contains("Value::Builtin(\"operator.itemgetter\""),
         "functools stdlib module registry must expose operator.itemgetter alias"
     );
+    assert!(
+        functools_registry.contains("\"namedtuple\"")
+            && functools_registry.contains("Value::Builtin(\"collections.namedtuple\""),
+        "functools stdlib module registry must expose collections.namedtuple alias"
+    );
     let functools_all_start = STDLIB_SOURCE
         .find("const FUNCTOOLS_ALL")
         .expect("stdlib.rs must define FUNCTOOLS_ALL");
@@ -12818,6 +12825,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         !functools_all.contains("\"itemgetter\""),
         "functools.__all__ must not export itemgetter"
     );
+    assert!(
+        !functools_all.contains("\"namedtuple\""),
+        "functools.__all__ must not export namedtuple"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
@@ -12828,8 +12839,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_get_cache_token_metadata_diff_subset",
             "cpython_functools_itemgetter_alias_subset",
             "cpython_functools_itemgetter_alias_diff_subset",
+            "cpython_functools_namedtuple_alias_subset",
+            "cpython_functools_namedtuple_alias_diff_subset",
             "get_cache_token",
             "itemgetter",
+            "namedtuple",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {
@@ -12866,6 +12880,36 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             itemgetter_subset.contains(required),
             "functools itemgetter alias subset output must pin `{required}`"
+        );
+    }
+    let namedtuple_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_namedtuple_alias_diff_subset",
+    );
+    let namedtuple_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_namedtuple_alias_subset");
+    for required in [
+        "functools.namedtuple is collections.namedtuple",
+        "'namedtuple' in functools.__all__",
+        "functools.namedtuple.__name__",
+        "functools.namedtuple.__qualname__",
+        "functools.namedtuple.__module__",
+        "functools.namedtuple('Point', 'x y')",
+    ] {
+        assert!(
+            namedtuple_diff.contains(required) && namedtuple_subset.contains(required),
+            "functools namedtuple alias evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"identity True\"",
+        "\"meta namedtuple namedtuple collections\"",
+        "\"point Point 3 4 ('x', 'y') True\"",
+        "\"missing TypeError\"",
+    ] {
+        assert!(
+            namedtuple_subset.contains(required),
+            "functools namedtuple alias subset output must pin `{required}`"
         );
     }
     let get_cache_token_diff = extract_rust_test_body(
