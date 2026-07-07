@@ -12691,6 +12691,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_get_cache_token_metadata_subset",
             "cpython_functools_itemgetter_alias_subset",
             "cpython_functools_namedtuple_alias_subset",
+            "cpython_functools_mappingproxytype_alias_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12729,6 +12730,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_get_cache_token_metadata_diff_subset",
         "cpython_functools_itemgetter_alias_diff_subset",
         "cpython_functools_namedtuple_alias_diff_subset",
+        "cpython_functools_mappingproxytype_alias_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12809,6 +12811,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && functools_registry.contains("Value::Builtin(\"collections.namedtuple\""),
         "functools stdlib module registry must expose collections.namedtuple alias"
     );
+    assert!(
+        functools_registry.contains("\"MappingProxyType\"")
+            && functools_registry.contains("Value::Builtin(\"mappingproxy\""),
+        "functools stdlib module registry must expose MappingProxyType alias"
+    );
     let functools_all_start = STDLIB_SOURCE
         .find("const FUNCTOOLS_ALL")
         .expect("stdlib.rs must define FUNCTOOLS_ALL");
@@ -12829,6 +12836,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         !functools_all.contains("\"namedtuple\""),
         "functools.__all__ must not export namedtuple"
     );
+    assert!(
+        !functools_all.contains("\"MappingProxyType\""),
+        "functools.__all__ must not export MappingProxyType"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
@@ -12841,9 +12852,12 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_itemgetter_alias_diff_subset",
             "cpython_functools_namedtuple_alias_subset",
             "cpython_functools_namedtuple_alias_diff_subset",
+            "cpython_functools_mappingproxytype_alias_subset",
+            "cpython_functools_mappingproxytype_alias_diff_subset",
             "get_cache_token",
             "itemgetter",
             "namedtuple",
+            "MappingProxyType",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {
@@ -12910,6 +12924,38 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             namedtuple_subset.contains(required),
             "functools namedtuple alias subset output must pin `{required}`"
+        );
+    }
+    let mappingproxytype_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_mappingproxytype_alias_diff_subset",
+    );
+    let mappingproxytype_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_mappingproxytype_alias_subset",
+    );
+    for required in [
+        "functools.MappingProxyType is types.MappingProxyType",
+        "'MappingProxyType' in functools.__all__",
+        "functools.MappingProxyType.__name__",
+        "functools.MappingProxyType.__module__",
+        "functools.MappingProxyType(source)",
+    ] {
+        assert!(
+            mappingproxytype_diff.contains(required) && mappingproxytype_subset.contains(required),
+            "functools MappingProxyType alias evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"identity True\"",
+        "\"meta mappingproxy builtins\"",
+        "\"proxy 1 1 ['a']\"",
+        "\"live 2 [('a', 1), ('b', 2)]\"",
+        "\"missing TypeError\"",
+    ] {
+        assert!(
+            mappingproxytype_subset.contains(required),
+            "functools MappingProxyType alias subset output must pin `{required}`"
         );
     }
     let get_cache_token_diff = extract_rust_test_body(

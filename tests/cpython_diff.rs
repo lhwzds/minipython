@@ -32839,6 +32839,29 @@ for label, expr in [('missing', lambda: functools.namedtuple()), ('bad-typename'
 }
 
 #[test]
+fn cpython_functools_mappingproxytype_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public imported MappingProxyType alias subset",
+        name: "functools-mappingproxytype-alias",
+        source: r#"import functools, types
+print(hasattr(functools, 'MappingProxyType'), 'MappingProxyType' in dir(functools), 'MappingProxyType' in functools.__dict__)
+print('all', 'MappingProxyType' in functools.__all__)
+print('identity', functools.MappingProxyType is types.MappingProxyType)
+print('meta', functools.MappingProxyType.__name__, functools.MappingProxyType.__module__)
+source = {'a': 1}
+proxy = functools.MappingProxyType(source)
+print('proxy', proxy['a'], len(proxy), list(proxy.keys()))
+source['b'] = 2
+print('live', proxy['b'], sorted(proxy.items()))
+for label, expr in [('set', lambda: proxy.__setitem__('c', 3)), ('missing', lambda: functools.MappingProxyType())]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",

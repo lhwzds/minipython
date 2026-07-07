@@ -1014,6 +1014,10 @@ pub(crate) fn create_module(
                     "namedtuple",
                     Value::Builtin("collections.namedtuple".to_string()),
                 ),
+                (
+                    "MappingProxyType",
+                    Value::Builtin("mappingproxy".to_string()),
+                ),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",
