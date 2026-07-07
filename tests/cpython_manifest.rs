@@ -25794,6 +25794,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_display_metadata_subset",
             "cpython_operator_helper_type_dict_metadata_subset",
             "cpython_operator_helper_type_dict_text_signature_descriptor_subset",
+            "cpython_operator_helper_type_dict_repr_descriptor_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25962,6 +25963,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset"),
         "operator sandbox manifest must cite CPython helper type dict text-signature descriptor diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_repr_descriptor_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict repr descriptor diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28721,6 +28727,130 @@ fn operator_helper_type_dict_text_signature_descriptor_subset_has_focused_diff_e
             && CPYTHON_MIGRATION.contains("wrong-object `TypeError`")
             && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary"),
         "migration notes must describe operator helper type dict text-signature descriptor public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_repr_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_repr_descriptor_subset(",
+        "Adapted from CPython operator helper type `__dict__` `__repr__` wrapper",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__repr__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper) == repr(helper)",
+        "desc(42)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict repr descriptor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "attrgetter True wrapper_descriptor True __repr__ attrgetter.__repr__ True Return repr(self). ($self, /)",
+        "attrgetter <slot wrapper '__repr__' of 'operator.attrgetter' objects> True operator.attrgetter('name')",
+        "descriptor '__repr__' requires a 'operator.attrgetter' object but received a 'int'",
+        "itemgetter True wrapper_descriptor True __repr__ itemgetter.__repr__ True Return repr(self). ($self, /)",
+        "itemgetter <slot wrapper '__repr__' of 'operator.itemgetter' objects> True operator.itemgetter(0)",
+        "descriptor '__repr__' requires a 'operator.itemgetter' object but received a 'int'",
+        "methodcaller True wrapper_descriptor True __repr__ methodcaller.__repr__ True Return repr(self). ($self, /)",
+        "methodcaller <slot wrapper '__repr__' of 'operator.methodcaller' objects> True operator.methodcaller('strip')",
+        "descriptor '__repr__' requires a 'operator.methodcaller' object but received a 'int'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict repr descriptor subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_repr_descriptor_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ __repr__ wrapper descriptor subset",
+        "operator-helper-type-dict-repr-descriptor",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__repr__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper) == repr(helper)",
+        "desc(42)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict repr descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_operator_helper_repr_wrapper(",
+        "operator_helper_repr_wrapper_descriptor_name",
+        "operator_helper_repr_wrapper_operator_name",
+        "operator_helper_repr_wrapper_type_name",
+        "operator_helper_repr_wrapper_descriptor_applies",
+        "operator.attrgetter.__repr__",
+        "operator.itemgetter.__repr__",
+        "operator.methodcaller.__repr__",
+        "Value::String(\"__repr__\".to_string())",
+        "Value::Builtin(format!(\"{operator_name}.__repr__\"))",
+        "is_builtin_wrapper_descriptor_name(name)",
+        "descriptor '__repr__' requires a '{operator_name}' object",
+        "Ok(Value::String(format!(\"{receiver}\")))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict repr descriptor implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "operator_helper_repr_wrapper_descriptor_operator_name",
+        "<slot wrapper '__repr__' of '{operator_name}' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type dict repr descriptor display implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_dict_repr_descriptor_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_dict_repr_descriptor_diff_subset")
+            && CPYTHON_COVERAGE.contains("__dict__['__repr__']")
+            && CPYTHON_COVERAGE.contains("wrapper_descriptor")
+            && CPYTHON_COVERAGE.contains("direct-call `repr(self)`")
+            && CPYTHON_COVERAGE.contains("wrong-object `TypeError`")
+            && CPYTHON_COVERAGE.contains("remaining CPython descriptor dictionary entries"),
+        "coverage notes must describe operator helper type dict repr descriptor and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_dict_repr_descriptor_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_dict_repr_descriptor_diff_subset")
+            && CPYTHON_MIGRATION.contains("__dict__['__repr__']")
+            && CPYTHON_MIGRATION.contains("wrapper_descriptor")
+            && CPYTHON_MIGRATION.contains("direct-call `repr(self)`")
+            && CPYTHON_MIGRATION.contains("wrong-object `TypeError`")
+            && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary entries"),
+        "migration notes must describe operator helper type dict repr descriptor public behavior and direct diff evidence"
     );
 }
 

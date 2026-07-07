@@ -1656,6 +1656,13 @@ impl fmt::Display for Value {
                     "<slot wrapper '__init__' of 'collections.defaultdict' objects>"
                 )
             }
+            Value::Builtin(name)
+                if operator_helper_repr_wrapper_descriptor_operator_name(name).is_some() =>
+            {
+                let operator_name = operator_helper_repr_wrapper_descriptor_operator_name(name)
+                    .expect("guard checked operator helper repr wrapper descriptor");
+                write!(f, "<slot wrapper '__repr__' of '{operator_name}' objects>")
+            }
             Value::Builtin(name) if super_wrapper_descriptor_method_name(name).is_some() => {
                 let method = super_wrapper_descriptor_method_name(name)
                     .expect("guard checked super wrapper descriptor name");
@@ -2849,6 +2856,15 @@ fn super_wrapper_descriptor_method_name(name: &str) -> Option<&str> {
         "super.__get__" => Some("__get__"),
         "super.__repr__" => Some("__repr__"),
         "super.__getattribute__" => Some("__getattribute__"),
+        _ => None,
+    }
+}
+
+fn operator_helper_repr_wrapper_descriptor_operator_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__repr__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__repr__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__repr__" => Some("operator.methodcaller"),
         _ => None,
     }
 }

@@ -31217,6 +31217,24 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_dict_repr_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type __dict__ __repr__ wrapper descriptor subset",
+        name: "operator-helper-type-dict-repr-descriptor",
+        source: r#"import operator, types
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    desc = typ.__dict__['__repr__']
+    print(typ.__name__, '__repr__' in typ.__dict__, type(desc).__name__, isinstance(desc, types.WrapperDescriptorType), desc.__name__, desc.__qualname__, desc.__objclass__ is typ, desc.__doc__, desc.__text_signature__)
+    print(typ.__name__, repr(desc), desc(helper) == repr(helper), desc(helper))
+    try:
+        desc(42)
+    except TypeError as error:
+        print(typ.__name__, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

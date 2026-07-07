@@ -9634,6 +9634,11 @@ impl Vm {
                 call_int_base_builtin(self, &name, args, keywords)
             }
             Value::Builtin(name) if name == "pow" => self.call_pow(args, keywords),
+            Value::Builtin(name)
+                if operator_helper_repr_wrapper_descriptor_name(&name).is_some() =>
+            {
+                self.call_operator_helper_repr_wrapper(&name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("operator.") => {
                 self.call_operator_builtin(&name, args, keywords)
             }
@@ -18402,6 +18407,39 @@ impl Vm {
 
         let name = attribute_name_arg(name)?;
         self.load_attribute_without_custom_getattribute(receiver.clone(), &name)
+    }
+
+    fn call_operator_helper_repr_wrapper(
+        &mut self,
+        descriptor_name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: wrapper __repr__() takes no keyword arguments".to_string());
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            let operator_name = operator_helper_repr_wrapper_operator_name(descriptor_name)
+                .expect("guard checked operator helper repr wrapper descriptor");
+            return Err(format!(
+                "TypeError: descriptor '__repr__' of '{operator_name}' object needs an argument"
+            ));
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                rest.len()
+            ));
+        }
+        let operator_name = operator_helper_repr_wrapper_operator_name(descriptor_name)
+            .expect("guard checked operator helper repr wrapper descriptor");
+        if !operator_helper_repr_wrapper_descriptor_applies(operator_name, receiver) {
+            return Err(format!(
+                "TypeError: descriptor '__repr__' requires a '{operator_name}' object but received a '{}'",
+                type_name(receiver)
+            ));
+        }
+        Ok(Value::String(format!("{receiver}")))
     }
 
     fn call_method_get(
@@ -57070,6 +57108,42 @@ fn super_wrapper_descriptor_text_signature(name: &str) -> &'static str {
     }
 }
 
+fn operator_helper_repr_wrapper_descriptor_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__repr__" => Some("__repr__"),
+        "operator.itemgetter.__repr__" => Some("__repr__"),
+        "operator.methodcaller.__repr__" => Some("__repr__"),
+        _ => None,
+    }
+}
+
+fn operator_helper_repr_wrapper_operator_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__repr__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__repr__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__repr__" => Some("operator.methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_repr_wrapper_type_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__repr__" => Some("attrgetter"),
+        "operator.itemgetter.__repr__" => Some("itemgetter"),
+        "operator.methodcaller.__repr__" => Some("methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_repr_wrapper_descriptor_applies(operator_name: &str, object: &Value) -> bool {
+    matches!(
+        (operator_name, object),
+        ("operator.attrgetter", Value::OperatorAttrGetter { .. })
+            | ("operator.itemgetter", Value::OperatorItemGetter { .. })
+            | ("operator.methodcaller", Value::OperatorMethodCaller { .. })
+    )
+}
+
 fn super_member_descriptor(name: &str) -> Value {
     debug_assert!(is_super_member_descriptor_name(name));
     Value::MemberDescriptor {
@@ -67163,6 +67237,32 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 _ => unreachable!("guard checked super wrapper descriptor metadata"),
             }
         }
+        Value::Builtin(function_name)
+            if operator_helper_repr_wrapper_descriptor_name(&function_name).is_some()
+                && matches!(
+                    name,
+                    "__class__"
+                        | "__name__"
+                        | "__qualname__"
+                        | "__objclass__"
+                        | "__doc__"
+                        | "__text_signature__"
+                ) =>
+        {
+            let method_name = operator_helper_repr_wrapper_descriptor_name(&function_name)
+                .expect("guard checked operator helper repr wrapper descriptor");
+            let type_name = operator_helper_repr_wrapper_type_name(&function_name)
+                .expect("guard checked operator helper repr wrapper descriptor");
+            match name {
+                "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
+                "__name__" => Ok(Value::String(method_name.to_string())),
+                "__qualname__" => Ok(Value::String(format!("{type_name}.{method_name}"))),
+                "__objclass__" => Ok(Value::Builtin(type_name.to_string())),
+                "__doc__" => Ok(Value::String("Return repr(self).".to_string())),
+                "__text_signature__" => Ok(Value::String("($self, /)".to_string())),
+                _ => unreachable!("guard checked operator helper repr wrapper descriptor metadata"),
+            }
+        }
         Value::Builtin(function_name) if name == "__class__" => {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
             {
@@ -69997,6 +70097,10 @@ fn operator_helper_type_dict_value(name: &str) -> Value {
             Value::String(operator_builtin_doc(operator_name).to_string()),
         ),
         (
+            Value::String("__repr__".to_string()),
+            Value::Builtin(format!("{operator_name}.__repr__")),
+        ),
+        (
             Value::String("__text_signature__".to_string()),
             Value::Builtin(format!(
                 "{operator_name}.__text_signature__.getset_descriptor"
@@ -72343,6 +72447,9 @@ fn is_builtin_method_descriptor_name(name: &str) -> bool {
 }
 
 fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
+    if operator_helper_repr_wrapper_descriptor_name(name).is_some() {
+        return true;
+    }
     let Some((type_name, method)) = name.split_once('.') else {
         return false;
     };

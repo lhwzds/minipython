@@ -6421,7 +6421,17 @@ without adding general custom encoder/decoder class support.
   shape. Direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset`.
   This does not claim the remaining CPython descriptor dictionary entries such
-  as `__call__`, `__reduce__`, or `__repr__`.
+  as `__call__` or `__reduce__`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_dict_repr_descriptor_subset`, covering the
+  helper type `__dict__['__repr__']` wrapper_descriptor for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. The descriptor exposes CPython-aligned
+  public metadata, direct-call `repr(self)` behavior for helper instances, and
+  the CPython wrong-object `TypeError` shape. Direct CPython diff evidence is in
+  `cpython_operator_helper_type_dict_repr_descriptor_diff_subset`. This does
+  not claim the remaining CPython descriptor dictionary entries such as
+  `__call__` or `__reduce__`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
