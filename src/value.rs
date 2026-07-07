@@ -2807,6 +2807,15 @@ fn builtin_getset_descriptor_repr(name: &str) -> Option<&'static str> {
         "CellType.cell_contents.getset_descriptor" => {
             Some("<attribute 'cell_contents' of 'cell' objects>")
         }
+        "operator.attrgetter.__text_signature__.getset_descriptor" => {
+            Some("<attribute '__text_signature__' of 'operator.attrgetter' objects>")
+        }
+        "operator.itemgetter.__text_signature__.getset_descriptor" => {
+            Some("<attribute '__text_signature__' of 'operator.itemgetter' objects>")
+        }
+        "operator.methodcaller.__text_signature__.getset_descriptor" => {
+            Some("<attribute '__text_signature__' of 'operator.methodcaller' objects>")
+        }
         _ => None,
     }
 }

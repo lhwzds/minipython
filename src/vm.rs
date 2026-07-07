@@ -17554,6 +17554,22 @@ impl Vm {
                     .unwrap_or(Value::None))
             }
             CELL_CONTENTS_GETSET_DESCRIPTOR => cell_contents_getset_descriptor_get(object),
+            _ if operator_helper_text_signature_getset_descriptor_operator_name(
+                descriptor_name,
+            )
+            .is_some() =>
+            {
+                let operator_name =
+                    operator_helper_text_signature_getset_descriptor_operator_name(descriptor_name)
+                        .expect("operator helper text signature descriptor exists after guard");
+                if !operator_helper_text_signature_descriptor_applies(operator_name, object) {
+                    return Err(format!(
+                        "TypeError: descriptor '__text_signature__' for '{operator_name}' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                }
+                Ok(Value::String("(obj, /)".to_string()))
+            }
             _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
                 let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
                     .expect("dict view mapping descriptor owner exists after guard");
@@ -17611,6 +17627,18 @@ impl Vm {
                 cell_contents_getset_descriptor_set(object, value.clone())?;
                 Ok(Value::None)
             }
+            _ if operator_helper_text_signature_getset_descriptor_operator_name(
+                descriptor_name,
+            )
+            .is_some() =>
+            {
+                let operator_name =
+                    operator_helper_text_signature_getset_descriptor_operator_name(descriptor_name)
+                        .expect("operator helper text signature descriptor exists after guard");
+                Err(format!(
+                    "AttributeError: attribute '__text_signature__' of '{operator_name}' objects is not writable"
+                ))
+            }
             _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
                 let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
                     .expect("dict view mapping descriptor owner exists after guard");
@@ -17651,6 +17679,18 @@ impl Vm {
             CELL_CONTENTS_GETSET_DESCRIPTOR => {
                 cell_contents_getset_descriptor_delete(object)?;
                 Ok(Value::None)
+            }
+            _ if operator_helper_text_signature_getset_descriptor_operator_name(
+                descriptor_name,
+            )
+            .is_some() =>
+            {
+                let operator_name =
+                    operator_helper_text_signature_getset_descriptor_operator_name(descriptor_name)
+                        .expect("operator helper text signature descriptor exists after guard");
+                Err(format!(
+                    "AttributeError: attribute '__text_signature__' of '{operator_name}' objects is not writable"
+                ))
             }
             _ if dict_view_mapping_getset_descriptor_owner(descriptor_name).is_some() => {
                 let owner = dict_view_mapping_getset_descriptor_owner(descriptor_name)
@@ -58081,14 +58121,49 @@ fn dict_view_mapping_getset_descriptor_owner(name: &str) -> Option<&str> {
     is_dict_view_type_object_name(owner).then_some(owner)
 }
 
+fn operator_helper_text_signature_getset_descriptor_operator_name(
+    name: &str,
+) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__text_signature__.getset_descriptor" => Some("operator.attrgetter"),
+        "operator.itemgetter.__text_signature__.getset_descriptor" => Some("operator.itemgetter"),
+        "operator.methodcaller.__text_signature__.getset_descriptor" => {
+            Some("operator.methodcaller")
+        }
+        _ => None,
+    }
+}
+
+fn operator_helper_text_signature_getset_descriptor_type_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__text_signature__.getset_descriptor" => Some("attrgetter"),
+        "operator.itemgetter.__text_signature__.getset_descriptor" => Some("itemgetter"),
+        "operator.methodcaller.__text_signature__.getset_descriptor" => Some("methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_text_signature_descriptor_applies(operator_name: &str, object: &Value) -> bool {
+    matches!(
+        (operator_name, object),
+        ("operator.attrgetter", Value::OperatorAttrGetter { .. })
+            | ("operator.itemgetter", Value::OperatorItemGetter { .. })
+            | ("operator.methodcaller", Value::OperatorMethodCaller { .. })
+    )
+}
+
 fn is_builtin_getset_descriptor_name(name: &str) -> bool {
     matches!(
         name,
         "deque.maxlen.getset_descriptor" | CELL_CONTENTS_GETSET_DESCRIPTOR
     ) || dict_view_mapping_getset_descriptor_owner(name).is_some()
+        || operator_helper_text_signature_getset_descriptor_operator_name(name).is_some()
 }
 
 fn getset_descriptor_public_name(name: &str) -> String {
+    if operator_helper_text_signature_getset_descriptor_operator_name(name).is_some() {
+        return "__text_signature__".to_string();
+    }
     if dict_view_mapping_getset_descriptor_owner(name).is_some() {
         return "mapping".to_string();
     }
@@ -58100,6 +58175,9 @@ fn getset_descriptor_public_name(name: &str) -> String {
 }
 
 fn getset_descriptor_qualname(name: &str) -> String {
+    if let Some(owner) = operator_helper_text_signature_getset_descriptor_type_name(name) {
+        return format!("{owner}.__text_signature__");
+    }
     if let Some(owner) = dict_view_mapping_getset_descriptor_owner(name) {
         return format!("{owner}.mapping");
     }
@@ -58111,6 +58189,9 @@ fn getset_descriptor_qualname(name: &str) -> String {
 }
 
 fn getset_descriptor_owner_name(name: &str) -> String {
+    if let Some(owner) = operator_helper_text_signature_getset_descriptor_type_name(name) {
+        return owner.to_string();
+    }
     if let Some(owner) = dict_view_mapping_getset_descriptor_owner(name) {
         return owner.to_string();
     }
@@ -58122,6 +58203,9 @@ fn getset_descriptor_owner_name(name: &str) -> String {
 }
 
 fn getset_descriptor_doc_value(name: &str) -> Value {
+    if operator_helper_text_signature_getset_descriptor_operator_name(name).is_some() {
+        return Value::None;
+    }
     if dict_view_mapping_getset_descriptor_owner(name).is_some() {
         return Value::String("dictionary that this view refers to".to_string());
     }
@@ -69911,6 +69995,12 @@ fn operator_helper_type_dict_value(name: &str) -> Value {
         (
             Value::String("__doc__".to_string()),
             Value::String(operator_builtin_doc(operator_name).to_string()),
+        ),
+        (
+            Value::String("__text_signature__".to_string()),
+            Value::Builtin(format!(
+                "{operator_name}.__text_signature__.getset_descriptor"
+            )),
         ),
     ])
 }

@@ -31198,6 +31198,25 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type __dict__ __text_signature__ descriptor subset",
+        name: "operator-helper-type-dict-text-signature-descriptor",
+        source: r#"import operator, types
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    mapping = typ.__dict__
+    desc = mapping['__text_signature__']
+    print(typ.__name__, '__text_signature__' in mapping, type(desc).__name__, isinstance(desc, types.GetSetDescriptorType), desc.__name__, desc.__qualname__, desc.__objclass__ is typ, desc.__doc__)
+    print(typ.__name__, repr(desc), desc.__get__(None, typ) is desc, desc.__get__(helper, typ))
+    try:
+        desc.__get__(42, typ)
+    except TypeError as error:
+        print(typ.__name__, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

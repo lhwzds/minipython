@@ -25793,6 +25793,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_classinfo_metadata_subset",
             "cpython_operator_helper_type_display_metadata_subset",
             "cpython_operator_helper_type_dict_metadata_subset",
+            "cpython_operator_helper_type_dict_text_signature_descriptor_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25956,6 +25957,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_dict_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper type dict metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict text-signature descriptor diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28586,6 +28592,135 @@ fn operator_helper_type_dict_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__doc__")
             && CPYTHON_MIGRATION.contains("descriptor dictionary"),
         "migration notes must describe operator helper type dict metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_text_signature_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_text_signature_descriptor_subset(",
+        "Adapted from CPython operator helper type `__dict__` `__text_signature__`",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "mapping = typ.__dict__",
+        "desc = mapping['__text_signature__']",
+        "isinstance(desc, types.GetSetDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "repr(desc)",
+        "desc.__get__(None, typ) is desc",
+        "desc.__get__(helper, typ)",
+        "desc.__get__(42, typ)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict text-signature descriptor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "attrgetter True getset_descriptor True __text_signature__ attrgetter.__text_signature__ True None",
+        "attrgetter <attribute '__text_signature__' of 'operator.attrgetter' objects> True (obj, /)",
+        "descriptor '__text_signature__' for 'operator.attrgetter' objects doesn't apply to a 'int' object",
+        "itemgetter True getset_descriptor True __text_signature__ itemgetter.__text_signature__ True None",
+        "itemgetter <attribute '__text_signature__' of 'operator.itemgetter' objects> True (obj, /)",
+        "descriptor '__text_signature__' for 'operator.itemgetter' objects doesn't apply to a 'int' object",
+        "methodcaller True getset_descriptor True __text_signature__ methodcaller.__text_signature__ True None",
+        "methodcaller <attribute '__text_signature__' of 'operator.methodcaller' objects> True (obj, /)",
+        "descriptor '__text_signature__' for 'operator.methodcaller' objects doesn't apply to a 'int' object",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict text-signature descriptor subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ __text_signature__ descriptor subset",
+        "operator-helper-type-dict-text-signature-descriptor",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "mapping = typ.__dict__",
+        "desc = mapping['__text_signature__']",
+        "isinstance(desc, types.GetSetDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "repr(desc)",
+        "desc.__get__(None, typ) is desc",
+        "desc.__get__(helper, typ)",
+        "desc.__get__(42, typ)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict text-signature descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "operator_helper_text_signature_getset_descriptor_operator_name",
+        "operator_helper_text_signature_getset_descriptor_type_name",
+        "operator_helper_text_signature_descriptor_applies",
+        "operator.attrgetter.__text_signature__.getset_descriptor",
+        "operator.itemgetter.__text_signature__.getset_descriptor",
+        "operator.methodcaller.__text_signature__.getset_descriptor",
+        "Value::String(\"__text_signature__\".to_string())",
+        "{operator_name}.__text_signature__.getset_descriptor",
+        "descriptor '__text_signature__' for '{operator_name}' objects doesn't apply",
+        "attribute '__text_signature__' of '{operator_name}' objects is not writable",
+        "Ok(Value::String(\"(obj, /)\".to_string()))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict text-signature descriptor implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "<attribute '__text_signature__' of 'operator.attrgetter' objects>",
+        "<attribute '__text_signature__' of 'operator.itemgetter' objects>",
+        "<attribute '__text_signature__' of 'operator.methodcaller' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type dict text-signature descriptor repr must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE
+            .contains("cpython_operator_helper_type_dict_text_signature_descriptor_subset")
+            && CPYTHON_COVERAGE.contains(
+                "cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset",
+            )
+            && CPYTHON_COVERAGE.contains("__dict__['__text_signature__']")
+            && CPYTHON_COVERAGE.contains("getset_descriptor")
+            && CPYTHON_COVERAGE.contains("(obj, /)")
+            && CPYTHON_COVERAGE.contains("wrong-object `TypeError`")
+            && CPYTHON_COVERAGE.contains("remaining CPython descriptor dictionary"),
+        "coverage notes must describe operator helper type dict text-signature descriptor and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION
+            .contains("cpython_operator_helper_type_dict_text_signature_descriptor_subset")
+            && CPYTHON_MIGRATION.contains(
+                "cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset",
+            )
+            && CPYTHON_MIGRATION.contains("__dict__['__text_signature__']")
+            && CPYTHON_MIGRATION.contains("getset_descriptor")
+            && CPYTHON_MIGRATION.contains("(obj, /)")
+            && CPYTHON_MIGRATION.contains("wrong-object `TypeError`")
+            && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary"),
+        "migration notes must describe operator helper type dict text-signature descriptor public behavior and direct diff evidence"
     );
 }
 
