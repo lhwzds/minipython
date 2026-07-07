@@ -13561,6 +13561,30 @@ for label, obj in [
 }
 
 #[test]
+fn cpython_base_exception_method_descriptor_type_owner_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper method descriptor public type and owner metadata",
+        name: "base-exception-method-descriptor-type-owner-direct",
+        source: r#"def show(label, fn):
+    try:
+        value = fn()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+for label, obj in [
+    ('base-add', BaseException.add_note),
+    ('exception-add', Exception.add_note),
+    ('base-traceback', BaseException.with_traceback),
+    ('exception-traceback', Exception.with_traceback),
+]:
+    show(label + '-class', lambda obj=obj: obj.__class__.__name__)
+    show(label + '-objclass-is-base', lambda obj=obj: obj.__objclass__ is BaseException)
+    show(label + '-self', lambda obj=obj: obj.__self__)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

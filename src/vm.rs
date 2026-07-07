@@ -67560,6 +67560,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
             {
                 Ok(Value::Builtin("type".to_string()))
+            } else if exception_method_descriptor_name(&function_name).is_some()
+                || is_builtin_method_descriptor_name(&function_name)
+            {
+                Ok(Value::Builtin("method_descriptor".to_string()))
             } else if is_json_builtin(&function_name) {
                 Ok(Value::Builtin("function".to_string()))
             } else {
@@ -70247,6 +70251,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if exception_method_descriptor_name(&function_name).is_some() && name == "__module__" =>
         {
             Err("AttributeError: 'method_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some()
+                && name == "__objclass__" =>
+        {
+            Ok(Value::Builtin("BaseException".to_string()))
+        }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some() && name == "__self__" =>
+        {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__self__'"
                 .to_string())
         }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
@@ -74879,7 +74895,12 @@ fn type_name(value: &Value) -> &str {
             "classmethod_descriptor"
         }
         Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) => "wrapper_descriptor",
-        Value::Builtin(name) if is_builtin_method_descriptor_name(name) => "method_descriptor",
+        Value::Builtin(name)
+            if exception_method_descriptor_name(name).is_some()
+                || is_builtin_method_descriptor_name(name) =>
+        {
+            "method_descriptor"
+        }
         Value::Builtin(name)
             if is_json_builtin(name) || is_functools_recursive_repr_builtin_name(name) =>
         {

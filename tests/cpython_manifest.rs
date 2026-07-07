@@ -49297,6 +49297,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_with_traceback_subset",
             "cpython_base_exception_add_note_subset",
             "cpython_base_exception_method_descriptor_metadata_subset",
+            "cpython_base_exception_method_descriptor_type_owner_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
@@ -49430,6 +49431,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_with_traceback_diff_subset",
         "cpython_base_exception_add_note_diff_subset",
         "cpython_base_exception_method_descriptor_metadata_diff_subset",
+        "cpython_base_exception_method_descriptor_type_owner_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
@@ -61368,6 +61370,72 @@ fn base_exception_method_descriptor_metadata_subset_has_focused_diff_evidence() 
                 && document.contains("BaseException helper method descriptor metadata")
                 && document.contains("__text_signature__"),
             "focused BaseException method descriptor metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_method_descriptor_type_owner_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_method_descriptor_type_owner_subset(",
+        "BaseException.add_note",
+        "Exception.add_note",
+        "BaseException.with_traceback",
+        "Exception.with_traceback",
+        "__class__.__name__",
+        "__objclass__ is BaseException",
+        "__self__",
+        "'method_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException method descriptor type/owner subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_method_descriptor_type_owner_diff_subset",
+    );
+    for required in [
+        "BaseException helper method descriptor public type and owner metadata",
+        "BaseException.add_note",
+        "Exception.add_note",
+        "BaseException.with_traceback",
+        "Exception.with_traceback",
+        "__class__.__name__",
+        "__objclass__ is BaseException",
+        "__self__",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException method descriptor type/owner CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "exception_method_descriptor_name(&function_name).is_some()",
+        "Ok(Value::Builtin(\"method_descriptor\".to_string()))",
+        "name == \"__objclass__\"",
+        "Ok(Value::Builtin(\"BaseException\".to_string()))",
+        "name == \"__self__\"",
+        "'method_descriptor' object has no attribute '__self__'",
+        "exception_method_descriptor_name(name).is_some()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException method descriptor type/owner implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_method_descriptor_type_owner_subset")
+                && document
+                    .contains("cpython_base_exception_method_descriptor_type_owner_diff_subset")
+                && document.contains("BaseException helper method descriptor type/owner metadata")
+                && document.contains("__objclass__"),
+            "focused BaseException method descriptor type/owner evidence must be documented in coverage and migration notes"
         );
     }
 }
