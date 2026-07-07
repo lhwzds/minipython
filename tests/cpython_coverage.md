@@ -2072,6 +2072,15 @@ Recent runtime migration notes:
   `None`, returns the built-in-method repr shape for an empty format spec, and
   rejects non-empty specs, missing/extra args, and keyword args with CPython
   messages, including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_hash_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_hash_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__hash__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `method-wrapper` `__hash__` through
+  `dir()`; the wrapper has CPython `builtin_function_or_method.__hash__`
+  metadata, keeps `__module__` absent, hashes the helper bound method itself
+  rather than the exception receiver, and rejects extra and keyword arguments
+  with CPython messages, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_delattr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__delattr__` wrapper surface aligned with
@@ -2209,6 +2218,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_repr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_str_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_format_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_hash_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,
