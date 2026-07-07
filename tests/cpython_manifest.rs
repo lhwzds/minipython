@@ -52902,6 +52902,102 @@ fn map_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn map_reduce_setstate_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_map_reduce_setstate_type_dict_diff_subset";
+    let subset_name = "cpython_map_reduce_setstate_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "map __reduce__, __setstate__, and type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "map __reduce__, __setstate__, and type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def add(x, y):",
+        "m = map(add, [1, 2], [10])",
+        "namespace = map.__dict__",
+        "r = m.__reduce__()",
+        "map.__setstate__(m, True)",
+        "m = map(add, [1, 2], [10], strict=True)",
+        "m.__setstate__(False)",
+        "namespace['__reduce__'](map(add, [1], [2]))",
+        "'__reduce__' in dir(map)",
+        "'__setstate__' in dir(map)",
+        "'__reduce__' in dir(map(add, []))",
+        "'__setstate__' in dir(map(add, []))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "map __reduce__, __setstate__, and type __dict__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dict-type mappingproxy True True True True True\"",
+        "\"fresh True 2 3 ['function', 'list_iterator', 'list_iterator']\"",
+        "\"set-true None 11\"",
+        "\"strict-error ValueError map() argument 2 is shorter than argument 1\"",
+        "\"strict-fresh True 3 3 True\"",
+        "\"set-false None 11\"",
+        "\"loose-stop StopIteration True\"",
+        "\"dict-call True True 2 3\"",
+        "\"dir-methods True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "map __reduce__, __setstate__, and type __dict__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn map_type_dict_value(",
+        "fn map_iterator_protocol_method(",
+        "fn call_map_iterator_setstate(",
+        "fn map_iterator_setstate_receiver_error(",
+        "Value::MapIterator {\n                function,\n                iterators,\n                strict,\n            } => {",
+        "let mut args = vec![*function];",
+        "items.push(Value::Bool(true));",
+        "*current = strict;",
+        "map_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"map\" && matches!(name, \"__reduce__\" | \"__setstate__\")",
+        "name == \"__dict__\" && function_name == \"map\"",
+        "Ok(map_type_dict_value())",
+        "\"map\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
+        "\"map.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "map __reduce__, __setstate__, and type __dict__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "map",
+            "`__reduce__`",
+            "`__setstate__`",
+            "function plus iterators",
+            "strict state",
+            "`__dict__` mappingproxy",
+            "visibility in",
+            "`dir(map)`",
+            "`dir(map(...))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "map __reduce__, __setstate__, and type __dict__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn filter_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_filter_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_filter_type_metadata_dir_surface_subset";
@@ -53247,7 +53343,7 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "\"filter\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"zip\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
-        "\"map\" => &[\"__iter__\", \"__next__\"]",
+        "\"map\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
         "is_builtin_iterator_type_name(&function_name)",
         "matches!(name, \"__iter__\" | \"__next__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53263,7 +53359,8 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "Value::ZipIterator { iterators, strict } =>",
         "zip_iterator_protocol_method(Value::ZipIterator { iterators, strict }, name)",
-        "iterator_protocol_method(",
+        "Value::MapIterator {\n            function,\n            iterators,\n            strict,\n        } => map_iterator_protocol_method(",
+        "map_iterator_protocol_method(Value::Iterator(state), name)",
         "\"map\"",
         "\"filter\"",
     ] {
@@ -53481,7 +53578,7 @@ fn callable_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"callable_iterator\" => vec![builtin_type_value(\"object\")]",
         "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"zip\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
-        "\"map\" => &[\"__iter__\", \"__next__\"]",
+        "\"map\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. })",
         "Value::CallIterator { .. } => names.extend(builtin_type_dir_names(\"callable_iterator\"))",
         "| \"callable_iterator\"\n            | \"range_iterator\"",

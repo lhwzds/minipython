@@ -16909,6 +16909,37 @@ print('iter-kept', iter(inst) is inst, next(map(lambda x: x + 1, [1])), list(map
 }
 
 #[test]
+fn cpython_map_reduce_setstate_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public map __reduce__, __setstate__, and type __dict__ surface",
+        name: "map-reduce-setstate-type-dict",
+        source: r#"def add(x, y):
+    return x + y
+m = map(add, [1, 2], [10])
+namespace = map.__dict__
+print('dict-type', type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__reduce__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+r = m.__reduce__()
+print('fresh', r[0] is map, len(r), len(r[1]), [type(value).__name__ for value in r[1]])
+print('set-true', map.__setstate__(m, True), next(m))
+try:
+    next(m)
+except Exception as error:
+    print('strict-error', type(error).__name__, str(error))
+m = map(add, [1, 2], [10], strict=True)
+r = m.__reduce__()
+print('strict-fresh', r[0] is map, len(r), len(r[1]), r[2])
+print('set-false', m.__setstate__(False), next(m))
+try:
+    next(m)
+except Exception as error:
+    print('loose-stop', type(error).__name__, str(error) == '')
+r = namespace['__reduce__'](map(add, [1], [2]))
+print('dict-call', namespace['__iter__'](m) is m, r[0] is map, len(r), len(r[1]))
+print('dir-methods', '__reduce__' in dir(map), '__setstate__' in dir(map), '__reduce__' in dir(map(add, [])), '__setstate__' in dir(map(add, [])))"#,
+    });
+}
+
+#[test]
 fn cpython_filter_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public filter type metadata dir surface",

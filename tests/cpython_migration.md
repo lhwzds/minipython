@@ -934,6 +934,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `map.__bases__`, `map.__module__`, and `map.__qualname__` directly readable,
   preserving existing `map(lambda x: x + 1, [1])` iteration behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_map_reduce_setstate_type_dict_subset` and
+  `cpython_map_reduce_setstate_type_dict_diff_subset` for map `__reduce__`
+  returning the function plus iterators, map `__setstate__` strict state
+  toggling, map type `__dict__` mappingproxy entries, and `__reduce__` /
+  `__setstate__` visibility in `dir(map)` and `dir(map(...))`, without
+  widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_filter_type_metadata_dir_surface_subset` and
   `cpython_filter_type_metadata_dir_surface_diff_subset` for `dir(filter)` and
   `dir(filter(...))` hiding type metadata names while keeping `filter.__base__`,
