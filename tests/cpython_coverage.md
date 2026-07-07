@@ -2108,6 +2108,15 @@ Recent runtime migration notes:
   `builtin_function_or_method` metadata, keep `__module__` absent, return
   `NotImplemented` for helper bound methods and non-method values, and
   preserve CPython argument errors, including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_sizeof_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_sizeof_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__sizeof__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `builtin_function_or_method`
+  `__sizeof__` through `dir()`; the wrapper has CPython
+  `builtin_function_or_method.__sizeof__` metadata, keeps `__module__` as
+  `None`, returns a non-negative integer size, and preserves CPython argument
+  errors, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_delattr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__delattr__` wrapper surface aligned with
@@ -2249,6 +2258,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_eq_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_ne_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_order_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_sizeof_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,

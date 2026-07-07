@@ -49312,6 +49312,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_eq_wrapper_subset",
             "cpython_base_exception_bound_method_ne_wrapper_subset",
             "cpython_base_exception_bound_method_order_wrapper_subset",
+            "cpython_base_exception_bound_method_sizeof_wrapper_subset",
             "cpython_base_exception_bound_method_delattr_wrapper_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
@@ -49468,6 +49469,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_eq_wrapper_diff_subset",
         "cpython_base_exception_bound_method_ne_wrapper_diff_subset",
         "cpython_base_exception_bound_method_order_wrapper_diff_subset",
+        "cpython_base_exception_bound_method_sizeof_wrapper_diff_subset",
         "cpython_base_exception_bound_method_delattr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
@@ -62281,6 +62283,86 @@ fn base_exception_bound_method_order_wrapper_subset_has_focused_diff_evidence() 
                 && document.contains("BaseException helper bound method ordering wrapper")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method ordering wrapper evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_sizeof_wrapper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_sizeof_wrapper_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "obj.__sizeof__",
+        "'__sizeof__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__qualname__",
+        "getattr(wrapper, '__text_signature__', 'MISSING')",
+        "wrapper.__module__",
+        "builtin_function_or_method.__sizeof__",
+        "Size of object in memory, in bytes.",
+        "wrapper()",
+        "wrapper(1)",
+        "wrapper(value=1)",
+        "IndexError-with_traceback True builtin_function_or_method builtin_function_or_method",
+        "IndexError-with_traceback empty int True True",
+        "IndexError-with_traceback extra TypeError builtin_function_or_method.__sizeof__() takes no arguments (1 given)",
+        "IndexError-with_traceback kw TypeError builtin_function_or_method.__sizeof__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __sizeof__ wrapper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_sizeof_wrapper_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __sizeof__ wrapper surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "obj.__sizeof__",
+        "'__sizeof__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "getattr(wrapper, '__text_signature__', 'MISSING')",
+        "wrapper.__module__",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __sizeof__ wrapper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "builtin_function_or_method.__sizeof__",
+        "fn call_builtin_function_or_method_sizeof(",
+        "Size of object in memory, in bytes.",
+        "builtin_function_or_method.__sizeof__() takes no arguments",
+        "builtin_function_or_method.__sizeof__() takes no keyword arguments",
+        "\"__sizeof__\" if is_exception_helper_bound_method",
+        "exception_bound_method_dir_names",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __sizeof__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_sizeof_wrapper_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_sizeof_wrapper_diff_subset")
+                && document.contains("BaseException helper bound method `__sizeof__` wrapper")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __sizeof__ wrapper evidence must be documented in coverage and migration notes"
         );
     }
 }

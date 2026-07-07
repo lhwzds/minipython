@@ -10222,6 +10222,9 @@ impl Vm {
             Value::Builtin(name) if name == "object.__sizeof__" => {
                 self.call_object_sizeof(args, keywords)
             }
+            Value::Builtin(name) if name == "builtin_function_or_method.__sizeof__" => {
+                self.call_builtin_function_or_method_sizeof(args, keywords)
+            }
             Value::Builtin(name) if name == "defaultdict.__getattribute__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -16901,6 +16904,40 @@ impl Vm {
         if !rest.is_empty() {
             return Err(format!(
                 "TypeError: object.__sizeof__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        Ok(Value::Number(24))
+    }
+
+    fn call_builtin_function_or_method_sizeof(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: builtin_function_or_method.__sizeof__() takes no keyword arguments"
+                    .to_string(),
+            );
+        }
+
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        };
+        if !is_exception_helper_bound_method_value(receiver) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: builtin_function_or_method.__sizeof__() takes no arguments ({} given)",
                 rest.len()
             ));
         }
@@ -67486,6 +67523,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 })
             }
+            "__sizeof__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(
+                        "builtin_function_or_method.__sizeof__".to_string(),
+                    )),
+                    receiver: Box::new(Value::BoundMethod {
+                        function,
+                        receiver,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             "__init_subclass__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("method.__init_subclass__".to_string())),
@@ -67812,6 +67862,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__getstate__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "builtin_function_or_method.__sizeof__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -71086,6 +71141,31 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("($self, /)".to_string()))
         }
+        Value::Builtin(function_name)
+            if name == "__qualname__"
+                && function_name == "builtin_function_or_method.__sizeof__" =>
+        {
+            Ok(Value::String(
+                "builtin_function_or_method.__sizeof__".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__"
+                && function_name == "builtin_function_or_method.__sizeof__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "builtin_function_or_method.__sizeof__" =>
+        {
+            Ok(Value::String("Size of object in memory, in bytes.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && function_name == "builtin_function_or_method.__sizeof__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__get__" => {
             Ok(Value::String("method.__get__".to_string()))
         }
@@ -71362,6 +71442,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
         "__reduce__",
         "__reduce_ex__",
         "__setattr__",
+        "__sizeof__",
         "__subclasshook__",
         "__text_signature__",
     ]
