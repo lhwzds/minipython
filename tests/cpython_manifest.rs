@@ -25790,6 +25790,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_instance_text_signature_metadata_subset",
             "cpython_operator_helper_type_metadata_subset",
             "cpython_operator_helper_type_hierarchy_metadata_subset",
+            "cpython_operator_helper_type_classinfo_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25938,6 +25939,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_hierarchy_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper type hierarchy metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_classinfo_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type classinfo metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28255,6 +28261,116 @@ fn operator_helper_type_hierarchy_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__mro__")
             && CPYTHON_MIGRATION.contains("metadata-only"),
         "migration notes must describe operator helper type hierarchy metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_classinfo_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_classinfo_metadata_subset(",
+        "Adapted from CPython operator helper type classinfo behavior.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "isinstance(helper, typ)",
+        "isinstance(typ, type)",
+        "issubclass(typ, typ)",
+        "issubclass(typ, object)",
+        "issubclass(object, typ)",
+        "typ.__type_params__",
+        "class X(typ):",
+        "type('X', (typ,), {})",
+        "type 'operator.",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type classinfo metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter True True True True ()\"",
+        "\"attrgetter True True True False\"",
+        "\"attrgetter-class TypeError type 'operator.attrgetter' is not an acceptable base type",
+        "\"itemgetter True True True True ()\"",
+        "\"itemgetter True True True False\"",
+        "\"itemgetter-class TypeError type 'operator.itemgetter' is not an acceptable base type",
+        "\"methodcaller True True True True ()\"",
+        "\"methodcaller True True True False\"",
+        "\"methodcaller-class TypeError type 'operator.methodcaller' is not an acceptable base type",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type classinfo metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_classinfo_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper type classinfo metadata subset",
+        "operator-helper-type-classinfo-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "isinstance(helper, typ)",
+        "isinstance(typ, type)",
+        "issubclass(typ, typ)",
+        "issubclass(typ, object)",
+        "issubclass(object, typ)",
+        "typ.__type_params__",
+        "class X(typ):",
+        "type('X', (typ,), {})",
+        "type 'operator.",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type classinfo metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "is_operator_helper_type_name(name)",
+        "is_class_base_builtin_type(name: &str)",
+        "fn final_builtin_base_public_name(name: &str) -> &str",
+        "\"attrgetter\" => \"operator.attrgetter\"",
+        "\"itemgetter\" => \"operator.itemgetter\"",
+        "\"methodcaller\" => \"operator.methodcaller\"",
+        "fn is_final_builtin_type(name: &str) -> bool",
+        "return true;",
+        "fn is_builtin_type_object_name(name: &str) -> bool",
+        "\"attrgetter\" => matches!(subject, Value::OperatorAttrGetter { .. })",
+        "\"itemgetter\" => matches!(subject, Value::OperatorItemGetter { .. })",
+        "\"methodcaller\" => matches!(subject, Value::OperatorMethodCaller { .. })",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type classinfo metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_classinfo_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_classinfo_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper type classinfo metadata")
+            && CPYTHON_COVERAGE.contains("isinstance")
+            && CPYTHON_COVERAGE.contains("issubclass")
+            && CPYTHON_COVERAGE.contains("__type_params__")
+            && CPYTHON_COVERAGE.contains("not an acceptable base type"),
+        "coverage notes must describe operator helper type classinfo metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_classinfo_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_classinfo_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("helper type classinfo metadata")
+            && CPYTHON_MIGRATION.contains("isinstance")
+            && CPYTHON_MIGRATION.contains("issubclass")
+            && CPYTHON_MIGRATION.contains("__type_params__")
+            && CPYTHON_MIGRATION.contains("not an acceptable base type"),
+        "migration notes must describe operator helper type classinfo metadata public behavior and direct diff evidence"
     );
 }
 

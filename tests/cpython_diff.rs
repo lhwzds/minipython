@@ -31143,6 +31143,32 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_classinfo_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type classinfo metadata subset",
+        name: "operator-helper-type-classinfo-metadata",
+        source: r#"import operator
+def report(label, callback, expected):
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), error.args, str(error) == expected)
+    else:
+        print(label, 'ok')
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    print(typ.__name__, isinstance(helper, typ), isinstance(helper, object), isinstance(typ, type), isinstance(typ, object), typ.__type_params__)
+    print(typ.__name__, issubclass(typ, typ), issubclass(typ, object), issubclass(typ, (object,)), issubclass(object, typ))
+    expected = "type 'operator." + typ.__name__ + "' is not an acceptable base type"
+    def class_stmt():
+        class X(typ):
+            pass
+    report(typ.__name__ + '-class', class_stmt, expected)
+    report(typ.__name__ + '-type', lambda: type('X', (typ,), {}), expected)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

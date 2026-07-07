@@ -42834,6 +42834,7 @@ fn base_is_generic_alias(base: &Value) -> bool {
 
 fn is_class_base_builtin_type(name: &str) -> bool {
     is_class_like_builtin(name)
+        || is_operator_helper_type_name(name)
         || matches!(
             name,
             "async_generator"
@@ -42989,11 +42990,17 @@ fn contains_unlisted_type_param(value: &Value, type_params: &[Value]) -> bool {
 fn final_builtin_base_public_name(name: &str) -> &str {
     match name {
         "CellType" => "cell",
+        "attrgetter" => "operator.attrgetter",
+        "itemgetter" => "operator.itemgetter",
+        "methodcaller" => "operator.methodcaller",
         _ => name,
     }
 }
 
 fn is_final_builtin_type(name: &str) -> bool {
+    if is_operator_helper_type_name(name) {
+        return true;
+    }
     matches!(
         name,
         "bool"
@@ -57864,6 +57871,7 @@ fn metaclass_special_method(value: &Value, method_name: &str) -> Option<Value> {
 fn is_builtin_type_object_name(name: &str) -> bool {
     is_class_like_builtin(name)
         || is_typing_type_object_name(name)
+        || is_operator_helper_type_name(name)
         || matches!(
             name,
             "NoneType"
@@ -93751,6 +93759,9 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             matches!(subject, Value::Class { .. })
                 || matches!(subject, Value::Builtin(name) if is_builtin_type_object_name(name))
         }
+        "attrgetter" => matches!(subject, Value::OperatorAttrGetter { .. }),
+        "itemgetter" => matches!(subject, Value::OperatorItemGetter { .. }),
+        "methodcaller" => matches!(subject, Value::OperatorMethodCaller { .. }),
         name if is_ast_type_name(name) => {
             let kind = ast_builtin_kind(name).expect("guard checked AST builtin kind");
             match subject {

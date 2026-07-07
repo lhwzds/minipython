@@ -6381,6 +6381,17 @@ without adding general custom encoder/decoder class support.
   metadata-only and does not expand helper construction, pickle, or C-layout
   compatibility.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_classinfo_metadata_subset`, covering helper type classinfo metadata for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`: `isinstance(helper, type(helper))`,
+  `isinstance(type(helper), type)`, `issubclass(type(helper), object)`,
+  self-`issubclass` checks, empty `__type_params__`, and CPython's
+  `type 'operator.attrgetter' is not an acceptable base type` style rejection
+  for class and `type(...)` construction attempts. Direct CPython diff evidence
+  is in `cpython_operator_helper_type_classinfo_metadata_diff_subset`. This
+  keeps helper types usable as classinfo without expanding them into acceptable
+  user-class bases.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
   CPython's `operator` `__module__`, `__name__`, `__qualname__`, first-line
