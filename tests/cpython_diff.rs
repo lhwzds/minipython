@@ -16865,6 +16865,35 @@ print('iter-kept', iter(inst) is inst, next(zip([1], [2])), list(zip([1], [2], s
 }
 
 #[test]
+fn cpython_zip_reduce_setstate_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public zip __reduce__, __setstate__, and type __dict__ surface",
+        name: "zip-reduce-setstate-type-dict",
+        source: r#"z = zip([1, 2], [10])
+namespace = zip.__dict__
+print('dict-type', type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__reduce__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+r = z.__reduce__()
+print('fresh', r[0] is zip, len(r), len(r[1]), [type(value).__name__ for value in r[1]])
+print('set-true', zip.__setstate__(z, True), next(z))
+try:
+    next(z)
+except Exception as error:
+    print('strict-error', type(error).__name__, str(error))
+z = zip([1, 2], [10], strict=True)
+r = z.__reduce__()
+print('strict-fresh', r[0] is zip, len(r), len(r[1]), r[2])
+print('set-false', z.__setstate__(False), next(z))
+try:
+    next(z)
+except Exception as error:
+    print('loose-stop', type(error).__name__, str(error) == '')
+r = namespace['__reduce__'](zip([1], [2]))
+print('dict-call', namespace['__iter__'](z) is z, r[0] is zip, len(r), len(r[1]))
+print('dir-methods', '__reduce__' in dir(zip), '__setstate__' in dir(zip), '__reduce__' in dir(zip([], [])), '__setstate__' in dir(zip([], [])))"#,
+    });
+}
+
+#[test]
 fn cpython_map_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public map type metadata dir surface",

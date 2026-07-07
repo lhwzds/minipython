@@ -52714,6 +52714,99 @@ fn zip_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn zip_reduce_setstate_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_zip_reduce_setstate_type_dict_diff_subset";
+    let subset_name = "cpython_zip_reduce_setstate_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "zip __reduce__, __setstate__, and type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "zip __reduce__, __setstate__, and type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "z = zip([1, 2], [10])",
+        "namespace = zip.__dict__",
+        "r = z.__reduce__()",
+        "zip.__setstate__(z, True)",
+        "z = zip([1, 2], [10], strict=True)",
+        "z.__setstate__(False)",
+        "namespace['__reduce__'](zip([1], [2]))",
+        "'__reduce__' in dir(zip)",
+        "'__setstate__' in dir(zip)",
+        "'__reduce__' in dir(zip([], []))",
+        "'__setstate__' in dir(zip([], []))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "zip __reduce__, __setstate__, and type __dict__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dict-type mappingproxy True True True True True\"",
+        "\"fresh True 2 2 ['list_iterator', 'list_iterator']\"",
+        "\"set-true None (1, 10)\"",
+        "\"strict-error ValueError zip() argument 2 is shorter than argument 1\"",
+        "\"strict-fresh True 3 2 True\"",
+        "\"set-false None (1, 10)\"",
+        "\"loose-stop StopIteration True\"",
+        "\"dict-call True True 2 2\"",
+        "\"dir-methods True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "zip __reduce__, __setstate__, and type __dict__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn zip_type_dict_value(",
+        "fn zip_iterator_protocol_method(",
+        "fn call_zip_iterator_setstate(",
+        "fn zip_iterator_setstate_receiver_error(",
+        "Value::ZipIterator { iterators, strict } => {",
+        "items.push(Value::Bool(true));",
+        "*current = strict;",
+        "zip_iterator_protocol_method(Value::Iterator(state), name)",
+        "function_name == \"zip\" && matches!(name, \"__reduce__\" | \"__setstate__\")",
+        "name == \"__dict__\" && function_name == \"zip\"",
+        "Ok(zip_type_dict_value())",
+        "\"zip\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
+        "\"zip.__setstate__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "zip __reduce__, __setstate__, and type __dict__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "zip",
+            "`__reduce__`",
+            "`__setstate__`",
+            "strict state",
+            "`__dict__` mappingproxy",
+            "visibility in",
+            "`dir(zip)`",
+            "`dir(zip(...))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "zip __reduce__, __setstate__, and type __dict__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn map_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_map_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_map_type_metadata_dir_surface_subset";
@@ -53153,7 +53246,8 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"filter\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
-        "\"zip\" | \"map\" => &[\"__iter__\", \"__next__\"]",
+        "\"zip\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
+        "\"map\" => &[\"__iter__\", \"__next__\"]",
         "is_builtin_iterator_type_name(&function_name)",
         "matches!(name, \"__iter__\" | \"__next__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53168,7 +53262,7 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "Value::CallIterator { .. } => names.extend(builtin_type_dir_names(\"callable_iterator\"))",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "Value::ZipIterator { iterators, strict } =>",
-        "iterator_protocol_method(\"zip\", Value::ZipIterator { iterators, strict }, name)",
+        "zip_iterator_protocol_method(Value::ZipIterator { iterators, strict }, name)",
         "iterator_protocol_method(",
         "\"map\"",
         "\"filter\"",
@@ -53386,7 +53480,8 @@ fn callable_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
         "name == \"callable_iterator\"",
         "\"callable_iterator\" => vec![builtin_type_value(\"object\")]",
         "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
-        "\"zip\" | \"map\" => &[\"__iter__\", \"__next__\"]",
+        "\"zip\" => &[\"__iter__\", \"__next__\", \"__reduce__\", \"__setstate__\"]",
+        "\"map\" => &[\"__iter__\", \"__next__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. })",
         "Value::CallIterator { .. } => names.extend(builtin_type_dir_names(\"callable_iterator\"))",
         "| \"callable_iterator\"\n            | \"range_iterator\"",

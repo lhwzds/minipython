@@ -29525,6 +29525,15 @@ impl Vm {
                 };
                 self.call_iterator_reduce(receiver.clone())
             }
+            "__setstate__" if name == "zip.__setstate__" => {
+                let [receiver, state] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: zip.__setstate__() takes exactly one argument ({} given)",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_zip_iterator_setstate(receiver.clone(), state.clone())
+            }
             "__setstate__" if name == "arrayiterator.__setstate__" => {
                 let [receiver, index] = args.as_slice() else {
                     return Err(format!(
@@ -35136,6 +35145,16 @@ impl Vm {
                     tuple_value(vec![*iterator, normalize_big_int(index)]),
                 ]));
             }
+            Value::ZipIterator { iterators, strict } => {
+                let mut items = vec![
+                    Value::Builtin("zip".to_string()),
+                    tuple_value(iterators.into_iter().collect()),
+                ];
+                if strict {
+                    items.push(Value::Bool(true));
+                }
+                return Ok(tuple_value(items));
+            }
             Value::FilterIterator { function, iterator } => {
                 return Ok(tuple_value(vec![
                     Value::Builtin("filter".to_string()),
@@ -35166,6 +35185,30 @@ impl Vm {
             }
         };
         self.iterator_reduce_result(sequence, index)
+    }
+
+    fn call_zip_iterator_setstate(
+        &mut self,
+        receiver: Value,
+        state: Value,
+    ) -> Result<Value, String> {
+        let strict = self.truth_value(state)?;
+        match receiver {
+            Value::Iterator(shared) => {
+                let mut iterator = shared.borrow_mut();
+                if let Value::ZipIterator {
+                    strict: current, ..
+                } = &mut *iterator
+                {
+                    *current = strict;
+                    Ok(Value::None)
+                } else {
+                    Err(zip_iterator_setstate_receiver_error(&*iterator))
+                }
+            }
+            Value::ZipIterator { .. } => Ok(Value::None),
+            value => Err(zip_iterator_setstate_receiver_error(&value)),
+        }
     }
 
     fn call_array_iterator_setstate(
@@ -43067,6 +43110,28 @@ fn filter_type_dict_value() -> Value {
         (
             Value::String("__reduce__".to_string()),
             Value::Builtin("filter.__reduce__".to_string()),
+        ),
+    ])
+}
+
+fn zip_type_dict_value() -> Value {
+    mapping_proxy_from_entries(vec![
+        (Value::String("__doc__".to_string()), Value::None),
+        (
+            Value::String("__iter__".to_string()),
+            Value::Builtin("zip.__iter__".to_string()),
+        ),
+        (
+            Value::String("__next__".to_string()),
+            Value::Builtin("zip.__next__".to_string()),
+        ),
+        (
+            Value::String("__reduce__".to_string()),
+            Value::Builtin("zip.__reduce__".to_string()),
+        ),
+        (
+            Value::String("__setstate__".to_string()),
+            Value::Builtin("zip.__setstate__".to_string()),
         ),
     ])
 }
@@ -55726,7 +55791,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "enumerate" => &["__class_getitem__", "__iter__", "__next__", "__reduce__"],
         "filter" => &["__iter__", "__next__", "__reduce__"],
         "callable_iterator" => &["__iter__", "__next__", "__reduce__"],
-        "zip" | "map" => &["__iter__", "__next__"],
+        "zip" => &["__iter__", "__next__", "__reduce__", "__setstate__"],
+        "map" => &["__iter__", "__next__"],
         "range_iterator" => &[
             "__iter__",
             "__next__",
@@ -60948,6 +61014,17 @@ fn iterator_protocol_method(type_name: &str, receiver: Value, name: &str) -> Res
     }
 }
 
+fn zip_iterator_protocol_method(receiver: Value, name: &str) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__reduce__" | "__setstate__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("zip.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        }),
+        _ => Err(format!("AttributeError: zip has no attribute '{name}'")),
+    }
+}
+
 fn length_hint_iterator_protocol_method(
     type_name: &str,
     receiver: Value,
@@ -61152,6 +61229,13 @@ fn array_iterator_setstate_index(value: &Value) -> Result<usize, String> {
 fn array_iterator_setstate_receiver_error(value: &Value) -> String {
     format!(
         "TypeError: descriptor '__setstate__' for 'array.arrayiterator' objects doesn't apply to a '{}' object",
+        type_name(value)
+    )
+}
+
+fn zip_iterator_setstate_receiver_error(value: &Value) -> String {
+    format!(
+        "TypeError: descriptor '__setstate__' for 'zip' objects doesn't apply to a '{}' object",
         type_name(value)
     )
 }
@@ -65745,7 +65829,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name,
         ),
         Value::ZipIterator { iterators, strict } => {
-            iterator_protocol_method("zip", Value::ZipIterator { iterators, strict }, name)
+            zip_iterator_protocol_method(Value::ZipIterator { iterators, strict }, name)
         }
         Value::ItertoolsRepeat { value, remaining } => length_hint_iterator_protocol_method(
             "repeat",
@@ -65822,6 +65906,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 is_str_iterator,
                 is_list_reverseiterator,
                 is_reversed_iterator,
+                is_zip,
                 is_filter,
                 is_call_iterator,
                 has_length_hint,
@@ -65848,6 +65933,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 let is_list_reverseiterator = matches!(&*iterator, Value::ReverseIterator { .. });
                 let is_reversed_iterator =
                     matches!(&*iterator, Value::SequenceReverseIterator { .. });
+                let is_zip = matches!(&*iterator, Value::ZipIterator { .. });
                 let is_filter = matches!(&*iterator, Value::FilterIterator { .. });
                 let is_call_iterator = matches!(&*iterator, Value::CallIterator { .. });
                 let reduce_type_name = match &*iterator {
@@ -65870,6 +65956,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     is_str_iterator,
                     is_list_reverseiterator,
                     is_reversed_iterator,
+                    is_zip,
                     is_filter,
                     is_call_iterator,
                     iterator_has_length_hint(&iterator),
@@ -65906,6 +65993,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 list_reverseiterator_protocol_method(Value::Iterator(state), name)
             } else if is_reversed_iterator {
                 reversed_iterator_protocol_method(Value::Iterator(state), name)
+            } else if is_zip {
+                zip_iterator_protocol_method(Value::Iterator(state), name)
             } else if name == "__reduce__" && is_filter {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("filter.__reduce__".to_string())),
@@ -66823,6 +66912,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "enumerate" && name == "__reduce__" => {
             Ok(Value::Builtin("enumerate.__reduce__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "zip" && matches!(name, "__reduce__" | "__setstate__") =>
+        {
+            Ok(Value::Builtin(format!("zip.{name}")))
         }
         Value::Builtin(function_name) if function_name == "filter" && name == "__reduce__" => {
             Ok(Value::Builtin("filter.__reduce__".to_string()))
@@ -67830,6 +67924,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__dict__" && function_name == "enumerate" => {
             Ok(enumerate_type_dict_value())
+        }
+        Value::Builtin(function_name) if name == "__dict__" && function_name == "zip" => {
+            Ok(zip_type_dict_value())
         }
         Value::Builtin(function_name) if name == "__dict__" && function_name == "filter" => {
             Ok(filter_type_dict_value())
@@ -89824,7 +89921,8 @@ fn is_iterator_protocol_method(name: &str) -> bool {
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
     ) || matches!(
         name,
-        "arrayiterator.__setstate__"
+        "zip.__setstate__"
+            | "arrayiterator.__setstate__"
             | "range_iterator.__setstate__"
             | "list_iterator.__setstate__"
             | "list_reverseiterator.__setstate__"

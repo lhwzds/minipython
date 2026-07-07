@@ -947,6 +947,12 @@ Recent runtime migration notes:
   `zip.__bases__`, `zip.__module__`, and `zip.__qualname__` directly readable,
   preserves existing `zip(..., strict=True)` behavior, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- `cpython_zip_reduce_setstate_type_dict_subset`, backed by
+  `cpython_zip_reduce_setstate_type_dict_diff_subset`, now pins zip
+  `__reduce__`, zip `__setstate__` strict state toggling, zip type `__dict__`
+  mappingproxy entries, and `__reduce__` / `__setstate__` visibility in
+  `dir(zip)` and `dir(zip(...))`, without widening host IO, network, process,
+  C ABI, or full stdlib scope.
 - `cpython_map_type_metadata_dir_surface_subset`, backed by
   `cpython_map_type_metadata_dir_surface_diff_subset`, now pins `dir(map)` and
   `dir(map(...))` hiding type metadata names while keeping `map.__base__`,
