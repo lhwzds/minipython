@@ -67714,6 +67714,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__str__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -70769,6 +70774,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__text_signature__" && function_name == "method.__repr__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__str__" =>
+        {
+            Ok(Value::String("object.__str__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__str__" => {
+            Ok(Value::String("Return str(self).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__str__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
         }
@@ -73918,6 +73936,7 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
             | "method.__init__"
             | "method.__repr__"
             | "method.__setattr__"
+            | "method.__str__"
     ) || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)

@@ -13697,6 +13697,37 @@ fn cpython_base_exception_bound_method_repr_wrapper_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_str_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __str__ wrapper surface",
+        name: "base-exception-bound-method-str-wrapper-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        wrapper = obj.__str__
+        label = exc.__class__.__name__ + '-' + attr
+        print(label + '-in-dir', '__str__' in dir(obj))
+        try:
+            module = wrapper.__module__
+            print(label + '-module', type(module).__name__, module)
+        except Exception as error:
+            print(label + '-module', type(error).__name__, str(error), error.args)
+        print(label + '-attr', type(wrapper).__name__, wrapper.__class__.__name__, wrapper.__self__ is obj, wrapper.__name__, wrapper.__qualname__, wrapper.__text_signature__, bool(wrapper.__doc__))
+        rendered = wrapper()
+        print(label + '-call0', type(rendered).__name__, rendered.startswith('<built-in method ' + attr + ' of ' + exc.__class__.__name__ + ' object at 0x'), rendered.endswith('>'), attr in rendered)
+        for call_label, call in [
+            ('extra', lambda wrapper=wrapper: wrapper(1)),
+            ('kw', lambda wrapper=wrapper: wrapper(x=1)),
+        ]:
+            try:
+                result = call()
+                print(label + '-' + call_label, type(result).__name__, repr(result))
+            except Exception as error:
+                print(label + '-' + call_label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_func_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __func__ absence",
