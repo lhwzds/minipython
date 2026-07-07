@@ -16918,14 +16918,53 @@ print('dict-call', namespace['__iter__'](f) is f, namespace['__reduce__'](f)[0] 
 }
 
 #[test]
+fn cpython_callable_iterator_reduce_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public callable_iterator __reduce__ and type __dict__ surface",
+        name: "callable-iterator-reduce-type-dict",
+        source: r#"def make():
+    return 1
+
+def make_counter():
+    values = [1, 2]
+    def next_value():
+        return values.pop(0)
+    return next_value
+
+it = iter(make, 2)
+typ = type(it)
+namespace = typ.__dict__
+print('dict-type', typ.__name__, type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__reduce__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+r = it.__reduce__()
+print('fresh', r[0] is iter, type(r[1][0]).__name__, r[1][1], len(r), len(r[1]))
+next(it)
+r = typ.__reduce__(it)
+print('after1', r[0] is iter, type(r[1][0]).__name__, r[1][1], len(r), len(r[1]))
+done = iter(make_counter(), 2)
+print('done-next', next(done))
+try:
+    next(done)
+except StopIteration:
+    print('done-stopped')
+r = done.__reduce__()
+print('done', r[0] is iter, r[1] == ((),), len(r), len(r[1]))
+print('dir-reduce', '__reduce__' in dir(typ), '__reduce__' in dir(iter(make, 2)), '__setstate__' in dir(typ), '__setstate__' in dir(iter(make, 2)))
+r = namespace['__reduce__'](iter(make, 2))
+print('dict-call', namespace['__iter__'](it) is it, r[0] is iter, type(r[1][0]).__name__, r[1][1])"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_iterator_dir_protocol_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public builtin iterator dir protocol method visibility",
         name: "builtin-iterator-dir-protocol-methods",
-        source: r#"items = [('enumerate', enumerate, enumerate(['a'])), ('zip', zip, zip([1], [2])), ('map', map, map(lambda x: x + 1, [1])), ('filter', filter, filter(None, [0, 1]))]
+        source: r#"def make():
+    return 1
+items = [('enumerate', enumerate, enumerate(['a'])), ('zip', zip, zip([1], [2])), ('map', map, map(lambda x: x + 1, [1])), ('filter', filter, filter(None, [0, 1])), ('callable_iterator', type(iter(make, 2)), iter(make, 2))]
 for label, typ, inst in items:
     print(label, '__iter__' in dir(typ), '__next__' in dir(typ), '__iter__' in dir(inst), '__next__' in dir(inst), hasattr(typ, '__iter__'), hasattr(typ, '__next__'), hasattr(inst, '__iter__'), hasattr(inst, '__next__'), iter(inst) is inst)
-print('direct-next', enumerate.__next__(enumerate(['a'])), zip.__next__(zip([1], [2])), map.__next__(map(lambda x: x + 1, [1])), filter.__next__(filter(None, [0, 1])))"#,
+print('direct-next', enumerate.__next__(enumerate(['a'])), zip.__next__(zip([1], [2])), map.__next__(map(lambda x: x + 1, [1])), filter.__next__(filter(None, [0, 1])), type(iter(make, 2)).__next__(iter(make, 2)))"#,
     });
 }
 

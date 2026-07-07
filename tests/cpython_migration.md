@@ -940,15 +940,24 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   mappingproxy entries, and `__reduce__` visibility in `dir(filter)` and
   `dir(filter(...))`, without widening host IO, network, process, C ABI, or
   full stdlib scope.
+- Added `cpython_callable_iterator_reduce_type_dict_subset` and
+  `cpython_callable_iterator_reduce_type_dict_diff_subset` for
+  callable_iterator `__reduce__` on `iter(make, 2)` returning the
+  callable plus sentinel, exhausted callable iterators reducing through `iter(())`,
+  callable_iterator type `__dict__` mappingproxy entries, and `__reduce__`
+  visibility in `dir(type(iter(...)))` and `dir(iter(callable, sentinel))`,
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 - Added `cpython_builtin_iterator_dir_protocol_methods_subset` and
   `cpython_builtin_iterator_dir_protocol_methods_diff_subset` for
   `dir(enumerate)`, `dir(enumerate(...))`, `dir(zip)`, `dir(zip(...))`,
-  `dir(map)`, `dir(map(...))`, `dir(filter)`, and `dir(filter(...))` exposing
+  `dir(map)`, `dir(map(...))`, `dir(filter)`, `dir(filter(...))`,
+  `dir(type(iter(...)))`, and `dir(iter(callable, sentinel))` exposing
   `__iter__` and `__next__`, plus direct protocol dispatch through
   `enumerate.__next__(enumerate(['a']))`, `zip.__next__(zip([1], [2]))`,
-  `map.__next__(map(lambda x: x + 1, [1]))`, and
-  `filter.__next__(filter(None, [0, 1]))`, without widening host IO, network,
-  process, C ABI, or full stdlib scope.
+  `map.__next__(map(lambda x: x + 1, [1]))`,
+  `filter.__next__(filter(None, [0, 1]))`, and
+  `type(iter(make, 2)).__next__(iter(make, 2))`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - Added `cpython_builtin_iterator_type_dict_mappingproxy_surface_subset` and
   `cpython_builtin_iterator_type_dict_mappingproxy_surface_diff_subset` for the
   builtin iterator type `__dict__` mappingproxy surface across sequence,

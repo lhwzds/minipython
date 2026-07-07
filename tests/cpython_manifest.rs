@@ -52999,6 +52999,101 @@ fn filter_reduce_type_dict_docs_cover_core_runtime() {
 }
 
 #[test]
+fn callable_iterator_reduce_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_callable_iterator_reduce_type_dict_diff_subset";
+    let subset_name = "cpython_callable_iterator_reduce_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "callable_iterator __reduce__ and type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "callable_iterator __reduce__ and type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def make():",
+        "def make_counter():",
+        "it = iter(make, 2)",
+        "typ = type(it)",
+        "namespace = typ.__dict__",
+        "r = it.__reduce__()",
+        "r = typ.__reduce__(it)",
+        "done = iter(make_counter(), 2)",
+        "r = done.__reduce__()",
+        "r[1] == ((),)",
+        "'__reduce__' in dir(typ)",
+        "'__reduce__' in dir(iter(make, 2))",
+        "'__setstate__' in dir(typ)",
+        "namespace['__iter__'](it) is it",
+        "namespace['__reduce__'](iter(make, 2))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "callable_iterator __reduce__ and type __dict__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"dict-type callable_iterator mappingproxy True True True False True\"",
+        "\"fresh True function 2 2 2\"",
+        "\"after1 True function 2 2 2\"",
+        "\"done-next 1\"",
+        "\"done-stopped\"",
+        "\"done True True 2 1\"",
+        "\"dir-reduce True True False False\"",
+        "\"dict-call True True function 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "callable_iterator __reduce__ and type __dict__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn callable_iterator_type_dict_value(",
+        "Value::Builtin(\"callable_iterator.__reduce__\".to_string())",
+        "Value::CallIterator {\n                callable,\n                sentinel,\n                done,\n            } => {",
+        "tuple_value(vec![*callable, *sentinel])",
+        "self.iterator_reduce_result(tuple_value(Vec::new()), None)",
+        "Value::CallIterator {\n            callable,\n            sentinel,\n            done,\n        } if name == \"__reduce__\"",
+        "name == \"__reduce__\" && is_call_iterator",
+        "function_name == \"callable_iterator\" && name == \"__reduce__\"",
+        "name == \"__dict__\" && function_name == \"callable_iterator\"",
+        "Ok(callable_iterator_type_dict_value())",
+        "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "callable_iterator __reduce__ and type __dict__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "callable_iterator",
+            "`iter(make, 2)`",
+            "`__reduce__`",
+            "callable plus sentinel",
+            "`iter(())`",
+            "`__dict__` mappingproxy",
+            "visibility in",
+            "`dir(type(iter(...)))`",
+            "`dir(iter(callable, sentinel))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "callable_iterator __reduce__ and type __dict__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
     let diff_name = "cpython_builtin_iterator_dir_protocol_methods_diff_subset";
     let subset_name = "cpython_builtin_iterator_dir_protocol_methods_subset";
@@ -53013,10 +53108,12 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
     );
 
     for required in [
+        "def make():",
         "('enumerate', enumerate, enumerate(['a']))",
         "('zip', zip, zip([1], [2]))",
         "('map', map, map(lambda x: x + 1, [1]))",
         "('filter', filter, filter(None, [0, 1]))",
+        "('callable_iterator', type(iter(make, 2)), iter(make, 2))",
         "'__iter__' in dir(typ)",
         "'__next__' in dir(typ)",
         "'__iter__' in dir(inst)",
@@ -53030,6 +53127,7 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "zip.__next__(zip([1], [2]))",
         "map.__next__(map(lambda x: x + 1, [1]))",
         "filter.__next__(filter(None, [0, 1]))",
+        "type(iter(make, 2)).__next__(iter(make, 2))",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -53042,7 +53140,8 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "\"zip True True True True True True True True True\"",
         "\"map True True True True True True True True True\"",
         "\"filter True True True True True True True True True\"",
-        "\"direct-next (0, 'a') (1, 2) 2 1\"",
+        "\"callable_iterator True True True True True True True True True\"",
+        "\"direct-next (0, 'a') (1, 2) 2 1 1\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -53053,7 +53152,8 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
     for required in [
         "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"filter\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
-        "\"zip\" | \"map\" | \"callable_iterator\" => &[\"__iter__\", \"__next__\"]",
+        "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+        "\"zip\" | \"map\" => &[\"__iter__\", \"__next__\"]",
         "is_builtin_iterator_type_name(&function_name)",
         "matches!(name, \"__iter__\" | \"__next__\")",
         "Ok(Value::Builtin(format!(\"{function_name}.{name}\")))",
@@ -53061,9 +53161,11 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::ZipIterator { .. })",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::MapIterator { .. })",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::FilterIterator { .. })",
+        "Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. })",
         "Value::ZipIterator { .. } => names.extend(builtin_type_dir_names(\"zip\"))",
         "Value::MapIterator { .. } => names.extend(builtin_type_dir_names(\"map\"))",
         "Value::FilterIterator { .. } => names.extend(builtin_type_dir_names(\"filter\"))",
+        "Value::CallIterator { .. } => names.extend(builtin_type_dir_names(\"callable_iterator\"))",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "Value::ZipIterator { iterators, strict } =>",
         "iterator_protocol_method(\"zip\", Value::ZipIterator { iterators, strict }, name)",
@@ -53089,12 +53191,15 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
             "`dir(map(...))`",
             "`dir(filter)`",
             "`dir(filter(...))`",
+            "`dir(type(iter(...)))`",
+            "`dir(iter(callable, sentinel))`",
             "`__iter__`",
             "`__next__`",
             "`enumerate.__next__(enumerate(['a']))`",
             "`zip.__next__(zip([1], [2]))`",
             "`map.__next__(map(lambda x: x + 1, [1]))`",
             "`filter.__next__(filter(None, [0, 1]))`",
+            "`type(iter(make, 2)).__next__(iter(make, 2))`",
             "without widening host IO, network, process, C ABI, or full stdlib scope",
         ] {
             assert!(
@@ -53280,7 +53385,8 @@ fn callable_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     for required in [
         "name == \"callable_iterator\"",
         "\"callable_iterator\" => vec![builtin_type_value(\"object\")]",
-        "\"zip\" | \"map\" | \"filter\" | \"callable_iterator\" => &[\"__iter__\", \"__next__\"]",
+        "\"callable_iterator\" => &[\"__iter__\", \"__next__\", \"__reduce__\"]",
+        "\"zip\" | \"map\" => &[\"__iter__\", \"__next__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::CallIterator { .. })",
         "Value::CallIterator { .. } => names.extend(builtin_type_dir_names(\"callable_iterator\"))",
         "| \"callable_iterator\"\n            | \"range_iterator\"",
