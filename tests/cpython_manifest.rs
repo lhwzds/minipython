@@ -12693,6 +12693,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_namedtuple_alias_subset",
             "cpython_functools_mappingproxytype_alias_subset",
             "cpython_functools_genericalias_alias_subset",
+            "cpython_functools_recursive_repr_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12733,6 +12734,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_namedtuple_alias_diff_subset",
         "cpython_functools_mappingproxytype_alias_diff_subset",
         "cpython_functools_genericalias_alias_diff_subset",
+        "cpython_functools_recursive_repr_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12823,6 +12825,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && functools_registry.contains("builtin_type_value(\"GenericAlias\")"),
         "functools stdlib module registry must expose GenericAlias alias"
     );
+    assert!(
+        functools_registry.contains("\"recursive_repr\"")
+            && functools_registry.contains("Value::Builtin(\"functools.recursive_repr\""),
+        "functools stdlib module registry must expose recursive_repr"
+    );
     let functools_all_start = STDLIB_SOURCE
         .find("const FUNCTOOLS_ALL")
         .expect("stdlib.rs must define FUNCTOOLS_ALL");
@@ -12851,6 +12858,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         !functools_all.contains("\"GenericAlias\""),
         "functools.__all__ must not export GenericAlias"
     );
+    assert!(
+        !functools_all.contains("\"recursive_repr\""),
+        "functools.__all__ must not export recursive_repr"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
@@ -12867,11 +12878,14 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_mappingproxytype_alias_diff_subset",
             "cpython_functools_genericalias_alias_subset",
             "cpython_functools_genericalias_alias_diff_subset",
+            "cpython_functools_recursive_repr_subset",
+            "cpython_functools_recursive_repr_diff_subset",
             "get_cache_token",
             "itemgetter",
             "namedtuple",
             "MappingProxyType",
             "GenericAlias",
+            "recursive_repr",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {
@@ -13001,6 +13015,38 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             genericalias_subset.contains(required),
             "functools GenericAlias alias subset output must pin `{required}`"
+        );
+    }
+    let recursive_repr_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_recursive_repr_diff_subset");
+    let recursive_repr_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_recursive_repr_subset");
+    for required in [
+        "functools.recursive_repr.__module__",
+        "functools.recursive_repr.__defaults__",
+        "@functools.recursive_repr()",
+        "@functools.recursive_repr('<rec>')",
+        "hasattr(f, '__wrapped__')",
+        "callable(f)",
+        "repr(C())",
+        "functools.recursive_repr(extra=1)",
+    ] {
+        assert!(
+            recursive_repr_diff.contains(required) && recursive_repr_subset.contains(required),
+            "functools recursive_repr evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"meta function reprlib recursive_repr recursive_repr ('...',)\"",
+        "\"wrapped function f __main__ f True True\"",
+        "\"call x...y\"",
+        "\"custom g<rec>\"",
+        "\"class C(<self>)\"",
+        "\"unexpected TypeError recursive_repr() got an unexpected keyword argument 'extra'\"",
+    ] {
+        assert!(
+            recursive_repr_subset.contains(required),
+            "functools recursive_repr subset output must pin `{required}`"
         );
     }
     let get_cache_token_diff = extract_rust_test_body(

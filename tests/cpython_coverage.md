@@ -5122,6 +5122,14 @@ without adding general custom encoder/decoder class support.
   module visibility, exclusion from `functools.__all__`, object identity,
   `__name__` / `__module__` metadata, explicit `GenericAlias(list, (int,))`
   construction, `list[int]` origin/args, and argument error diagnostics.
+- `cpython_functools_recursive_repr_subset`, backed by
+  `cpython_functools_recursive_repr_diff_subset`, covers the public
+  `functools.recursive_repr` imported helper, including module visibility,
+  exclusion from `functools.__all__`, function metadata inherited from
+  `reprlib.recursive_repr`, default and custom fill values, `__wrapped__`
+  propagation, callable wrapper metadata, single-argument recursion
+  protection for direct calls and class `__repr__` binding, and representative
+  missing-argument / unexpected-keyword diagnostics.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython

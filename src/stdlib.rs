@@ -1019,6 +1019,10 @@ pub(crate) fn create_module(
                     Value::Builtin("mappingproxy".to_string()),
                 ),
                 ("GenericAlias", builtin_type_value("GenericAlias")),
+                (
+                    "recursive_repr",
+                    Value::Builtin("functools.recursive_repr".to_string()),
+                ),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",
@@ -2705,7 +2709,9 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),
-        Value::Function { .. } => "function",
+        Value::Function { .. }
+        | Value::RecursiveReprDecorator { .. }
+        | Value::RecursiveReprWrapper { .. } => "function",
         Value::TypesCoroutineFunction { function, .. } => stdlib_type_name(function),
         Value::MagicMock { .. } => "MagicMock",
         Value::MockMethod { .. } => "MagicMock",

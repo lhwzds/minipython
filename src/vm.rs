@@ -8512,6 +8512,65 @@ impl Vm {
         })
     }
 
+    fn call_functools_recursive_repr(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fillvalue = bind_keyword_call("recursive_repr", &["fillvalue"], 0, args, keywords)?
+            .into_iter()
+            .next()
+            .flatten()
+            .unwrap_or_else(|| Value::String("...".to_string()));
+        Ok(Value::RecursiveReprDecorator {
+            fillvalue: Box::new(fillvalue),
+            identity: Rc::new(()),
+        })
+    }
+
+    fn call_functools_recursive_repr_decorator(
+        &mut self,
+        fillvalue: Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let values =
+            bind_keyword_call("decorating_function", &["user_function"], 1, args, keywords)?;
+        let function = values[0]
+            .clone()
+            .expect("required user_function is validated by bind_keyword_call");
+        let wrapper = Value::RecursiveReprWrapper {
+            function: Box::new(function.clone()),
+            fillvalue: Box::new(fillvalue),
+            active: Rc::new(RefCell::new(HashSet::new())),
+            attrs: new_scope(),
+            identity: Rc::new(()),
+        };
+        self.call_functools_update_wrapper(vec![wrapper, function], Vec::new())
+    }
+
+    fn call_functools_recursive_repr_wrapper(
+        &mut self,
+        function: Value,
+        fillvalue: Value,
+        active: Rc<RefCell<HashSet<u64>>>,
+        attrs: Scope,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let name = function_like_display_name(&attrs, "wrapper");
+        let receiver = bind_recursive_repr_self_argument(&name, args, keywords)?;
+        let key = identity_bits(&receiver);
+        if active.borrow().contains(&key) {
+            return Ok(fillvalue);
+        }
+
+        active.borrow_mut().insert(key);
+        let result = self.call_value(function, vec![receiver]);
+        active.borrow_mut().remove(&key);
+        result
+    }
+
     fn call_functools_total_ordering(
         &mut self,
         args: Vec<Value>,
@@ -9132,6 +9191,18 @@ impl Vm {
             Value::FunctoolsPlaceholder => {
                 Err("'functools._PlaceholderType' object is not callable".to_string())
             }
+            Value::RecursiveReprDecorator { fillvalue, .. } => {
+                self.call_functools_recursive_repr_decorator(*fillvalue, args, keywords)
+            }
+            Value::RecursiveReprWrapper {
+                function,
+                fillvalue,
+                active,
+                attrs,
+                ..
+            } => self.call_functools_recursive_repr_wrapper(
+                *function, *fillvalue, active, attrs, args, keywords,
+            ),
             Value::NewType { name, .. } => call_new_type_object(&name, args, keywords),
             Value::MagicMock {
                 calls, side_effect, ..
@@ -9350,6 +9421,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "functools.wraps" => {
                 self.call_functools_wraps(args, keywords)
+            }
+            Value::Builtin(name) if name == "functools.recursive_repr" => {
+                self.call_functools_recursive_repr(args, keywords)
             }
             Value::Builtin(name) if name == "functools.total_ordering" => {
                 self.call_functools_total_ordering(args, keywords)
@@ -43038,6 +43112,57 @@ fn function_qualname_string(
     format!("{owner_qualname}.{function_name}")
 }
 
+fn function_like_display_name(attrs: &Scope, fallback: &str) -> String {
+    let attrs = attrs.borrow();
+    match attrs.get(FUNCTION_QUALNAME_ATTR) {
+        Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => {
+            return value.clone();
+        }
+        _ => {}
+    }
+    for name in ["__qualname__", "__name__"] {
+        match attrs.get(name) {
+            Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => {
+                return value.clone();
+            }
+            _ => {}
+        }
+    }
+    fallback.to_string()
+}
+
+fn bind_recursive_repr_self_argument(
+    function_name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if args.len() > 1 {
+        return Err(format!(
+            "TypeError: {function_name}() takes 1 positional argument but {} were given",
+            args.len()
+        ));
+    }
+
+    let mut receiver = args.into_iter().next();
+    for (keyword, value) in keywords {
+        if keyword != "self" {
+            return Err(format!(
+                "TypeError: {function_name}() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        if receiver.is_some() {
+            return Err(format!(
+                "TypeError: {function_name}() got multiple values for argument 'self'"
+            ));
+        }
+        receiver = Some(value);
+    }
+
+    receiver.ok_or_else(|| {
+        format!("TypeError: {function_name}() missing 1 required positional argument: 'self'")
+    })
+}
+
 fn function_qualname_value(
     function_name: &str,
     attrs: &Scope,
@@ -54905,7 +55030,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Builtin(name)
             if is_builtins_builtin_function_name(name)
                 || is_sys_breakpointhook_builtin_name(name)
-                || is_functools_get_cache_token_builtin_name(name) =>
+                || is_functools_get_cache_token_builtin_name(name)
+                || is_functools_recursive_repr_builtin_name(name) =>
         {
             names.extend(builtin_function_dir_names())
         }
@@ -54919,7 +55045,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("maxlen".to_string());
             }
         }
-        Value::Function { attrs, .. } => {
+        Value::Function { attrs, .. } | Value::RecursiveReprWrapper { attrs, .. } => {
             names.extend(function_custom_attribute_names(attrs));
             names.extend(
                 [
@@ -62257,6 +62383,45 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
     }
 }
 
+fn load_recursive_repr_wrapper_attribute(function: Value, name: &str) -> Result<Value, String> {
+    let Value::RecursiveReprWrapper { attrs, .. } = &function else {
+        unreachable!("caller passes a recursive_repr wrapper value")
+    };
+
+    match name {
+        "__name__" => Ok(attrs
+            .borrow()
+            .get("__name__")
+            .cloned()
+            .unwrap_or_else(|| Value::String("wrapper".to_string()))),
+        "__qualname__" => Ok(Value::String(function_like_display_name(attrs, "wrapper"))),
+        "__module__" => Ok(attrs
+            .borrow()
+            .get("__module__")
+            .cloned()
+            .unwrap_or_else(|| Value::String("__main__".to_string()))),
+        "__doc__" => Ok(attrs
+            .borrow()
+            .get("__doc__")
+            .cloned()
+            .unwrap_or(Value::None)),
+        "__dict__" => Ok(function_dict_value(attrs)),
+        "__annotations__" => Ok(attrs
+            .borrow()
+            .get("__annotations__")
+            .cloned()
+            .unwrap_or_else(|| dict_value(Vec::new()))),
+        "__class__" => Ok(Value::Builtin("function".to_string())),
+        name if function_custom_attribute(attrs, name).is_some() => {
+            Ok(function_custom_attribute(attrs, name)
+                .expect("recursive_repr wrapper attrs contains checked name"))
+        }
+        _ => Err(format!(
+            "AttributeError: function object has no attribute '{name}'"
+        )),
+    }
+}
+
 fn function_annotations_value(annotations: &[(String, Value)]) -> Value {
     dict_value(
         annotations
@@ -64020,6 +64185,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         function @ Value::Function { .. } => load_function_attribute(function, name),
+        wrapper @ Value::RecursiveReprWrapper { .. } => {
+            load_recursive_repr_wrapper_attribute(wrapper, name)
+        }
         Value::MagicMock {
             attrs,
             methods,
@@ -68535,6 +68703,49 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ))
         }
         Value::Builtin(function_name)
+            if name == "__module__"
+                && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("reprlib".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__name__" && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("recursive_repr".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__"
+                && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("recursive_repr".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__defaults__"
+                && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(tuple_value(vec![Value::String("...".to_string())]))
+        }
+        Value::Builtin(function_name)
+            if name == "__kwdefaults__"
+                && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__annotations__"
+                && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(dict_value(Vec::new()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_functools_recursive_repr_builtin_name(&function_name) =>
+        {
+            Ok(Value::String(
+                "Decorator to make a repr function return fillvalue for a recursive call."
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -70633,6 +70844,13 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             }
             store_function_custom_attribute(&attrs, name, value)
         }
+        Value::RecursiveReprWrapper { attrs, .. } => {
+            if name == "__dict__" {
+                return set_function_dict(&attrs, value);
+            }
+            attrs.borrow_mut().insert(name.to_string(), value);
+            Ok(())
+        }
         Value::Property {
             name: property_name,
             ..
@@ -71087,6 +71305,18 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 return Err("TypeError: __type_params__ must be set to a tuple".to_string());
             }
             delete_function_custom_attribute(&attrs, name)
+        }
+        Value::RecursiveReprWrapper { attrs, .. } => {
+            if name == "__dict__" {
+                return Err("TypeError: cannot delete __dict__".to_string());
+            }
+            if attrs.borrow_mut().remove(name).is_some() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "AttributeError: function object has no attribute '{name}'"
+                ))
+            }
         }
         Value::Property {
             name: property_name,
@@ -71622,7 +71852,9 @@ fn deque_type_attribute_assignment_error(name: &str) -> String {
 
 fn bind_method(value: Value, receiver: Value) -> Value {
     match value {
-        Value::Function { .. } | Value::LruCacheWrapper { .. } => Value::BoundMethod {
+        Value::Function { .. }
+        | Value::RecursiveReprWrapper { .. }
+        | Value::LruCacheWrapper { .. } => Value::BoundMethod {
             function: Box::new(value),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
@@ -72624,6 +72856,10 @@ fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
 
 fn is_functools_get_cache_token_builtin_name(name: &str) -> bool {
     name == "functools.get_cache_token"
+}
+
+fn is_functools_recursive_repr_builtin_name(name: &str) -> bool {
+    name == "functools.recursive_repr"
 }
 
 fn is_class_like_builtin(name: &str) -> bool {
@@ -73725,7 +73961,11 @@ fn type_name(value: &Value) -> &str {
         }
         Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) => "wrapper_descriptor",
         Value::Builtin(name) if is_builtin_method_descriptor_name(name) => "method_descriptor",
-        Value::Builtin(name) if is_json_builtin(name) => "function",
+        Value::Builtin(name)
+            if is_json_builtin(name) || is_functools_recursive_repr_builtin_name(name) =>
+        {
+            "function"
+        }
         Value::Builtin(_) => "builtin_function_or_method",
         Value::TypeParam { kind, .. } => kind.as_str(),
         Value::ParamSpecAccess { is_kwargs, .. } => {
@@ -73765,6 +74005,7 @@ fn type_name(value: &Value) -> &str {
         }
         Value::BoundMethod { .. } => "method",
         Value::FunctoolsPlaceholder => "_PlaceholderType",
+        Value::RecursiveReprDecorator { .. } | Value::RecursiveReprWrapper { .. } => "function",
         Value::Partial { .. } => "partial",
         Value::PartialMethod { .. } => "partialmethod",
         Value::PartialMethodCall {
@@ -77047,6 +77288,8 @@ fn is_callable_value(value: &Value) -> bool {
         Value::Builtin(_)
             | Value::Function { .. }
             | Value::TypesCoroutineFunction { .. }
+            | Value::RecursiveReprDecorator { .. }
+            | Value::RecursiveReprWrapper { .. }
             | Value::MagicMock { .. }
             | Value::MockMethod { .. }
             | Value::WeakRef { .. }
@@ -91751,6 +91994,8 @@ fn identity_bits(value: &Value) -> u64 {
         Value::BytesIO(bytes_io) => rc_identity_bits(bytes_io),
         Value::PartialMethod { identity, .. }
         | Value::PartialMethodCall { identity, .. }
+        | Value::RecursiveReprDecorator { identity, .. }
+        | Value::RecursiveReprWrapper { identity, .. }
         | Value::SingleDispatch { identity, .. }
         | Value::SingleDispatchRegister { identity, .. }
         | Value::SingleDispatchMethod { identity, .. }
@@ -91890,6 +92135,14 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         }
         Value::Function { identity, .. } => {
             "function".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::RecursiveReprDecorator { identity, .. } => {
+            "recursive_repr_decorator".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::RecursiveReprWrapper { identity, .. } => {
+            "recursive_repr_wrapper".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
         }
         Value::TypesCoroutineFunction { identity, .. } => {
@@ -92325,6 +92578,8 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Range { .. }
         | Value::Function { .. }
         | Value::TypesCoroutineFunction { .. }
+        | Value::RecursiveReprDecorator { .. }
+        | Value::RecursiveReprWrapper { .. }
         | Value::MagicMock { .. }
         | Value::MockMethod { .. }
         | Value::WeakRef { .. }
@@ -101071,7 +101326,9 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),
-        Value::Function { .. } => Ok(true),
+        Value::Function { .. }
+        | Value::RecursiveReprDecorator { .. }
+        | Value::RecursiveReprWrapper { .. } => Ok(true),
         Value::TypesCoroutineFunction { .. } => Ok(true),
         Value::MagicMock { .. } => Ok(true),
         Value::MockMethod { .. } => Ok(true),

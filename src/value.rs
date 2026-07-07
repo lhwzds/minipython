@@ -1077,6 +1077,17 @@ pub enum Value {
         identity: Rc<()>,
     },
     FunctoolsPlaceholder,
+    RecursiveReprDecorator {
+        fillvalue: Box<Value>,
+        identity: Rc<()>,
+    },
+    RecursiveReprWrapper {
+        function: Box<Value>,
+        fillvalue: Box<Value>,
+        active: Rc<RefCell<HashSet<u64>>>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
     Partial {
         function: Box<Value>,
         args: Vec<Value>,
@@ -1475,6 +1486,21 @@ impl fmt::Display for Value {
                 write!(f, "{}", format_bound_method(function, receiver))
             }
             Value::FunctoolsPlaceholder => write!(f, "Placeholder"),
+            Value::RecursiveReprDecorator { identity, .. } => write!(
+                f,
+                "<function recursive_repr.<locals>.decorating_function at 0x{:x}>",
+                Rc::as_ptr(identity) as usize
+            ),
+            Value::RecursiveReprWrapper {
+                attrs, identity, ..
+            } => {
+                let display_name = function_like_name_from_attrs(attrs, "wrapper");
+                write!(
+                    f,
+                    "{}",
+                    format_function_object_repr(&display_name, identity)
+                )
+            }
             Value::Partial {
                 function,
                 args,
@@ -2075,6 +2101,9 @@ fn bound_method_display_name(function: &Value) -> String {
             _ => name.clone(),
         },
         Value::Function { name, .. } => name.clone(),
+        Value::RecursiveReprWrapper { attrs, .. } => {
+            function_like_name_from_attrs(attrs, "wrapper")
+        }
         Value::Builtin(name) => json_builtin_bound_method_display_name(name)
             .unwrap_or(name)
             .to_string(),
@@ -2325,6 +2354,16 @@ fn format_value_repr(value: &Value) -> String {
             function, receiver, ..
         } => format_bound_method(function, receiver),
         Value::FunctoolsPlaceholder => "Placeholder".to_string(),
+        Value::RecursiveReprDecorator { identity, .. } => format!(
+            "<function recursive_repr.<locals>.decorating_function at 0x{:x}>",
+            Rc::as_ptr(identity) as usize
+        ),
+        Value::RecursiveReprWrapper {
+            attrs, identity, ..
+        } => {
+            let display_name = function_like_name_from_attrs(attrs, "wrapper");
+            format_function_object_repr(&display_name, identity)
+        }
         Value::Partial {
             function,
             args,

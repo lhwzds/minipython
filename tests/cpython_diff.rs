@@ -32883,6 +32883,37 @@ for label, expr in [('missing', lambda: functools.GenericAlias()), ('kw', lambda
 }
 
 #[test]
+fn cpython_functools_recursive_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "reprlib.recursive_repr imported through Lib/functools.py subset",
+        name: "functools-recursive-repr",
+        source: r#"import functools
+print(hasattr(functools, 'recursive_repr'), 'recursive_repr' in dir(functools), 'recursive_repr' in functools.__dict__)
+print('all', 'recursive_repr' in functools.__all__)
+print('meta', type(functools.recursive_repr).__name__, functools.recursive_repr.__module__, functools.recursive_repr.__name__, functools.recursive_repr.__qualname__, functools.recursive_repr.__defaults__)
+@functools.recursive_repr()
+def f(self):
+    return 'x' + f(self) + 'y'
+print('wrapped', type(f).__name__, f.__name__, f.__module__, f.__qualname__, hasattr(f, '__wrapped__'), callable(f))
+print('call', f(object()))
+@functools.recursive_repr('<rec>')
+def g(self):
+    return 'g' + g(self)
+print('custom', g(object()))
+class C:
+    @functools.recursive_repr('<self>')
+    def __repr__(self):
+        return 'C(' + repr(self) + ')'
+print('class', repr(C()))
+for label, expr in [('missing-self', lambda: f()), ('unexpected', lambda: functools.recursive_repr(extra=1))]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",
