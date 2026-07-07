@@ -52915,6 +52915,116 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
 }
 
 #[test]
+fn builtin_iterator_type_dict_mappingproxy_surface_docs_cover_core_runtime() {
+    let diff_name = "cpython_builtin_iterator_type_dict_mappingproxy_surface_diff_subset";
+    let subset_name = "cpython_builtin_iterator_type_dict_mappingproxy_surface_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "builtin iterator type __dict__ mappingproxy CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "builtin iterator type __dict__ mappingproxy runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from array import array",
+        "('range_iterator', iter(range(2)))",
+        "('list_iterator', iter([1, 2]))",
+        "('tuple_iterator', iter((1, 2)))",
+        "('str_iterator', iter('aé'))",
+        "('str_ascii_iterator', iter('ab'))",
+        "('bytes_iterator', iter(b'ab'))",
+        "('bytearray_iterator', iter(bytearray(b'ab')))",
+        "('arrayiterator', iter(array('i', [1, 2])))",
+        "('set_iterator', iter({1, 2}))",
+        "('dict_keyiterator', iter({'a': 1, 'b': 2}))",
+        "('dict_valueiterator', iter({'a': 1, 'b': 2}.values()))",
+        "('dict_itemiterator', iter({'a': 1, 'b': 2}.items()))",
+        "('dict_reversekeyiterator', reversed({'a': 1, 'b': 2}))",
+        "('dict_reversevalueiterator', reversed({'a': 1, 'b': 2}.values()))",
+        "('dict_reverseitemiterator', reversed({'a': 1, 'b': 2}.items()))",
+        "('list_reverseiterator', reversed([1, 2]))",
+        "('reversed', reversed((1, 2)))",
+        "namespace = type(value).__dict__",
+        "'__iter__'",
+        "'__next__'",
+        "'__length_hint__'",
+        "'__reduce__'",
+        "'__setstate__'",
+        "'__class_getitem__'",
+        "'__doc__'",
+        "type(namespace).__name__",
+        "namespace['__iter__'](value) is value",
+        "namespace['__length_hint__'](value)",
+        "'hint-call'",
+        "'missing'",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "builtin iterator type __dict__ mappingproxy diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"range_iterator range_iterator mappingproxy True True True True True False True\"",
+        "\"list_iterator list_iterator mappingproxy True True True True True False True\"",
+        "\"str_iterator str_iterator mappingproxy True True True True True False True\"",
+        "\"bytes_iterator bytes_iterator mappingproxy True True True True True False True\"",
+        "\"arrayiterator arrayiterator mappingproxy True True False True True False True\"",
+        "\"set_iterator set_iterator mappingproxy True True True True False False True\"",
+        "\"dict_keyiterator dict_keyiterator mappingproxy True True True True False False True\"",
+        "\"dict_reverseitemiterator dict_reverseitemiterator mappingproxy True True True True False False True\"",
+        "\"list_reverseiterator list_reverseiterator mappingproxy True True True True True False True\"",
+        "\"reversed reversed mappingproxy True True True True True False True\"",
+        "\"arrayiterator hint-call missing\"",
+        "\"dict_keyiterator hint-call 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "builtin iterator type __dict__ mappingproxy subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_builtin_iterator_type_dict_name(",
+        "fn builtin_iterator_type_dict_value(",
+        "builtin_type_dir_names(type_name)",
+        "Value::Builtin(format!(\"{type_name}.{method}\"))",
+        "name == \"__dict__\" && is_builtin_iterator_type_dict_name(&function_name)",
+        "Ok(builtin_iterator_type_dict_value(&function_name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "builtin iterator type __dict__ mappingproxy implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "builtin iterator type `__dict__` mappingproxy",
+            "sequence,",
+            "string, bytes, bytearray, array, set, range, dict,",
+            "and reverse iterator",
+            "families",
+            "`__setstate__`",
+            "remains absent on dict key",
+            "reverse-key",
+            "iterators",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "builtin iterator type __dict__ mappingproxy docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn callable_iterator_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_callable_iterator_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_callable_iterator_type_metadata_dir_surface_subset";

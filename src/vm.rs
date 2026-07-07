@@ -43003,6 +43003,40 @@ fn dict_view_type_dict_value(type_name: &str) -> Value {
     mapping_proxy_from_entries(entries)
 }
 
+fn is_builtin_iterator_type_dict_name(name: &str) -> bool {
+    matches!(
+        name,
+        "range_iterator"
+            | "list_iterator"
+            | "tuple_iterator"
+            | "str_iterator"
+            | "str_ascii_iterator"
+            | "bytes_iterator"
+            | "bytearray_iterator"
+            | "arrayiterator"
+            | "set_iterator"
+            | "dict_keyiterator"
+            | "dict_valueiterator"
+            | "dict_itemiterator"
+            | "dict_reversekeyiterator"
+            | "dict_reversevalueiterator"
+            | "dict_reverseitemiterator"
+            | "list_reverseiterator"
+            | "reversed"
+    )
+}
+
+fn builtin_iterator_type_dict_value(type_name: &str) -> Value {
+    let mut entries = vec![(Value::String("__doc__".to_string()), Value::None)];
+    for method in builtin_type_dir_names(type_name) {
+        entries.push((
+            Value::String((*method).to_string()),
+            Value::Builtin(format!("{type_name}.{method}")),
+        ));
+    }
+    mapping_proxy_from_entries(entries)
+}
+
 fn scope_dict_value(scope: &Scope) -> Value {
     dict_value(scope_dict_entries(scope))
 }
@@ -67643,6 +67677,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__dict__" && is_dict_view_type_object_name(&function_name) =>
         {
             Ok(dict_view_type_dict_value(&function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__dict__" && is_builtin_iterator_type_dict_name(&function_name) =>
+        {
+            Ok(builtin_iterator_type_dict_value(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__dict__" && is_class_like_builtin(&function_name) =>

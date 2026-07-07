@@ -937,6 +937,14 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `map.__next__(map(lambda x: x + 1, [1]))`, and
   `filter.__next__(filter(None, [0, 1]))`, without widening host IO, network,
   process, C ABI, or full stdlib scope.
+- Added `cpython_builtin_iterator_type_dict_mappingproxy_surface_subset` and
+  `cpython_builtin_iterator_type_dict_mappingproxy_surface_diff_subset` for the
+  builtin iterator type `__dict__` mappingproxy surface across sequence,
+  string, bytes, bytearray, array, set, range, dict, and reverse iterator
+  families, including namespace `__iter__` / `__length_hint__` direct calls and
+  the fact that `__setstate__` remains absent on dict key and reverse-key
+  iterators, without widening host IO, network, process, C ABI, or full stdlib
+  scope.
 - Added `cpython_callable_iterator_type_metadata_dir_surface_subset` and
   `cpython_callable_iterator_type_metadata_dir_surface_diff_subset` for
   `iter(make, 2)`, `type(inst)`, `dir(type(iter(...)))`, and

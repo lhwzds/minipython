@@ -16887,6 +16887,43 @@ print('direct-next', enumerate.__next__(enumerate(['a'])), zip.__next__(zip([1],
 }
 
 #[test]
+fn cpython_builtin_iterator_type_dict_mappingproxy_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public builtin iterator type __dict__ mappingproxy surface",
+        name: "builtin-iterator-type-dict-mappingproxy-surface",
+        source: r#"from array import array
+samples = [
+    ('range_iterator', iter(range(2))),
+    ('list_iterator', iter([1, 2])),
+    ('tuple_iterator', iter((1, 2))),
+    ('str_iterator', iter('aé')),
+    ('str_ascii_iterator', iter('ab')),
+    ('bytes_iterator', iter(b'ab')),
+    ('bytearray_iterator', iter(bytearray(b'ab'))),
+    ('arrayiterator', iter(array('i', [1, 2]))),
+    ('set_iterator', iter({1, 2})),
+    ('dict_keyiterator', iter({'a': 1, 'b': 2})),
+    ('dict_valueiterator', iter({'a': 1, 'b': 2}.values())),
+    ('dict_itemiterator', iter({'a': 1, 'b': 2}.items())),
+    ('dict_reversekeyiterator', reversed({'a': 1, 'b': 2})),
+    ('dict_reversevalueiterator', reversed({'a': 1, 'b': 2}.values())),
+    ('dict_reverseitemiterator', reversed({'a': 1, 'b': 2}.items())),
+    ('list_reverseiterator', reversed([1, 2])),
+    ('reversed', reversed((1, 2))),
+]
+names = ['__iter__', '__next__', '__length_hint__', '__reduce__', '__setstate__', '__class_getitem__', '__doc__']
+for label, value in samples:
+    namespace = type(value).__dict__
+    print(label, type(value).__name__, type(namespace).__name__, *(name in namespace for name in names))
+    print(label, 'iter-call', namespace['__iter__'](value) is value)
+    if '__length_hint__' in namespace:
+        print(label, 'hint-call', namespace['__length_hint__'](value))
+    else:
+        print(label, 'hint-call', 'missing')"#,
+    });
+}
+
+#[test]
 fn cpython_callable_iterator_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public callable_iterator type metadata dir surface",
