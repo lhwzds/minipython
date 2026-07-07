@@ -25771,6 +25771,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_index_normalization_subset",
             "cpython_operator_length_hint_subset",
             "cpython_operator_comparison_predicate_subset",
+            "cpython_operator_comparison_builtin_metadata_subset",
             "cpython_operator_is_none_predicates_subset",
             "cpython_operator_arithmetic_bitwise_subset",
             "cpython_operator_sequence_member_subset",
@@ -25835,6 +25836,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_comparison_predicate_diff_subset"),
         "operator sandbox manifest must cite CPython comparison/predicate diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_comparison_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython comparison builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -26166,6 +26172,105 @@ fn operator_comparison_predicate_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__ne__")
             && CPYTHON_MIGRATION.contains("default-oracle stable slice"),
         "migration notes must describe operator comparison/predicate public behavior and gated None predicates"
+    );
+}
+
+#[test]
+fn operator_comparison_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_comparison_builtin_metadata_subset(",
+        "Adapted from CPython _operator comparison builtin metadata.",
+        "for name in ['lt', 'le', 'eq', 'ne', 'ge', 'gt']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__lt__.__doc__.splitlines()[0]",
+        "operator.__eq__.__text_signature__",
+        "operator.__gt__ is operator.gt",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator comparison builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"lt _operator lt lt Same as a < b. ($module, a, b, /)\"",
+        "\"le _operator le le Same as a <= b. ($module, a, b, /)\"",
+        "\"eq _operator eq eq Same as a == b. ($module, a, b, /)\"",
+        "\"ne _operator ne ne Same as a != b. ($module, a, b, /)\"",
+        "\"ge _operator ge ge Same as a >= b. ($module, a, b, /)\"",
+        "\"gt _operator gt gt Same as a > b. ($module, a, b, /)\"",
+        "\"Same as a < b. ($module, a, b, /) True\"",
+        "\"Same as a == b. ($module, a, b, /) True\"",
+        "\"Same as a > b. ($module, a, b, /) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator comparison builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_comparison_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "_operator comparison builtin metadata subset",
+        "operator-comparison-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__lt__.__text_signature__",
+        "operator.__eq__.__doc__.splitlines()[0]",
+        "operator.__gt__ is operator.gt",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator comparison builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"operator.lt\" => \"Same as a < b.\"",
+        "\"operator.le\" => \"Same as a <= b.\"",
+        "\"operator.eq\" => \"Same as a == b.\"",
+        "\"operator.ne\" => \"Same as a != b.\"",
+        "\"operator.ge\" => \"Same as a >= b.\"",
+        "\"operator.gt\" => \"Same as a > b.\"",
+        "| \"operator.lt\"",
+        "| \"operator.eq\"",
+        "| \"operator.gt\"",
+        "Some(\"($module, a, b, /)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator comparison builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_comparison_builtin_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_comparison_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("comparison")
+            && CPYTHON_COVERAGE.contains("`_operator` builtin metadata")
+            && CPYTHON_COVERAGE.contains("`lt` / `le` / `eq`")
+            && CPYTHON_COVERAGE.contains("dunder aliases"),
+        "coverage notes must describe operator comparison builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_comparison_builtin_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_comparison_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("comparison")
+            && CPYTHON_MIGRATION.contains("`_operator` builtin metadata")
+            && CPYTHON_MIGRATION.contains("`lt` / `le` / `eq`")
+            && CPYTHON_MIGRATION.contains("dunder aliases"),
+        "migration notes must describe operator comparison builtin metadata public behavior and direct diff evidence"
     );
 }
 

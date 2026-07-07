@@ -30470,6 +30470,22 @@ for label, callback in [('truth0', lambda: operator.truth()), ('truth2', lambda:
 }
 
 #[test]
+fn cpython_operator_comparison_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "_operator comparison builtin metadata subset",
+        name: "operator-comparison-builtin-metadata",
+        source: r#"import operator
+for name in ['lt', 'le', 'eq', 'ne', 'ge', 'gt']:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+print(operator.__lt__.__doc__.splitlines()[0], operator.__lt__.__text_signature__, operator.__lt__ is operator.lt)
+print(operator.__eq__.__doc__.splitlines()[0], operator.__eq__.__text_signature__, operator.__eq__ is operator.eq)
+print(operator.__gt__.__doc__.splitlines()[0], operator.__gt__.__text_signature__, operator.__gt__ is operator.gt)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_is_none_predicates_diff_subset() {
     let probe = run_cpython("import operator; print(hasattr(operator, 'is_none'))")
         .expect("failed to probe CPython operator.is_none support");

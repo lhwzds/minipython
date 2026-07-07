@@ -69817,6 +69817,12 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.attrgetter" => "Return a callable object that fetches attributes.",
         "operator.itemgetter" => "Return a callable object that fetches items.",
         "operator.methodcaller" => "Return a callable object that calls a method.",
+        "operator.lt" => "Same as a < b.",
+        "operator.le" => "Same as a <= b.",
+        "operator.eq" => "Same as a == b.",
+        "operator.ne" => "Same as a != b.",
+        "operator.ge" => "Same as a >= b.",
+        "operator.gt" => "Same as a > b.",
         "operator.abs" => "Same as abs(a).",
         "operator.add" => "Same as a + b.",
         "operator.sub" => "Same as a - b.",
@@ -69866,10 +69872,13 @@ fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
         | "operator.inv"
         | "operator.index" => Some("($module, a, /)"),
         "operator.is_" | "operator.is_not" | "operator.countOf" | "operator.indexOf"
-        | "operator.contains" | "operator.getitem" | "operator.add" | "operator.sub"
-        | "operator.mul" | "operator.matmul" | "operator.truediv" | "operator.floordiv"
-        | "operator.mod" | "operator.pow" | "operator.and_" | "operator.or_" | "operator.xor"
-        | "operator.lshift" | "operator.rshift" => Some("($module, a, b, /)"),
+        | "operator.contains" | "operator.getitem" | "operator.lt" | "operator.le"
+        | "operator.eq" | "operator.ne" | "operator.ge" | "operator.gt" | "operator.add"
+        | "operator.sub" | "operator.mul" | "operator.matmul" | "operator.truediv"
+        | "operator.floordiv" | "operator.mod" | "operator.pow" | "operator.and_"
+        | "operator.or_" | "operator.xor" | "operator.lshift" | "operator.rshift" => {
+            Some("($module, a, b, /)")
+        }
         "operator.setitem" => Some("($module, a, b, c, /)"),
         "operator.delitem" => Some("($module, a, b, /)"),
         "operator.length_hint" => Some("($module, obj, default=0, /)"),

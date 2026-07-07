@@ -6270,6 +6270,13 @@ without adding general custom encoder/decoder class support.
   `is_not_none` helpers have gated direct CPython evidence in
   `cpython_operator_is_none_predicates_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_comparison_builtin_metadata_subset`, covering comparison
+  `_operator` builtin metadata exposed through `operator`, including
+  `lt` / `le` / `eq` / `ne` / `ge` / `gt`, first-line `__doc__`,
+  `__text_signature__`, and dunder aliases such as `operator.__lt__`,
+  `operator.__eq__`, and `operator.__gt__`. Direct CPython diff evidence is in
+  `cpython_operator_comparison_builtin_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_arithmetic_bitwise_subset`, covering CPython
   `test_operator.py` arithmetic and bitwise helpers `abs`, `add`, `sub`, `mul`,
   `floordiv`, `truediv`, `mod`, `pow`, `and_`, `or_`, `xor`, `lshift`,
