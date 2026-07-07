@@ -55657,8 +55657,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             {
                 names.extend(exception_bound_method_dir_names());
             }
-            if !matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name))
-            {
+            if !bound_method_omits_func_attribute(function.as_ref(), receiver) {
                 names.push("__func__".to_string());
             }
         }
@@ -66977,8 +66976,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }
                 .to_string(),
             )),
-            "__func__"
-                if matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name)) =>
+            "__func__" if bound_method_omits_func_attribute(function.as_ref(), &receiver) =>
             {
                 Err("AttributeError: 'builtin_function_or_method' object has no attribute '__func__'"
                     .to_string())
@@ -70523,6 +70521,15 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
     ]
     .into_iter()
     .map(str::to_string)
+}
+
+fn bound_method_omits_func_attribute(function: &Value, receiver: &Value) -> bool {
+    matches!(
+        function,
+        Value::Builtin(name)
+            if is_numeric_from_number_classmethod(name)
+                || exception_bound_method_name(name, receiver).is_some()
+    )
 }
 
 fn numeric_from_number_classmethod_value(owner: &str) -> Value {
