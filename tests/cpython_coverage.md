@@ -2090,6 +2090,15 @@ Recent runtime migration notes:
   metadata, keeps `__module__` absent, compares helper bound method identity,
   returns `NotImplemented` for non-method values, and preserves CPython
   argument errors, including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_ne_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_ne_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__ne__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `method-wrapper` `__ne__` through
+  `dir()`; the wrapper has CPython `builtin_function_or_method.__ne__`
+  metadata, keeps `__module__` absent, compares helper bound method identity,
+  returns `NotImplemented` for non-method values, and preserves CPython
+  argument errors, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_delattr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__delattr__` wrapper surface aligned with
@@ -2229,6 +2238,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_format_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_hash_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_eq_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_ne_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,
