@@ -6340,6 +6340,14 @@ without adding general custom encoder/decoder class support.
   module identity for `operator.__add__`. Direct CPython diff evidence is in
   `cpython_operator_builtin_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_arithmetic_bitwise_builtin_metadata_subset`, covering
+  arithmetic and bitwise `_operator` builtin metadata exposed through
+  `operator`, including `abs` / `add` / `matmul`, unary invert aliases,
+  bitwise shift helpers, `index`, first-line `__doc__`, `__text_signature__`,
+  and dunder aliases such as `operator.__abs__`, `operator.__add__`, and
+  `operator.__and__`. Direct CPython diff evidence is in
+  `cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_module_doc_intro_metadata_subset`, covering operator module
   `__doc__` intro metadata (`operator.__doc__` is a non-empty `str`, starts
   with CPython's public "Operator interface." summary, is visible through

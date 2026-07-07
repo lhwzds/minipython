@@ -69817,6 +69817,24 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.attrgetter" => "Return a callable object that fetches attributes.",
         "operator.itemgetter" => "Return a callable object that fetches items.",
         "operator.methodcaller" => "Return a callable object that calls a method.",
+        "operator.abs" => "Same as abs(a).",
+        "operator.add" => "Same as a + b.",
+        "operator.sub" => "Same as a - b.",
+        "operator.mul" => "Same as a * b.",
+        "operator.matmul" => "Same as a @ b.",
+        "operator.truediv" => "Same as a / b.",
+        "operator.floordiv" => "Same as a // b.",
+        "operator.mod" => "Same as a % b.",
+        "operator.pow" => "Same as a ** b.",
+        "operator.neg" => "Same as -a.",
+        "operator.pos" => "Same as +a.",
+        "operator.invert" | "operator.inv" => "Same as ~a.",
+        "operator.and_" => "Same as a & b.",
+        "operator.or_" => "Same as a | b.",
+        "operator.xor" => "Same as a ^ b.",
+        "operator.lshift" => "Same as a << b.",
+        "operator.rshift" => "Same as a >> b.",
+        "operator.index" => "Same as a.__index__()",
         "operator.length_hint" => "Return an estimate of the number of items in obj.",
         "operator.truth" => "Return True if a is true, False otherwise.",
         "operator.not_" => "Same as not a.",
@@ -69841,9 +69859,17 @@ fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
         | "operator.not_"
         | "operator.is_none"
         | "operator.is_not_none"
+        | "operator.abs"
+        | "operator.neg"
+        | "operator.pos"
+        | "operator.invert"
+        | "operator.inv"
         | "operator.index" => Some("($module, a, /)"),
         "operator.is_" | "operator.is_not" | "operator.countOf" | "operator.indexOf"
-        | "operator.contains" | "operator.getitem" => Some("($module, a, b, /)"),
+        | "operator.contains" | "operator.getitem" | "operator.add" | "operator.sub"
+        | "operator.mul" | "operator.matmul" | "operator.truediv" | "operator.floordiv"
+        | "operator.mod" | "operator.pow" | "operator.and_" | "operator.or_" | "operator.xor"
+        | "operator.lshift" | "operator.rshift" => Some("($module, a, b, /)"),
         "operator.setitem" => Some("($module, a, b, c, /)"),
         "operator.delitem" => Some("($module, a, b, /)"),
         "operator.length_hint" => Some("($module, obj, default=0, /)"),

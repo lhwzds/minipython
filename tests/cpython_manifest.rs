@@ -25779,6 +25779,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
             "cpython_operator_builtin_metadata_subset",
+            "cpython_operator_arithmetic_bitwise_builtin_metadata_subset",
             "cpython_operator_module_doc_intro_metadata_subset",
             "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_signature_helper_subset",
@@ -25874,6 +25875,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_builtin_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython builtin metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython arithmetic/bitwise builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -27222,6 +27228,104 @@ fn operator_builtin_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("dunder alias module")
             && CPYTHON_MIGRATION.contains("identity for `operator.__add__`"),
         "migration notes must describe operator builtin metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_arithmetic_bitwise_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_arithmetic_bitwise_builtin_metadata_subset(",
+        "Adapted from CPython _operator arithmetic and bitwise builtin metadata.",
+        "for name in ['abs', 'add', 'sub', 'mul', 'matmul', 'truediv', 'floordiv', 'mod', 'pow', 'neg', 'pos', 'invert', 'inv', 'and_', 'or_', 'xor', 'lshift', 'rshift', 'index']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__abs__.__doc__.splitlines()[0]",
+        "operator.__add__.__text_signature__",
+        "operator.__and__ is operator.and_",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator arithmetic/bitwise builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"abs _operator abs abs Same as abs(a). ($module, a, /)\"",
+        "\"add _operator add add Same as a + b. ($module, a, b, /)\"",
+        "\"matmul _operator matmul matmul Same as a @ b. ($module, a, b, /)\"",
+        "\"invert _operator invert invert Same as ~a. ($module, a, /)\"",
+        "\"and_ _operator and_ and_ Same as a & b. ($module, a, b, /)\"",
+        "\"index _operator index index Same as a.__index__() ($module, a, /)\"",
+        "\"Same as a + b. ($module, a, b, /) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator arithmetic/bitwise builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "_operator arithmetic and bitwise builtin metadata subset",
+        "operator-arithmetic-bitwise-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "operator.__abs__.__text_signature__",
+        "operator.__add__.__doc__.splitlines()[0]",
+        "operator.__and__ is operator.and_",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator arithmetic/bitwise builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"operator.abs\" => \"Same as abs(a).\"",
+        "\"operator.add\" => \"Same as a + b.\"",
+        "\"operator.matmul\" => \"Same as a @ b.\"",
+        "\"operator.invert\" | \"operator.inv\" => \"Same as ~a.\"",
+        "\"operator.index\" => \"Same as a.__index__()\"",
+        "| \"operator.abs\"",
+        "| \"operator.neg\"",
+        "| \"operator.inv\"",
+        "| \"operator.add\"",
+        "| \"operator.matmul\"",
+        "| \"operator.rshift\" => Some(\"($module, a, b, /)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator arithmetic/bitwise builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_arithmetic_bitwise_builtin_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("arithmetic and bitwise `_operator` builtin metadata")
+            && CPYTHON_COVERAGE.contains("`abs` / `add` / `matmul`")
+            && CPYTHON_COVERAGE.contains("`index`")
+            && CPYTHON_COVERAGE.contains("dunder aliases"),
+        "coverage notes must describe operator arithmetic/bitwise builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_arithmetic_bitwise_builtin_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("arithmetic and bitwise `_operator` builtin metadata")
+            && CPYTHON_MIGRATION.contains("`abs` / `add` / `matmul`")
+            && CPYTHON_MIGRATION.contains("`index`")
+            && CPYTHON_MIGRATION.contains("dunder aliases"),
+        "migration notes must describe operator arithmetic/bitwise builtin metadata public behavior and direct diff evidence"
     );
 }
 

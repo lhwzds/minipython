@@ -30968,6 +30968,22 @@ print(operator.__add__.__module__, operator.__add__ is operator.add)"#,
 }
 
 #[test]
+fn cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "_operator arithmetic and bitwise builtin metadata subset",
+        name: "operator-arithmetic-bitwise-builtin-metadata",
+        source: r#"import operator
+for name in ['abs', 'add', 'sub', 'mul', 'matmul', 'truediv', 'floordiv', 'mod', 'pow', 'neg', 'pos', 'invert', 'inv', 'and_', 'or_', 'xor', 'lshift', 'rshift', 'index']:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+print(operator.__abs__.__doc__.splitlines()[0], operator.__abs__.__text_signature__, operator.__abs__ is operator.abs)
+print(operator.__add__.__doc__.splitlines()[0], operator.__add__.__text_signature__, operator.__add__ is operator.add)
+print(operator.__and__.__doc__.splitlines()[0], operator.__and__.__text_signature__, operator.__and__ is operator.and_)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_module_doc_intro_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Public operator.__doc__ module metadata stable on CPython 3.14.6",
