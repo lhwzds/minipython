@@ -32792,6 +32792,28 @@ print('dir-has', '__module__' in dir(fn), '__qualname__' in dir(fn), '__dict__' 
 }
 
 #[test]
+fn cpython_functools_itemgetter_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py public imported itemgetter alias subset",
+        name: "functools-itemgetter-alias",
+        source: r#"import functools, operator
+print(hasattr(functools, 'itemgetter'), 'itemgetter' in dir(functools), 'itemgetter' in functools.__dict__)
+print('all', 'itemgetter' in functools.__all__)
+print('identity', functools.itemgetter is operator.itemgetter)
+print('meta', functools.itemgetter.__name__, functools.itemgetter.__module__)
+get = functools.itemgetter(1)
+print('call', get(('a', 'b', 'c')), get(['x', 'y', 'z']))
+get_multi = functools.itemgetter(0, 2)
+print('multi', get_multi(('a', 'b', 'c')))
+for label, expr in [('missing', lambda: functools.itemgetter()), ('bad-index', lambda: functools.itemgetter(9)((1, 2)))]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",

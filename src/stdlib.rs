@@ -1009,6 +1009,7 @@ pub(crate) fn create_module(
                     "get_cache_token",
                     Value::Builtin("functools.get_cache_token".to_string()),
                 ),
+                ("itemgetter", Value::Builtin("operator.itemgetter".to_string())),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",

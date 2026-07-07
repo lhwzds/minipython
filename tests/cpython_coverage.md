@@ -5098,6 +5098,12 @@ without adding general custom encoder/decoder class support.
   `__qualname__`, CPython-visible `_abc` `__module__`, `__doc__`,
   `__text_signature__`, absent `__dict__` / `__annotations__`, builtin type,
   `repr()` / `str()` shape, and `dir()` visibility.
+- `cpython_functools_itemgetter_alias_subset`, backed by
+  `cpython_functools_itemgetter_alias_diff_subset`, covers the public
+  `functools.itemgetter` imported alias to `operator.itemgetter`, including
+  module visibility, exclusion from `functools.__all__`, object identity,
+  `__name__` / `__module__` metadata, single and multi-item calls, and
+  missing-argument / bad-index error classification.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython

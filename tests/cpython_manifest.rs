@@ -12689,6 +12689,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_public_helpers_subset",
             "cpython_functools_get_cache_token_subset",
             "cpython_functools_get_cache_token_metadata_subset",
+            "cpython_functools_itemgetter_alias_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12725,6 +12726,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_public_helpers_diff_subset",
         "cpython_functools_get_cache_token_diff_subset",
         "cpython_functools_get_cache_token_metadata_diff_subset",
+        "cpython_functools_itemgetter_alias_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12795,6 +12797,11 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             && functools_registry.contains("Value::Builtin(\"functools.get_cache_token\""),
         "functools stdlib module registry must expose get_cache_token"
     );
+    assert!(
+        functools_registry.contains("\"itemgetter\"")
+            && functools_registry.contains("Value::Builtin(\"operator.itemgetter\""),
+        "functools stdlib module registry must expose operator.itemgetter alias"
+    );
     let functools_all_start = STDLIB_SOURCE
         .find("const FUNCTOOLS_ALL")
         .expect("stdlib.rs must define FUNCTOOLS_ALL");
@@ -12807,6 +12814,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         !functools_all.contains("\"get_cache_token\""),
         "functools.__all__ must not export get_cache_token"
     );
+    assert!(
+        !functools_all.contains("\"itemgetter\""),
+        "functools.__all__ must not export itemgetter"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
@@ -12815,7 +12826,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_get_cache_token_diff_subset",
             "cpython_functools_get_cache_token_metadata_subset",
             "cpython_functools_get_cache_token_metadata_diff_subset",
+            "cpython_functools_itemgetter_alias_subset",
+            "cpython_functools_itemgetter_alias_diff_subset",
             "get_cache_token",
+            "itemgetter",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {
@@ -12824,6 +12838,35 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
                 "functools module package metadata docs must contain `{required}`"
             );
         }
+    }
+    let itemgetter_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_itemgetter_alias_diff_subset",
+    );
+    let itemgetter_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_itemgetter_alias_subset");
+    for required in [
+        "functools.itemgetter is operator.itemgetter",
+        "'itemgetter' in functools.__all__",
+        "functools.itemgetter.__name__",
+        "functools.itemgetter.__module__",
+        "functools.itemgetter(1)",
+    ] {
+        assert!(
+            itemgetter_diff.contains(required) && itemgetter_subset.contains(required),
+            "functools itemgetter alias evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"identity True\"",
+        "\"meta itemgetter operator\"",
+        "\"call b y\"",
+        "\"missing TypeError itemgetter expected 1 argument, got 0\"",
+    ] {
+        assert!(
+            itemgetter_subset.contains(required),
+            "functools itemgetter alias subset output must pin `{required}`"
+        );
     }
     let get_cache_token_diff = extract_rust_test_body(
         CPYTHON_DIFF,
