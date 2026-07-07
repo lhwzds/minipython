@@ -1005,6 +1005,10 @@ pub(crate) fn create_module(
                     "cmp_to_key",
                     Value::Builtin("functools.cmp_to_key".to_string()),
                 ),
+                (
+                    "get_cache_token",
+                    Value::Builtin("functools.get_cache_token".to_string()),
+                ),
                 ("cache", Value::Builtin("functools.cache".to_string())),
                 (
                     "cached_property",

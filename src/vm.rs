@@ -300,7 +300,13 @@ impl RuntimeOptions {
     }
 }
 
-type AbcRegistry = Rc<RefCell<HashMap<String, Vec<Value>>>>;
+#[derive(Debug, Default)]
+struct AbcRegistryState {
+    registrations: HashMap<String, Vec<Value>>,
+    cache_token: i64,
+}
+
+type AbcRegistry = Rc<RefCell<AbcRegistryState>>;
 type ModuleCache = DictRef;
 type FrameStack = Rc<RefCell<Vec<RuntimeFrame>>>;
 pub(crate) type SourceModuleTable = Rc<HashMap<String, SourceModule>>;
@@ -4942,7 +4948,7 @@ impl Vm {
             resume_value: None,
             resume_exception: None,
             yield_from_delegate: None,
-            abc_registry: Rc::new(RefCell::new(HashMap::new())),
+            abc_registry: Rc::new(RefCell::new(AbcRegistryState::default())),
             module_cache: new_module_cache(),
             source_modules: Rc::new(HashMap::new()),
             stdlib_import_policy: StdlibImportPolicy::allow_all(),
@@ -8632,6 +8638,23 @@ impl Vm {
             .collect()
     }
 
+    fn call_functools_get_cache_token(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: _abc.get_cache_token() takes no keyword arguments".to_string());
+        }
+        if !args.is_empty() {
+            return Err(format!(
+                "TypeError: _abc.get_cache_token() takes no arguments ({} given)",
+                args.len()
+            ));
+        }
+        Ok(Value::Number(self.abc_registry.borrow().cache_token))
+    }
+
     fn call_functools_reduce(
         &mut self,
         args: Vec<Value>,
@@ -9315,6 +9338,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "functools.cmp_to_key" => {
                 self.call_functools_cmp_to_key(args, keywords)
+            }
+            Value::Builtin(name) if name == "functools.get_cache_token" => {
+                self.call_functools_get_cache_token(args, keywords)
             }
             Value::Builtin(name) if name == "functools.reduce" => {
                 self.call_functools_reduce(args, keywords)
@@ -77152,6 +77178,7 @@ impl Vm {
         }
         self.abc_registry
             .borrow()
+            .registrations
             .iter()
             .any(|(registered_abc, classes)| {
                 (registered_abc == abc_name || builtin_class_inherits(registered_abc, abc_name))
@@ -77180,6 +77207,7 @@ impl Vm {
         }
         self.abc_registry
             .borrow()
+            .registrations
             .iter()
             .any(|(registered_abc, classes)| {
                 (registered_abc == abc_name || builtin_class_inherits(registered_abc, abc_name))
@@ -77214,12 +77242,13 @@ impl Vm {
         }
 
         let mut registry = self.abc_registry.borrow_mut();
-        let classes = registry.entry(abc_name.clone()).or_default();
+        let classes = registry.registrations.entry(abc_name.clone()).or_default();
         if !classes
             .iter()
             .any(|registered| same_class_object(registered, class))
         {
             classes.push(class.clone());
+            registry.cache_token += 1;
         }
         Ok(class.clone())
     }

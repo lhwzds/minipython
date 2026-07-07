@@ -12687,6 +12687,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "functools",
         &[
             "cpython_functools_public_helpers_subset",
+            "cpython_functools_get_cache_token_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12721,6 +12722,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include functools");
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
+        "cpython_functools_get_cache_token_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12786,10 +12788,30 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         functools_registry.contains("(\"__package__\", Value::String(String::new()))"),
         "functools stdlib module registry must set CPython-compatible empty __package__ metadata"
     );
+    assert!(
+        functools_registry.contains("\"get_cache_token\"")
+            && functools_registry.contains("Value::Builtin(\"functools.get_cache_token\""),
+        "functools stdlib module registry must expose get_cache_token"
+    );
+    let functools_all_start = STDLIB_SOURCE
+        .find("const FUNCTOOLS_ALL")
+        .expect("stdlib.rs must define FUNCTOOLS_ALL");
+    let functools_all_end = functools_all_start
+        + STDLIB_SOURCE[functools_all_start..]
+            .find("const BUILTINS_DOC")
+            .expect("FUNCTOOLS_ALL must precede BUILTINS_DOC");
+    let functools_all = &STDLIB_SOURCE[functools_all_start..functools_all_end];
+    assert!(
+        !functools_all.contains("\"get_cache_token\""),
+        "functools.__all__ must not export get_cache_token"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_functools_public_helpers_subset",
             "cpython_functools_public_helpers_diff_subset",
+            "cpython_functools_get_cache_token_subset",
+            "cpython_functools_get_cache_token_diff_subset",
+            "get_cache_token",
             "functools module `__package__` metadata",
             "`functools.__package__`",
         ] {

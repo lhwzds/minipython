@@ -32745,6 +32745,30 @@ for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.par
 }
 
 #[test]
+fn cpython_functools_get_cache_token_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py get_cache_token public behavior subset",
+        name: "functools-get-cache-token",
+        source: r#"import collections.abc, functools
+print(hasattr(functools, 'get_cache_token'), 'get_cache_token' in dir(functools), 'get_cache_token' in functools.__dict__)
+print('all', 'get_cache_token' in functools.__all__)
+first = functools.get_cache_token()
+print(type(first).__name__, first == functools.get_cache_token())
+class TokenClass: pass
+before = functools.get_cache_token()
+print(collections.abc.Sequence.register(TokenClass) is TokenClass)
+mid = functools.get_cache_token()
+print(issubclass(TokenClass, collections.abc.Sequence), before != mid)
+print(collections.abc.Sequence.register(TokenClass) is TokenClass, mid == functools.get_cache_token())
+for label, expr in [('arg', lambda: functools.get_cache_token(1)), ('kw', lambda: functools.get_cache_token(x=1))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",

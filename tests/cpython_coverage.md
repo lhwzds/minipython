@@ -5086,6 +5086,12 @@ without adding general custom encoder/decoder class support.
   `cpython_functools_all_exports_diff_subset`, covers the supported
   `functools.__all__` public export list, including `Placeholder`, while
   leaving CPython private cache helper exports outside the sandbox surface.
+- `cpython_functools_get_cache_token_subset`, backed by
+  `cpython_functools_get_cache_token_diff_subset`, covers the public
+  `functools.get_cache_token()` helper, including module visibility,
+  exclusion from `functools.__all__`, integer token stability, token changes
+  after a new `collections.abc` virtual subclass registration, duplicate
+  registration stability, and positional/keyword `TypeError` diagnostics.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython
