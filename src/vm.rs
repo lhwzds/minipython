@@ -68622,6 +68622,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::OperatorMethodCaller { .. } if name == "__doc__" => Ok(Value::String(
             operator_builtin_doc("operator.methodcaller").to_string(),
         )),
+        Value::OperatorAttrGetter { .. }
+        | Value::OperatorItemGetter { .. }
+        | Value::OperatorMethodCaller { .. }
+            if name == "__text_signature__" =>
+        {
+            Ok(Value::String("(obj, /)".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__module__" && function_name.starts_with("math.integer.") =>
         {

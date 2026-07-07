@@ -31087,6 +31087,17 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_instance_text_signature_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper instance text signature metadata subset",
+        name: "operator-helper-instance-text-signature-metadata",
+        source: r#"import operator
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    print(type(helper).__name__, helper.__text_signature__, object.__getattribute__(helper, '__text_signature__'))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

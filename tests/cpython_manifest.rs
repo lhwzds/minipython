@@ -25786,6 +25786,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_arithmetic_bitwise_builtin_metadata_subset",
             "cpython_operator_module_doc_intro_metadata_subset",
             "cpython_operator_helper_instance_module_metadata_subset",
+            "cpython_operator_helper_instance_text_signature_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25914,6 +25915,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_instance_module_metadata_diff_subset"),
         "operator sandbox manifest must cite gated CPython helper instance module metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_instance_text_signature_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper instance text signature metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -27846,6 +27852,87 @@ fn operator_module_doc_intro_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("operator.__doc__ intro metadata")
             && CPYTHON_MIGRATION.contains("`operator.__doc__`"),
         "migration notes must describe operator module __doc__ intro metadata"
+    );
+}
+
+#[test]
+fn operator_helper_instance_text_signature_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_instance_text_signature_metadata_subset(",
+        "Adapted from CPython operator helper instance text-signature metadata.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "helper.__text_signature__",
+        "object.__getattribute__(helper, '__text_signature__')",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper instance text signature subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter (obj, /) (obj, /)\"",
+        "\"itemgetter (obj, /) (obj, /)\"",
+        "\"methodcaller (obj, /) (obj, /)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper instance text signature subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_instance_text_signature_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper instance text signature metadata subset",
+        "operator-helper-instance-text-signature-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "helper.__text_signature__",
+        "object.__getattribute__(helper, '__text_signature__')",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper instance text signature CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::OperatorAttrGetter { .. }",
+        "Value::OperatorItemGetter { .. }",
+        "Value::OperatorMethodCaller { .. }",
+        "name == \"__text_signature__\"",
+        "Ok(Value::String(\"(obj, /)\".to_string()))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper instance text signature implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE
+            .contains("cpython_operator_helper_instance_text_signature_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_instance_text_signature_metadata_diff_subset",)
+            && CPYTHON_COVERAGE.contains("helper instance")
+            && CPYTHON_COVERAGE.contains("__text_signature__")
+            && CPYTHON_COVERAGE.contains("(obj, /)"),
+        "coverage notes must describe operator helper instance text signature metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION
+            .contains("cpython_operator_helper_instance_text_signature_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_instance_text_signature_metadata_diff_subset",)
+            && CPYTHON_MIGRATION.contains("helper instance")
+            && CPYTHON_MIGRATION.contains("__text_signature__")
+            && CPYTHON_MIGRATION.contains("(obj, /)"),
+        "migration notes must describe operator helper instance text signature metadata public behavior and direct diff evidence"
     );
 }
 
