@@ -25776,6 +25776,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_arithmetic_bitwise_subset",
             "cpython_operator_sequence_member_subset",
             "cpython_operator_sequence_concat_builtin_metadata_subset",
+            "cpython_operator_inplace_builtin_metadata_subset",
             "cpython_operator_callable_helper_subset",
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
@@ -25862,6 +25863,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_sequence_concat_builtin_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython sequence concat builtin metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_inplace_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython in-place builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -26844,6 +26850,106 @@ fn operator_sequence_concat_builtin_metadata_subset_has_focused_diff_evidence() 
             && CPYTHON_MIGRATION.contains("`concat` / `iconcat`")
             && CPYTHON_MIGRATION.contains("dunder aliases"),
         "migration notes must describe operator sequence concat builtin metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_inplace_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_inplace_builtin_metadata_subset(",
+        "Adapted from CPython _operator in-place arithmetic and bitwise builtin",
+        "names = ['iadd', 'isub', 'imul', 'imatmul', 'ifloordiv', 'itruediv', 'imod', 'ipow', 'ilshift', 'irshift', 'iand', 'ior', 'ixor']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "for alias in ['__iadd__', '__isub__', '__imul__', '__imatmul__', '__ifloordiv__', '__itruediv__', '__imod__', '__ipow__', '__ilshift__', '__irshift__', '__iand__', '__ior__', '__ixor__']",
+        "public = getattr(operator, alias.strip('_'))",
+        "value is public",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator in-place builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"iadd _operator iadd iadd Same as a += b. ($module, a, b, /)\"",
+        "\"imatmul _operator imatmul imatmul Same as a @= b. ($module, a, b, /)\"",
+        "\"ifloordiv _operator ifloordiv ifloordiv Same as a //= b. ($module, a, b, /)\"",
+        "\"ipow _operator ipow ipow Same as a **= b. ($module, a, b, /)\"",
+        "\"irshift _operator irshift irshift Same as a >>= b. ($module, a, b, /)\"",
+        "\"ixor _operator ixor ixor Same as a ^= b. ($module, a, b, /)\"",
+        "\"__iadd__ Same as a += b. ($module, a, b, /) True\"",
+        "\"__imatmul__ Same as a @= b. ($module, a, b, /) True\"",
+        "\"__ixor__ Same as a ^= b. ($module, a, b, /) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator in-place builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_inplace_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "_operator in-place arithmetic and bitwise builtin metadata subset",
+        "operator-inplace-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "for alias in ['__iadd__', '__isub__', '__imul__', '__imatmul__', '__ifloordiv__', '__itruediv__', '__imod__', '__ipow__', '__ilshift__', '__irshift__', '__iand__', '__ior__', '__ixor__']",
+        "public = getattr(operator, alias.strip('_'))",
+        "value is public",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator in-place builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"operator.iadd\" => \"Same as a += b.\"",
+        "\"operator.imatmul\" => \"Same as a @= b.\"",
+        "\"operator.ifloordiv\" => \"Same as a //= b.\"",
+        "\"operator.ipow\" => \"Same as a **= b.\"",
+        "\"operator.ixor\" => \"Same as a ^= b.\"",
+        "| \"operator.iadd\"",
+        "| \"operator.ixor\" => Some(\"($module, a, b, /)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator in-place builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_inplace_builtin_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_inplace_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("in-place")
+            && CPYTHON_COVERAGE.contains("arithmetic and bitwise")
+            && CPYTHON_COVERAGE.contains("`_operator` builtin metadata")
+            && CPYTHON_COVERAGE.contains("`iadd` / `isub` / `imul`")
+            && CPYTHON_COVERAGE.contains("`imatmul` / `ifloordiv` / `itruediv`")
+            && CPYTHON_COVERAGE.contains("`iand` / `ior` / `ixor`")
+            && CPYTHON_COVERAGE.contains("dunder aliases"),
+        "coverage notes must describe operator in-place builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_inplace_builtin_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_inplace_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("in-place")
+            && CPYTHON_MIGRATION.contains("arithmetic and bitwise")
+            && CPYTHON_MIGRATION.contains("`_operator` builtin metadata")
+            && CPYTHON_MIGRATION.contains("`iadd` / `isub` / `imul`")
+            && CPYTHON_MIGRATION.contains("`imatmul` / `ifloordiv` / `itruediv`")
+            && CPYTHON_MIGRATION.contains("`iand` / `ior` / `ixor`")
+            && CPYTHON_MIGRATION.contains("dunder aliases"),
+        "migration notes must describe operator in-place builtin metadata public behavior and direct diff evidence"
     );
 }
 

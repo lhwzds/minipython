@@ -30749,6 +30749,24 @@ for alias in ['__concat__', '__iconcat__']:
 }
 
 #[test]
+fn cpython_operator_inplace_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "_operator in-place arithmetic and bitwise builtin metadata subset",
+        name: "operator-inplace-builtin-metadata",
+        source: r#"import operator
+names = ['iadd', 'isub', 'imul', 'imatmul', 'ifloordiv', 'itruediv', 'imod', 'ipow', 'ilshift', 'irshift', 'iand', 'ior', 'ixor']
+for name in names:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+for alias in ['__iadd__', '__isub__', '__imul__', '__imatmul__', '__ifloordiv__', '__itruediv__', '__imod__', '__ipow__', '__ilshift__', '__irshift__', '__iand__', '__ior__', '__ixor__']:
+    value = getattr(operator, alias)
+    public = getattr(operator, alias.strip('_'))
+    print(alias, value.__doc__.splitlines()[0], value.__text_signature__, value is public)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_callable_helper_diff_subset() {
     // CPython oracle text: attribute name must be a string;
     // itemgetter expected 1 argument, got 0;

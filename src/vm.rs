@@ -69819,6 +69819,19 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.methodcaller" => "Return a callable object that calls a method.",
         "operator.concat" => "Same as a + b, for a and b sequences.",
         "operator.iconcat" => "Same as a += b, for a and b sequences.",
+        "operator.iadd" => "Same as a += b.",
+        "operator.isub" => "Same as a -= b.",
+        "operator.imul" => "Same as a *= b.",
+        "operator.imatmul" => "Same as a @= b.",
+        "operator.ifloordiv" => "Same as a //= b.",
+        "operator.itruediv" => "Same as a /= b.",
+        "operator.imod" => "Same as a %= b.",
+        "operator.ipow" => "Same as a **= b.",
+        "operator.ilshift" => "Same as a <<= b.",
+        "operator.irshift" => "Same as a >>= b.",
+        "operator.iand" => "Same as a &= b.",
+        "operator.ior" => "Same as a |= b.",
+        "operator.ixor" => "Same as a ^= b.",
         "operator.lt" => "Same as a < b.",
         "operator.le" => "Same as a <= b.",
         "operator.eq" => "Same as a == b.",
@@ -69879,7 +69892,10 @@ fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
         | "operator.sub" | "operator.mul" | "operator.matmul" | "operator.truediv"
         | "operator.floordiv" | "operator.mod" | "operator.pow" | "operator.and_"
         | "operator.or_" | "operator.xor" | "operator.lshift" | "operator.rshift"
-        | "operator.concat" | "operator.iconcat" => Some("($module, a, b, /)"),
+        | "operator.concat" | "operator.iconcat" | "operator.iadd" | "operator.isub"
+        | "operator.imul" | "operator.imatmul" | "operator.ifloordiv" | "operator.itruediv"
+        | "operator.imod" | "operator.ipow" | "operator.ilshift" | "operator.irshift"
+        | "operator.iand" | "operator.ior" | "operator.ixor" => Some("($module, a, b, /)"),
         "operator.setitem" => Some("($module, a, b, c, /)"),
         "operator.delitem" => Some("($module, a, b, /)"),
         "operator.length_hint" => Some("($module, obj, default=0, /)"),

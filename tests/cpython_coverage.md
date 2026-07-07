@@ -6307,6 +6307,15 @@ without adding general custom encoder/decoder class support.
   and dunder aliases `operator.__concat__` / `operator.__iconcat__`. Direct
   CPython diff evidence is in
   `cpython_operator_sequence_concat_builtin_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_inplace_builtin_metadata_subset`, covering in-place
+  arithmetic and bitwise `_operator` builtin metadata exposed through
+  `operator`, including `iadd` / `isub` / `imul`,
+  `imatmul` / `ifloordiv` / `itruediv`, `imod` / `ipow`,
+  `ilshift` / `irshift`, `iand` / `ior` / `ixor`, first-line `__doc__`,
+  `__text_signature__`, and dunder aliases such as `operator.__iadd__` /
+  `operator.__ixor__`. Direct CPython diff evidence is in
+  `cpython_operator_inplace_builtin_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset` and
   `cpython_operator_call_helper_subset`, covering CPython `test_operator.py`
   callable helpers `call`, `attrgetter`, `itemgetter`, and `methodcaller`,
