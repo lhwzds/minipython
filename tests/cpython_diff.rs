@@ -13864,6 +13864,39 @@ fn cpython_base_exception_bound_method_ne_wrapper_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_order_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public ordering wrapper surface",
+        name: "base-exception-bound-method-order-wrapper-direct",
+        source: r#"def error_result(error):
+    first = str(error.args[0]) if error.args else ''
+    return type(error).__name__ + ' ' + str(error) + ' args=' + str(len(error.args)) + ':' + first
+
+def module_result(wrapper):
+    try:
+        value = wrapper.__module__
+        return type(value).__name__ + ' ' + str(value)
+    except Exception as error:
+        return error_result(error)
+
+def call_result(call):
+    try:
+        value = call()
+        return type(value).__name__ + ' ' + str(value) + ' ' + str(value is NotImplemented)
+    except Exception as error:
+        return error_result(error)
+
+for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for helper in ['add_note', 'with_traceback']:
+        obj = getattr(exc, helper)
+        label = exc.__class__.__name__ + '-' + helper
+        for attr in ['__lt__', '__le__', '__gt__', '__ge__']:
+            wrapper = getattr(obj, attr)
+            print(label, attr, attr in dir(obj), type(wrapper).__name__, wrapper.__class__.__name__, wrapper.__self__ is obj, wrapper.__name__, wrapper.__qualname__, wrapper.__text_signature__, wrapper.__doc__, module_result(wrapper), call_result(lambda wrapper=wrapper, obj=obj: wrapper(obj)), call_result(lambda wrapper=wrapper: wrapper(1)), call_result(lambda wrapper=wrapper: wrapper()), call_result(lambda wrapper=wrapper, obj=obj: wrapper(obj, 1)), call_result(lambda wrapper=wrapper, obj=obj: wrapper(value=obj)))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_func_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __func__ absence",

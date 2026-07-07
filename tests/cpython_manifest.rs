@@ -49311,6 +49311,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_hash_wrapper_subset",
             "cpython_base_exception_bound_method_eq_wrapper_subset",
             "cpython_base_exception_bound_method_ne_wrapper_subset",
+            "cpython_base_exception_bound_method_order_wrapper_subset",
             "cpython_base_exception_bound_method_delattr_wrapper_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
@@ -49466,6 +49467,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_hash_wrapper_diff_subset",
         "cpython_base_exception_bound_method_eq_wrapper_diff_subset",
         "cpython_base_exception_bound_method_ne_wrapper_diff_subset",
+        "cpython_base_exception_bound_method_order_wrapper_diff_subset",
         "cpython_base_exception_bound_method_delattr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
@@ -62179,6 +62181,106 @@ fn base_exception_bound_method_ne_wrapper_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__ne__` wrapper")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __ne__ wrapper evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_order_wrapper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_order_wrapper_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "['__lt__', '__le__', '__gt__', '__ge__']",
+        "attr in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__qualname__",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "builtin_function_or_method.__lt__",
+        "builtin_function_or_method.__le__",
+        "builtin_function_or_method.__gt__",
+        "builtin_function_or_method.__ge__",
+        "Return self<value.",
+        "Return self<=value.",
+        "Return self>value.",
+        "Return self>=value.",
+        "module_result(wrapper)",
+        "call_result(lambda wrapper=wrapper, obj=obj: wrapper(obj))",
+        "call_result(lambda wrapper=wrapper: wrapper(1))",
+        "call_result(lambda wrapper=wrapper: wrapper())",
+        "call_result(lambda wrapper=wrapper, obj=obj: wrapper(obj, 1))",
+        "call_result(lambda wrapper=wrapper, obj=obj: wrapper(value=obj))",
+        "IndexError-with_traceback __ge__ True method-wrapper method-wrapper True __ge__ builtin_function_or_method.__ge__",
+        "NotImplementedType NotImplemented True",
+        "TypeError wrapper __ge__() takes no keyword arguments args=1:wrapper __ge__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method ordering wrapper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_order_wrapper_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public ordering wrapper surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "['__lt__', '__le__', '__gt__', '__ge__']",
+        "attr in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "module_result(wrapper)",
+        "call_result(lambda wrapper=wrapper: wrapper(1))",
+        "error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method ordering wrapper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_method_rich_compare(",
+        "builtin_function_or_method.{name}",
+        "method_display_name(name)",
+        "\"method.__lt__\"",
+        "\"method.__le__\"",
+        "\"method.__gt__\"",
+        "\"method.__ge__\"",
+        "\"__lt__\"",
+        "\"__le__\"",
+        "\"__gt__\"",
+        "\"__ge__\"",
+        "Value::NotImplemented",
+        "Return self<value.",
+        "Return self<=value.",
+        "Return self>value.",
+        "Return self>=value.",
+        "'method-wrapper' object has no attribute '__module__'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method ordering wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_order_wrapper_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_order_wrapper_diff_subset")
+                && document.contains("BaseException helper bound method ordering wrapper")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method ordering wrapper evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -67688,6 +67688,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     "builtin_function_or_method.__ne__".to_string(),
                 ))
             }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if matches!(
+                    name.as_str(),
+                    "method.__lt__" | "method.__le__" | "method.__gt__" | "method.__ge__"
+                ))
+                    && is_exception_helper_bound_method_value(&receiver) =>
+            {
+                let name = match function.as_ref() {
+                    Value::Builtin(name) => method_display_name(name),
+                    _ => unreachable!("guard ensures a builtin method wrapper"),
+                };
+                Ok(Value::String(format!("builtin_function_or_method.{name}")))
+            }
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
                 if matches!(function.as_ref(), Value::Builtin(name) if function_method_wrapper_missing_module_name(name)) =>
@@ -73973,6 +73986,10 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
             | "method.__delattr__"
             | "method.__eq__"
             | "method.__ne__"
+            | "method.__lt__"
+            | "method.__le__"
+            | "method.__gt__"
+            | "method.__ge__"
             | "method.__getattribute__"
             | "method.__hash__"
             | "method.__init__"
