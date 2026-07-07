@@ -2771,6 +2771,9 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "ItemsView"
             | "ValuesView"
             | "MutableSet"
+            | "attrgetter"
+            | "itemgetter"
+            | "methodcaller"
             | "NodeVisitor"
             | "NodeTransformer"
             | "functools._PlaceholderType"
@@ -2855,7 +2858,19 @@ fn builtin_type_public_name(name: &str) -> &str {
     if name == "CellType" {
         return "cell";
     }
+    if let Some(name) = operator_helper_type_public_name(name) {
+        return name;
+    }
     name.strip_prefix("ast.").unwrap_or(name)
+}
+
+fn operator_helper_type_public_name(name: &str) -> Option<&'static str> {
+    match name {
+        "attrgetter" => Some("operator.attrgetter"),
+        "itemgetter" => Some("operator.itemgetter"),
+        "methodcaller" => Some("operator.methodcaller"),
+        _ => None,
+    }
 }
 
 fn format_slice_part(value: &Option<Box<Value>>) -> String {

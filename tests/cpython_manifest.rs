@@ -25791,6 +25791,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_metadata_subset",
             "cpython_operator_helper_type_hierarchy_metadata_subset",
             "cpython_operator_helper_type_classinfo_metadata_subset",
+            "cpython_operator_helper_type_display_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25944,6 +25945,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_classinfo_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper type classinfo metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_display_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type display metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28371,6 +28377,108 @@ fn operator_helper_type_classinfo_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__type_params__")
             && CPYTHON_MIGRATION.contains("not an acceptable base type"),
         "migration notes must describe operator helper type classinfo metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_display_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_display_metadata_subset(",
+        "Adapted from CPython operator helper type display metadata.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "repr(typ)",
+        "str(typ)",
+        "format(typ, '')",
+        "repr(typ.__class__)",
+        "typ.__class__.__name__",
+        "repr(typ.__mro__[0])",
+        "repr(typ.__base__)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type display metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter <class 'operator.attrgetter'> <class 'operator.attrgetter'> <class 'operator.attrgetter'>\"",
+        "\"attrgetter <class 'type'> type True\"",
+        "\"attrgetter <class 'operator.attrgetter'> <class 'object'>\"",
+        "\"itemgetter <class 'operator.itemgetter'> <class 'operator.itemgetter'> <class 'operator.itemgetter'>\"",
+        "\"itemgetter <class 'operator.itemgetter'> <class 'object'>\"",
+        "\"methodcaller <class 'operator.methodcaller'> <class 'operator.methodcaller'> <class 'operator.methodcaller'>\"",
+        "\"methodcaller <class 'operator.methodcaller'> <class 'object'>\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type display metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_display_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper type display metadata subset",
+        "operator-helper-type-display-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "repr(typ)",
+        "str(typ)",
+        "format(typ, '')",
+        "repr(typ.__class__)",
+        "typ.__class__.__name__",
+        "repr(typ.__mro__[0])",
+        "repr(typ.__base__)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type display metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_builtin_type_display_name(name: &str) -> bool",
+        "\"attrgetter\"",
+        "\"itemgetter\"",
+        "\"methodcaller\"",
+        "fn builtin_type_public_name(name: &str) -> &str",
+        "operator_helper_type_public_name(name)",
+        "fn operator_helper_type_public_name(name: &str) -> Option<&'static str>",
+        "\"attrgetter\" => Some(\"operator.attrgetter\")",
+        "\"itemgetter\" => Some(\"operator.itemgetter\")",
+        "\"methodcaller\" => Some(\"operator.methodcaller\")",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type display metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_display_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_display_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper type display metadata")
+            && CPYTHON_COVERAGE.contains("repr")
+            && CPYTHON_COVERAGE.contains("str")
+            && CPYTHON_COVERAGE.contains("format")
+            && CPYTHON_COVERAGE.contains("<class 'operator.attrgetter'>"),
+        "coverage notes must describe operator helper type display metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_display_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_display_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("helper type display metadata")
+            && CPYTHON_MIGRATION.contains("repr")
+            && CPYTHON_MIGRATION.contains("str")
+            && CPYTHON_MIGRATION.contains("format")
+            && CPYTHON_MIGRATION.contains("<class 'operator.attrgetter'>"),
+        "migration notes must describe operator helper type display metadata public behavior and direct diff evidence"
     );
 }
 
