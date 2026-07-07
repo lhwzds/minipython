@@ -60,6 +60,8 @@ tools/run_cpython_gap_sweep.sh
 `mnpy`，再比较有边界的 corpus。它是发现差异的循环；提升为支持面的行为仍然
 需要对应的 `cpython_subset`、`cpython_diff`、manifest、coverage 和 migration
 证据。
+gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver interpreter
+路径，避免过期 oracle 混进结果里。
 
 ## 架构
 

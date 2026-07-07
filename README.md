@@ -81,6 +81,8 @@ then uses `uv run --python` with the pinned `.python-version`, builds `mnpy`,
 and compares the bounded corpus against the fixed CPython oracle. It is a
 discovery loop; promoted behavior still needs focused `cpython_subset`,
 `cpython_diff`, manifest, coverage, and migration evidence.
+Gap reports record both the required pinned CPython version and the actual
+oracle/driver interpreter paths so a stale oracle cannot hide in the results.
 
 ## Architecture
 

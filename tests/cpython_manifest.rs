@@ -80617,6 +80617,10 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "unknown expected marker",
         "write_reports",
         "render_markdown",
+        "required_cpython_version",
+        "driver_executable",
+        "Required CPython",
+        "Driver Python",
     ] {
         assert!(
             GAP_SWEEP_TOOL.contains(required),
@@ -80632,6 +80636,9 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "gap.classify",
         "gap.load_cases",
         "gap.write_reports",
+        "VersionGuardTests",
+        "test_run_sweep_rejects_wrong_oracle_version",
+        "required_cpython_version",
         "test_unsupported_out_of_scope_expected_overrides_nonmatching_results",
         "test_load_cases_rejects_unknown_expected_marker",
         "if __name__ == \"__main__\"",
@@ -80661,6 +80668,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     for required in [
         "uv run --python \"$(cat .python-version)\" python tools/test_cpython_gap_sweep.py",
         "tools/run_cpython_gap_sweep.sh",
+        "oracle/driver interpreter",
     ] {
         assert!(
             README.contains(required) && README_CN.contains(required),

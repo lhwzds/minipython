@@ -8,6 +8,7 @@ tool instead of becoming the only way to catch tool regressions.
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import sys
@@ -182,14 +183,40 @@ expected = "typo"
                 gap.load_cases(corpus)
 
 
+class VersionGuardTests(unittest.TestCase):
+    def test_run_sweep_rejects_wrong_oracle_version(self):
+        original_oracle_version = gap.oracle_version
+        gap.oracle_version = lambda _cpython: "3.14.5"
+        args = argparse.Namespace(
+            cpython="/does/not/matter",
+            require_version="3.14.6",
+            minipython="/does/not/matter",
+            corpus="tests/gap_corpus",
+            scope="syntax",
+            out="reports/cpython-gap-sweep",
+            timeout=0.1,
+            fail_on_diff=False,
+        )
+        try:
+            with self.assertRaisesRegex(
+                SystemExit,
+                "CPython oracle version mismatch: expected 3.14.6, got 3.14.5",
+            ):
+                gap.run_sweep(args)
+        finally:
+            gap.oracle_version = original_oracle_version
+
+
 class ReportTests(unittest.TestCase):
     def test_write_reports_emits_json_summary_and_markdown_details(self):
         meta = {
             "generated_at": "2026-07-01T00:00:00+00:00",
             "duration_seconds": 0.01,
             "cwd": str(REPO_ROOT),
+            "required_cpython_version": "3.14.6",
             "cpython_executable": "/python",
             "cpython_version": "3.14.6",
+            "driver_executable": "/python",
             "driver_python": "3.14.6",
             "minipython_executable": "/mnpy",
             "corpus": "tests/gap_corpus",
@@ -212,7 +239,10 @@ class ReportTests(unittest.TestCase):
             markdown = prefix.with_suffix(".md").read_text()
 
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
+        self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
+        self.assertIn("- Required CPython: `3.14.6`", markdown)
+        self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("### `case-one`", markdown)
         self.assertIn("CPython stdout:", markdown)
