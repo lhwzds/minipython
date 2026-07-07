@@ -5092,6 +5092,12 @@ without adding general custom encoder/decoder class support.
   exclusion from `functools.__all__`, integer token stability, token changes
   after a new `collections.abc` virtual subclass registration, duplicate
   registration stability, and positional/keyword `TypeError` diagnostics.
+- `cpython_functools_get_cache_token_metadata_subset`, backed by
+  `cpython_functools_get_cache_token_metadata_diff_subset`, covers
+  `functools.get_cache_token` public builtin metadata, including `__name__`,
+  `__qualname__`, CPython-visible `_abc` `__module__`, `__doc__`,
+  `__text_signature__`, absent `__dict__` / `__annotations__`, builtin type,
+  `repr()` / `str()` shape, and `dir()` visibility.
 - The bundled `functools` module includes
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython

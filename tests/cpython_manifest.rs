@@ -12688,6 +12688,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_functools_public_helpers_subset",
             "cpython_functools_get_cache_token_subset",
+            "cpython_functools_get_cache_token_metadata_subset",
             "cpython_functools_module_doc_metadata_subset",
             "cpython_functools_all_exports_subset",
             "cpython_functools_partial_subset",
@@ -12723,6 +12724,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
         "cpython_functools_get_cache_token_diff_subset",
+        "cpython_functools_get_cache_token_metadata_diff_subset",
         "cpython_functools_module_doc_metadata_diff_subset",
         "cpython_functools_all_exports_diff_subset",
         "cpython_functools_partial_diff_subset",
@@ -12811,6 +12813,8 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_public_helpers_diff_subset",
             "cpython_functools_get_cache_token_subset",
             "cpython_functools_get_cache_token_diff_subset",
+            "cpython_functools_get_cache_token_metadata_subset",
+            "cpython_functools_get_cache_token_metadata_diff_subset",
             "get_cache_token",
             "functools module `__package__` metadata",
             "`functools.__package__`",
@@ -12820,6 +12824,39 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
                 "functools module package metadata docs must contain `{required}`"
             );
         }
+    }
+    let get_cache_token_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_get_cache_token_metadata_diff_subset",
+    );
+    let get_cache_token_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_get_cache_token_metadata_subset",
+    );
+    for required in [
+        "__qualname__",
+        "__module__",
+        "__doc__",
+        "__text_signature__",
+        "repr(fn)",
+        "str(fn)",
+        "'__dict__' in dir(fn)",
+    ] {
+        assert!(
+            get_cache_token_diff.contains(required) && get_cache_token_subset.contains(required),
+            "functools get_cache_token metadata evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"__module__ '_abc'\"",
+        "\"__text_signature__ '($module, /)'\"",
+        "\"repr <built-in function get_cache_token>\"",
+        "\"dir-has True True False\"",
+    ] {
+        assert!(
+            get_cache_token_subset.contains(required),
+            "functools get_cache_token metadata subset output must pin `{required}`"
+        );
     }
     let doc_metadata_diff = extract_rust_test_body(
         CPYTHON_DIFF,

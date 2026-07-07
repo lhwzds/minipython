@@ -32769,6 +32769,29 @@ for label, expr in [('arg', lambda: functools.get_cache_token(1)), ('kw', lambda
 }
 
 #[test]
+fn cpython_functools_get_cache_token_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/functools.py get_cache_token public metadata subset",
+        name: "functools-get-cache-token-metadata",
+        source: r#"import functools
+fn = functools.get_cache_token
+for attr in ['__name__', '__qualname__', '__module__', '__doc__', '__text_signature__', '__dict__', '__annotations__']:
+    try:
+        value = getattr(fn, attr)
+        if attr == '__doc__':
+            print(attr, type(value).__name__, bool(value), str(value).splitlines()[0] if value else value)
+        else:
+            print(attr, repr(value))
+    except Exception as error:
+        print(attr, type(error).__name__, str(error))
+print('class', type(fn).__name__, fn.__class__.__name__)
+print('repr', repr(fn))
+print('str', str(fn))
+print('dir-has', '__module__' in dir(fn), '__qualname__' in dir(fn), '__dict__' in dir(fn))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_module_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/functools.py public module __doc__ metadata subset",

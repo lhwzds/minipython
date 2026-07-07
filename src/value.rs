@@ -1652,6 +1652,9 @@ impl fmt::Display for Value {
                     json_builtin_function_repr(name).expect("guard checked json function repr")
                 )
             }
+            Value::Builtin(name) if name == "functools.get_cache_token" => {
+                write!(f, "<built-in function get_cache_token>")
+            }
             Value::Builtin(name) => write!(f, "<builtin {name}>"),
             Value::None => write!(f, "None"),
             Value::NotImplemented => write!(f, "NotImplemented"),
@@ -2306,6 +2309,9 @@ fn format_value_repr(value: &Value) -> String {
         }
         Value::Builtin(name) if json_builtin_function_repr(name).is_some() => {
             json_builtin_function_repr(name).expect("guard checked json function repr")
+        }
+        Value::Builtin(name) if name == "functools.get_cache_token" => {
+            "<built-in function get_cache_token>".to_string()
         }
         Value::MemberDescriptor {
             name, owner_name, ..

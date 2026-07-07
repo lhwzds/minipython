@@ -54904,7 +54904,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::MemberDescriptor { .. } => names.extend(member_descriptor_dir_names()),
         Value::Builtin(name)
             if is_builtins_builtin_function_name(name)
-                || is_sys_breakpointhook_builtin_name(name) =>
+                || is_sys_breakpointhook_builtin_name(name)
+                || is_functools_get_cache_token_builtin_name(name) =>
         {
             names.extend(builtin_function_dir_names())
         }
@@ -68503,6 +68504,37 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(collections_namedtuple_doc().to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_functools_get_cache_token_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("_abc".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_functools_get_cache_token_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("get_cache_token".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_functools_get_cache_token_builtin_name(&function_name) =>
+        {
+            Ok(Value::String(
+                "Returns the current ABC cache token.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__"
+                && is_functools_get_cache_token_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("($module, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if matches!(name, "__dict__" | "__annotations__")
+                && is_functools_get_cache_token_builtin_name(&function_name) =>
+        {
+            Err(format!(
+                "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -72588,6 +72620,10 @@ fn builtins_module_type_doc(name: &str) -> Option<&'static str> {
 
 fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
     name == "sys.__breakpointhook__"
+}
+
+fn is_functools_get_cache_token_builtin_name(name: &str) -> bool {
+    name == "functools.get_cache_token"
 }
 
 fn is_class_like_builtin(name: &str) -> bool {
