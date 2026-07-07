@@ -10361,6 +10361,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__getstate__" => {
                 self.call_exception_bound_method_getstate(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__subclasshook__" => {
+                self.call_exception_bound_method_subclasshook(args, keywords)
+            }
             Value::Builtin(name)
                 if matches!(
                     name.as_str(),
@@ -19226,6 +19229,33 @@ impl Vm {
         }
 
         Ok(Value::None)
+    }
+
+    fn call_exception_bound_method_subclasshook(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: builtin_function_or_method.__subclasshook__() takes no keyword arguments"
+                    .to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        if !matches!(receiver, Value::Builtin(function_name) if function_name == "builtin_function_or_method")
+        {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        }
+        let [_object] = rest else {
+            return Err(format!(
+                "TypeError: builtin_function_or_method.__subclasshook__() takes exactly one argument ({} given)",
+                rest.len()
+            ));
+        };
+        Ok(Value::NotImplemented)
     }
 
     fn call_method_hash(
@@ -67203,6 +67233,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 })
             }
+            "__subclasshook__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__subclasshook__".to_string())),
+                    receiver: Box::new(Value::Builtin("builtin_function_or_method".to_string())),
+                    identity: Rc::new(()),
+                })
+            }
             "__call__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(
                     if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
@@ -67426,6 +67463,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__getstate__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__subclasshook__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70479,6 +70521,28 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__subclasshook__" =>
+        {
+            Ok(Value::String(
+                "builtin_function_or_method.__subclasshook__".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "method.__subclasshook__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "method.__subclasshook__" =>
+        {
+            Ok(Value::String("Abstract classes can override this to customize issubclass().\n\nThis is invoked early on by abc.ABCMeta.__subclasscheck__().\nIt should return True, False or NotImplemented.  If it returns\nNotImplemented, the normal algorithm is used.  Otherwise, it\noverrides the normal algorithm (and the outcome is cached).\n".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__subclasshook__" =>
+        {
+            Ok(Value::String("($type, object, /)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "method.__reduce__" =>
         {
             Ok(Value::String(
@@ -70823,6 +70887,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
         "__qualname__",
         "__reduce__",
         "__reduce_ex__",
+        "__subclasshook__",
         "__text_signature__",
     ]
     .into_iter()
