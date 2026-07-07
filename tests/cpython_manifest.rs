@@ -49299,6 +49299,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_method_descriptor_metadata_subset",
             "cpython_base_exception_method_descriptor_type_owner_subset",
             "cpython_base_exception_bound_method_metadata_subset",
+            "cpython_base_exception_bound_method_dir_metadata_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
@@ -49434,6 +49435,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_method_descriptor_metadata_diff_subset",
         "cpython_base_exception_method_descriptor_type_owner_diff_subset",
         "cpython_base_exception_bound_method_metadata_diff_subset",
+        "cpython_base_exception_bound_method_dir_metadata_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
@@ -61510,6 +61512,77 @@ fn base_exception_bound_method_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method metadata")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_dir_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_dir_metadata_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "name in dir(obj)",
+        "__name__",
+        "__qualname__",
+        "__text_signature__",
+        "__module__",
+        "'with_traceback'",
+        "IndexError-with_traceback-dir",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method dir metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_dir_metadata_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public dir metadata",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "name in dir(obj)",
+        "__name__",
+        "__qualname__",
+        "__text_signature__",
+        "__module__",
+        "'with_traceback'",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method dir metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn exception_bound_method_dir_names(",
+        "exception_bound_method_name(name, receiver).is_some()",
+        "\"__name__\"",
+        "\"__qualname__\"",
+        "\"__text_signature__\"",
+        "\"__module__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method dir metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_dir_metadata_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_dir_metadata_diff_subset")
+                && document.contains("BaseException helper bound method dir metadata")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method dir metadata evidence must be documented in coverage and migration notes"
         );
     }
 }

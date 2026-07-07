@@ -13611,6 +13611,30 @@ for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
 }
 
 #[test]
+fn cpython_base_exception_bound_method_dir_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public dir metadata",
+        name: "base-exception-bound-method-dir-metadata-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        visible = [
+            name for name in [
+                '__self__',
+                '__name__',
+                '__qualname__',
+                '__doc__',
+                '__text_signature__',
+                '__module__',
+                '__call__',
+                '__class__',
+            ] if name in dir(obj)
+        ]
+        print(exc.__class__.__name__ + '-' + attr + '-dir', visible)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

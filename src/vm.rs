@@ -55627,7 +55627,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .into_iter()
                 .map(str::to_string),
         ),
-        Value::BoundMethod { function, .. } => {
+        Value::BoundMethod {
+            function, receiver, ..
+        } => {
             names.extend(
                 [
                     "__doc__",
@@ -55651,6 +55653,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .into_iter()
                 .map(str::to_string),
             );
+            if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, receiver).is_some())
+            {
+                names.extend(exception_bound_method_dir_names());
+            }
             if !matches!(function.as_ref(), Value::Builtin(name) if is_numeric_from_number_classmethod(name))
             {
                 names.push("__func__".to_string());
@@ -70506,6 +70512,17 @@ fn exception_bound_method_text_signature(function_name: &str) -> Option<&'static
         name if name.ends_with(".with_traceback") => Some("($self, tb, /)"),
         _ => None,
     }
+}
+
+fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
+    [
+        "__module__",
+        "__name__",
+        "__qualname__",
+        "__text_signature__",
+    ]
+    .into_iter()
+    .map(str::to_string)
 }
 
 fn numeric_from_number_classmethod_value(owner: &str) -> Value {
