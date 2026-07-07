@@ -25796,6 +25796,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_dict_text_signature_descriptor_subset",
             "cpython_operator_helper_type_dict_repr_descriptor_subset",
             "cpython_operator_helper_type_dict_call_descriptor_subset",
+            "cpython_operator_helper_type_dict_new_descriptor_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25974,6 +25975,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_dict_call_descriptor_diff_subset"),
         "operator sandbox manifest must cite CPython helper type dict call descriptor diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_new_descriptor_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict new descriptor diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -29008,6 +29014,156 @@ fn operator_helper_type_dict_call_descriptor_subset_has_focused_diff_evidence() 
             && CPYTHON_MIGRATION.contains("keyword `TypeError`")
             && CPYTHON_MIGRATION.contains("remaining CPython descriptor dictionary entries"),
         "migration notes must describe operator helper type dict call descriptor public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_new_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_new_descriptor_subset(",
+        "Adapted from CPython operator helper type `__dict__` `__new__`",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__new__']",
+        "isinstance(desc, types.BuiltinFunctionType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__self__ is typ",
+        "hasattr(desc, '__objclass__')",
+        "desc.__module__",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc).startswith('<built-in method __new__ of type object at 0x')",
+        "desc(typ, *args)",
+        "type(desc(typ, *args)) is typ",
+        "typ(*args)",
+        "type(typ(*args)) is typ",
+        "desc()",
+        "desc(42, *args)",
+        "desc(typ)",
+        "desc(typ, *args, spam=1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict new descriptor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "attrgetter True builtin_function_or_method True __new__ attrgetter.__new__ True False None Create and return a new object.  See help(type) for accurate signature. ($type, *args, **kwargs)",
+        "attrgetter True operator.attrgetter('other') True operator.attrgetter('other') True",
+        "attrgetter missing-class TypeError operator.attrgetter.__new__(): not enough arguments",
+        "attrgetter bad-class TypeError operator.attrgetter.__new__(X): X is not a type object (int)",
+        "attrgetter missing-arg TypeError attrgetter expected 1 argument, got 0",
+        "attrgetter keyword TypeError attrgetter() takes no keyword arguments",
+        "itemgetter True builtin_function_or_method True __new__ itemgetter.__new__ True False None Create and return a new object.  See help(type) for accurate signature. ($type, *args, **kwargs)",
+        "itemgetter True operator.itemgetter(1) True operator.itemgetter(1) True",
+        "itemgetter missing-class TypeError operator.itemgetter.__new__(): not enough arguments",
+        "itemgetter bad-class TypeError operator.itemgetter.__new__(X): X is not a type object (int)",
+        "itemgetter missing-arg TypeError itemgetter expected 1 argument, got 0",
+        "itemgetter keyword TypeError itemgetter() takes no keyword arguments",
+        "methodcaller True builtin_function_or_method True __new__ methodcaller.__new__ True False None Create and return a new object.  See help(type) for accurate signature. ($type, *args, **kwargs)",
+        "methodcaller True operator.methodcaller('replace', 'a', 'o') True operator.methodcaller('replace', 'a', 'o') True",
+        "methodcaller missing-class TypeError operator.methodcaller.__new__(): not enough arguments",
+        "methodcaller bad-class TypeError operator.methodcaller.__new__(X): X is not a type object (int)",
+        "methodcaller missing-arg TypeError methodcaller needs at least one argument, the method name",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict new descriptor subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_new_descriptor_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ __new__ builtin method subset",
+        "operator-helper-type-dict-new-descriptor",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__new__']",
+        "isinstance(desc, types.BuiltinFunctionType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__self__ is typ",
+        "hasattr(desc, '__objclass__')",
+        "desc.__module__",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc).startswith('<built-in method __new__ of type object at 0x')",
+        "desc(typ, *args)",
+        "type(desc(typ, *args)) is typ",
+        "typ(*args)",
+        "type(typ(*args)) is typ",
+        "desc()",
+        "desc(42, *args)",
+        "desc(typ)",
+        "desc(typ, *args, spam=1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict new descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_operator_helper_new(",
+        "fn call_operator_helper_type_constructor(",
+        "operator_helper_new_descriptor_type_name",
+        "operator_helper_new_descriptor_operator_name",
+        "operator.attrgetter.__new__",
+        "operator.itemgetter.__new__",
+        "operator.methodcaller.__new__",
+        "Value::String(\"__new__\".to_string())",
+        "Value::Builtin(format!(\"{operator_name}.__new__\"))",
+        "operator_name}.__new__(): not enough arguments",
+        "operator_name}.__new__(X): X is not a type object",
+        "self.call_operator_helper_type_constructor(helper_type_name, rest.to_vec(), keywords)",
+        "Value::Builtin(name) if is_operator_helper_type_name(&name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict new descriptor implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "operator_helper_new_descriptor_type_name",
+        "<built-in method __new__ of type object at 0x0>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type dict new descriptor display implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_dict_new_descriptor_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_dict_new_descriptor_diff_subset")
+            && CPYTHON_COVERAGE.contains("__dict__['__new__']")
+            && CPYTHON_COVERAGE.contains("builtin method metadata")
+            && CPYTHON_COVERAGE.contains("direct `__new__` construction")
+            && CPYTHON_COVERAGE.contains("direct helper type calls")
+            && CPYTHON_COVERAGE.contains("missing-class")
+            && CPYTHON_COVERAGE.contains("vectorcall offsets"),
+        "coverage notes must describe operator helper type dict new descriptor and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_dict_new_descriptor_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_dict_new_descriptor_diff_subset")
+            && CPYTHON_MIGRATION.contains("__dict__['__new__']")
+            && CPYTHON_MIGRATION.contains("builtin method metadata")
+            && CPYTHON_MIGRATION.contains("direct `__new__` construction")
+            && CPYTHON_MIGRATION.contains("direct helper type")
+            && CPYTHON_MIGRATION.contains("missing-class")
+            && CPYTHON_MIGRATION.contains("vectorcall offsets"),
+        "migration notes must describe operator helper type dict new descriptor public behavior and direct diff evidence"
     );
 }
 

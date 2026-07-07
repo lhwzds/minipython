@@ -31274,6 +31274,36 @@ for helper, target in samples:
 }
 
 #[test]
+fn cpython_operator_helper_type_dict_new_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type __dict__ __new__ builtin method subset",
+        name: "operator-helper-type-dict-new-descriptor",
+        source: r#"import operator, types
+for helper, args in [(operator.attrgetter('name'), ('other',)), (operator.itemgetter(0), (1,)), (operator.methodcaller('strip'), ('replace', 'a', 'o'))]:
+    typ = type(helper)
+    desc = typ.__dict__['__new__']
+    print(typ.__name__, '__new__' in typ.__dict__, type(desc).__name__, isinstance(desc, types.BuiltinFunctionType), desc.__name__, desc.__qualname__, desc.__self__ is typ, hasattr(desc, '__objclass__'), desc.__module__, desc.__doc__, desc.__text_signature__)
+    print(typ.__name__, repr(desc).startswith('<built-in method __new__ of type object at 0x'), desc(typ, *args), type(desc(typ, *args)) is typ, typ(*args), type(typ(*args)) is typ)
+    try:
+        desc()
+    except TypeError as error:
+        print(typ.__name__, 'missing-class', type(error).__name__, str(error))
+    try:
+        desc(42, *args)
+    except TypeError as error:
+        print(typ.__name__, 'bad-class', type(error).__name__, str(error))
+    try:
+        desc(typ)
+    except TypeError as error:
+        print(typ.__name__, 'missing-arg', type(error).__name__, str(error))
+    try:
+        desc(typ, *args, spam=1)
+    except TypeError as error:
+        print(typ.__name__, 'keyword', type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

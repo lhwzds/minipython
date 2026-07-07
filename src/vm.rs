@@ -9644,6 +9644,9 @@ impl Vm {
             {
                 self.call_operator_helper_call_wrapper(&name, args, keywords)
             }
+            Value::Builtin(name) if operator_helper_new_descriptor_type_name(&name).is_some() => {
+                self.call_operator_helper_new(&name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("operator.") => {
                 self.call_operator_builtin(&name, args, keywords)
             }
@@ -11401,6 +11404,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "method" => {
                 call_method_type_constructor(args, keywords)
+            }
+            Value::Builtin(name) if is_operator_helper_type_name(&name) => {
+                self.call_operator_helper_type_constructor(&name, args, keywords)
             }
             Value::Builtin(name) if name == "callable.__call__" => {
                 let [callable, rest @ ..] = args.as_slice() else {
@@ -18490,6 +18496,41 @@ impl Vm {
             ),
             _ => unreachable!("guard checked operator helper call wrapper receiver"),
         }
+    }
+
+    fn call_operator_helper_new(
+        &mut self,
+        descriptor_name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((class, rest)) = args.split_first() else {
+            let operator_name = operator_helper_new_descriptor_operator_name(descriptor_name)
+                .expect("guard checked operator helper new descriptor");
+            return Err(format!(
+                "TypeError: {operator_name}.__new__(): not enough arguments"
+            ));
+        };
+        let helper_type_name = operator_helper_new_descriptor_type_name(descriptor_name)
+            .expect("guard checked operator helper new descriptor");
+        if !matches!(class, Value::Builtin(name) if name == helper_type_name) {
+            let operator_name = operator_helper_new_descriptor_operator_name(descriptor_name)
+                .expect("guard checked operator helper new descriptor");
+            return Err(match class {
+                value @ (Value::Builtin(_) | Value::Class { .. } | Value::NamedTupleType(_)) => {
+                    format!(
+                        "TypeError: {operator_name}.__new__({}): {} is not a subtype of {operator_name}",
+                        class_display_name(value),
+                        class_display_name(value)
+                    )
+                }
+                value => format!(
+                    "TypeError: {operator_name}.__new__(X): X is not a type object ({})",
+                    type_name(value)
+                ),
+            });
+        }
+        self.call_operator_helper_type_constructor(helper_type_name, rest.to_vec(), keywords)
     }
 
     fn call_method_get(
@@ -35124,6 +35165,30 @@ impl Vm {
             keywords,
             identity: Rc::new(()),
         })
+    }
+
+    fn call_operator_helper_type_constructor(
+        &mut self,
+        type_name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        match type_name {
+            "attrgetter" => {
+                if !keywords.is_empty() {
+                    return Err("TypeError: attrgetter() takes no keyword arguments".to_string());
+                }
+                self.call_operator_attrgetter_constructor(args)
+            }
+            "itemgetter" => {
+                if !keywords.is_empty() {
+                    return Err("TypeError: itemgetter() takes no keyword arguments".to_string());
+                }
+                self.call_operator_itemgetter_constructor(args)
+            }
+            "methodcaller" => self.call_operator_methodcaller_constructor(args, keywords),
+            _ => unreachable!("guard checked operator helper type name"),
+        }
     }
 
     fn call_operator_attrgetter(
@@ -57230,6 +57295,24 @@ fn operator_helper_call_wrapper_descriptor_applies(operator_name: &str, object: 
     )
 }
 
+fn operator_helper_new_descriptor_type_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__new__" => Some("attrgetter"),
+        "operator.itemgetter.__new__" => Some("itemgetter"),
+        "operator.methodcaller.__new__" => Some("methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_new_descriptor_operator_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__new__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__new__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__new__" => Some("operator.methodcaller"),
+        _ => None,
+    }
+}
+
 fn super_member_descriptor(name: &str) -> Value {
     debug_assert!(is_super_member_descriptor_name(name));
     Value::MemberDescriptor {
@@ -67296,6 +67379,35 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Builtin(function_name)
+            if operator_helper_new_descriptor_type_name(&function_name).is_some()
+                && matches!(
+                    name,
+                    "__name__"
+                        | "__qualname__"
+                        | "__self__"
+                        | "__module__"
+                        | "__doc__"
+                        | "__text_signature__"
+                ) =>
+        {
+            let type_name = operator_helper_new_descriptor_type_name(&function_name)
+                .expect("guard checked operator helper new descriptor");
+            match name {
+                "__name__" => Ok(Value::String("__new__".to_string())),
+                "__qualname__" => Ok(Value::String(format!("{type_name}.__new__"))),
+                "__self__" => Ok(Value::Builtin(type_name.to_string())),
+                "__module__" => Ok(Value::None),
+                "__doc__" => Ok(Value::String(
+                    "Create and return a new object.  See help(type) for accurate signature."
+                        .to_string(),
+                )),
+                "__text_signature__" => {
+                    Ok(Value::String("($type, *args, **kwargs)".to_string()))
+                }
+                _ => unreachable!("guard checked operator helper new descriptor metadata"),
+            }
+        }
+        Value::Builtin(function_name)
             if is_super_wrapper_descriptor_builtin(&function_name)
                 && matches!(
                     name,
@@ -70188,6 +70300,10 @@ fn operator_helper_type_dict_value(name: &str) -> Value {
         (
             Value::String("__doc__".to_string()),
             Value::String(operator_builtin_doc(operator_name).to_string()),
+        ),
+        (
+            Value::String("__new__".to_string()),
+            Value::Builtin(format!("{operator_name}.__new__")),
         ),
         (
             Value::String("__call__".to_string()),

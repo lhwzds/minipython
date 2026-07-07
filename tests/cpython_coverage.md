@@ -6409,8 +6409,8 @@ without adding general custom encoder/decoder class support.
   `__module__` and `__doc__` entries through direct attribute access and
   `object.__getattribute__`; direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_metadata_diff_subset`. This does not claim
-  the full CPython descriptor dictionary for `__reduce__` or other descriptor
-  entries.
+  the full CPython descriptor dictionary for `__reduce__` / pickle behavior,
+  vectorcall offsets, or other descriptor entries.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_helper_type_dict_text_signature_descriptor_subset`,
   covering the helper type `__dict__['__text_signature__']` getset_descriptor
@@ -6441,7 +6441,19 @@ without adding general custom encoder/decoder class support.
   behavior, and preserves CPython wrong-object, missing-receiver, missing-target,
   and keyword `TypeError` shapes. Direct CPython diff evidence is in
   `cpython_operator_helper_type_dict_call_descriptor_diff_subset`. This does not
-  claim the remaining CPython descriptor dictionary entries such as `__reduce__`.
+  claim the remaining CPython descriptor dictionary entries such as `__reduce__`
+  or vectorcall offsets.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_dict_new_descriptor_subset`, covering the
+  helper type `__dict__['__new__']` builtin method for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. The descriptor exposes CPython-aligned
+  builtin method metadata, supports direct `__new__` construction, supports
+  direct helper type calls such as `type(operator.attrgetter('x'))('y')`, and
+  preserves missing-class, bad-class, missing-helper-argument, and keyword
+  `TypeError` shapes. Direct CPython diff evidence is in
+  `cpython_operator_helper_type_dict_new_descriptor_diff_subset`. This does not
+  claim `__reduce__` / pickle behavior or CPython vectorcall offsets.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
