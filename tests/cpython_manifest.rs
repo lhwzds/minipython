@@ -5278,6 +5278,83 @@ fn dict_view_dir_type_lookup_surface_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_dict_mappingproxy_surface_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_dict_view_type_dict_mappingproxy_surface_subset";
+    let diff_name = "cpython_dict_view_type_dict_mappingproxy_surface_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "focused dict view type __dict__ mappingproxy subset evidence must exist"
+    );
+
+    for required in [
+        "source = {'a': 1, 'b': 2}",
+        "namespace = typ.__dict__",
+        "'mapping' in namespace",
+        "'__contains__' in namespace",
+        "'isdisjoint' in namespace",
+        "'__reversed__' in namespace",
+        "namespace['__len__'](view)",
+        "namespace['__reversed__'](view)",
+        "descriptor = namespace['mapping']",
+        "descriptor.__get__(view, typ)['a']",
+        "namespace.get('__contains__') is None",
+        "namespace.get('isdisjoint') is None",
+        "\"keys dict-type mappingproxy True True True True\"",
+        "\"values dict-type mappingproxy True False False True\"",
+        "\"items dict-type mappingproxy True True True True\"",
+        "\"values contains-entry True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type __dict__ mappingproxy subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    for required in [
+        "CPython public dict view type __dict__ mappingproxy surface",
+        "name: \"dict-view-type-dict-mappingproxy-surface\"",
+        "namespace = typ.__dict__",
+        "namespace['__len__'](view)",
+        "namespace['__reversed__'](view)",
+        "namespace.get('__contains__') is None",
+        "namespace.get('isdisjoint') is None",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type __dict__ mappingproxy CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_view_type_dict_value(",
+        "dict_view_type_dir_method_names(type_name)",
+        "Value::Builtin(format!(\"{type_name}.mapping.getset_descriptor\"))",
+        "*method == \"__hash__\" && dict_view_is_set_like(kind)",
+        "name == \"__dict__\" && is_dict_view_type_object_name(&function_name)",
+        "Ok(dict_view_type_dict_value(&function_name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type __dict__ mappingproxy implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name)
+                && document.contains(diff_name)
+                && document.contains("type `__dict__` mappingproxy")
+                && document.contains("namespace direct `__len__` /")
+                && document.contains("`__reversed__` calls")
+                && document.contains("`dict_values` keeps `__contains__` / `isdisjoint` absent"),
+            "focused dict view type __dict__ mappingproxy evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_type_text_signature_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_type_text_signature_subset(",

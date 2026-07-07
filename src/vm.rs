@@ -42985,6 +42985,24 @@ fn mappingproxy_type_dict_value() -> Value {
     ])
 }
 
+fn dict_view_type_dict_value(type_name: &str) -> Value {
+    let Some(kind) = dict_view_kind_from_type_object_name(type_name) else {
+        return mapping_proxy_from_entries(Vec::new());
+    };
+    let mut entries = vec![(Value::String("__doc__".to_string()), Value::None)];
+    for method in dict_view_type_dir_method_names(type_name) {
+        let value = if *method == "mapping" {
+            Value::Builtin(format!("{type_name}.mapping.getset_descriptor"))
+        } else if *method == "__hash__" && dict_view_is_set_like(kind) {
+            Value::None
+        } else {
+            Value::Builtin(format!("{type_name}.{method}"))
+        };
+        entries.push((Value::String((*method).to_string()), value));
+    }
+    mapping_proxy_from_entries(entries)
+}
+
 fn scope_dict_value(scope: &Scope) -> Value {
     dict_value(scope_dict_entries(scope))
 }
@@ -67620,6 +67638,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__qualname__" && is_singleton_type_name(&function_name) =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name)
+            if name == "__dict__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(dict_view_type_dict_value(&function_name))
         }
         Value::Builtin(function_name)
             if name == "__dict__" && is_class_like_builtin(&function_name) =>

@@ -12834,6 +12834,11 @@ Completed in the dict view rich-comparison pass:
   `mapping` getset descriptor, descriptor `__get__`, read-only descriptor
   write/delete errors, and the fact that `dict_values.__contains__` remains
   absent.
+- Added `cpython_dict_view_type_dict_mappingproxy_surface_subset`, backed by
+  `cpython_dict_view_type_dict_mappingproxy_surface_diff_subset`, covering the
+  dict view type `__dict__` mappingproxy surface, namespace direct `__len__` /
+  `__reversed__` calls, `mapping` descriptor lookup through the namespace, and
+  the fact that `dict_values` keeps `__contains__` / `isdisjoint` absent.
 - Added `cpython_dict_view_type_text_signature_subset`, backed by
   `cpython_dict_view_type_text_signature_diff_subset`, covering dict view type text signature
   metadata as `None` across built-in dict and `OrderedDict` view classes

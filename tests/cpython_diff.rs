@@ -47641,6 +47641,23 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_dict_view_type_dict_mappingproxy_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public dict view type __dict__ mappingproxy surface",
+        name: "dict-view-type-dict-mappingproxy-surface",
+        source: r#"source = {'a': 1, 'b': 2}
+for label, view in [('keys', source.keys()), ('values', source.values()), ('items', source.items())]:
+    typ = type(view)
+    namespace = typ.__dict__
+    print(label, 'dict-type', type(namespace).__name__, 'mapping' in namespace, '__contains__' in namespace, 'isdisjoint' in namespace, '__reversed__' in namespace)
+    print(label, 'dict-call', namespace['__len__'](view), list(namespace['__reversed__'](view)))
+    descriptor = namespace['mapping']
+    print(label, 'mapping-entry', type(descriptor).__name__, descriptor.__name__, descriptor.__objclass__.__name__, descriptor.__get__(view, typ)['a'])
+    print(label, 'contains-entry', namespace.get('__contains__') is None, namespace.get('isdisjoint') is None)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_type_text_signature_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view type text signature subset",
