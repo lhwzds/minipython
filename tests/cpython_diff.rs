@@ -13671,6 +13671,28 @@ fn cpython_base_exception_bound_method_get_absent_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_reduce_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __reduce__ surface",
+        name: "base-exception-bound-method-reduce-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        label = exc.__class__.__name__ + '-' + attr
+        reducer = obj.__reduce__
+        print(label + '-reduce-in-dir', '__reduce__' in dir(obj))
+        print(label + '-reduce-attr', type(reducer).__name__, reducer.__class__.__name__, reducer.__self__ is obj, reducer.__name__, reducer.__qualname__, reducer.__module__, reducer.__text_signature__, reducer.__doc__)
+        reduced = reducer()
+        print(label + '-reduce-call', type(reduced).__name__, len(reduced), reduced[0] is getattr, type(reduced[1]).__name__, len(reduced[1]), reduced[1][0] is exc, reduced[1][1])
+        for err_label, call in [('extra', lambda reducer=reducer: reducer(1)), ('keyword', lambda reducer=reducer: reducer(x=1))]:
+            try:
+                call()
+            except TypeError as error:
+                print(label + '-' + err_label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

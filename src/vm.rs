@@ -10349,6 +10349,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__reduce__" => {
+                self.call_exception_bound_method_reduce(args, keywords)
+            }
             Value::Builtin(name)
                 if matches!(
                     name.as_str(),
@@ -19059,6 +19062,63 @@ impl Vm {
         Ok(sorted_name_list(
             self.default_dir_names_value(receiver.clone())?,
         ))
+    }
+
+    fn call_exception_bound_method_reduce(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: builtin_function_or_method.__reduce__() takes no keyword arguments"
+                    .to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: builtin_function_or_method.__reduce__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+
+        let Value::BoundMethod {
+            function,
+            receiver: method_receiver,
+            ..
+        } = receiver
+        else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        let Value::Builtin(function_name) = function.as_ref() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        };
+        let Some((method_name, _)) =
+            exception_bound_method_name(function_name, method_receiver.as_ref())
+        else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        };
+
+        Ok(tuple_value(vec![
+            Value::Builtin("getattr".to_string()),
+            tuple_value(vec![
+                method_receiver.as_ref().clone(),
+                Value::String(method_name.to_string()),
+            ]),
+        ]))
     }
 
     fn call_method_hash(
@@ -66992,6 +67052,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__reduce__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__reduce__".to_string())),
+                    receiver: Box::new(Value::BoundMethod {
+                        function,
+                        receiver,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             "__call__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(
                     if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
@@ -67195,6 +67266,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__reduce__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70199,6 +70275,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__reduce__" =>
+        {
+            Ok(Value::String(
+                "builtin_function_or_method.__reduce__".to_string(),
+            ))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__reduce__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "method.__reduce__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__reduce__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__"
                 && method_rich_compare_wrapper_name(&function_name) =>
         {
@@ -70521,6 +70615,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
         "__module__",
         "__name__",
         "__qualname__",
+        "__reduce__",
         "__text_signature__",
     ]
     .into_iter()
