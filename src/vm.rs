@@ -10349,6 +10349,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__new__" => {
+                self.call_exception_bound_method_new(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__init__" => {
                 self.call_exception_bound_method_init(args)
             }
@@ -19077,6 +19080,58 @@ impl Vm {
         Ok(sorted_name_list(
             self.default_dir_names_value(receiver.clone())?,
         ))
+    }
+
+    fn call_exception_bound_method_new(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((_receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        let Some(class) = rest.first() else {
+            return Err("TypeError: object.__new__(): not enough arguments".to_string());
+        };
+
+        match class {
+            Value::Builtin(name) if name == "object" => {
+                if rest.len() > 1 || !keywords.is_empty() {
+                    return Err("TypeError: object() takes no arguments".to_string());
+                }
+                Ok(Value::Instance {
+                    class_name: "object".to_string(),
+                    fields: new_scope(),
+                    class_attrs: new_scope(),
+                    class_bases: Vec::new(),
+                })
+            }
+            Value::Class {
+                name, attrs, bases, ..
+            } => {
+                if rest.len() > 1 || !keywords.is_empty() {
+                    return Err(format!("TypeError: {name}() takes no arguments"));
+                }
+                Ok(Value::Instance {
+                    class_name: name.clone(),
+                    fields: new_scope(),
+                    class_attrs: attrs.clone(),
+                    class_bases: bases.clone(),
+                })
+            }
+            Value::Builtin(name)
+                if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
+            {
+                let public_name = builtin_public_name(name);
+                Err(format!(
+                    "TypeError: object.__new__({public_name}) is not safe, use {public_name}.__new__()"
+                ))
+            }
+            value => Err(format!(
+                "TypeError: object.__new__(X): X is not a type object ({})",
+                type_name(value)
+            )),
+        }
     }
 
     fn call_exception_bound_method_init(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -67219,6 +67274,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__new__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__new__".to_string())),
+                    receiver: Box::new(Value::Builtin("object".to_string())),
+                    identity: Rc::new(()),
+                })
+            }
             "__init__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("method.__init__".to_string())),
@@ -67480,6 +67542,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__new__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70513,6 +70580,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("($self, /)".to_string()))
         }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__new__" => {
+            Ok(Value::String("object.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "method.__new__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__new__" => {
+            Ok(Value::String(
+                "Create and return a new object.  See help(type) for accurate signature."
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__new__" =>
+        {
+            Ok(Value::String("($type, *args, **kwargs)".to_string()))
+        }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__init__" => {
             Ok(Value::String("object.__init__".to_string()))
         }
@@ -70949,6 +71033,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
         "__getstate__",
         "__init__",
         "__init_subclass__",
+        "__new__",
         "__qualname__",
         "__reduce__",
         "__reduce_ex__",

@@ -2068,6 +2068,15 @@ Recent runtime migration notes:
   metadata, returns `None` with no arguments, and rejects extra positional and
   keyword arguments with CPython messages, including
   `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_new_subset`, backed by
+  `cpython_base_exception_bound_method_new_diff_subset`, keeps the
+  BaseException helper bound method `__new__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `builtin_function_or_method`
+  `__new__` through `dir()`; the wrapper is bound to `object`, carries CPython
+  `object.__new__` metadata, creates a plain `object`, and rejects missing,
+  keyword-only, and non-type string calls with CPython messages, including
+  `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_subclasshook_subset`, backed by
   `cpython_base_exception_bound_method_subclasshook_diff_subset`, keeps
   BaseException helper bound method `__subclasshook__` wrapper surface aligned
@@ -2136,6 +2145,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_init_subclass_diff_subset`,
+  `cpython_base_exception_bound_method_new_diff_subset`,
   `cpython_base_exception_bound_method_subclasshook_diff_subset`,
   `cpython_base_exception_bound_method_reduce_diff_subset`,
   `cpython_base_exception_bound_method_reduce_ex_diff_subset`,
