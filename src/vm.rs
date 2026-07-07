@@ -68386,6 +68386,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(builtin_iterator_type_dict_value(&function_name))
         }
         Value::Builtin(function_name)
+            if name == "__dict__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(operator_helper_type_dict_value(&function_name))
+        }
+        Value::Builtin(function_name)
             if name == "__dict__" && is_class_like_builtin(&function_name) =>
         {
             if function_name == "mappingproxy" {
@@ -69894,6 +69899,20 @@ fn operator_helper_type_builtin_name(name: &str) -> Option<&'static str> {
         "methodcaller" => Some("operator.methodcaller"),
         _ => None,
     }
+}
+
+fn operator_helper_type_dict_value(name: &str) -> Value {
+    let operator_name = operator_helper_type_builtin_name(name).expect("operator helper type name");
+    mapping_proxy_from_entries(vec![
+        (
+            Value::String("__module__".to_string()),
+            Value::String("operator".to_string()),
+        ),
+        (
+            Value::String("__doc__".to_string()),
+            Value::String(operator_builtin_doc(operator_name).to_string()),
+        ),
+    ])
 }
 
 fn operator_builtin_doc(name: &str) -> &'static str {

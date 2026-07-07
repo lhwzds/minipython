@@ -6403,6 +6403,15 @@ without adding general custom encoder/decoder class support.
   display-only and does not expand helper construction, pickle, or C-layout
   compatibility.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_dict_metadata_subset`, covering helper type `__dict__` core metadata for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. The mappingproxy exposes CPython-aligned
+  `__module__` and `__doc__` entries through direct attribute access and
+  `object.__getattribute__`; direct CPython diff evidence is in
+  `cpython_operator_helper_type_dict_metadata_diff_subset`. This does not claim
+  the full CPython descriptor dictionary for `__call__`, `__reduce__`,
+  `__repr__`, or `__text_signature__`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
   CPython's `operator` `__module__`, `__name__`, `__qualname__`, first-line

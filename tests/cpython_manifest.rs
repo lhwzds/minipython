@@ -25792,6 +25792,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_hierarchy_metadata_subset",
             "cpython_operator_helper_type_classinfo_metadata_subset",
             "cpython_operator_helper_type_display_metadata_subset",
+            "cpython_operator_helper_type_dict_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25950,6 +25951,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_display_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper type display metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28479,6 +28485,107 @@ fn operator_helper_type_display_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("format")
             && CPYTHON_MIGRATION.contains("<class 'operator.attrgetter'>"),
         "migration notes must describe operator helper type display metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_metadata_subset(",
+        "Adapted from CPython operator helper type `__dict__` core metadata.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "mapping = typ.__dict__",
+        "via_object = object.__getattribute__(typ, '__dict__')",
+        "mapping['__module__']",
+        "mapping['__doc__'] == typ.__doc__",
+        "len(mapping['__doc__'])",
+        "mapping is via_object",
+        "'__doc__' in mapping",
+        "'__module__' in mapping",
+        "via_object['__module__']",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter mappingproxy operator True 316 False\"",
+        "\"attrgetter True True mappingproxy operator\"",
+        "\"itemgetter mappingproxy operator True 198 False\"",
+        "\"itemgetter True True mappingproxy operator\"",
+        "\"methodcaller mappingproxy operator True 224 False\"",
+        "\"methodcaller True True mappingproxy operator\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ core metadata subset",
+        "operator-helper-type-dict-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "mapping = typ.__dict__",
+        "via_object = object.__getattribute__(typ, '__dict__')",
+        "mapping['__module__']",
+        "mapping['__doc__'] == typ.__doc__",
+        "len(mapping['__doc__'])",
+        "mapping is via_object",
+        "'__doc__' in mapping",
+        "'__module__' in mapping",
+        "via_object['__module__']",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn operator_helper_type_dict_value(name: &str) -> Value",
+        "name == \"__dict__\" && is_operator_helper_type_name(&function_name)",
+        "Ok(operator_helper_type_dict_value(&function_name))",
+        "mapping_proxy_from_entries(vec![",
+        "Value::String(\"__module__\".to_string())",
+        "Value::String(\"operator\".to_string())",
+        "Value::String(\"__doc__\".to_string())",
+        "operator_builtin_doc(operator_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_dict_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_helper_type_dict_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper type `__dict__` core metadata")
+            && CPYTHON_COVERAGE.contains("mappingproxy")
+            && CPYTHON_COVERAGE.contains("__module__")
+            && CPYTHON_COVERAGE.contains("__doc__")
+            && CPYTHON_COVERAGE.contains("descriptor dictionary"),
+        "coverage notes must describe operator helper type dict metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_dict_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_helper_type_dict_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("helper type `__dict__` core metadata")
+            && CPYTHON_MIGRATION.contains("mappingproxy")
+            && CPYTHON_MIGRATION.contains("__module__")
+            && CPYTHON_MIGRATION.contains("__doc__")
+            && CPYTHON_MIGRATION.contains("descriptor dictionary"),
+        "migration notes must describe operator helper type dict metadata public behavior and direct diff evidence"
     );
 }
 

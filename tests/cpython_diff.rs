@@ -31183,6 +31183,21 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_dict_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type __dict__ core metadata subset",
+        name: "operator-helper-type-dict-metadata",
+        source: r#"import operator
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    mapping = typ.__dict__
+    via_object = object.__getattribute__(typ, '__dict__')
+    print(typ.__name__, type(mapping).__name__, mapping['__module__'], mapping['__doc__'] == typ.__doc__, len(mapping['__doc__']), mapping is via_object)
+    print(typ.__name__, '__doc__' in mapping, '__module__' in mapping, type(via_object).__name__, via_object['__module__'])"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")
