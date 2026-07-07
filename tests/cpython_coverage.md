@@ -6455,6 +6455,16 @@ without adding general custom encoder/decoder class support.
   `cpython_operator_helper_type_dict_new_descriptor_diff_subset`. This does not
   claim `__reduce__` / pickle behavior or CPython vectorcall offsets.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_dict_getattribute_descriptor_subset`, covering
+  the helper type `__dict__['__getattribute__']` wrapper_descriptor for
+  `type(operator.attrgetter(...))`, `type(operator.itemgetter(...))`, and
+  `type(operator.methodcaller(...))`. The descriptor exposes CPython-aligned
+  public metadata, delegates direct attribute lookup for helper instances, and
+  preserves bad-receiver, missing-name, keyword, and non-string-name
+  `TypeError` shapes. Direct CPython diff evidence is in
+  `cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset`. This
+  does not claim `__reduce__` / pickle behavior or CPython vectorcall offsets.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
   CPython's `operator` `__module__`, `__name__`, `__qualname__`, first-line

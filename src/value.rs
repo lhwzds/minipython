@@ -1670,6 +1670,18 @@ impl fmt::Display for Value {
                     .expect("guard checked operator helper call wrapper descriptor");
                 write!(f, "<slot wrapper '__call__' of '{operator_name}' objects>")
             }
+            Value::Builtin(name)
+                if operator_helper_getattribute_wrapper_descriptor_operator_name(name)
+                    .is_some() =>
+            {
+                let operator_name =
+                    operator_helper_getattribute_wrapper_descriptor_operator_name(name)
+                        .expect("guard checked operator helper getattribute wrapper descriptor");
+                write!(
+                    f,
+                    "<slot wrapper '__getattribute__' of '{operator_name}' objects>"
+                )
+            }
             Value::Builtin(name) if operator_helper_new_descriptor_type_name(name).is_some() => {
                 write!(f, "<built-in method __new__ of type object at 0x0>")
             }
@@ -2353,6 +2365,13 @@ fn format_value_repr(value: &Value) -> String {
                 .expect("guard checked super wrapper descriptor name");
             format!("<slot wrapper '{method}' of 'super' objects>")
         }
+        Value::Builtin(name)
+            if operator_helper_getattribute_wrapper_descriptor_operator_name(name).is_some() =>
+        {
+            let operator_name = operator_helper_getattribute_wrapper_descriptor_operator_name(name)
+                .expect("guard checked operator helper getattribute wrapper descriptor");
+            format!("<slot wrapper '__getattribute__' of '{operator_name}' objects>")
+        }
         Value::Builtin(name) if operator_helper_new_descriptor_type_name(name).is_some() => {
             "<built-in method __new__ of type object at 0x0>".to_string()
         }
@@ -2887,6 +2906,17 @@ fn operator_helper_call_wrapper_descriptor_operator_name(name: &str) -> Option<&
         "operator.attrgetter.__call__" => Some("operator.attrgetter"),
         "operator.itemgetter.__call__" => Some("operator.itemgetter"),
         "operator.methodcaller.__call__" => Some("operator.methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_getattribute_wrapper_descriptor_operator_name(
+    name: &str,
+) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__getattribute__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__getattribute__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__getattribute__" => Some("operator.methodcaller"),
         _ => None,
     }
 }

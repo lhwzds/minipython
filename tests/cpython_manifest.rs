@@ -25797,6 +25797,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_type_dict_repr_descriptor_subset",
             "cpython_operator_helper_type_dict_call_descriptor_subset",
             "cpython_operator_helper_type_dict_new_descriptor_subset",
+            "cpython_operator_helper_type_dict_getattribute_descriptor_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25980,6 +25981,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_dict_new_descriptor_diff_subset"),
         "operator sandbox manifest must cite CPython helper type dict new descriptor diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type dict getattribute descriptor diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -29164,6 +29170,153 @@ fn operator_helper_type_dict_new_descriptor_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("missing-class")
             && CPYTHON_MIGRATION.contains("vectorcall offsets"),
         "migration notes must describe operator helper type dict new descriptor public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_helper_type_dict_getattribute_descriptor_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_dict_getattribute_descriptor_subset(",
+        "Adapted from CPython operator helper type `__dict__` `__getattribute__`",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__getattribute__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper, '__module__')",
+        "desc(helper, '__doc__') == helper.__doc__",
+        "desc(42, '__module__')",
+        "desc(helper)",
+        "desc(helper, '__module__', spam=1)",
+        "desc(helper, 42)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict getattribute descriptor subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "attrgetter True wrapper_descriptor True __getattribute__ attrgetter.__getattribute__ True Return getattr(self, name). ($self, name, /)",
+        "attrgetter <slot wrapper '__getattribute__' of 'operator.attrgetter' objects> operator True",
+        "attrgetter bad-receiver TypeError descriptor '__getattribute__' requires a 'operator.attrgetter' object but received a 'int'",
+        "attrgetter missing-name TypeError expected 1 argument, got 0",
+        "attrgetter keyword TypeError wrapper __getattribute__() takes no keyword arguments",
+        "attrgetter bad-name TypeError attribute name must be string, not 'int'",
+        "itemgetter True wrapper_descriptor True __getattribute__ itemgetter.__getattribute__ True Return getattr(self, name). ($self, name, /)",
+        "itemgetter <slot wrapper '__getattribute__' of 'operator.itemgetter' objects> operator True",
+        "itemgetter bad-receiver TypeError descriptor '__getattribute__' requires a 'operator.itemgetter' object but received a 'int'",
+        "itemgetter missing-name TypeError expected 1 argument, got 0",
+        "itemgetter keyword TypeError wrapper __getattribute__() takes no keyword arguments",
+        "itemgetter bad-name TypeError attribute name must be string, not 'int'",
+        "methodcaller True wrapper_descriptor True __getattribute__ methodcaller.__getattribute__ True Return getattr(self, name). ($self, name, /)",
+        "methodcaller <slot wrapper '__getattribute__' of 'operator.methodcaller' objects> operator True",
+        "methodcaller bad-receiver TypeError descriptor '__getattribute__' requires a 'operator.methodcaller' object but received a 'int'",
+        "methodcaller missing-name TypeError expected 1 argument, got 0",
+        "methodcaller keyword TypeError wrapper __getattribute__() takes no keyword arguments",
+        "methodcaller bad-name TypeError attribute name must be string, not 'int'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type dict getattribute descriptor subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset",
+    );
+    for required in [
+        "operator helper type __dict__ __getattribute__ wrapper descriptor subset",
+        "operator-helper-type-dict-getattribute-descriptor",
+        "import operator, types",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "desc = typ.__dict__['__getattribute__']",
+        "isinstance(desc, types.WrapperDescriptorType)",
+        "desc.__name__",
+        "desc.__qualname__",
+        "desc.__objclass__ is typ",
+        "desc.__doc__",
+        "desc.__text_signature__",
+        "repr(desc)",
+        "desc(helper, '__module__')",
+        "desc(helper, '__doc__') == helper.__doc__",
+        "desc(42, '__module__')",
+        "desc(helper)",
+        "desc(helper, '__module__', spam=1)",
+        "desc(helper, 42)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type dict getattribute descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_operator_helper_getattribute_wrapper(",
+        "operator_helper_getattribute_wrapper_descriptor_name",
+        "operator_helper_getattribute_wrapper_operator_name",
+        "operator_helper_getattribute_wrapper_type_name",
+        "operator_helper_getattribute_wrapper_descriptor_applies",
+        "operator.attrgetter.__getattribute__",
+        "operator.itemgetter.__getattribute__",
+        "operator.methodcaller.__getattribute__",
+        "Value::String(\"__getattribute__\".to_string())",
+        "Value::Builtin(format!(\"{operator_name}.__getattribute__\"))",
+        "descriptor '__getattribute__' requires a '{operator_name}' object",
+        "wrapper __getattribute__() takes no keyword arguments",
+        "self.load_attribute_without_custom_getattribute(receiver.clone(), &name)",
+        "operator_helper_wrapper_descriptor_doc",
+        "operator_helper_wrapper_descriptor_text_signature",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type dict getattribute descriptor implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "operator_helper_getattribute_wrapper_descriptor_operator_name",
+        "<slot wrapper '__getattribute__' of '{operator_name}' objects>",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "operator helper type dict getattribute descriptor display implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE
+            .contains("cpython_operator_helper_type_dict_getattribute_descriptor_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset")
+            && CPYTHON_COVERAGE.contains("__dict__['__getattribute__']")
+            && CPYTHON_COVERAGE.contains("wrapper_descriptor")
+            && CPYTHON_COVERAGE.contains("delegates direct attribute lookup")
+            && CPYTHON_COVERAGE.contains("bad-receiver")
+            && CPYTHON_COVERAGE.contains("non-string-name")
+            && CPYTHON_COVERAGE.contains("vectorcall offsets"),
+        "coverage notes must describe operator helper type dict getattribute descriptor and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION
+            .contains("cpython_operator_helper_type_dict_getattribute_descriptor_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset")
+            && CPYTHON_MIGRATION.contains("__dict__['__getattribute__']")
+            && CPYTHON_MIGRATION.contains("wrapper metadata")
+            && CPYTHON_MIGRATION.contains("direct helper attribute lookup")
+            && CPYTHON_MIGRATION.contains("bad-receiver")
+            && CPYTHON_MIGRATION.contains("non-string-name")
+            && CPYTHON_MIGRATION.contains("vectorcall offsets"),
+        "migration notes must describe operator helper type dict getattribute descriptor public behavior and direct diff evidence"
     );
 }
 

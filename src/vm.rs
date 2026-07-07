@@ -9644,6 +9644,11 @@ impl Vm {
             {
                 self.call_operator_helper_call_wrapper(&name, args, keywords)
             }
+            Value::Builtin(name)
+                if operator_helper_getattribute_wrapper_descriptor_name(&name).is_some() =>
+            {
+                self.call_operator_helper_getattribute_wrapper(&name, args, keywords)
+            }
             Value::Builtin(name) if operator_helper_new_descriptor_type_name(&name).is_some() => {
                 self.call_operator_helper_new(&name, args, keywords)
             }
@@ -18496,6 +18501,43 @@ impl Vm {
             ),
             _ => unreachable!("guard checked operator helper call wrapper receiver"),
         }
+    }
+
+    fn call_operator_helper_getattribute_wrapper(
+        &mut self,
+        descriptor_name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: wrapper __getattribute__() takes no keyword arguments".to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            let operator_name = operator_helper_getattribute_wrapper_operator_name(descriptor_name)
+                .expect("guard checked operator helper getattribute wrapper descriptor");
+            return Err(format!(
+                "TypeError: descriptor '__getattribute__' of '{operator_name}' object needs an argument"
+            ));
+        };
+        let operator_name = operator_helper_getattribute_wrapper_operator_name(descriptor_name)
+            .expect("guard checked operator helper getattribute wrapper descriptor");
+        if !operator_helper_getattribute_wrapper_descriptor_applies(operator_name, receiver) {
+            return Err(format!(
+                "TypeError: descriptor '__getattribute__' requires a '{operator_name}' object but received a '{}'",
+                type_name(receiver)
+            ));
+        }
+        let [name] = rest else {
+            return Err(format!(
+                "TypeError: expected 1 argument, got {}",
+                rest.len()
+            ));
+        };
+
+        let name = attribute_name_arg(name)?;
+        self.load_attribute_without_custom_getattribute(receiver.clone(), &name)
     }
 
     fn call_operator_helper_new(
@@ -57295,6 +57337,45 @@ fn operator_helper_call_wrapper_descriptor_applies(operator_name: &str, object: 
     )
 }
 
+fn operator_helper_getattribute_wrapper_descriptor_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__getattribute__" => Some("__getattribute__"),
+        "operator.itemgetter.__getattribute__" => Some("__getattribute__"),
+        "operator.methodcaller.__getattribute__" => Some("__getattribute__"),
+        _ => None,
+    }
+}
+
+fn operator_helper_getattribute_wrapper_operator_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__getattribute__" => Some("operator.attrgetter"),
+        "operator.itemgetter.__getattribute__" => Some("operator.itemgetter"),
+        "operator.methodcaller.__getattribute__" => Some("operator.methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_getattribute_wrapper_type_name(name: &str) -> Option<&'static str> {
+    match name {
+        "operator.attrgetter.__getattribute__" => Some("attrgetter"),
+        "operator.itemgetter.__getattribute__" => Some("itemgetter"),
+        "operator.methodcaller.__getattribute__" => Some("methodcaller"),
+        _ => None,
+    }
+}
+
+fn operator_helper_getattribute_wrapper_descriptor_applies(
+    operator_name: &str,
+    object: &Value,
+) -> bool {
+    matches!(
+        (operator_name, object),
+        ("operator.attrgetter", Value::OperatorAttrGetter { .. })
+            | ("operator.itemgetter", Value::OperatorItemGetter { .. })
+            | ("operator.methodcaller", Value::OperatorMethodCaller { .. })
+    )
+}
+
 fn operator_helper_new_descriptor_type_name(name: &str) -> Option<&'static str> {
     match name {
         "operator.attrgetter.__new__" => Some("attrgetter"),
@@ -67437,7 +67518,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if (operator_helper_repr_wrapper_descriptor_name(&function_name).is_some()
-                || operator_helper_call_wrapper_descriptor_name(&function_name).is_some())
+                || operator_helper_call_wrapper_descriptor_name(&function_name).is_some()
+                || operator_helper_getattribute_wrapper_descriptor_name(&function_name).is_some())
                 && matches!(
                     name,
                     "__class__"
@@ -67450,9 +67532,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             let method_name = operator_helper_repr_wrapper_descriptor_name(&function_name)
                 .or_else(|| operator_helper_call_wrapper_descriptor_name(&function_name))
+                .or_else(|| operator_helper_getattribute_wrapper_descriptor_name(&function_name))
                 .expect("guard checked operator helper wrapper descriptor");
             let type_name = operator_helper_repr_wrapper_type_name(&function_name)
                 .or_else(|| operator_helper_call_wrapper_type_name(&function_name))
+                .or_else(|| operator_helper_getattribute_wrapper_type_name(&function_name))
                 .expect("guard checked operator helper wrapper descriptor");
             match name {
                 "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
@@ -70306,6 +70390,10 @@ fn operator_helper_type_dict_value(name: &str) -> Value {
             Value::Builtin(format!("{operator_name}.__new__")),
         ),
         (
+            Value::String("__getattribute__".to_string()),
+            Value::Builtin(format!("{operator_name}.__getattribute__")),
+        ),
+        (
             Value::String("__call__".to_string()),
             Value::Builtin(format!("{operator_name}.__call__")),
         ),
@@ -70393,6 +70481,7 @@ fn operator_builtin_doc(name: &str) -> &'static str {
 fn operator_helper_wrapper_descriptor_doc(name: &str) -> &'static str {
     match name {
         "__call__" => "Call self as a function.",
+        "__getattribute__" => "Return getattr(self, name).",
         "__repr__" => "Return repr(self).",
         _ => unreachable!("guard checked operator helper wrapper descriptor name"),
     }
@@ -70401,6 +70490,7 @@ fn operator_helper_wrapper_descriptor_doc(name: &str) -> &'static str {
 fn operator_helper_wrapper_descriptor_text_signature(name: &str) -> &'static str {
     match name {
         "__call__" => "($self, /, *args, **kwargs)",
+        "__getattribute__" => "($self, name, /)",
         "__repr__" => "($self, /)",
         _ => unreachable!("guard checked operator helper wrapper descriptor name"),
     }
@@ -72680,6 +72770,9 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
         return true;
     }
     if operator_helper_call_wrapper_descriptor_name(name).is_some() {
+        return true;
+    }
+    if operator_helper_getattribute_wrapper_descriptor_name(name).is_some() {
         return true;
     }
     let Some((type_name, method)) = name.split_once('.') else {

@@ -31304,6 +31304,36 @@ for helper, args in [(operator.attrgetter('name'), ('other',)), (operator.itemge
 }
 
 #[test]
+fn cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type __dict__ __getattribute__ wrapper descriptor subset",
+        name: "operator-helper-type-dict-getattribute-descriptor",
+        source: r#"import operator, types
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    desc = typ.__dict__['__getattribute__']
+    print(typ.__name__, '__getattribute__' in typ.__dict__, type(desc).__name__, isinstance(desc, types.WrapperDescriptorType), desc.__name__, desc.__qualname__, desc.__objclass__ is typ, desc.__doc__, desc.__text_signature__)
+    print(typ.__name__, repr(desc), desc(helper, '__module__'), desc(helper, '__doc__') == helper.__doc__)
+    try:
+        desc(42, '__module__')
+    except TypeError as error:
+        print(typ.__name__, 'bad-receiver', type(error).__name__, str(error))
+    try:
+        desc(helper)
+    except TypeError as error:
+        print(typ.__name__, 'missing-name', type(error).__name__, str(error))
+    try:
+        desc(helper, '__module__', spam=1)
+    except TypeError as error:
+        print(typ.__name__, 'keyword', type(error).__name__, str(error))
+    try:
+        desc(helper, 42)
+    except TypeError as error:
+        print(typ.__name__, 'bad-name', type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")
