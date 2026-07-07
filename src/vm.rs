@@ -19055,6 +19055,21 @@ impl Vm {
                 "TypeError: descriptor method wrapper requires a method object".to_string(),
             );
         }
+        if let Value::BoundMethod {
+            function,
+            receiver: method_receiver,
+            ..
+        } = receiver
+        {
+            if is_exception_helper_bound_method(function.as_ref(), method_receiver.as_ref()) {
+                return call_exception_helper_bound_method(
+                    function.as_ref(),
+                    method_receiver.as_ref(),
+                    rest,
+                    keywords,
+                );
+            }
+        }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
     }
 
@@ -67479,14 +67494,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 })
             }
             "__call__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(
-                    if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
-                        "method.__call__"
-                    } else {
-                        "callable.__call__"
-                    }
-                    .to_string(),
-                )),
+                function: Box::new(Value::Builtin("method.__call__".to_string())),
                 receiver: Box::new(Value::BoundMethod {
                     function,
                     receiver,
@@ -67625,6 +67633,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 ))
             }
             "__name__" => load_attribute(*function, "__name__"),
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__call__")
+                    && is_exception_helper_bound_method_value(&receiver) =>
+            {
+                Ok(Value::String(
+                    "builtin_function_or_method.__call__".to_string(),
+                ))
+            }
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
                 if matches!(function.as_ref(), Value::Builtin(name) if function_method_wrapper_missing_module_name(name)) =>
@@ -67678,6 +67694,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
                 load_attribute(*function, "__builtins__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__call__") =>
+            {
+                load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
@@ -70719,6 +70740,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__call__" => {
             Ok(Value::String("Call self as a function.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__call__" =>
+        {
+            Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__dir__" => {
             Ok(Value::String("method.__dir__".to_string()))
@@ -73860,6 +73886,7 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
     matches!(
         name,
         "function.__hash__"
+            | "method.__call__"
             | "method.__delattr__"
             | "method.__getattribute__"
             | "method.__init__"
@@ -73919,6 +73946,15 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "json.function.__repr__"
             | "json.function.__str__"
             | "json.function.__getattribute__"
+    )
+}
+
+fn is_exception_helper_bound_method_value(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::BoundMethod {
+            function, receiver, ..
+        } if is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())
     )
 }
 
@@ -75439,6 +75475,56 @@ fn exception_value_with_traceback(receiver: Value, traceback: Value) -> Result<V
     })
 }
 
+fn call_exception_helper_bound_method(
+    function: &Value,
+    receiver: &Value,
+    args: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let Value::Builtin(function_name) = function else {
+        return Err(
+            "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                .to_string(),
+        );
+    };
+    let Some((method, owner)) = exception_bound_method_name(function_name, receiver) else {
+        return Err(
+            "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                .to_string(),
+        );
+    };
+    match method {
+        "add_note" => call_exception_add_note_on_receiver(receiver, &owner, args, keywords),
+        "with_traceback" => {
+            call_exception_with_traceback_on_receiver(receiver, &owner, args, keywords)
+        }
+        _ => Err(
+            "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                .to_string(),
+        ),
+    }
+}
+
+fn call_exception_with_traceback_on_receiver(
+    receiver: &Value,
+    owner: &str,
+    tracebacks: &[Value],
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err(format!(
+            "TypeError: {owner}.with_traceback() takes no keyword arguments"
+        ));
+    }
+    let [traceback] = tracebacks else {
+        return Err(format!(
+            "TypeError: {owner}.with_traceback() takes exactly one argument ({} given)",
+            tracebacks.len()
+        ));
+    };
+    exception_value_with_traceback(receiver.clone(), traceback.clone())
+}
+
 fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
     let [receiver @ Value::Exception { .. }, traceback] = args.as_slice() else {
         return Err(format!(
@@ -75491,29 +75577,27 @@ fn add_note_type_name(value: &Value) -> &str {
     }
 }
 
-fn call_exception_add_note(
-    args: Vec<Value>,
+fn call_exception_add_note_on_receiver(
+    receiver: &Value,
+    owner: &str,
+    notes: &[Value],
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err("TypeError: BaseException.add_note() takes no keyword arguments".to_string());
+        return Err(format!(
+            "TypeError: {owner}.add_note() takes no keyword arguments"
+        ));
     }
 
-    let Some(receiver) = args.first() else {
-        return Err(
-            "TypeError: unbound method BaseException.add_note() needs an argument".to_string(),
-        );
-    };
     let Value::Exception { identity, .. } = receiver else {
         return Err(format!(
             "TypeError: descriptor 'add_note' for 'BaseException' objects doesn't apply to a '{}' object",
             type_name(receiver)
         ));
     };
-    let notes = &args[1..];
     let [note] = notes else {
         return Err(format!(
-            "TypeError: BaseException.add_note() takes exactly one argument ({} given)",
+            "TypeError: {owner}.add_note() takes exactly one argument ({} given)",
             notes.len()
         ));
     };
@@ -75538,6 +75622,22 @@ fn call_exception_add_note(
     }
 
     Ok(Value::None)
+}
+
+fn call_exception_add_note(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: BaseException.add_note() takes no keyword arguments".to_string());
+    }
+
+    let Some(receiver) = args.first() else {
+        return Err(
+            "TypeError: unbound method BaseException.add_note() needs an argument".to_string(),
+        );
+    };
+    call_exception_add_note_on_receiver(receiver, "BaseException", &args[1..], keywords)
 }
 
 fn stop_iteration_message(value: Value) -> Option<String> {

@@ -2036,6 +2036,14 @@ Recent runtime migration notes:
   `IndexError` expose the already-readable `__name__`, `__qualname__`,
   `__text_signature__`, and `__module__` names through `dir()`, including
   `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_call_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_call_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__call__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `method-wrapper` `__call__` through
+  `dir()`; the wrapper has CPython `builtin_function_or_method.__call__`
+  metadata, keeps `__module__` absent, forwards valid calls to the helper, and
+  preserves CPython argument errors, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_delattr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__delattr__` wrapper surface aligned with
@@ -2169,6 +2177,7 @@ Recent runtime migration notes:
   `cpython_base_exception_method_descriptor_type_owner_diff_subset`,
   `cpython_base_exception_bound_method_metadata_diff_subset`,
   `cpython_base_exception_bound_method_dir_metadata_diff_subset`,
+  `cpython_base_exception_bound_method_call_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,

@@ -49304,6 +49304,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_method_descriptor_type_owner_subset",
             "cpython_base_exception_bound_method_metadata_subset",
             "cpython_base_exception_bound_method_dir_metadata_subset",
+            "cpython_base_exception_bound_method_call_wrapper_subset",
             "cpython_base_exception_bound_method_delattr_wrapper_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
@@ -49452,6 +49453,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_method_descriptor_type_owner_diff_subset",
         "cpython_base_exception_bound_method_metadata_diff_subset",
         "cpython_base_exception_bound_method_dir_metadata_diff_subset",
+        "cpython_base_exception_bound_method_call_wrapper_diff_subset",
         "cpython_base_exception_bound_method_delattr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
@@ -61611,6 +61613,87 @@ fn base_exception_bound_method_dir_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method dir metadata")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method dir metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_call_wrapper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_call_wrapper_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__call__",
+        "'__call__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__qualname__",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "builtin_function_or_method.__call__",
+        "wrapper('note') if attr == 'add_note' else wrapper(None)",
+        "BaseException-add_note-call1 NoneType False None",
+        "IndexError-with_traceback-call1 IndexError True IndexError('i')",
+        "IndexError-with_traceback-kw TypeError IndexError.with_traceback() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __call__ wrapper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_call_wrapper_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __call__ wrapper surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__call__",
+        "'__call__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "except Exception as error",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __call__ wrapper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "self.call_method_call(args, keywords)",
+        "call_exception_helper_bound_method(",
+        "call_exception_add_note_on_receiver(receiver, &owner, args, keywords)",
+        "call_exception_with_traceback_on_receiver(receiver, &owner, args, keywords)",
+        "Value::Builtin(\"method.__call__\".to_string())",
+        "is_exception_helper_bound_method_value(&receiver)",
+        "fn is_exception_helper_bound_method_value(value: &Value) -> bool",
+        "builtin_function_or_method.__call__",
+        "\"method.__call__\"",
+        "\"($self, /, *args, **kwargs)\"",
+        "'method-wrapper' object has no attribute '__module__'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __call__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_call_wrapper_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_call_wrapper_diff_subset")
+                && document.contains("BaseException helper bound method `__call__` wrapper")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __call__ wrapper evidence must be documented in coverage and migration notes"
         );
     }
 }
