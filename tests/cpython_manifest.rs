@@ -25789,6 +25789,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_helper_instance_text_signature_metadata_subset",
             "cpython_operator_helper_type_metadata_subset",
+            "cpython_operator_helper_type_hierarchy_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -25932,6 +25933,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_helper_type_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython helper type metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_type_hierarchy_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython helper type hierarchy metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -28142,6 +28148,113 @@ fn operator_helper_type_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__text_signature__")
             && CPYTHON_MIGRATION.contains("__base__` / `__mro__"),
         "migration notes must describe operator helper type metadata public behavior, direct diff evidence, and stop line"
+    );
+}
+
+#[test]
+fn operator_helper_type_hierarchy_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_helper_type_hierarchy_metadata_subset(",
+        "Adapted from CPython operator helper type hierarchy metadata.",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "typ = type(helper)",
+        "typ.__base__.__name__",
+        "typ.__bases__",
+        "typ.__mro__",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "typ.__mro__[0] is typ",
+        "typ.__mro__[-1] is object",
+        "object.__getattribute__(typ, '__base__')",
+        "object.__getattribute__(typ, '__bases__')",
+        "object.__getattribute__(typ, '__mro__')",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type hierarchy metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter object ('object',) ('attrgetter', 'object')\"",
+        "\"itemgetter object ('object',) ('itemgetter', 'object')\"",
+        "\"methodcaller object ('object',) ('methodcaller', 'object')\"",
+        "\"True True True True\"",
+        "\"object ('object',) ('attrgetter', 'object')\"",
+        "\"object ('object',) ('itemgetter', 'object')\"",
+        "\"object ('object',) ('methodcaller', 'object')\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper type hierarchy metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_helper_type_hierarchy_metadata_diff_subset",
+    );
+    for required in [
+        "operator helper type hierarchy metadata subset",
+        "operator-helper-type-hierarchy-metadata",
+        "operator.attrgetter('name')",
+        "operator.itemgetter(0)",
+        "operator.methodcaller('strip')",
+        "typ = type(helper)",
+        "typ.__base__.__name__",
+        "typ.__bases__",
+        "typ.__mro__",
+        "typ.__base__ is object",
+        "typ.__bases__ == (object,)",
+        "typ.__mro__[0] is typ",
+        "typ.__mro__[-1] is object",
+        "object.__getattribute__(typ, '__base__')",
+        "object.__getattribute__(typ, '__bases__')",
+        "object.__getattribute__(typ, '__mro__')",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator helper type hierarchy metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"__base__\" && is_operator_helper_type_name(&function_name)",
+        "name == \"__bases__\" && is_operator_helper_type_name(&function_name)",
+        "name == \"__mro__\" && is_operator_helper_type_name(&function_name)",
+        "Ok(Value::Builtin(\"object\".to_string()))",
+        "Ok(tuple_value(vec![Value::Builtin(\"object\".to_string())]))",
+        "Value::Builtin(function_name)",
+        "Value::Builtin(\"object\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator helper type hierarchy metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_helper_type_hierarchy_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_helper_type_hierarchy_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper type hierarchy metadata")
+            && CPYTHON_COVERAGE.contains("__base__")
+            && CPYTHON_COVERAGE.contains("__bases__")
+            && CPYTHON_COVERAGE.contains("__mro__")
+            && CPYTHON_COVERAGE.contains("metadata-only"),
+        "coverage notes must describe operator helper type hierarchy metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_helper_type_hierarchy_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_helper_type_hierarchy_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("helper type hierarchy metadata")
+            && CPYTHON_MIGRATION.contains("__base__")
+            && CPYTHON_MIGRATION.contains("__bases__")
+            && CPYTHON_MIGRATION.contains("__mro__")
+            && CPYTHON_MIGRATION.contains("metadata-only"),
+        "migration notes must describe operator helper type hierarchy metadata public behavior and direct diff evidence"
     );
 }
 

@@ -6368,8 +6368,18 @@ without adding general custom encoder/decoder class support.
   `type(operator.methodcaller(...))`. Direct attribute access and
   `object.__getattribute__` both expose these CPython metadata strings. Direct
   CPython diff evidence is in
-  `cpython_operator_helper_type_metadata_diff_subset`; `__base__` / `__mro__`
-  remain outside this metadata slice.
+  `cpython_operator_helper_type_metadata_diff_subset`. The related `__base__` / `__mro__`
+  hierarchy attributes are covered by the focused hierarchy metadata slice
+  below.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_helper_type_hierarchy_metadata_subset`, covering helper type hierarchy metadata for `type(operator.attrgetter(...))`,
+  `type(operator.itemgetter(...))`, and `type(operator.methodcaller(...))`:
+  `__base__` is `object`, `__bases__` is `(object,)`, and `__mro__` starts with
+  the helper type and ends with `object`. Direct attribute access and
+  `object.__getattribute__` are both covered. Direct CPython diff evidence is
+  in `cpython_operator_helper_type_hierarchy_metadata_diff_subset`. This is
+  metadata-only and does not expand helper construction, pickle, or C-layout
+  compatibility.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
   builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including

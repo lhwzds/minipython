@@ -31129,6 +31129,20 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_helper_type_hierarchy_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator helper type hierarchy metadata subset",
+        name: "operator-helper-type-hierarchy-metadata",
+        source: r#"import operator
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    typ = type(helper)
+    print(typ.__name__, typ.__base__.__name__, tuple(base.__name__ for base in typ.__bases__), tuple(base.__name__ for base in typ.__mro__))
+    print(typ.__base__ is object, typ.__bases__ == (object,), typ.__mro__[0] is typ, typ.__mro__[-1] is object)
+    print(object.__getattribute__(typ, '__base__').__name__, tuple(base.__name__ for base in object.__getattribute__(typ, '__bases__')), tuple(base.__name__ for base in object.__getattribute__(typ, '__mro__')))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_signature_helper_diff_subset() {
     let probe =
         run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")

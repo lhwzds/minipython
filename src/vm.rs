@@ -68602,6 +68602,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .unwrap_or(Value::None))
         }
         Value::Builtin(function_name)
+            if name == "__base__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__bases__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(tuple_value(vec![Value::Builtin("object".to_string())]))
+        }
+        Value::Builtin(function_name)
+            if name == "__mro__" && is_operator_helper_type_name(&function_name) =>
+        {
+            Ok(tuple_value(vec![
+                Value::Builtin(function_name),
+                Value::Builtin("object".to_string()),
+            ]))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_operator_factory_builtin(&function_name) =>
         {
             Ok(Value::String("operator".to_string()))
