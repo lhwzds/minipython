@@ -2055,6 +2055,15 @@ Recent runtime migration notes:
   arguments with CPython messages, and reports immutable
   `builtin_function_or_method` attributes without adding a method `__dict__`,
   including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_getattribute_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`, keeps
+  the BaseException helper bound method `__getattribute__` wrapper surface
+  aligned with CPython: bound `add_note` and `with_traceback` methods on
+  `BaseException`, `Exception`, and `IndexError` expose a `method-wrapper`
+  `__getattribute__` through `dir()`; the wrapper has CPython
+  `object.__getattribute__` metadata, keeps `__module__` absent, returns
+  existing metadata through direct calls, and reports missing attributes as
+  `builtin_function_or_method`, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_func_absent_subset`, backed by
   `cpython_base_exception_bound_method_func_absent_diff_subset`, keeps
   BaseException helper bound method `__func__` absence aligned with CPython:
@@ -2162,6 +2171,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_dir_metadata_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_func_absent_diff_subset`,
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`,

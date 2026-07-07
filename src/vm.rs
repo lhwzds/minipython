@@ -19885,7 +19885,7 @@ impl Vm {
         };
         let name = attribute_name_arg(name)?;
         load_attribute(receiver.clone(), &name)
-            .map_err(|error| method_getattribute_attribute_error(&name, error))
+            .map_err(|error| method_getattribute_attribute_error(receiver, &name, error))
     }
 
     fn call_json_function_get(
@@ -67685,6 +67685,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__getattribute__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__new__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -70728,6 +70733,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "method.__dir__" =>
         {
             Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__getattribute__" =>
+        {
+            Ok(Value::String("object.__getattribute__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "method.__getattribute__" =>
+        {
+            Ok(Value::String("Return getattr(self, name).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__getattribute__" =>
+        {
+            Ok(Value::String("($self, name, /)".to_string()))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__new__" => {
             Ok(Value::String("object.__new__".to_string()))
@@ -73839,7 +73859,11 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
     matches!(
         name,
-        "function.__hash__" | "method.__delattr__" | "method.__init__" | "method.__setattr__"
+        "function.__hash__"
+            | "method.__delattr__"
+            | "method.__getattribute__"
+            | "method.__init__"
+            | "method.__setattr__"
     ) || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
@@ -73919,10 +73943,16 @@ fn json_function_getattribute_attribute_error(name: &str, error: String) -> Stri
     }
 }
 
-fn method_getattribute_attribute_error(name: &str, error: String) -> String {
+fn method_getattribute_attribute_error(receiver: &Value, name: &str, error: String) -> String {
     let method_missing_attr = format!("AttributeError: method has no attribute '{name}'");
     if error == method_missing_attr {
-        format!("AttributeError: 'function' object has no attribute '{name}'")
+        let public_type = match receiver {
+            Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(function_name) if !is_json_builtin(function_name)) => {
+                "builtin_function_or_method"
+            }
+            _ => "function",
+        };
+        format!("AttributeError: '{public_type}' object has no attribute '{name}'")
     } else {
         error
     }
