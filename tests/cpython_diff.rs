@@ -13792,6 +13792,42 @@ fn cpython_base_exception_bound_method_hash_wrapper_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_eq_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __eq__ wrapper surface",
+        name: "base-exception-bound-method-eq-wrapper-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        same = getattr(exc, attr)
+        other = getattr(exc.__class__('x'), attr)
+        wrapper = obj.__eq__
+        label = exc.__class__.__name__ + '-' + attr
+        print(label + '-in-dir', '__eq__' in dir(obj))
+        try:
+            module = wrapper.__module__
+            print(label + '-module', type(module).__name__, module)
+        except Exception as error:
+            print(label + '-module', type(error).__name__, str(error), error.args)
+        print(label + '-attr', type(wrapper).__name__, wrapper.__class__.__name__, wrapper.__self__ is obj, wrapper.__name__, wrapper.__qualname__, wrapper.__text_signature__, wrapper.__doc__)
+        for call_label, call in [
+            ('self', lambda wrapper=wrapper, obj=obj: wrapper(obj)),
+            ('same', lambda wrapper=wrapper, same=same: wrapper(same)),
+            ('other', lambda wrapper=wrapper, other=other: wrapper(other)),
+            ('non-method', lambda wrapper=wrapper: wrapper(1)),
+            ('missing', lambda wrapper=wrapper: wrapper()),
+            ('extra', lambda wrapper=wrapper, obj=obj: wrapper(obj, 1)),
+            ('kw', lambda wrapper=wrapper, obj=obj: wrapper(value=obj)),
+        ]:
+            try:
+                value = call()
+                print(label + '-' + call_label, type(value).__name__, value, value is NotImplemented)
+            except Exception as error:
+                print(label + '-' + call_label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_func_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __func__ absence",

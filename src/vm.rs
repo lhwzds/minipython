@@ -67672,6 +67672,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     "builtin_function_or_method.__hash__".to_string(),
                 ))
             }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__eq__")
+                    && is_exception_helper_bound_method_value(&receiver) =>
+            {
+                Ok(Value::String(
+                    "builtin_function_or_method.__eq__".to_string(),
+                ))
+            }
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
                 if matches!(function.as_ref(), Value::Builtin(name) if function_method_wrapper_missing_module_name(name)) =>
@@ -73955,6 +73963,7 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
         "function.__hash__"
             | "method.__call__"
             | "method.__delattr__"
+            | "method.__eq__"
             | "method.__getattribute__"
             | "method.__hash__"
             | "method.__init__"
