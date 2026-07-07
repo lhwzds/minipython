@@ -25781,6 +25781,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
+            "cpython_operator_factory_builtin_metadata_subset",
             "cpython_operator_builtin_metadata_subset",
             "cpython_operator_arithmetic_bitwise_builtin_metadata_subset",
             "cpython_operator_module_doc_intro_metadata_subset",
@@ -25888,6 +25889,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_module_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython module metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_factory_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython factory builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -27444,6 +27450,99 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION
                 .contains("newer `operator.call` entry has gated direct CPython evidence"),
         "migration notes must describe operator module metadata public behavior and gated direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_factory_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_factory_builtin_metadata_subset(",
+        "Adapted from CPython operator factory builtin metadata",
+        "for name in ['attrgetter', 'itemgetter', 'methodcaller']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "object.__getattribute__(value, '__module__')",
+        "operator.__dict__[name] is value",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator factory builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter operator attrgetter attrgetter Return a callable object that fetches the given attribute(s) from its operand. (attr, /, *attrs)\"",
+        "\"itemgetter operator itemgetter itemgetter Return a callable object that fetches the given item(s) from its operand. (item, /, *items)\"",
+        "\"methodcaller operator methodcaller methodcaller Return a callable object that calls the given method on its operand. (name, /, *args, **kwargs)\"",
+        "\"operator True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator factory builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_factory_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "operator factory builtin metadata subset",
+        "operator-factory-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "object.__getattribute__(value, '__module__')",
+        "operator.__dict__[name] is value",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator factory builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_operator_factory_builtin(name: &str) -> bool",
+        "\"operator.attrgetter\" | \"operator.itemgetter\" | \"operator.methodcaller\"",
+        "name == \"__module__\" && is_operator_factory_builtin(&function_name)",
+        "Ok(Value::String(\"operator\".to_string()))",
+        "\"operator.attrgetter\" =>",
+        "Return a callable object that fetches the given attribute(s) from its operand.",
+        "Return a callable object that fetches the given item(s) from its operand.",
+        "Return a callable object that calls the given method on its operand.",
+        "\"operator.attrgetter\" => Some(\"(attr, /, *attrs)\")",
+        "\"operator.itemgetter\" => Some(\"(item, /, *items)\")",
+        "\"operator.methodcaller\" => Some(\"(name, /, *args, **kwargs)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator factory builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_factory_builtin_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_factory_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("operator factory")
+            && CPYTHON_COVERAGE.contains("builtin metadata")
+            && CPYTHON_COVERAGE.contains("`attrgetter` / `itemgetter` / `methodcaller`")
+            && CPYTHON_COVERAGE.contains("__module__")
+            && CPYTHON_COVERAGE.contains("__text_signature__"),
+        "coverage notes must describe operator factory builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_factory_builtin_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_factory_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator factory")
+            && CPYTHON_MIGRATION.contains("builtin metadata")
+            && CPYTHON_MIGRATION.contains("`attrgetter` / `itemgetter` / `methodcaller`")
+            && CPYTHON_MIGRATION.contains("__module__")
+            && CPYTHON_MIGRATION.contains("__text_signature__"),
+        "migration notes must describe operator factory builtin metadata public behavior and direct diff evidence"
     );
 }
 

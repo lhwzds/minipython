@@ -6356,6 +6356,13 @@ without adding general custom encoder/decoder class support.
   `cpython_operator_helper_instance_module_metadata_subset` and has gated direct CPython evidence in
   `cpython_operator_helper_instance_module_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_factory_builtin_metadata_subset`, covering operator factory
+  builtin metadata for `attrgetter` / `itemgetter` / `methodcaller`, including
+  CPython's `operator` `__module__`, `__name__`, `__qualname__`, first-line
+  `__doc__`, `__text_signature__`, and module dictionary identity. Direct
+  CPython diff evidence is in
+  `cpython_operator_factory_builtin_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_builtin_metadata_subset`, covering CPython `_operator`
   builtin metadata exposed through `operator`: selected public helper
   `__module__`, `__name__`, `__qualname__`, first-line `__doc__`,

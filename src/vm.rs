@@ -68576,6 +68576,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_operator_factory_builtin(&function_name) =>
+        {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && function_name.starts_with("operator.") =>
         {
             Ok(Value::String("_operator".to_string()))
@@ -69812,11 +69817,24 @@ fn numeric_from_number_owner_name(owner: &Value) -> String {
     }
 }
 
+fn is_operator_factory_builtin(name: &str) -> bool {
+    matches!(
+        name,
+        "operator.attrgetter" | "operator.itemgetter" | "operator.methodcaller"
+    )
+}
+
 fn operator_builtin_doc(name: &str) -> &'static str {
     match name {
-        "operator.attrgetter" => "Return a callable object that fetches attributes.",
-        "operator.itemgetter" => "Return a callable object that fetches items.",
-        "operator.methodcaller" => "Return a callable object that calls a method.",
+        "operator.attrgetter" => {
+            "Return a callable object that fetches the given attribute(s) from its operand."
+        }
+        "operator.itemgetter" => {
+            "Return a callable object that fetches the given item(s) from its operand."
+        }
+        "operator.methodcaller" => {
+            "Return a callable object that calls the given method on its operand."
+        }
         "operator.concat" => "Same as a + b, for a and b sequences.",
         "operator.iconcat" => "Same as a += b, for a and b sequences.",
         "operator.iadd" => "Same as a += b.",
@@ -69876,6 +69894,9 @@ fn operator_builtin_doc(name: &str) -> &'static str {
 
 fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
     match name {
+        "operator.attrgetter" => Some("(attr, /, *attrs)"),
+        "operator.itemgetter" => Some("(item, /, *items)"),
+        "operator.methodcaller" => Some("(name, /, *args, **kwargs)"),
         "operator.truth"
         | "operator.not_"
         | "operator.is_none"

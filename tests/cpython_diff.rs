@@ -31005,6 +31005,20 @@ for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.met
 }
 
 #[test]
+fn cpython_operator_factory_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator factory builtin metadata subset",
+        name: "operator-factory-builtin-metadata",
+        source: r#"import operator
+for name in ['attrgetter', 'itemgetter', 'methodcaller']:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+    print(object.__getattribute__(value, '__module__'), operator.__dict__[name] is value)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_builtin_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "_operator public builtin metadata exposed through operator subset",
