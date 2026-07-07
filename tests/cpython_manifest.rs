@@ -17871,8 +17871,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "fn call_method_format(",
-        "method.__format__() takes exactly one argument",
-        "method.__format__() takes no keyword arguments",
+        "{owner}.__format__() takes exactly one argument",
+        "{owner}.__format__() takes no keyword arguments",
         "Value::Builtin(\"method.__format__\".to_string())",
         "method.__format__",
         "Default object formatter.",
@@ -49307,6 +49307,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_call_wrapper_subset",
             "cpython_base_exception_bound_method_repr_wrapper_subset",
             "cpython_base_exception_bound_method_str_wrapper_subset",
+            "cpython_base_exception_bound_method_format_wrapper_subset",
             "cpython_base_exception_bound_method_delattr_wrapper_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
@@ -49458,6 +49459,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_call_wrapper_diff_subset",
         "cpython_base_exception_bound_method_repr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_str_wrapper_diff_subset",
+        "cpython_base_exception_bound_method_format_wrapper_diff_subset",
         "cpython_base_exception_bound_method_delattr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
@@ -61853,6 +61855,88 @@ fn base_exception_bound_method_str_wrapper_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__str__` wrapper")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __str__ wrapper evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_format_wrapper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_format_wrapper_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__format__",
+        "'__format__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__qualname__",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "builtin_function_or_method.__format__",
+        "doc.startswith('Default object formatter.')",
+        "'Return str(self)' in doc",
+        "wrapper('x')",
+        "IndexError-with_traceback-empty str True True",
+        "IndexError-with_traceback-non-empty TypeError unsupported format string passed to builtin_function_or_method.__format__",
+        "IndexError-with_traceback-missing TypeError builtin_function_or_method.__format__() takes exactly one argument (0 given)",
+        "IndexError-with_traceback-kw TypeError builtin_function_or_method.__format__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __format__ wrapper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_format_wrapper_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __format__ wrapper surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__format__",
+        "'__format__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "doc.startswith",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __format__ wrapper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_method_format(",
+        "filter(|receiver| is_exception_helper_bound_method_value(receiver))",
+        "\"builtin_function_or_method\"",
+        "\"method\"",
+        "{owner}.__format__() takes no keyword arguments",
+        "{owner}.__format__() takes exactly one argument",
+        "builtin_function_or_method.__format__",
+        "Value::Builtin(\"method.__format__\".to_string())",
+        "self.call_object_format(vec![receiver.clone(), format_spec.clone()])",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __format__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_format_wrapper_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_format_wrapper_diff_subset")
+                && document.contains("BaseException helper bound method `__format__` wrapper")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __format__ wrapper evidence must be documented in coverage and migration notes"
         );
     }
 }

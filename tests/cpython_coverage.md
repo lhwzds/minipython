@@ -2062,6 +2062,16 @@ Recent runtime migration notes:
   `__module__` absent, returns the built-in-method repr shape, and rejects
   extra and keyword arguments with CPython messages, including
   `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_format_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_format_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__format__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a builtin-function-or-method
+  `__format__` through `dir()`; the wrapper has CPython
+  `builtin_function_or_method.__format__` metadata, keeps `__module__` as
+  `None`, returns the built-in-method repr shape for an empty format spec, and
+  rejects non-empty specs, missing/extra args, and keyword args with CPython
+  messages, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_delattr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__delattr__` wrapper surface aligned with
@@ -2198,6 +2208,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_call_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_repr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_str_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_format_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_delattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_setattr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_getattribute_wrapper_diff_subset`,
