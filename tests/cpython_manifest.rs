@@ -49307,6 +49307,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
             "cpython_base_exception_bound_method_reduce_subset",
+            "cpython_base_exception_bound_method_getstate_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
@@ -49446,6 +49447,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
         "cpython_base_exception_bound_method_reduce_diff_subset",
+        "cpython_base_exception_bound_method_getstate_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
@@ -61798,6 +61800,84 @@ fn base_exception_bound_method_reduce_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__reduce__` surface")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __reduce__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_getstate_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_getstate_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__getstate__",
+        "'__getstate__' in dir(obj)",
+        "getter.__self__ is obj",
+        "getter.__qualname__",
+        "getter.__text_signature__",
+        "getter.__doc__",
+        "result = getter()",
+        "getstate-call NoneType None",
+        "builtin_function_or_method.__getstate__() takes no keyword arguments",
+        "IndexError-with_traceback-getstate-call NoneType None",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __getstate__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_getstate_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __getstate__ surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "obj.__getstate__",
+        "'__getstate__' in dir(obj)",
+        "getter.__self__ is obj",
+        "getter.__text_signature__",
+        "getter.__doc__",
+        "result = getter()",
+        "except TypeError as error",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __getstate__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_exception_bound_method_getstate(",
+        "Value::Builtin(\"method.__getstate__\".to_string())",
+        "is_exception_helper_bound_method(function.as_ref(), method_receiver.as_ref())",
+        "Ok(Value::None)",
+        "builtin_function_or_method.__getstate__() takes no arguments",
+        "builtin_function_or_method.__getstate__() takes no keyword arguments",
+        "builtin_function_or_method.__getstate__",
+        "Helper for pickle.",
+        "\"($self, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __getstate__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_getstate_subset")
+                && document.contains("cpython_base_exception_bound_method_getstate_diff_subset")
+                && document.contains("BaseException helper bound method `__getstate__` surface")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __getstate__ evidence must be documented in coverage and migration notes"
         );
     }
 }

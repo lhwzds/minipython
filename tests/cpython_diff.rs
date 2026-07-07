@@ -13693,6 +13693,28 @@ fn cpython_base_exception_bound_method_reduce_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_getstate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __getstate__ surface",
+        name: "base-exception-bound-method-getstate-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        obj = getattr(exc, attr)
+        label = exc.__class__.__name__ + '-' + attr
+        getter = obj.__getstate__
+        print(label + '-getstate-in-dir', '__getstate__' in dir(obj))
+        print(label + '-getstate-attr', type(getter).__name__, getter.__class__.__name__, getter.__self__ is obj, getter.__name__, getter.__qualname__, getter.__module__, getter.__text_signature__, getter.__doc__)
+        result = getter()
+        print(label + '-getstate-call', type(result).__name__, result)
+        for err_label, call in [('extra', lambda getter=getter: getter(1)), ('keyword', lambda getter=getter: getter(x=1))]:
+            try:
+                call()
+            except TypeError as error:
+                print(label + '-' + err_label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

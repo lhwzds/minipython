@@ -10352,6 +10352,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__reduce__" => {
                 self.call_exception_bound_method_reduce(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__getstate__" => {
+                self.call_exception_bound_method_getstate(args, keywords)
+            }
             Value::Builtin(name)
                 if matches!(
                     name.as_str(),
@@ -19119,6 +19122,48 @@ impl Vm {
                 Value::String(method_name.to_string()),
             ]),
         ]))
+    }
+
+    fn call_exception_bound_method_getstate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: builtin_function_or_method.__getstate__() takes no keyword arguments"
+                    .to_string(),
+            );
+        }
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: builtin_function_or_method.__getstate__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+        let Value::BoundMethod {
+            function,
+            receiver: method_receiver,
+            ..
+        } = receiver
+        else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !is_exception_helper_bound_method(function.as_ref(), method_receiver.as_ref()) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        }
+
+        Ok(Value::None)
     }
 
     fn call_method_hash(
@@ -67063,6 +67108,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 })
             }
+            "__getstate__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__getstate__".to_string())),
+                    receiver: Box::new(Value::BoundMethod {
+                        function,
+                        receiver,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             "__call__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(
                     if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) {
@@ -67271,6 +67327,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__reduce__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__getstate__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70275,6 +70336,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__getstate__" =>
+        {
+            Ok(Value::String(
+                "builtin_function_or_method.__getstate__".to_string(),
+            ))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__getstate__" => {
+            Ok(Value::String("Helper for pickle.".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "method.__getstate__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__getstate__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "method.__reduce__" =>
         {
             Ok(Value::String(
@@ -70614,6 +70693,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
     [
         "__module__",
         "__name__",
+        "__getstate__",
         "__qualname__",
         "__reduce__",
         "__text_signature__",
