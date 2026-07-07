@@ -13585,6 +13585,32 @@ for label, obj in [
 }
 
 #[test]
+fn cpython_base_exception_bound_method_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public metadata",
+        name: "base-exception-bound-method-metadata-direct",
+        source: r#"def show(label, fn):
+    try:
+        value = fn()
+        print(label, type(value).__name__, repr(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for attr in ['add_note', 'with_traceback']:
+        label = exc.__class__.__name__ + '-' + attr
+        obj = getattr(exc, attr)
+        show(label + '-class', lambda obj=obj: obj.__class__.__name__)
+        show(label + '-self-is-exc', lambda obj=obj, exc=exc: obj.__self__ is exc)
+        show(label + '-name', lambda obj=obj: obj.__name__)
+        show(label + '-qualname', lambda obj=obj: obj.__qualname__)
+        show(label + '-doc', lambda obj=obj: obj.__doc__)
+        show(label + '-text-signature', lambda obj=obj: obj.__text_signature__)
+        show(label + '-module', lambda obj=obj: obj.__module__)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

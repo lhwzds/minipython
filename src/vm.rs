@@ -67081,6 +67081,55 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 Ok(Value::String("($type, number, /)".to_string()))
             }
+            "__name__"
+                if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
+            {
+                let Value::Builtin(function_name) = function.as_ref() else {
+                    unreachable!("guard checked builtin")
+                };
+                let (method, _) = exception_bound_method_name(function_name, &receiver)
+                    .expect("guard checked exception helper bound method");
+                Ok(Value::String(method.to_string()))
+            }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
+            {
+                let Value::Builtin(function_name) = function.as_ref() else {
+                    unreachable!("guard checked builtin")
+                };
+                let (method, owner) = exception_bound_method_name(function_name, &receiver)
+                    .expect("guard checked exception helper bound method");
+                Ok(Value::String(format!("{owner}.{method}")))
+            }
+            "__module__"
+                if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
+            {
+                Ok(Value::None)
+            }
+            "__doc__"
+                if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
+            {
+                let Value::Builtin(function_name) = function.as_ref() else {
+                    unreachable!("guard checked builtin")
+                };
+                Ok(Value::String(
+                    exception_bound_method_doc(function_name)
+                        .expect("guard checked exception helper bound method")
+                        .to_string(),
+                ))
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
+            {
+                let Value::Builtin(function_name) = function.as_ref() else {
+                    unreachable!("guard checked builtin")
+                };
+                Ok(Value::String(
+                    exception_bound_method_text_signature(function_name)
+                        .expect("guard checked exception helper bound method")
+                        .to_string(),
+                ))
+            }
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
@@ -70422,6 +70471,39 @@ fn exception_method_descriptor_text_signature(name: &str) -> Option<&'static str
     match name {
         "BaseException.add_note" => Some("($self, note, /)"),
         "BaseException.with_traceback" => Some("($self, tb, /)"),
+        _ => None,
+    }
+}
+
+fn exception_bound_method_name(
+    function_name: &str,
+    receiver: &Value,
+) -> Option<(&'static str, String)> {
+    let Value::Exception { type_name, .. } = receiver else {
+        return None;
+    };
+    let method = match function_name {
+        "BaseException.add_note" => "add_note",
+        name if name.ends_with(".with_traceback") => "with_traceback",
+        _ => return None,
+    };
+    Some((method, type_name.clone()))
+}
+
+fn exception_bound_method_doc(function_name: &str) -> Option<&'static str> {
+    match function_name {
+        "BaseException.add_note" => Some("Add a note to the exception"),
+        name if name.ends_with(".with_traceback") => {
+            Some("Set self.__traceback__ to tb and return self.")
+        }
+        _ => None,
+    }
+}
+
+fn exception_bound_method_text_signature(function_name: &str) -> Option<&'static str> {
+    match function_name {
+        "BaseException.add_note" => Some("($self, note, /)"),
+        name if name.ends_with(".with_traceback") => Some("($self, tb, /)"),
         _ => None,
     }
 }
