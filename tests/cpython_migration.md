@@ -910,6 +910,12 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `enumerate.__module__`, and `enumerate.__qualname__` directly readable,
   preserving `enumerate.__class_getitem__` visibility, iterator protocol `__iter__` / `__next__` dir visibility is covered by `cpython_builtin_iterator_dir_protocol_methods_subset`,
   and without widening host IO, network, process, C ABI, or full stdlib scope.
+- Added `cpython_enumerate_reduce_type_dict_subset` and
+  `cpython_enumerate_reduce_type_dict_diff_subset` for enumerate `__reduce__`
+  returning the underlying iterator plus the current enumerate index, enumerate
+  type `__dict__` mappingproxy entries, and `__reduce__` visibility in
+  `dir(enumerate)` and `dir(enumerate(...))`, without widening host IO,
+  network, process, C ABI, or full stdlib scope.
 - Added `cpython_zip_type_metadata_dir_surface_subset` and
   `cpython_zip_type_metadata_dir_surface_diff_subset` for `dir(zip)` and
   `dir(zip(...))` hiding type metadata names while keeping `zip.__base__`,

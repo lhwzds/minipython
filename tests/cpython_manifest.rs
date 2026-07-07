@@ -52524,6 +52524,101 @@ fn enumerate_type_metadata_dir_surface_docs_cover_core_runtime() {
 }
 
 #[test]
+fn enumerate_reduce_type_dict_docs_cover_core_runtime() {
+    let diff_name = "cpython_enumerate_reduce_type_dict_diff_subset";
+    let subset_name = "cpython_enumerate_reduce_type_dict_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "enumerate __reduce__ and type __dict__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "enumerate __reduce__ and type __dict__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "for start in [0, 5]:",
+        "e = enumerate(['a', 'b'], start)",
+        "reduced = e.__reduce__()",
+        "type(e).__reduce__(e)",
+        "reduced[0] is enumerate",
+        "type(reduced[1][0]).__name__",
+        "reduced[1][1]",
+        "namespace = enumerate.__dict__",
+        "'__reduce__' in dir(enumerate)",
+        "'__reduce__' in dir(enumerate(['x']))",
+        "type(namespace).__name__",
+        "'__reduce__' in namespace",
+        "'__class_getitem__' in namespace",
+        "'__setstate__' in namespace",
+        "namespace['__iter__'](e) is e",
+        "namespace['__reduce__'](e)[0] is enumerate",
+        "namespace['__reduce__'](e)[1][1]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "enumerate __reduce__ and type __dict__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"fresh 0 True list_iterator 0\"",
+        "\"after1 0 True list_iterator 1\"",
+        "\"fresh 5 True list_iterator 5\"",
+        "\"after1 5 True list_iterator 6\"",
+        "\"dir-reduce True True\"",
+        "\"dict-type mappingproxy True True True True False True\"",
+        "\"dict-call True True 3\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "enumerate __reduce__ and type __dict__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn enumerate_type_dict_value(",
+        "Value::Builtin(\"enumerate.__reduce__\".to_string())",
+        "Value::EnumerateIterator { iterator, index } => {",
+        "tuple_value(vec![*iterator, normalize_big_int(index)])",
+        "Value::EnumerateIterator { iterator, index } if name == \"__reduce__\"",
+        "name == \"__reduce__\" && is_enumerate",
+        "function_name == \"enumerate\" && name == \"__reduce__\"",
+        "name == \"__dict__\" && function_name == \"enumerate\"",
+        "Ok(enumerate_type_dict_value())",
+        "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "enumerate __reduce__ and type __dict__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "enumerate",
+            "`__reduce__`",
+            "current enumerate",
+            "index",
+            "underlying iterator",
+            "`__dict__` mappingproxy",
+            "visibility in",
+            "`dir(enumerate)`",
+            "`dir(enumerate(...))`",
+            "without widening host IO, network, process, C ABI, or full stdlib scope",
+        ] {
+            assert!(
+                document.contains(required),
+                "enumerate __reduce__ and type __dict__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn zip_type_metadata_dir_surface_docs_cover_core_runtime() {
     let diff_name = "cpython_zip_type_metadata_dir_surface_diff_subset";
     let subset_name = "cpython_zip_type_metadata_dir_surface_subset";
@@ -52861,7 +52956,7 @@ fn builtin_iterator_dir_protocol_methods_docs_cover_core_runtime() {
     }
 
     for required in [
-        "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\"]",
+        "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
         "\"zip\" | \"map\" | \"filter\" | \"callable_iterator\" => &[\"__iter__\", \"__next__\"]",
         "is_builtin_iterator_type_name(&function_name)",
         "matches!(name, \"__iter__\" | \"__next__\")",

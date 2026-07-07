@@ -35130,6 +35130,12 @@ impl Vm {
                     .map_err(|_| "OverflowError: iterator index is too large".to_string())?;
                 return self.reverse_iterator_reduce_result(*object, Some(index));
             }
+            Value::EnumerateIterator { iterator, index } => {
+                return Ok(tuple_value(vec![
+                    Value::Builtin("enumerate".to_string()),
+                    tuple_value(vec![*iterator, normalize_big_int(index)]),
+                ]));
+            }
             value => {
                 return Err(format!(
                     "TypeError: copy protocol does not support '{}'",
@@ -43001,6 +43007,28 @@ fn dict_view_type_dict_value(type_name: &str) -> Value {
         entries.push((Value::String((*method).to_string()), value));
     }
     mapping_proxy_from_entries(entries)
+}
+
+fn enumerate_type_dict_value() -> Value {
+    mapping_proxy_from_entries(vec![
+        (Value::String("__doc__".to_string()), Value::None),
+        (
+            Value::String("__class_getitem__".to_string()),
+            Value::Builtin("enumerate.__class_getitem__".to_string()),
+        ),
+        (
+            Value::String("__iter__".to_string()),
+            Value::Builtin("enumerate.__iter__".to_string()),
+        ),
+        (
+            Value::String("__next__".to_string()),
+            Value::Builtin("enumerate.__next__".to_string()),
+        ),
+        (
+            Value::String("__reduce__".to_string()),
+            Value::Builtin("enumerate.__reduce__".to_string()),
+        ),
+    ])
 }
 
 fn is_builtin_iterator_type_dict_name(name: &str) -> bool {
@@ -55637,7 +55665,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "tolist",
             "toreadonly",
         ],
-        "enumerate" => &["__class_getitem__", "__iter__", "__next__"],
+        "enumerate" => &["__class_getitem__", "__iter__", "__next__", "__reduce__"],
         "zip" | "map" | "filter" | "callable_iterator" => &["__iter__", "__next__"],
         "range_iterator" => &[
             "__iter__",
@@ -65644,6 +65672,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "enumerate".to_string(),
             )))
         }
+        Value::EnumerateIterator { iterator, index } if name == "__reduce__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("enumerate.__reduce__".to_string())),
+                receiver: Box::new(Value::EnumerateIterator { iterator, index }),
+                identity: Rc::new(()),
+            })
+        }
         Value::EnumerateIterator { iterator, index } => iterator_protocol_method(
             "enumerate",
             Value::EnumerateIterator { iterator, index },
@@ -65759,6 +65794,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 Ok(class_getitem_bound_method(Value::Builtin(
                     "enumerate".to_string(),
                 )))
+            } else if name == "__reduce__" && is_enumerate {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("enumerate.__reduce__".to_string())),
+                    receiver: Box::new(Value::Iterator(state)),
+                    identity: Rc::new(()),
+                })
             } else if is_array_iterator {
                 array_iterator_protocol_method(Value::Iterator(state), name)
             } else if is_range_iterator {
@@ -66681,6 +66722,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "enumerate" && name == "__class_getitem__" =>
         {
             Ok(class_getitem_bound_method(Value::Builtin(function_name)))
+        }
+        Value::Builtin(function_name) if function_name == "enumerate" && name == "__reduce__" => {
+            Ok(Value::Builtin("enumerate.__reduce__".to_string()))
         }
         Value::Builtin(function_name)
             if is_builtin_iterator_type_name(&function_name)
@@ -67677,6 +67721,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__dict__" && is_dict_view_type_object_name(&function_name) =>
         {
             Ok(dict_view_type_dict_value(&function_name))
+        }
+        Value::Builtin(function_name) if name == "__dict__" && function_name == "enumerate" => {
+            Ok(enumerate_type_dict_value())
         }
         Value::Builtin(function_name)
             if name == "__dict__" && is_builtin_iterator_type_dict_name(&function_name) =>

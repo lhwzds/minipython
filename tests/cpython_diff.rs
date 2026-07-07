@@ -16830,6 +16830,26 @@ print('method-kept', hasattr(typ, '__class_getitem__'), '__class_getitem__' in d
 }
 
 #[test]
+fn cpython_enumerate_reduce_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public enumerate __reduce__ and type __dict__ surface",
+        name: "enumerate-reduce-type-dict",
+        source: r#"for start in [0, 5]:
+    e = enumerate(['a', 'b'], start)
+    reduced = e.__reduce__()
+    print('fresh', start, reduced[0] is enumerate, type(reduced[1][0]).__name__, reduced[1][1])
+    next(e)
+    reduced = type(e).__reduce__(e)
+    print('after1', start, reduced[0] is enumerate, type(reduced[1][0]).__name__, reduced[1][1])
+namespace = enumerate.__dict__
+print('dir-reduce', '__reduce__' in dir(enumerate), '__reduce__' in dir(enumerate(['x'])))
+print('dict-type', type(namespace).__name__, '__iter__' in namespace, '__next__' in namespace, '__reduce__' in namespace, '__class_getitem__' in namespace, '__setstate__' in namespace, '__doc__' in namespace)
+e = enumerate(['x'], 3)
+print('dict-call', namespace['__iter__'](e) is e, namespace['__reduce__'](e)[0] is enumerate, namespace['__reduce__'](e)[1][1])"#,
+    });
+}
+
+#[test]
 fn cpython_zip_type_metadata_dir_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public zip type metadata dir surface",
