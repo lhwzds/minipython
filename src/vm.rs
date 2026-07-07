@@ -67641,6 +67641,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     "builtin_function_or_method.__call__".to_string(),
                 ))
             }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__repr__")
+                    && is_exception_helper_bound_method_value(&receiver) =>
+            {
+                Ok(Value::String(
+                    "builtin_function_or_method.__repr__".to_string(),
+                ))
+            }
             "__qualname__" => load_attribute(*function, "__qualname__"),
             "__module__"
                 if matches!(function.as_ref(), Value::Builtin(name) if function_method_wrapper_missing_module_name(name)) =>
@@ -67697,6 +67705,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__call__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__repr__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70745,6 +70758,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__text_signature__" && function_name == "method.__call__" =>
         {
             Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "method.__repr__" =>
+        {
+            Ok(Value::String("method.__repr__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__repr__" => {
+            Ok(Value::String("Return repr(self).".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__repr__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__dir__" => {
             Ok(Value::String("method.__dir__".to_string()))
@@ -73890,6 +73916,7 @@ fn function_method_wrapper_missing_module_name(name: &str) -> bool {
             | "method.__delattr__"
             | "method.__getattribute__"
             | "method.__init__"
+            | "method.__repr__"
             | "method.__setattr__"
     ) || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")

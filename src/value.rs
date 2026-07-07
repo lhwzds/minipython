@@ -1988,6 +1988,9 @@ fn format_exception_args_repr(args: &[Value]) -> String {
 }
 
 fn format_bound_method(function: &Value, receiver: &Value) -> String {
+    if let Some(rendered) = format_exception_helper_builtin_method(function, receiver) {
+        return rendered;
+    }
     if let Some(rendered) = format_function_type_builtin_method(function, receiver) {
         return rendered;
     }
@@ -2002,6 +2005,29 @@ fn format_bound_method(function: &Value, receiver: &Value) -> String {
         bound_method_display_name(function),
         format_value_repr(receiver)
     )
+}
+
+fn format_exception_helper_builtin_method(function: &Value, receiver: &Value) -> Option<String> {
+    let Value::Builtin(function_name) = function else {
+        return None;
+    };
+    let Value::Exception {
+        type_name,
+        identity,
+        ..
+    } = receiver
+    else {
+        return None;
+    };
+    let method = match function_name.as_str() {
+        "BaseException.add_note" => "add_note",
+        name if name.ends_with(".with_traceback") => "with_traceback",
+        _ => return None,
+    };
+    Some(format!(
+        "<built-in method {method} of {type_name} object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
+    ))
 }
 
 fn format_function_type_builtin_method(function: &Value, receiver: &Value) -> Option<String> {
