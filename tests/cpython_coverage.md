@@ -2009,6 +2009,13 @@ Recent runtime migration notes:
   `sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
   `stdlib_create_module_registry_is_classified_by_scope` keep the runtime
   policy, registry classification, and documentation aligned.
+- `cpython_base_exception_method_descriptor_metadata_subset`, backed by
+  `cpython_base_exception_method_descriptor_metadata_diff_subset`, keeps
+  BaseException helper method descriptor metadata aligned with CPython:
+  `BaseException.add_note`, `Exception.add_note`,
+  `BaseException.with_traceback`, and `Exception.with_traceback` expose
+  `__name__`, `__qualname__`, `__doc__`, and `__text_signature__`, while
+  `__module__` remains absent with method-descriptor-shaped diagnostics.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_builtins_module_package_metadata_diff_subset`,
   `cpython_builtins_module_doc_metadata_diff_subset`,
@@ -2032,6 +2039,7 @@ Recent runtime migration notes:
   `cpython_name_error_name_attribute_diff_subset`,
   `cpython_base_exception_with_traceback_diff_subset`,
   `cpython_base_exception_add_note_diff_subset`,
+  `cpython_base_exception_method_descriptor_metadata_diff_subset`,
   `cpython_system_exit_oserror_attributes_diff_subset`,
   `cpython_syntax_error_attributes_diff_subset`,
   `cpython_unicode_error_attributes_diff_subset`,

@@ -70220,8 +70220,46 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("($type, number, /)".to_string()))
         }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some()
+                && name == "__qualname__" =>
+        {
+            Ok(Value::String(function_name.to_string()))
+        }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some() && name == "__doc__" =>
+        {
+            Ok(Value::String(exception_method_descriptor_doc(&function_name)
+                .expect("guard checked exception method descriptor")
+                .to_string()))
+        }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some()
+                && name == "__text_signature__" =>
+        {
+            Ok(Value::String(exception_method_descriptor_text_signature(
+                &function_name,
+            )
+            .expect("guard checked exception method descriptor")
+            .to_string()))
+        }
+        Value::Builtin(function_name)
+            if exception_method_descriptor_name(&function_name).is_some() && name == "__module__" =>
+        {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
         Value::Builtin(function_name) if name == "__name__" && is_json_builtin(&function_name) => {
             Ok(json_builtin_name_value(&function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__name__" && exception_method_descriptor_name(&function_name).is_some() =>
+        {
+            Ok(Value::String(
+                exception_method_descriptor_name(&function_name)
+                    .expect("guard checked exception method descriptor")
+                    .to_string(),
+            ))
         }
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -70346,6 +70384,30 @@ fn builtin_public_name(name: &str) -> String {
         return "Union".to_string();
     }
     name.rsplit('.').next().unwrap_or(name).to_string()
+}
+
+fn exception_method_descriptor_name(name: &str) -> Option<&'static str> {
+    match name {
+        "BaseException.add_note" => Some("add_note"),
+        "BaseException.with_traceback" => Some("with_traceback"),
+        _ => None,
+    }
+}
+
+fn exception_method_descriptor_doc(name: &str) -> Option<&'static str> {
+    match name {
+        "BaseException.add_note" => Some("Add a note to the exception"),
+        "BaseException.with_traceback" => Some("Set self.__traceback__ to tb and return self."),
+        _ => None,
+    }
+}
+
+fn exception_method_descriptor_text_signature(name: &str) -> Option<&'static str> {
+    match name {
+        "BaseException.add_note" => Some("($self, note, /)"),
+        "BaseException.with_traceback" => Some("($self, tb, /)"),
+        _ => None,
+    }
 }
 
 fn numeric_from_number_classmethod_value(owner: &str) -> Value {
