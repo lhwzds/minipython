@@ -69834,13 +69834,13 @@ fn is_operator_factory_builtin(name: &str) -> bool {
 fn operator_builtin_doc(name: &str) -> &'static str {
     match name {
         "operator.attrgetter" => {
-            "Return a callable object that fetches the given attribute(s) from its operand."
+            "Return a callable object that fetches the given attribute(s) from its operand.\nAfter f = attrgetter('name'), the call f(r) returns r.name.\nAfter g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).\nAfter h = attrgetter('name.first', 'name.last'), the call h(r) returns\n(r.name.first, r.name.last)."
         }
         "operator.itemgetter" => {
-            "Return a callable object that fetches the given item(s) from its operand."
+            "Return a callable object that fetches the given item(s) from its operand.\nAfter f = itemgetter(2), the call f(r) returns r[2].\nAfter g = itemgetter(2, 5, 3), the call g(r) returns (r[2], r[5], r[3])"
         }
         "operator.methodcaller" => {
-            "Return a callable object that calls the given method on its operand."
+            "Return a callable object that calls the given method on its operand.\nAfter f = methodcaller('name'), the call f(r) returns r.name().\nAfter g = methodcaller('name', 'date', foo=1), the call g(r) returns\nr.name('date', foo=1)."
         }
         "operator.concat" => "Same as a + b, for a and b sequences.",
         "operator.iconcat" => "Same as a += b, for a and b sequences.",

@@ -6369,6 +6369,12 @@ without adding general custom encoder/decoder class support.
   CPython diff evidence is in
   `cpython_operator_factory_builtin_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_operator_factory_helper_doc_metadata_subset`, covering full
+  multi-line `__doc__` metadata shared by operator factory and helper instance
+  objects for `attrgetter`, `itemgetter`, and `methodcaller`. Direct CPython
+  diff evidence is in
+  `cpython_operator_factory_helper_doc_metadata_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_operator_builtin_metadata_subset`, covering CPython `_operator`
   builtin metadata exposed through `operator`: selected public helper
   `__module__`, `__name__`, `__qualname__`, first-line `__doc__`,

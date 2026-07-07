@@ -25782,6 +25782,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
             "cpython_operator_factory_builtin_metadata_subset",
+            "cpython_operator_factory_helper_doc_metadata_subset",
             "cpython_operator_builtin_metadata_subset",
             "cpython_operator_arithmetic_bitwise_builtin_metadata_subset",
             "cpython_operator_module_doc_intro_metadata_subset",
@@ -25895,6 +25896,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_factory_builtin_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython factory builtin metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_factory_helper_doc_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython factory/helper doc metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -27549,6 +27555,99 @@ fn operator_factory_builtin_metadata_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__module__")
             && CPYTHON_MIGRATION.contains("__text_signature__"),
         "migration notes must describe operator factory builtin metadata public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_factory_helper_doc_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_factory_helper_doc_metadata_subset(",
+        "Adapted from CPython operator factory and helper instance doc metadata.",
+        "groups = [('attrgetter', operator.attrgetter, operator.attrgetter('name'))",
+        "factory_doc = factory.__doc__",
+        "helper_doc = helper.__doc__",
+        "len(factory_doc)",
+        "len(factory_doc.splitlines())",
+        "helper_doc == factory_doc",
+        "for line in factory_doc.splitlines()",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator factory/helper doc metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"attrgetter factory str 316 5\"",
+        "\"attrgetter helper str 316 5 True\"",
+        "\"attrgetter After h = attrgetter('name.first', 'name.last'), the call h(r) returns\"",
+        "\"attrgetter (r.name.first, r.name.last).\"",
+        "\"itemgetter factory str 198 3\"",
+        "\"itemgetter helper str 198 3 True\"",
+        "\"itemgetter After g = itemgetter(2, 5, 3), the call g(r) returns (r[2], r[5], r[3])\"",
+        "\"methodcaller factory str 224 4\"",
+        "\"methodcaller helper str 224 4 True\"",
+        "\"methodcaller r.name('date', foo=1).\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator factory/helper doc metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_factory_helper_doc_metadata_diff_subset",
+    );
+    for required in [
+        "operator factory and helper instance doc metadata subset",
+        "operator-factory-helper-doc-metadata",
+        "factory_doc = factory.__doc__",
+        "helper_doc = helper.__doc__",
+        "len(factory_doc)",
+        "len(factory_doc.splitlines())",
+        "helper_doc == factory_doc",
+        "for line in factory_doc.splitlines()",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator factory/helper doc metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "After f = attrgetter('name'), the call f(r) returns r.name.",
+        "After g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).",
+        "After h = attrgetter('name.first', 'name.last'), the call h(r) returns",
+        "(r.name.first, r.name.last).",
+        "After f = itemgetter(2), the call f(r) returns r[2].",
+        "After g = itemgetter(2, 5, 3), the call g(r) returns (r[2], r[5], r[3])",
+        "After f = methodcaller('name'), the call f(r) returns r.name().",
+        "After g = methodcaller('name', 'date', foo=1), the call g(r) returns",
+        "r.name('date', foo=1).",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator factory/helper doc metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_factory_helper_doc_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_factory_helper_doc_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("factory and helper instance")
+            && CPYTHON_COVERAGE.contains("__doc__")
+            && CPYTHON_COVERAGE.contains("multi-line"),
+        "coverage notes must describe operator factory/helper doc metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_factory_helper_doc_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_factory_helper_doc_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("factory and helper instance")
+            && CPYTHON_MIGRATION.contains("__doc__")
+            && CPYTHON_MIGRATION.contains("multi-line"),
+        "migration notes must describe operator factory/helper doc metadata public behavior and direct diff evidence"
     );
 }
 

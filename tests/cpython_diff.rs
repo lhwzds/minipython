@@ -31019,6 +31019,23 @@ for name in ['attrgetter', 'itemgetter', 'methodcaller']:
 }
 
 #[test]
+fn cpython_operator_factory_helper_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "operator factory and helper instance doc metadata subset",
+        name: "operator-factory-helper-doc-metadata",
+        source: r#"import operator
+groups = [('attrgetter', operator.attrgetter, operator.attrgetter('name')), ('itemgetter', operator.itemgetter, operator.itemgetter(0)), ('methodcaller', operator.methodcaller, operator.methodcaller('strip'))]
+for label, factory, helper in groups:
+    factory_doc = factory.__doc__
+    helper_doc = helper.__doc__
+    print(label, 'factory', type(factory_doc).__name__, len(factory_doc), len(factory_doc.splitlines()))
+    print(label, 'helper', type(helper_doc).__name__, len(helper_doc), len(helper_doc.splitlines()), helper_doc == factory_doc)
+    for line in factory_doc.splitlines():
+        print(label, line)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_builtin_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "_operator public builtin metadata exposed through operator subset",
