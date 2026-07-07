@@ -10349,6 +10349,9 @@ impl Vm {
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
+            Value::Builtin(name) if name == "method.__init__" => {
+                self.call_exception_bound_method_init(args)
+            }
             Value::Builtin(name) if name == "method.__reduce__" => {
                 self.call_exception_bound_method_reduce(args, keywords)
             }
@@ -19068,6 +19071,32 @@ impl Vm {
         Ok(sorted_name_list(
             self.default_dir_names_value(receiver.clone())?,
         ))
+    }
+
+    fn call_exception_bound_method_init(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let Some((receiver, _)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        let Value::BoundMethod {
+            function,
+            receiver: method_receiver,
+            ..
+        } = receiver
+        else {
+            return Err(
+                "TypeError: descriptor method wrapper requires a method object".to_string(),
+            );
+        };
+        if !is_exception_helper_bound_method(function.as_ref(), method_receiver.as_ref()) {
+            return Err(
+                "TypeError: descriptor method wrapper requires a builtin_function_or_method object"
+                    .to_string(),
+            );
+        }
+
+        Ok(Value::None)
     }
 
     fn call_exception_bound_method_reduce(
@@ -67130,6 +67159,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__init__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("method.__init__".to_string())),
+                    receiver: Box::new(Value::BoundMethod {
+                        function,
+                        receiver,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                })
+            }
             "__reduce__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("method.__reduce__".to_string())),
@@ -67366,6 +67406,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__init__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -70384,6 +70429,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("($self, /)".to_string()))
         }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "method.__init__" => {
+            Ok(Value::String("object.__init__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__init__" => {
+            Ok(Value::String(
+                "Initialize self.  See help(type(self)) for accurate signature.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "method.__init__" =>
+        {
+            Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "method.__reduce_ex__" =>
         {
@@ -70761,6 +70819,7 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
         "__module__",
         "__name__",
         "__getstate__",
+        "__init__",
         "__qualname__",
         "__reduce__",
         "__reduce_ex__",
@@ -73380,7 +73439,7 @@ fn json_function_method_wrapper_missing_module_name(name: &str) -> bool {
 }
 
 fn function_method_wrapper_missing_module_name(name: &str) -> bool {
-    matches!(name, "function.__hash__")
+    matches!(name, "function.__hash__" | "method.__init__")
         || function_init_wrapper_name(name)
         || matches!(name, "function.__getattribute__")
         || function_rich_compare_wrapper_name(name)
@@ -73419,6 +73478,7 @@ fn is_method_wrapper_name(name: &str) -> bool {
             | "method.__gt__"
             | "method.__ge__"
             | "method.__hash__"
+            | "method.__init__"
             | "json.function.__call__"
             | "json.function.__eq__"
             | "json.function.__ne__"

@@ -2050,6 +2050,14 @@ Recent runtime migration notes:
   `Exception`, and `IndexError` keep `__get__` out of `dir()` and raise the
   CPython `builtin_function_or_method` `AttributeError`, including
   `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_init_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_init_wrapper_diff_subset`, keeps
+  BaseException helper bound method `__init__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `method-wrapper` `__init__` through
+  `dir()`; the wrapper has CPython `object.__init__` metadata, keeps
+  `__module__` absent, and returns `None` for empty, extra positional, and
+  keyword calls, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_reduce_subset`, backed by
   `cpython_base_exception_bound_method_reduce_diff_subset`, keeps
   BaseException helper bound method `__reduce__` surface aligned with CPython:
@@ -2106,6 +2114,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_dir_metadata_diff_subset`,
   `cpython_base_exception_bound_method_func_absent_diff_subset`,
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
+  `cpython_base_exception_bound_method_init_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_reduce_diff_subset`,
   `cpython_base_exception_bound_method_reduce_ex_diff_subset`,
   `cpython_base_exception_bound_method_getstate_diff_subset`,
