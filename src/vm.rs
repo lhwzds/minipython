@@ -69817,6 +69817,8 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.attrgetter" => "Return a callable object that fetches attributes.",
         "operator.itemgetter" => "Return a callable object that fetches items.",
         "operator.methodcaller" => "Return a callable object that calls a method.",
+        "operator.concat" => "Same as a + b, for a and b sequences.",
+        "operator.iconcat" => "Same as a += b, for a and b sequences.",
         "operator.lt" => "Same as a < b.",
         "operator.le" => "Same as a <= b.",
         "operator.eq" => "Same as a == b.",
@@ -69876,9 +69878,8 @@ fn operator_builtin_text_signature(name: &str) -> Option<&'static str> {
         | "operator.eq" | "operator.ne" | "operator.ge" | "operator.gt" | "operator.add"
         | "operator.sub" | "operator.mul" | "operator.matmul" | "operator.truediv"
         | "operator.floordiv" | "operator.mod" | "operator.pow" | "operator.and_"
-        | "operator.or_" | "operator.xor" | "operator.lshift" | "operator.rshift" => {
-            Some("($module, a, b, /)")
-        }
+        | "operator.or_" | "operator.xor" | "operator.lshift" | "operator.rshift"
+        | "operator.concat" | "operator.iconcat" => Some("($module, a, b, /)"),
         "operator.setitem" => Some("($module, a, b, c, /)"),
         "operator.delitem" => Some("($module, a, b, /)"),
         "operator.length_hint" => Some("($module, obj, default=0, /)"),

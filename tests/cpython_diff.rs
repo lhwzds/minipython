@@ -30732,6 +30732,23 @@ for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexO
 }
 
 #[test]
+fn cpython_operator_sequence_concat_builtin_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "_operator sequence concatenation builtin metadata subset",
+        name: "operator-sequence-concat-builtin-metadata",
+        source: r#"import operator
+for name in ['concat', 'iconcat']:
+    value = getattr(operator, name)
+    doc = value.__doc__.splitlines()[0] if value.__doc__ else None
+    print(name, value.__module__, value.__name__, value.__qualname__, doc, getattr(value, '__text_signature__', None))
+for alias in ['__concat__', '__iconcat__']:
+    value = getattr(operator, alias)
+    public = getattr(operator, alias.strip('_'))
+    print(alias, value.__doc__.splitlines()[0], value.__text_signature__, value is public)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_callable_helper_diff_subset() {
     // CPython oracle text: attribute name must be a string;
     // itemgetter expected 1 argument, got 0;

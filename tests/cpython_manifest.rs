@@ -25775,6 +25775,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_is_none_predicates_subset",
             "cpython_operator_arithmetic_bitwise_subset",
             "cpython_operator_sequence_member_subset",
+            "cpython_operator_sequence_concat_builtin_metadata_subset",
             "cpython_operator_callable_helper_subset",
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
@@ -25856,6 +25857,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_sequence_member_diff_subset"),
         "operator sandbox manifest must cite CPython sequence/member diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_sequence_concat_builtin_metadata_diff_subset"),
+        "operator sandbox manifest must cite CPython sequence concat builtin metadata diff evidence"
     );
     assert!(
         row.diff_evidence
@@ -26750,6 +26756,94 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("__contains__ = None")
             && CPYTHON_MIGRATION.contains("immediately after the matched value"),
         "migration notes must describe operator sequence/member public behavior and direct diff evidence"
+    );
+}
+
+#[test]
+fn operator_sequence_concat_builtin_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_sequence_concat_builtin_metadata_subset(",
+        "Adapted from CPython _operator sequence concatenation builtin metadata.",
+        "for name in ['concat', 'iconcat']",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "for alias in ['__concat__', '__iconcat__']",
+        "public = getattr(operator, alias.strip('_'))",
+        "value is public",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator sequence concat builtin metadata subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"concat _operator concat concat Same as a + b, for a and b sequences. ($module, a, b, /)\"",
+        "\"iconcat _operator iconcat iconcat Same as a += b, for a and b sequences. ($module, a, b, /)\"",
+        "\"__concat__ Same as a + b, for a and b sequences. ($module, a, b, /) True\"",
+        "\"__iconcat__ Same as a += b, for a and b sequences. ($module, a, b, /) True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator sequence concat builtin metadata subset output must pin `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_sequence_concat_builtin_metadata_diff_subset",
+    );
+    for required in [
+        "_operator sequence concatenation builtin metadata subset",
+        "operator-sequence-concat-builtin-metadata",
+        "value.__module__",
+        "value.__name__",
+        "value.__qualname__",
+        "value.__doc__.splitlines()[0]",
+        "getattr(value, '__text_signature__', None)",
+        "for alias in ['__concat__', '__iconcat__']",
+        "public = getattr(operator, alias.strip('_'))",
+        "value is public",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator sequence concat builtin metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"operator.concat\" => \"Same as a + b, for a and b sequences.\"",
+        "\"operator.iconcat\" => \"Same as a += b, for a and b sequences.\"",
+        "| \"operator.concat\"",
+        "| \"operator.iconcat\" => Some(\"($module, a, b, /)\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "operator sequence concat builtin metadata implementation must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_sequence_concat_builtin_metadata_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_operator_sequence_concat_builtin_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("sequence concatenation")
+            && CPYTHON_COVERAGE.contains("`_operator` builtin metadata")
+            && CPYTHON_COVERAGE.contains("`concat` / `iconcat`")
+            && CPYTHON_COVERAGE.contains("dunder aliases"),
+        "coverage notes must describe operator sequence concat builtin metadata and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_sequence_concat_builtin_metadata_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_operator_sequence_concat_builtin_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("sequence concatenation")
+            && CPYTHON_MIGRATION.contains("`_operator` builtin metadata")
+            && CPYTHON_MIGRATION.contains("`concat` / `iconcat`")
+            && CPYTHON_MIGRATION.contains("dunder aliases"),
+        "migration notes must describe operator sequence concat builtin metadata public behavior and direct diff evidence"
     );
 }
 

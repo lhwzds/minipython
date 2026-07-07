@@ -6300,6 +6300,13 @@ without adding general custom encoder/decoder class support.
   covers CPython's `__contains__ = None` blocking over iterable and
   sequence-fallback objects. Direct CPython diff
   evidence is in `cpython_operator_sequence_member_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_sequence_concat_builtin_metadata_subset`, covering sequence
+  concatenation `_operator` builtin metadata exposed through `operator`,
+  including `concat` / `iconcat`, first-line `__doc__`, `__text_signature__`,
+  and dunder aliases `operator.__concat__` / `operator.__iconcat__`. Direct
+  CPython diff evidence is in
+  `cpython_operator_sequence_concat_builtin_metadata_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset` and
   `cpython_operator_call_helper_subset`, covering CPython `test_operator.py`
   callable helpers `call`, `attrgetter`, `itemgetter`, and `methodcaller`,
