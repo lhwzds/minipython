@@ -49295,6 +49295,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_runtime_exception_capture_subset",
             "cpython_base_exception_args_subset",
             "cpython_base_exception_with_traceback_subset",
+            "cpython_base_exception_add_note_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
@@ -49426,6 +49427,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_runtime_exception_capture_diff_subset",
         "cpython_base_exception_args_diff_subset",
         "cpython_base_exception_with_traceback_diff_subset",
+        "cpython_base_exception_add_note_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
@@ -61228,6 +61230,71 @@ fn base_exception_with_traceback_subset_has_focused_diff_evidence() {
             document.contains("cpython_base_exception_with_traceback_subset")
                 && document.contains("cpython_base_exception_with_traceback_diff_subset"),
             "focused BaseException with_traceback evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_add_note_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_add_note_subset(",
+        "Lib/test/test_exceptions.py::test_add_note",
+        "e.add_note('one')",
+        "Exception.add_note(e, 'direct')",
+        "second-missing",
+        "e.__notes__ = ('manual',)",
+        "del e.__notes__",
+        "raise Exception('raised')",
+        "BaseException.add_note() takes no keyword arguments",
+        "Cannot add note: __notes__ is not a list",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException.add_note subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_base_exception_add_note_diff_subset");
+    for required in [
+        "Lib/test/test_exceptions.py::test_add_note public subset",
+        "e.add_note('one')",
+        "Exception.add_note(e, 'direct')",
+        "UserString('u')",
+        "second-missing",
+        "e.__notes__ = ('manual',)",
+        "del e.__notes__",
+        "raise Exception('raised')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException.add_note CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "static EXCEPTION_NOTES: RefCell<HashMap<usize, (Rc<()>, Value)>>",
+        "name == \"BaseException.add_note\"",
+        "fn call_exception_add_note(",
+        "fn exception_notes_value(",
+        "fn set_exception_notes_value(",
+        "fn delete_exception_notes_value(",
+        "add_note() argument must be str, not {}",
+        "BaseException.add_note() takes exactly one argument",
+        "Cannot add note: __notes__ is not a list",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException.add_note implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_add_note_subset")
+                && document.contains("cpython_base_exception_add_note_diff_subset")
+                && document.contains("BaseException.add_note")
+                && document.contains("__notes__"),
+            "focused BaseException.add_note evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -13479,6 +13479,62 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_base_exception_add_note_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::test_add_note public subset",
+        name: "base-exception-add-note-direct",
+        source: r#"from collections import UserString
+
+def show(label, fn):
+    try:
+        result = fn()
+        print(label, 'OK', repr(result))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+e = Exception('x')
+show('missing-notes', lambda: e.__notes__)
+print('add-return', e.add_note('one'))
+print('notes1', e.__notes__)
+Exception.add_note(e, 'direct')
+print('direct', e.__notes__)
+first = Exception('first')
+first.add_note('first-note')
+second = Exception('second')
+show('second-missing', lambda: second.__notes__)
+for label, fn in [
+    ('non-string-int', lambda: e.add_note(1)),
+    ('non-string-none', lambda: e.add_note(None)),
+    ('non-string-userstring', lambda: e.add_note(UserString('u'))),
+    ('no-args', lambda: e.add_note()),
+    ('extra', lambda: e.add_note('x', 'y')),
+    ('keyword', lambda: e.add_note(note='kw')),
+]:
+    show(label, fn)
+e.__notes__ = ('manual',)
+show('tuple-notes-add', lambda: e.add_note('three'))
+print('notes-after-tuple', e.__notes__)
+e.__notes__ = ['manual']
+e.add_note('tail')
+print('notes-after-list', e.__notes__)
+del e.__notes__
+show('after-del', lambda: e.__notes__)
+e.add_note('new')
+print('notes-after-del-add', e.__notes__)
+class MyError(Exception):
+    pass
+m = MyError('m')
+m.add_note('sub')
+print('sub', m.__notes__)
+try:
+    raise Exception('raised')
+except Exception as err:
+    err.add_note('caught')
+    print('caught', err.__notes__)"#,
+    });
+}
+
+#[test]
 fn cpython_system_exit_oserror_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",

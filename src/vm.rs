@@ -119,6 +119,7 @@ thread_local! {
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+    static EXCEPTION_NOTES: RefCell<HashMap<usize, (Rc<()>, Value)>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
@@ -10782,6 +10783,9 @@ impl Vm {
                 }
 
                 call_exception_with_traceback(args)
+            }
+            Value::Builtin(name) if name == "BaseException.add_note" => {
+                call_exception_add_note(args, keywords)
             }
             Value::Builtin(name) if name.starts_with("list.") => {
                 self.call_list_method(&name, args, keywords)
@@ -68268,6 +68272,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin("BaseException.with_traceback".to_string()))
         }
         Value::Builtin(function_name)
+            if is_exception_type_name(&function_name) && name == "add_note" =>
+        {
+            Ok(Value::Builtin("BaseException.add_note".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__mro__" && is_class_like_builtin(&function_name) =>
         {
             class_mro(&Value::Builtin(function_name)).map(tuple_value)
@@ -70275,6 +70284,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .map(|class| *class)
                 .unwrap_or(Value::Builtin(type_name))),
             "args" => Ok(tuple_value(args)),
+            "__notes__" => exception_notes_value(&exception_identity)
+                .ok_or_else(|| exception_missing_attribute_error(&type_name, name)),
             "value" if type_hierarchy.iter().any(|name| name == "StopIteration") => {
                 Ok(args.first().cloned().unwrap_or(Value::None))
             }
@@ -70282,6 +70293,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "exceptions" => Ok(exceptions.map(tuple_value).unwrap_or(Value::None)),
             "with_traceback" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("{type_name}.with_traceback"))),
+                receiver: Box::new(Value::Exception {
+                    type_name,
+                    type_hierarchy,
+                    type_object,
+                    message,
+                    args,
+                    attrs,
+                    exceptions,
+                    cause,
+                    context,
+                    suppress_context,
+                    identity: exception_identity,
+                }),
+                identity: Rc::new(()),
+            }),
+            "add_note" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("BaseException.add_note".to_string())),
                 receiver: Box::new(Value::Exception {
                     type_name,
                     type_hierarchy,
@@ -71463,6 +71491,10 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 Err("TypeError: __traceback__ must be a traceback or None".to_string())
             }
         }
+        Value::Exception { identity, .. } if name == "__notes__" => {
+            set_exception_notes_value(&identity, value);
+            Ok(())
+        }
         Value::Class {
             name: class_name,
             attrs,
@@ -72045,6 +72077,17 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         }
         Value::Property { .. } => Err(property_attribute_assignment_error(name)),
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),
+        Value::Exception {
+            type_name,
+            identity,
+            ..
+        } if name == "__notes__" => {
+            if delete_exception_notes_value(&identity) {
+                Ok(())
+            } else {
+                Err(exception_missing_attribute_error(&type_name, name))
+            }
+        }
         Value::BytesIO(bytes_io) => {
             let mut state = bytes_io.borrow_mut();
             if state.attrs.borrow_mut().remove(name).is_some() {
@@ -74478,6 +74521,97 @@ fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
         ));
     };
     exception_value_with_traceback(receiver.clone(), traceback.clone())
+}
+
+fn exception_identity_key(identity: &Rc<()>) -> usize {
+    Rc::as_ptr(identity) as usize
+}
+
+fn exception_notes_value(identity: &Rc<()>) -> Option<Value> {
+    EXCEPTION_NOTES.with(|notes| {
+        notes
+            .borrow()
+            .get(&exception_identity_key(identity))
+            .map(|(_, value)| value.clone())
+    })
+}
+
+fn set_exception_notes_value(identity: &Rc<()>, value: Value) {
+    EXCEPTION_NOTES.with(|notes| {
+        notes
+            .borrow_mut()
+            .insert(exception_identity_key(identity), (identity.clone(), value));
+    });
+}
+
+fn delete_exception_notes_value(identity: &Rc<()>) -> bool {
+    EXCEPTION_NOTES.with(|notes| {
+        notes
+            .borrow_mut()
+            .remove(&exception_identity_key(identity))
+            .is_some()
+    })
+}
+
+fn exception_missing_attribute_error(type_name: &str, name: &str) -> String {
+    format!("AttributeError: '{type_name}' object has no attribute '{name}'")
+}
+
+fn add_note_type_name(value: &Value) -> &str {
+    if matches!(value, Value::None) {
+        "None"
+    } else {
+        type_name(value)
+    }
+}
+
+fn call_exception_add_note(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: BaseException.add_note() takes no keyword arguments".to_string());
+    }
+
+    let Some(receiver) = args.first() else {
+        return Err(
+            "TypeError: unbound method BaseException.add_note() needs an argument".to_string(),
+        );
+    };
+    let Value::Exception { identity, .. } = receiver else {
+        return Err(format!(
+            "TypeError: descriptor 'add_note' for 'BaseException' objects doesn't apply to a '{}' object",
+            type_name(receiver)
+        ));
+    };
+    let notes = &args[1..];
+    let [note] = notes else {
+        return Err(format!(
+            "TypeError: BaseException.add_note() takes exactly one argument ({} given)",
+            notes.len()
+        ));
+    };
+    let note = match note {
+        Value::String(value) | Value::IdentityString { value, .. } => Value::String(value.clone()),
+        value if str_subclass_string(value).is_some() => Value::String(
+            str_subclass_string(value).expect("str subclass storage exists after guard"),
+        ),
+        value => {
+            return Err(format!(
+                "TypeError: add_note() argument must be str, not {}",
+                add_note_type_name(value)
+            ));
+        }
+    };
+    match exception_notes_value(identity) {
+        Some(Value::List(notes)) => notes.borrow_mut().push(note),
+        Some(_) => {
+            return Err("TypeError: Cannot add note: __notes__ is not a list".to_string());
+        }
+        None => set_exception_notes_value(identity, list_value(vec![note])),
+    }
+
+    Ok(Value::None)
 }
 
 fn stop_iteration_message(value: Value) -> Option<String> {
