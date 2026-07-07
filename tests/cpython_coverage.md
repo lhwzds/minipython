@@ -2043,6 +2043,13 @@ Recent runtime migration notes:
   `Exception`, and `IndexError` keep `__func__` out of `dir()` and raise the
   CPython `builtin_function_or_method` `AttributeError`, including
   `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_get_absent_subset`, backed by
+  `cpython_base_exception_bound_method_get_absent_diff_subset`, keeps
+  BaseException helper bound method `__get__` absence aligned with CPython:
+  bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` keep `__get__` out of `dir()` and raise the
+  CPython `builtin_function_or_method` `AttributeError`, including
+  `IndexError.with_traceback`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_builtins_module_package_metadata_diff_subset`,
   `cpython_builtins_module_doc_metadata_diff_subset`,
@@ -2071,6 +2078,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_metadata_diff_subset`,
   `cpython_base_exception_bound_method_dir_metadata_diff_subset`,
   `cpython_base_exception_bound_method_func_absent_diff_subset`,
+  `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_system_exit_oserror_attributes_diff_subset`,
   `cpython_syntax_error_attributes_diff_subset`,
   `cpython_unicode_error_attributes_diff_subset`,

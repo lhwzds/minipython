@@ -15625,7 +15625,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     assert!(
-        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+        VM_SOURCE.contains("Value::BoundMethod {\n            function, receiver, ..")
             && VM_SOURCE.contains("\"__doc__\"")
             && VM_SOURCE.contains("\"__call__\"")
             && VM_SOURCE.contains("\"__dir__\"")
@@ -15639,6 +15639,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"__le__\"")
             && VM_SOURCE.contains("\"__lt__\"")
             && VM_SOURCE.contains("\"__ne__\"")
+            && VM_SOURCE
+                .contains("!bound_method_omits_func_attribute(function.as_ref(), receiver)")
             && VM_SOURCE.contains("names.push(\"__func__\".to_string())"),
         "VM bound method dir() names must keep __name__ hidden while preserving bound.__name__ lookup"
     );
@@ -15665,7 +15667,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     assert!(
-        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+        VM_SOURCE.contains("Value::BoundMethod {\n            function, receiver, ..")
             && VM_SOURCE.contains("\"__repr__\"")
             && VM_SOURCE.contains("\"__self__\"")
             && VM_SOURCE.contains("\"__str__\"")
@@ -18328,8 +18330,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         VM_SOURCE.contains("Value::Builtin(function_name) if name == \"__class__\"")
             && VM_SOURCE.contains("} else if is_json_builtin(&function_name) {")
             && VM_SOURCE.contains("Ok(Value::Builtin(\"function\".to_string()))")
-            && VM_SOURCE.contains("Value::Builtin(name) if is_json_builtin(name) => \"function\"")
             && VM_SOURCE.contains("Value::Builtin(name) if is_json_builtin(name)")
+            && VM_SOURCE.contains("\"function\"")
             && VM_SOURCE.contains("&& !is_json_builtin(name)")
             && VALUE_SOURCE.contains("| \"function\""),
         "VM must expose json public functions as CPython function type metadata"
@@ -18555,7 +18557,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "VM must expose CPython-compatible bound method __call__ / __get__ / rich-compare / __repr__ / __str__ / __getattribute__ method wrappers"
     );
     assert!(
-        VM_SOURCE.contains("Value::BoundMethod { function, .. } => {")
+        VM_SOURCE.contains("Value::BoundMethod {\n            function, receiver, ..")
             && VM_SOURCE.contains("\"__doc__\"")
             && VM_SOURCE.contains("\"__call__\"")
             && VM_SOURCE.contains("\"__dir__\"")
@@ -18567,6 +18569,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains("\"__gt__\"")
             && VM_SOURCE.contains("\"__le__\"")
             && VM_SOURCE.contains("\"__lt__\"")
+            && VM_SOURCE
+                .contains("!bound_method_omits_func_attribute(function.as_ref(), receiver)")
             && VM_SOURCE.contains("names.push(\"__func__\".to_string())"),
         "VM bound method dir() names must include CPython-visible __call__, __dir__, rich-compare wrappers, __format__, __get__, and __doc__ metadata"
     );
@@ -49301,6 +49305,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_metadata_subset",
             "cpython_base_exception_bound_method_dir_metadata_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
+            "cpython_base_exception_bound_method_get_absent_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
@@ -49438,6 +49443,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_metadata_diff_subset",
         "cpython_base_exception_bound_method_dir_metadata_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
+        "cpython_base_exception_bound_method_get_absent_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
@@ -61649,6 +61655,70 @@ fn base_exception_bound_method_func_absent_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__func__` absence")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __func__ absence evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_get_absent_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_get_absent_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "'__get__' in dir(obj)",
+        "obj.__get__",
+        "'builtin_function_or_method' object has no attribute '__get__'",
+        "IndexError-with_traceback-get-in-dir False",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __get__ absence subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_get_absent_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __get__ absence",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, attr)",
+        "'__get__' in dir(obj)",
+        "obj.__get__",
+        "except Exception as error",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __get__ absence CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_exception_helper_bound_method(",
+        "is_exception_helper_bound_method(function.as_ref(), &receiver)",
+        "is_exception_helper_bound_method(function.as_ref(), receiver)",
+        "names.retain(|name| name != \"__get__\")",
+        "'builtin_function_or_method' object has no attribute '__get__'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __get__ absence implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_get_absent_subset")
+                && document.contains("cpython_base_exception_bound_method_get_absent_diff_subset")
+                && document.contains("BaseException helper bound method `__get__` absence")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __get__ absence evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -55653,8 +55653,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 .into_iter()
                 .map(str::to_string),
             );
-            if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, receiver).is_some())
-            {
+            if is_exception_helper_bound_method(function.as_ref(), receiver) {
+                names.retain(|name| name != "__get__");
                 names.extend(exception_bound_method_dir_names());
             }
             if !bound_method_omits_func_attribute(function.as_ref(), receiver) {
@@ -67008,6 +67008,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }),
                 identity: Rc::new(()),
             }),
+            "__get__" if is_exception_helper_bound_method(function.as_ref(), &receiver) => Err(
+                "AttributeError: 'builtin_function_or_method' object has no attribute '__get__'"
+                    .to_string(),
+            ),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("method.__get__".to_string())),
                 receiver: Box::new(Value::BoundMethod {
@@ -70524,11 +70528,14 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
 }
 
 fn bound_method_omits_func_attribute(function: &Value, receiver: &Value) -> bool {
+    matches!(function, Value::Builtin(name) if is_numeric_from_number_classmethod(name))
+        || is_exception_helper_bound_method(function, receiver)
+}
+
+fn is_exception_helper_bound_method(function: &Value, receiver: &Value) -> bool {
     matches!(
         function,
-        Value::Builtin(name)
-            if is_numeric_from_number_classmethod(name)
-                || exception_bound_method_name(name, receiver).is_some()
+        Value::Builtin(name) if exception_bound_method_name(name, receiver).is_some()
     )
 }
 
