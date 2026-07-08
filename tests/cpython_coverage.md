@@ -10244,6 +10244,15 @@ without adding general custom encoder/decoder class support.
   and `dir(object.__setattr__)` metadata membership without changing attribute assignment
   or error semantics.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_delattr_wrapper_descriptor_metadata_subset` with direct CPython
+  output parity in `cpython_object_delattr_wrapper_descriptor_metadata_diff_subset`,
+  covering `object.__delattr__` wrapper_descriptor metadata:
+  `object.__delattr__.__qualname__`,
+  `object.__delattr__.__objclass__ is object`,
+  `object.__delattr__.__text_signature__`,
+  and `dir(object.__delattr__)` metadata membership without changing attribute deletion
+  or error semantics.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_dir_descriptor_metadata_subset` with direct CPython output
   parity in `cpython_object_dir_descriptor_metadata_diff_subset`, covering
   `object.__dir__` method_descriptor metadata:
