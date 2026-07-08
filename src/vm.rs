@@ -62184,7 +62184,9 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
             && matches!(
                 name,
                 "__add__"
+                    | "__eq__"
                     | "__mul__"
+                    | "__ne__"
                     | "__repr__"
                     | "__rmul__"
                     | "__str__"
@@ -74227,10 +74229,12 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
             method,
             "__add__"
                 | "__contains__"
+                | "__eq__"
                 | "__getitem__"
                 | "__iter__"
                 | "__len__"
                 | "__mul__"
+                | "__ne__"
                 | "__repr__"
                 | "__rmul__"
                 | "__str__"
@@ -83405,6 +83409,7 @@ fn call_immutable_sequence_method(
 ) -> Result<Value, String> {
     match name {
         "str.__add__" => return call_str_add_method(name, args),
+        "str.__eq__" | "str.__ne__" => return call_str_equality_method(name, args),
         "str.__mul__" | "str.__rmul__" => return call_str_repeat_method(vm, name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
@@ -83768,6 +83773,27 @@ fn call_str_repeat_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
     let count = vm.index_integer_value(count.clone())?;
     let count = repeat_count_from_integer_value(count)?;
     Ok(Value::String(repeat_string(receiver.into_owned(), count)?))
+}
+
+fn call_str_equality_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, other] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(left) = str_method_text(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    let Some(right) = str_method_text(other) else {
+        return Ok(Value::NotImplemented);
+    };
+    let equal = left.as_ref() == right.as_ref();
+    Ok(Value::Bool(if method == "__eq__" { equal } else { !equal }))
 }
 
 fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {

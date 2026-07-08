@@ -54839,6 +54839,101 @@ fn string_direct_repeat_methods_have_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_equality_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_equality_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "for name in ['__eq__', '__ne__']:",
+        "m = getattr(value, name)",
+        "other = m(1)",
+        "type(other).__name__, other",
+        "type(str.__eq__('ab', S('ab'))).__name__",
+        "str.__eq__('ab', S('ab'))",
+        "type(str.__ne__(S('ab'), 'ac')).__name__",
+        "str.__ne__(S('ab'), 'ac')",
+        "\"class __eq__ wrapper_descriptor\"",
+        "\"class __ne__ wrapper_descriptor\"",
+        "\"exact __eq__ method-wrapper True True False NotImplementedType NotImplemented\"",
+        "\"exact __ne__ method-wrapper False False True NotImplementedType NotImplemented\"",
+        "\"subclass __eq__ method-wrapper True True False NotImplementedType NotImplemented\"",
+        "\"subclass __ne__ method-wrapper False False True NotImplementedType NotImplemented\"",
+        "\"class-call bool True bool True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str equality subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-equality-methods");
+    for required in [
+        "class S(str):",
+        "for name in ['__eq__', '__ne__']:",
+        "m = getattr(value, name)",
+        "other = m(1)",
+        "type(other).__name__, other",
+        "type(str.__eq__('ab', S('ab'))).__name__",
+        "str.__eq__('ab', S('ab'))",
+        "type(str.__ne__(S('ab'), 'ac')).__name__",
+        "str.__ne__(S('ab'), 'ac')",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str equality CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    for required in ["\"__eq__\"", "\"__ne__\""] {
+        assert!(
+            str_wrapper_block.contains(required),
+            "str wrapper descriptor branch must include `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str.__eq__\" | \"str.__ne__\" => return call_str_equality_method(name, args)",
+        "fn call_str_equality_method(name: &str, args: Vec<Value>) -> Result<Value, String>",
+        "let [receiver, other] = args.as_slice()",
+        "let Some(left) = str_method_text(receiver)",
+        "let Some(right) = str_method_text(other) else",
+        "return Ok(Value::NotImplemented)",
+        "let equal = left.as_ref() == right.as_ref()",
+        "Ok(Value::Bool(if method == \"__eq__\" { equal } else { !equal }))",
+        "| \"__eq__\"",
+        "| \"__ne__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str equality implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__eq__` / `__ne__` methods")
+                && document.contains("cpython_string_direct_equality_methods_subset")
+                && document.contains("cpython_string_direct_equality_methods_diff_subset"),
+            "direct str equality evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

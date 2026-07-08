@@ -11390,6 +11390,24 @@ print('class', type(str.__mul__).__name__, type(str.__rmul__).__name__, type(str
 }
 
 #[test]
+fn cpython_string_direct_equality_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__eq__ and str.__ne__ direct method behavior",
+        name: "string-direct-equality-methods",
+        source: r#"class S(str):
+    pass
+for name in ['__eq__', '__ne__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__eq__', '__ne__']:
+        m = getattr(value, name)
+        other = m(1)
+        print(label, name, type(m).__name__, m('ab'), m(S('ab')), m('ac'), type(other).__name__, other)
+print('class-call', type(str.__eq__('ab', S('ab'))).__name__, str.__eq__('ab', S('ab')), type(str.__ne__(S('ab'), 'ac')).__name__, str.__ne__(S('ab'), 'ac'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

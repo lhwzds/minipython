@@ -10359,6 +10359,17 @@ Completed in the str direct `__add__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__eq__` / `__ne__` methods pass:
+
+- Added `cpython_string_direct_equality_methods_subset` plus
+  `cpython_string_direct_equality_methods_diff_subset`, covering direct
+  `__eq__` / `__ne__` calls on exact `str` and `str` subclass instances,
+  bound `method-wrapper` behavior, class-level `wrapper_descriptor`
+  visibility, `str` subclass operands, bool equality results, and
+  `NotImplemented` for unsupported operand types.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus
