@@ -57490,6 +57490,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "str" {
         names.push("__add__".to_string());
+        names.push("__contains__".to_string());
         names.push("__delattr__".to_string());
         names.push("__getnewargs__".to_string());
         names.push("__getstate__".to_string());

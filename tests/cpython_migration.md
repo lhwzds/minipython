@@ -10369,6 +10369,16 @@ Completed in the str direct `__add__` dir surface pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__contains__` dir surface pass:
+
+- Added `cpython_string_direct_contains_dir_surface_subset` plus
+  `cpython_string_direct_contains_dir_surface_diff_subset`, covering
+  `__contains__` visibility through `dir(str)`, str subclasses, exact str
+  instances, and str subclass instances while preserving the existing
+  descriptor and membership behavior.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__eq__` / `__ne__` methods pass:
 
 - Added `cpython_string_direct_equality_methods_subset` plus

@@ -11365,6 +11365,21 @@ print('calls', str.__add__('ab', 'c'), str.__add__(left, S('c')), 'ab'.__add__(S
 }
 
 #[test]
+fn cpython_string_direct_contains_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__contains__ dir surface",
+        name: "string-direct-contains-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('abc')
+for label, value in [('type', str), ('subtype', S), ('exact', 'abc'), ('sub', left)]:
+    print(label, '__contains__' in dir(value), hasattr(value, '__contains__'))
+print('descriptor', type(str.__contains__).__name__, type('abc'.__contains__).__name__, type(left.__contains__).__name__)
+print('calls', str.__contains__('abc', 'b'), str.__contains__(left, S('a')), 'abc'.__contains__(S('c')), left.__contains__('z'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
