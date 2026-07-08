@@ -16365,6 +16365,54 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_old_style_string_percent_repr_protocol_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_format.py public old-style %r/%a custom __repr__ conversion subset",
+        name: "old-style-string-percent-repr-protocol",
+        source: r#"class Raises:
+    def __repr__(self):
+        raise RuntimeError('repr boom')
+class NonString:
+    def __repr__(self):
+        return 123
+class NonAscii:
+    def __repr__(self):
+        return chr(233)
+class ReprSub(str):
+    pass
+class ReprSubPlain:
+    def __repr__(self):
+        return ReprSub('abcdef')
+class ReprSubNonAscii:
+    def __repr__(self):
+        return ReprSub('sub-é')
+for expr in [lambda: '%r' % Raises(), lambda: '%a' % Raises(), lambda: '%r' % NonString(), lambda: '%a' % NonString()]:
+    try:
+        expr()
+    except (RuntimeError, TypeError) as error:
+        print(error.__class__.__name__, error.args[0])
+print('%r' % NonAscii())
+print('%a' % NonAscii())
+print('%6r|%-6a|%.3a' % (NonAscii(), NonAscii(), NonAscii()))
+for label, fmt, arg in [
+    ('plain-r', '%r', ReprSubPlain()),
+    ('plain-mapping-r', '%(x)r', {'x': ReprSubPlain()}),
+    ('plain-a', '%a', ReprSubPlain()),
+    ('plain-mapping-a', '%(x)a', {'x': ReprSubPlain()}),
+    ('plain-plus-r', '%+r', ReprSubPlain()),
+    ('plain-precision-r', '%.3r', ReprSubPlain()),
+    ('plain-width-r', '%6r', ReprSubPlain()),
+    ('plain-star-width-r', '%*r', (6, ReprSubPlain())),
+    ('plain-suffix-r', '%r!', ReprSubPlain()),
+    ('nonascii-a', '%a', ReprSubNonAscii()),
+    ('nonascii-mapping-a', '%(x)a', {'x': ReprSubNonAscii()}),
+]:
+    result = fmt % arg
+    print(label, type(result).__name__, result, isinstance(result, ReprSub), type(result) is ReprSub)"#,
+    });
+}
+
+#[test]
 fn cpython_builtins_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py builtins module __package__ metadata subset",

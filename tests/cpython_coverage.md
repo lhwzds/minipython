@@ -6879,9 +6879,12 @@ without adding general custom encoder/decoder class support.
   including `%d` truncation of float inputs; malformed old-style format
   strings, mapping-key shapes, star width/precision argument consumption, and
   numeric conversion type errors reject with CPython-style parity checks;
-  old-style string `%r` / `%a` calls user `__repr__`, propagates user
-  exceptions, rejects non-string repr results, and applies CPython ASCII
-  escaping/precision behavior; old-style string `%d` / `%i` / `%u` uses
+  old-style string `%r` / `%a`, backed by
+  `cpython_old_style_string_percent_repr_protocol_diff_subset`, calls user
+  `__repr__`, propagates user exceptions, rejects non-string repr results,
+  preserves str-subclass `__repr__` result identity when formatting leaves the
+  repr text unchanged, returns exact `str` when formatting changes the repr text,
+  and applies CPython ASCII escaping/precision behavior without expanding bytes/bytearray percent formatting; old-style string `%d` / `%i` / `%u` uses
   `__int__` before `__index__` while preserving float truncation, and
   `%x` / `%X` / `%o` uses `__index__` only, with propagated user exceptions
   and CPython public TypeError text for invalid integer conversion;
@@ -10246,7 +10249,7 @@ without adding general custom encoder/decoder class support.
   `__repr__`: MiniPython preserves CPython's custom repr text, normalizes
   str-subclass `__repr__` results to formatted `str` output, ASCII-escapes `!a`,
   and preserves non-string-returning and raising `__repr__` paths,
-  without expanding `repr()` / `ascii()` / old-style `%r` / `%a` str-subclass result identity.
+  with top-level `repr()` / `ascii()` and old-style `%r` / `%a` result identity covered by separate focused evidence.
 - The `BuiltinTest Core Runtime Method Audit` in `cpython_test_manifest.md`
   now pins the direct Rust evidence for 27 scalar, representation, and
   introspection methods that were previously covered only through the broader

@@ -100396,7 +100396,7 @@ fn modulo_values_with_vm(vm: &mut Vm, left: Value, right: Value) -> Result<Value
 fn modulo_values_impl(vm: Option<&mut Vm>, left: Value, right: Value) -> Result<Value, String> {
     match left {
         Value::String(format) | Value::IdentityString { value: format, .. } => {
-            return percent_format_string(vm, &format, right).map(Value::String);
+            return percent_format_string_value(vm, &format, right);
         }
         Value::UserString { data, .. } => {
             let format = data.borrow().clone();
@@ -100468,10 +100468,26 @@ fn float_modulo_value(left: f64, right: f64) -> f64 {
 }
 
 fn percent_format_string(
-    mut vm: Option<&mut Vm>,
+    vm: Option<&mut Vm>,
     format: &str,
     value: Value,
 ) -> Result<String, String> {
+    percent_format_string_result(vm, format, value)?.into_string()
+}
+
+fn percent_format_string_value(
+    vm: Option<&mut Vm>,
+    format: &str,
+    value: Value,
+) -> Result<Value, String> {
+    Ok(percent_format_string_result(vm, format, value)?.into_value())
+}
+
+fn percent_format_string_result(
+    mut vm: Option<&mut Vm>,
+    format: &str,
+    value: Value,
+) -> Result<PercentStringResult, String> {
     let mapping = percent_format_mapping(&value);
     let args = match value {
         Value::Tuple(items) => items.as_ref().clone(),
@@ -100509,7 +100525,7 @@ fn percent_format_string(
                 .expect("mapping existence checked before dynamic spec resolution");
             match percent_mapping_value(vm.as_deref_mut(), mapping, Value::String(key.clone()))? {
                 PercentMappingValue::Value(value) => value,
-                PercentMappingValue::Raised => return Ok(output),
+                PercentMappingValue::Raised => return Ok(PercentStringResult::Text(output)),
             }
         } else {
             take_percent_arg(&args, &mut arg_index)?
@@ -100520,34 +100536,43 @@ fn percent_format_string(
                 let rendered = str_value_for_vm(vm.as_deref_mut(), &arg)?;
                 output.push_str(&percent_format_text(rendered, &spec));
             }
-            'r' => output.push_str(&percent_format_text(
-                percent_repr_text(vm.as_deref_mut(), &arg, false)?,
-                &spec,
-            )),
-            'a' => output.push_str(&percent_format_text(
-                percent_repr_text(vm.as_deref_mut(), &arg, true)?,
-                &spec,
-            )),
+            'r' | 'a' => {
+                let repr = percent_repr_result(vm.as_deref_mut(), &arg, spec.specifier == 'a')?;
+                let (subclass_value, text) = match repr {
+                    PercentReprResult::Text(text) => (None, text),
+                    PercentReprResult::StrSubclass { value, text } => (Some(value), text),
+                };
+                let formatted = percent_format_text(text.clone(), &spec);
+                if output.is_empty()
+                    && chars.peek().is_none()
+                    && spec.sign.is_none()
+                    && formatted == text
+                    && let Some(value) = subclass_value
+                {
+                    return Ok(PercentStringResult::Value(value));
+                }
+                output.push_str(&formatted);
+            }
             'd' | 'i' | 'u' => match percent_format_integer(vm.as_deref_mut(), &arg, &spec)? {
                 PercentProtocolResult::Value(text) => output.push_str(&text),
-                PercentProtocolResult::Raised => return Ok(output),
+                PercentProtocolResult::Raised => return Ok(PercentStringResult::Text(output)),
             },
             'x' | 'X' | 'o' => {
                 match percent_format_integer_radix(vm.as_deref_mut(), &arg, &spec)? {
                     PercentProtocolResult::Value(text) => output.push_str(&text),
-                    PercentProtocolResult::Raised => return Ok(output),
+                    PercentProtocolResult::Raised => return Ok(PercentStringResult::Text(output)),
                 }
             }
             'c' => match percent_format_char(vm.as_deref_mut(), &arg)? {
                 PercentProtocolResult::Value(text) => {
                     output.push_str(&percent_format_text(text, &spec));
                 }
-                PercentProtocolResult::Raised => return Ok(output),
+                PercentProtocolResult::Raised => return Ok(PercentStringResult::Text(output)),
             },
             'f' | 'F' | 'e' | 'E' | 'g' | 'G' => {
                 match percent_format_float(vm.as_deref_mut(), &arg, &spec)? {
                     PercentProtocolResult::Value(text) => output.push_str(&text),
-                    PercentProtocolResult::Raised => return Ok(output),
+                    PercentProtocolResult::Raised => return Ok(PercentStringResult::Text(output)),
                 }
             }
             specifier => {
@@ -100560,7 +100585,7 @@ fn percent_format_string(
         return Err("TypeError: not all arguments converted during string formatting".to_string());
     }
 
-    Ok(output)
+    Ok(PercentStringResult::Text(output))
 }
 
 fn percent_format_bytes(
@@ -100685,6 +100710,34 @@ enum PercentMappingValue {
     Raised,
 }
 
+enum PercentStringResult {
+    Text(String),
+    Value(Value),
+}
+
+impl PercentStringResult {
+    fn into_string(self) -> Result<String, String> {
+        match self {
+            Self::Text(value) => Ok(value),
+            Self::Value(Value::String(value) | Value::IdentityString { value, .. }) => Ok(value),
+            Self::Value(value) if str_subclass_string(&value).is_some() => {
+                Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+            }
+            Self::Value(value) => Err(format!(
+                "TypeError: expected str result from string formatting, got {}",
+                type_name(&value)
+            )),
+        }
+    }
+
+    fn into_value(self) -> Value {
+        match self {
+            Self::Text(value) => Value::String(value),
+            Self::Value(value) => value,
+        }
+    }
+}
+
 enum PercentProtocolResult<T> {
     Value(T),
     Raised,
@@ -100740,9 +100793,42 @@ fn percent_mapping_value(
 }
 
 fn percent_repr_text(vm: Option<&mut Vm>, value: &Value, ascii: bool) -> Result<String, String> {
+    percent_repr_result(vm, value, ascii)?.into_text()
+}
+
+enum PercentReprResult {
+    Text(String),
+    StrSubclass { value: Value, text: String },
+}
+
+impl PercentReprResult {
+    fn into_text(self) -> Result<String, String> {
+        match self {
+            Self::Text(value) | Self::StrSubclass { text: value, .. } => Ok(value),
+        }
+    }
+}
+
+fn percent_repr_result(
+    vm: Option<&mut Vm>,
+    value: &Value,
+    ascii: bool,
+) -> Result<PercentReprResult, String> {
     let rendered = if let Some(vm) = vm {
         match vm.stdlib_call_repr_method(value)? {
             Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => value,
+            Some(value) if str_subclass_string(&value).is_some() => {
+                let text =
+                    str_subclass_string(&value).expect("str subclass storage exists after guard");
+                if !ascii {
+                    return Ok(PercentReprResult::StrSubclass { value, text });
+                }
+                let escaped = ascii_escape_text(&text);
+                if escaped == text {
+                    return Ok(PercentReprResult::StrSubclass { value, text });
+                }
+                return Ok(PercentReprResult::Text(escaped));
+            }
             Some(value) => {
                 return Err(format!(
                     "TypeError: __repr__ returned non-string (type {})",
@@ -100756,9 +100842,9 @@ fn percent_repr_text(vm: Option<&mut Vm>, value: &Value, ascii: bool) -> Result<
     };
 
     if ascii {
-        Ok(ascii_escape_text(&rendered))
+        Ok(PercentReprResult::Text(ascii_escape_text(&rendered)))
     } else {
-        Ok(rendered)
+        Ok(PercentReprResult::Text(rendered))
     }
 }
 

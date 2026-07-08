@@ -66568,11 +66568,98 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
             "str-subclass `__repr__` results",
             "ASCII-escapes `!a`",
             "non-string-returning and raising `__repr__` paths",
-            "without expanding `repr()` / `ascii()` / old-style `%r` / `%a` str-subclass result identity",
+            "with top-level `repr()` / `ascii()` and old-style `%r` / `%a` result identity covered by separate focused evidence",
         ] {
             assert!(
                 document.contains(required),
                 "format conversion repr docs must describe focused boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn old_style_percent_repr_protocol_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_old_style_string_percent_repr_protocol_subset";
+    let diff_name = "cpython_old_style_string_percent_repr_protocol_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "class Raises:",
+        "raise RuntimeError('repr boom')",
+        "class NonString:",
+        "return 123",
+        "class NonAscii:",
+        "return chr(233)",
+        "class ReprSub(str):",
+        "class ReprSubPlain:",
+        "return ReprSub('abcdef')",
+        "class ReprSubNonAscii:",
+        "return ReprSub('sub-é')",
+        "'plain-mapping-r'",
+        "'plain-star-width-r'",
+        "'plain-suffix-r'",
+        "'nonascii-mapping-a'",
+        "type(result).__name__",
+        "isinstance(result, ReprSub)",
+        "type(result) is ReprSub",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "old-style percent repr subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"plain-r ReprSub abcdef True True\"",
+        "\"plain-mapping-r ReprSub abcdef True True\"",
+        "\"plain-a ReprSub abcdef True True\"",
+        "\"plain-mapping-a ReprSub abcdef True True\"",
+        "\"plain-plus-r str abcdef False False\"",
+        "\"plain-precision-r str abc False False\"",
+        "\"plain-width-r ReprSub abcdef True True\"",
+        "\"plain-star-width-r ReprSub abcdef True True\"",
+        "\"plain-suffix-r str abcdef! False False\"",
+        "\"nonascii-a str sub-\\\\xe9 False False\"",
+        "\"nonascii-mapping-a str sub-\\\\xe9 False False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "old-style percent repr subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn percent_format_string_value(",
+        "fn percent_format_string_result(",
+        "enum PercentStringResult",
+        "enum PercentReprResult",
+        "fn percent_repr_result(",
+        "PercentReprResult::StrSubclass { value, text }",
+        "PercentStringResult::Value(value)",
+        "formatted == text",
+        "spec.sign.is_none()",
+        "percent_format_string_value(vm, &format, right)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "old-style percent repr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "old-style string `%r` / `%a`",
+            "str-subclass `__repr__` result identity",
+            "returns exact `str` when formatting changes the repr text",
+            "without expanding bytes/bytearray percent formatting",
+        ] {
+            assert!(
+                document.contains(required),
+                "old-style percent repr docs must describe focused boundary `{required}`"
             );
         }
     }

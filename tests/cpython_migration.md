@@ -12539,7 +12539,7 @@ Completed in the format conversion repr protocol pass:
   `str.format` `!r` / `!a` conversion dispatch through class-level `__repr__`,
   preserve CPython's custom repr text, normalize str-subclass `__repr__` results
   to formatted `str` output, ASCII-escapes `!a`, and preserve
-  non-string-returning and raising `__repr__` paths, without expanding `repr()` / `ascii()` / old-style `%r` / `%a` str-subclass result identity.
+  non-string-returning and raising `__repr__` paths, with top-level `repr()` / `ascii()` and old-style `%r` / `%a` result identity covered by separate focused evidence.
 
 Completed in the integer digit-limit runtime pass:
 
@@ -13476,10 +13476,13 @@ Completed in the dict view mappingproxy pass:
   CPython `Lib/test/test_format.py::test_str_format`; this also supports
   CPython's `dict.__missing__` test body.
 - Added `cpython_old_style_string_percent_repr_protocol_subset`, adapted from
-  CPython old-style `%r` / `%a` behavior in `Lib/test/test_format.py`.
-  MiniPython now calls user `__repr__` for string `%r` / `%a`, propagates
-  exceptions raised by `__repr__`, rejects non-string repr results, and applies
-  CPython ASCII escaping and precision truncation for `%a`.
+  CPython old-style `%r` / `%a` behavior in `Lib/test/test_format.py`, backed
+  by `cpython_old_style_string_percent_repr_protocol_diff_subset`.
+  MiniPython now calls user `__repr__` for old-style string `%r` / `%a`, propagates
+  exceptions raised by `__repr__`, rejects non-string repr results, preserves
+  str-subclass `__repr__` result identity when formatting leaves the repr text
+  unchanged, returns exact `str` when formatting changes the repr text, and
+  applies CPython ASCII escaping and precision truncation for `%a` without expanding bytes/bytearray percent formatting.
 - Added `cpython_old_style_percent_c_index_protocol_subset`, adapted from
   CPython old-style `%c` behavior in `Lib/test/test_format.py` and
   `Lib/test/test_bytes.py`. MiniPython now accepts `__index__` objects for
