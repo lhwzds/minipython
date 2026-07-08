@@ -5412,6 +5412,14 @@ Completed in the differential parity harness pass:
   `object.__getattribute__.__text_signature__`,
   and `dir(object.__getattribute__)` metadata membership without changing attribute lookup
   or error semantics. MiniPython now also exposes
+  `cpython_object_setattr_wrapper_descriptor_metadata_subset`, backed by
+  `cpython_object_setattr_wrapper_descriptor_metadata_diff_subset`, for
+  `object.__setattr__` wrapper_descriptor metadata:
+  `object.__setattr__.__qualname__`,
+  `object.__setattr__.__objclass__ is object`,
+  `object.__setattr__.__text_signature__`,
+  and `dir(object.__setattr__)` metadata membership without changing attribute assignment
+  or error semantics. MiniPython now also exposes
   `cpython_object_dir_descriptor_metadata_subset`, backed by
   `cpython_object_dir_descriptor_metadata_diff_subset`, for
   `object.__dir__` method_descriptor metadata:

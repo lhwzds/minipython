@@ -70121,6 +70121,92 @@ fn object_getattribute_wrapper_descriptor_metadata_subset_has_focused_diff_evide
 }
 
 #[test]
+fn object_setattr_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_setattr_wrapper_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__setattr__",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__",
+        "d.__text_signature__",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor wrapper_descriptor __setattr__ object.__setattr__ True Implement setattr(self, name, value). ($self, name, value, /)",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'wrapper_descriptor' object has no attribute '__module__'",
+        "'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object setattr wrapper descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_setattr_wrapper_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__setattr__ wrapper descriptor metadata",
+        "object-setattr-wrapper-descriptor-metadata",
+        "d = object.__setattr__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object setattr wrapper descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"object.__setattr__\"",
+        "wrapper_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__setattr__\"",
+        "name == \"__objclass__\" && function_name == \"object.__setattr__\"",
+        "name == \"__doc__\" && function_name == \"object.__setattr__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__setattr__\"",
+        "name == \"__module__\" && function_name == \"object.__setattr__\"",
+        "name == \"__self__\" && function_name == \"object.__setattr__\"",
+        "\"Implement setattr(self, name, value).\"",
+        "\"($self, name, value, /)\"",
+        "'wrapper_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object setattr wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_setattr_wrapper_descriptor_metadata_subset",
+            "cpython_object_setattr_wrapper_descriptor_metadata_diff_subset",
+            "`object.__setattr__.__qualname__`",
+            "`object.__setattr__.__objclass__ is object`",
+            "`object.__setattr__.__text_signature__`",
+            "`dir(object.__setattr__)`",
+            "wrapper_descriptor metadata",
+            "without changing attribute assignment",
+            "error semantics",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object setattr wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_dir_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
