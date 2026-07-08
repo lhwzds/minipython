@@ -77858,8 +77858,7 @@ fn json_loads_decode_bytes(bytes: &[u8]) -> Result<String, String> {
 
 fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
     if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
-        return String::from_utf8(bytes[3..].to_vec())
-            .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string());
+        return json_loads_decode_utf8_bytes(&bytes[3..]);
     }
     if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) {
         return json_decode_utf32_bytes(&bytes[4..], TextEndian::Little);
@@ -77892,8 +77891,37 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
             return decode_utf16_bytes(bytes, Some(TextEndian::Little), CodecErrorMode::Strict);
         }
     }
-    String::from_utf8(bytes.to_vec())
-        .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string())
+    json_loads_decode_utf8_bytes(bytes)
+}
+
+fn json_loads_decode_utf8_bytes(bytes: &[u8]) -> Result<String, String> {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => Ok(text.to_string()),
+        Err(error) => Err(json_utf8_decode_error(bytes, error)),
+    }
+}
+
+fn json_utf8_decode_error(bytes: &[u8], error: std::str::Utf8Error) -> String {
+    let start = error.valid_up_to();
+    let end = match error.error_len() {
+        Some(length) => start + length,
+        None => bytes.len(),
+    };
+    let reason = match error.error_len() {
+        Some(_) if matches!(bytes.get(start).copied(), Some(0xc2..=0xf4)) => {
+            "invalid continuation byte"
+        }
+        Some(_) => "invalid start byte",
+        None => "unexpected end of data",
+    };
+
+    let range = if end.saturating_sub(start) <= 1 {
+        let byte = bytes.get(start).copied().unwrap_or_default();
+        format!("byte 0x{byte:02x} in position {start}")
+    } else {
+        format!("bytes in position {start}-{}", end - 1)
+    };
+    format!("UnicodeDecodeError: 'utf-8' codec can't decode {range}: {reason}")
 }
 
 fn json_decode_utf32_bytes(bytes: &[u8], endian: TextEndian) -> Result<String, String> {

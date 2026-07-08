@@ -14591,6 +14591,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_object_hook_subset",
             "cpython_json_loads_object_pairs_hook_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
+            "cpython_json_loads_invalid_utf8_error_detail_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ],
         &[
@@ -14752,6 +14753,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_object_hook_diff_subset",
         "cpython_json_loads_object_pairs_hook_diff_subset",
         "cpython_json_loads_dumps_error_boundary_diff_subset",
+        "cpython_json_loads_invalid_utf8_error_detail_diff_subset",
         "cpython_json_loads_string_error_boundary_diff_subset",
     ] {
         assert!(
@@ -20052,6 +20054,95 @@ fn json_error_boundary_docs_cover_subset_limits() {
             assert!(
                 document.contains(required),
                 "json docs must describe error-boundary limit `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_loads_invalid_utf8_error_detail_docs_cover_decode_boundary() {
+    let diff_name = "cpython_json_loads_invalid_utf8_error_detail_diff_subset";
+    let subset_name = "cpython_json_loads_invalid_utf8_error_detail_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads invalid UTF-8 detail CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads invalid UTF-8 detail runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "b'\\xff'",
+        "b'\\x80'",
+        "b'\\xc3('",
+        "b'\\xe2'",
+        "b'\\xe2\\x82'",
+        "b'{\"a\": \\xff}'",
+        "b'\\xef\\xbb\\xbf\\xff'",
+        "bytearray(b'\\xff')",
+    ] {
+        let escaped_form = required.replace('\\', "\\\\").replace('"', "\\\"");
+        assert!(
+            diff_body.contains(required) || diff_body.contains(&escaped_form),
+            "json loads invalid UTF-8 detail diff must cover `{required}`"
+        );
+        assert!(
+            subset_body.contains(required) || subset_body.contains(&escaped_form),
+            "json loads invalid UTF-8 detail subset must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"start-ff UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte\"",
+        "\"start-80 UnicodeDecodeError 'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte\"",
+        "\"cont-c3-28 UnicodeDecodeError 'utf-8' codec can't decode byte 0xc3 in position 0: invalid continuation byte\"",
+        "\"truncated-e2 UnicodeDecodeError 'utf-8' codec can't decode byte 0xe2 in position 0: unexpected end of data\"",
+        "\"truncated-e2-82 UnicodeDecodeError 'utf-8' codec can't decode bytes in position 0-1: unexpected end of data\"",
+        "\"after-prefix UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 6: invalid start byte\"",
+        "\"bom-invalid UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte\"",
+        "\"bytearray-start UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads invalid UTF-8 detail subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn json_loads_decode_utf8_bytes",
+        "fn json_utf8_decode_error",
+        "json_loads_decode_utf8_bytes(&bytes[3..])",
+        "valid_up_to",
+        "error_len",
+        "invalid continuation byte",
+        "unexpected end of data",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json invalid UTF-8 decode implementation must include `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "CPython-style invalid byte position/reason text",
+            "invalid start bytes, invalid continuation bytes",
+            "one-byte and multi-byte unexpected end-of-data cases",
+            "UTF-8-BOM-stripped bytes",
+            "`bytes`, UTF-8-BOM-stripped bytes, and `bytearray`",
+            "without adding full `JSONDecodeError` compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe invalid UTF-8 detail boundary `{required}`"
             );
         }
     }

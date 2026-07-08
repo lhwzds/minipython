@@ -5921,6 +5921,35 @@ show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
 }
 
 #[test]
+fn cpython_json_loads_invalid_utf8_error_detail_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads invalid UTF-8 decode error detail subset",
+        name: "json-loads-invalid-utf8-error-detail",
+        source: r#"import json
+
+def show(label, data):
+    try:
+        json.loads(data)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+    else:
+        print(label, 'OK')
+
+for label, data in [
+    ('start-ff', b'\xff'),
+    ('start-80', b'\x80'),
+    ('cont-c3-28', b'\xc3('),
+    ('truncated-e2', b'\xe2'),
+    ('truncated-e2-82', b'\xe2\x82'),
+    ('after-prefix', b'{"a": \xff}'),
+    ('bom-invalid', b'\xef\xbb\xbf\xff'),
+    ('bytearray-start', bytearray(b'\xff')),
+]:
+    show(label, data)"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_string_bom_message_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public string-input BOM decode messages subset",
