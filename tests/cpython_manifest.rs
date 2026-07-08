@@ -55858,6 +55858,79 @@ fn string_direct_str_dir_surface_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_repr_dir_surface_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_repr_dir_surface_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:",
+        "'__repr__' in dir(value)",
+        "hasattr(value, '__repr__')",
+        "type(str.__repr__).__name__",
+        "type('ab'.__repr__).__name__",
+        "type(left.__repr__).__name__",
+        "str.__repr__('ab')",
+        "str.__repr__(left)",
+        "'ab'.__repr__()",
+        "type(left.__repr__()).__name__",
+        "left.__repr__()",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"descriptor wrapper_descriptor method-wrapper method-wrapper\"",
+        "\"calls 'ab' 'ab' 'ab' str 'ab'\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str repr dir surface subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-repr-dir-surface");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__repr__' in dir(value)",
+        "hasattr(value, '__repr__')",
+        "type(str.__repr__).__name__",
+        "type('ab'.__repr__).__name__",
+        "type(left.__repr__).__name__",
+        "str.__repr__('ab')",
+        "str.__repr__(left)",
+        "'ab'.__repr__()",
+        "type(left.__repr__()).__name__",
+        "left.__repr__()",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str repr dir surface CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["names.push(\"__repr__\".to_string());"] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str repr dir surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__repr__` dir surface")
+                && document.contains("cpython_string_direct_repr_dir_surface_subset")
+                && document.contains("cpython_string_direct_repr_dir_surface_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str repr dir surface evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
