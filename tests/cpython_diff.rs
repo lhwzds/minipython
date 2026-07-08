@@ -11369,6 +11369,27 @@ print('call-iter', list('ab'.__iter__()), list(S('ab').__iter__()), list(str.__i
 }
 
 #[test]
+fn cpython_string_direct_repeat_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__mul__ and str.__rmul__ direct method behavior",
+        name: "string-direct-repeat-methods",
+        source: r#"class S(str):
+    pass
+class I:
+    def __index__(self):
+        return 2
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__mul__', '__rmul__', '__imul__']:
+        print(label, name, hasattr(value, name))
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__mul__', '__rmul__']:
+        m = getattr(value, name)
+        print(label, name, type(m).__name__, type(m(3)).__name__, m(3), m(I()))
+print('class', type(str.__mul__).__name__, type(str.__rmul__).__name__, type(str.__mul__('ab', 2)).__name__, str.__mul__('ab', 2), str.__rmul__(S('ab'), I()))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

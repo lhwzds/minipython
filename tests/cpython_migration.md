@@ -10359,6 +10359,17 @@ Completed in the str direct `__add__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__mul__` / `__rmul__` methods pass:
+
+- Added `cpython_string_direct_repeat_methods_subset` plus
+  `cpython_string_direct_repeat_methods_diff_subset`, covering direct
+  `__mul__` / `__rmul__` calls on exact `str` and `str` subclass instances,
+  absent `__imul__`, bound `method-wrapper` behavior, class-level
+  `wrapper_descriptor` visibility, `__index__` repeat counts, and exact `str`
+  result normalization.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str sequence dunder descriptors pass:
 
 - Added `cpython_string_sequence_dunder_descriptor_subset` plus

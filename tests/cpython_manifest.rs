@@ -54737,6 +54737,108 @@ fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_repeat_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_repeat_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "class I:",
+        "def __index__(self):",
+        "for name in ['__mul__', '__rmul__', '__imul__']:",
+        "for name in ['__mul__', '__rmul__']:",
+        "m = getattr(value, name)",
+        "m(3), m(I())",
+        "type(str.__mul__).__name__",
+        "type(str.__rmul__).__name__",
+        "str.__mul__('ab', 2)",
+        "str.__rmul__(S('ab'), I())",
+        "\"exact __mul__ True\"",
+        "\"exact __rmul__ True\"",
+        "\"exact __imul__ False\"",
+        "\"subclass __mul__ True\"",
+        "\"subclass __rmul__ True\"",
+        "\"subclass __imul__ False\"",
+        "\"exact __mul__ method-wrapper str ababab abab\"",
+        "\"exact __rmul__ method-wrapper str ababab abab\"",
+        "\"subclass __mul__ method-wrapper str ababab abab\"",
+        "\"subclass __rmul__ method-wrapper str ababab abab\"",
+        "\"class wrapper_descriptor wrapper_descriptor str abab abab\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str repeat subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-repeat-methods");
+    for required in [
+        "class S(str):",
+        "class I:",
+        "def __index__(self):",
+        "for name in ['__mul__', '__rmul__', '__imul__']:",
+        "for name in ['__mul__', '__rmul__']:",
+        "m = getattr(value, name)",
+        "m(3), m(I())",
+        "type(str.__mul__).__name__",
+        "type(str.__rmul__).__name__",
+        "str.__mul__('ab', 2)",
+        "str.__rmul__(S('ab'), I())",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str repeat CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    for required in ["\"__mul__\"", "\"__rmul__\""] {
+        assert!(
+            str_wrapper_block.contains(required),
+            "str wrapper descriptor branch must include `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str.__mul__\" | \"str.__rmul__\" => return call_str_repeat_method(vm, name, args)",
+        "fn call_str_repeat_method(vm: &mut Vm, name: &str, args: Vec<Value>)",
+        "let [receiver, count] = args.as_slice()",
+        "let Some(receiver) = str_method_text(receiver)",
+        "let count = vm.index_integer_value(count.clone())?",
+        "let count = repeat_count_from_integer_value(count)?",
+        "repeat_string(receiver.into_owned(), count)?",
+        "| \"__mul__\"",
+        "| \"__rmul__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str repeat implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__mul__` / `__rmul__` methods")
+                && document.contains("cpython_string_direct_repeat_methods_subset")
+                && document.contains("cpython_string_direct_repeat_methods_diff_subset"),
+            "direct str repeat evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

@@ -62184,7 +62184,9 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
             && matches!(
                 name,
                 "__add__"
+                    | "__mul__"
                     | "__repr__"
+                    | "__rmul__"
                     | "__str__"
                     | "startswith"
                     | "endswith"
@@ -74228,7 +74230,9 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__getitem__"
                 | "__iter__"
                 | "__len__"
+                | "__mul__"
                 | "__repr__"
+                | "__rmul__"
                 | "__str__"
         ),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
@@ -83401,6 +83405,7 @@ fn call_immutable_sequence_method(
 ) -> Result<Value, String> {
     match name {
         "str.__add__" => return call_str_add_method(name, args),
+        "str.__mul__" | "str.__rmul__" => return call_str_repeat_method(vm, name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
         "str.startswith" => return call_str_prefix_suffix_method(name, args, true),
@@ -83744,6 +83749,25 @@ fn call_str_add_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
         left.as_ref(),
         right.as_ref()
     )))
+}
+
+fn call_str_repeat_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, count] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    let count = vm.index_integer_value(count.clone())?;
+    let count = repeat_count_from_integer_value(count)?;
+    Ok(Value::String(repeat_string(receiver.into_owned(), count)?))
 }
 
 fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {
