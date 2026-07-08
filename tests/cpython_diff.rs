@@ -11721,6 +11721,70 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_string_direct_subclasshook_binding_dir_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__subclasshook__ dir binding",
+        name: "string-direct-subclasshook-binding-dir",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('type', '__subclasshook__' in dir(str), hasattr(str, '__subclasshook__'))
+print('subtype', '__subclasshook__' in dir(S), hasattr(S, '__subclasshook__'))
+print('exact', '__subclasshook__' in dir('ab'), hasattr('ab', '__subclasshook__'))
+print('sub', '__subclasshook__' in dir(left), hasattr(left, '__subclasshook__'))"#,
+    });
+}
+
+#[test]
+fn cpython_string_direct_subclasshook_binding_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__subclasshook__ metadata binding",
+        name: "string-direct-subclasshook-binding-metadata",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+w = str.__subclasshook__
+print('attr type', type(w).__name__, w.__name__)
+print('qual type', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = S.__subclasshook__
+print('attr subtype', type(w).__name__, w.__name__)
+print('qual subtype', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = 'ab'.__subclasshook__
+print('attr exact', type(w).__name__, w.__name__)
+print('qual exact', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = left.__subclasshook__
+print('attr sub', type(w).__name__, w.__name__)
+print('qual sub', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)"#,
+    });
+}
+
+#[test]
+fn cpython_string_direct_subclasshook_binding_call_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__subclasshook__ call binding",
+        name: "string-direct-subclasshook-binding-call",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('type-call', type(str.__subclasshook__(object)).__name__, str.__subclasshook__(object))
+print('exact-call', type('ab'.__subclasshook__(object)).__name__, 'ab'.__subclasshook__(object))
+print('sub-call', type(left.__subclasshook__(object)).__name__, left.__subclasshook__(object))
+try:
+    str.__subclasshook__()
+except Exception as error:
+    print('missing', type(error).__name__, str(error), error.args)
+try:
+    left.__subclasshook__(object, object)
+except Exception as error:
+    print('extra', type(error).__name__, str(error), error.args)
+try:
+    left.__subclasshook__(object=object)
+except Exception as error:
+    print('keyword', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",

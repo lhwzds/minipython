@@ -10475,6 +10475,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__subclasshook__" => {
                 self.call_function_subclasshook(args, keywords)
             }
+            Value::Builtin(name) if name == "type.__subclasshook__" => {
+                self.call_type_subclasshook(args, keywords)
+            }
             Value::Builtin(name) if function_rich_compare_wrapper_name(&name) => {
                 self.call_function_rich_compare(&name, args, keywords)
             }
@@ -19120,6 +19123,29 @@ impl Vm {
         let [_object] = rest else {
             return Err(format!(
                 "TypeError: function.__subclasshook__() takes exactly one argument ({} given)",
+                rest.len()
+            ));
+        };
+        Ok(Value::NotImplemented)
+    }
+
+    fn call_type_subclasshook(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        let owner = type_subclasshook_owner_name(receiver);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {owner}.__subclasshook__() takes no keyword arguments"
+            ));
+        }
+        let [_object] = rest else {
+            return Err(format!(
+                "TypeError: {owner}.__subclasshook__() takes exactly one argument ({} given)",
                 rest.len()
             ));
         };
@@ -57544,6 +57570,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__sizeof__".to_string());
         names.push("__setattr__".to_string());
         names.push("__str__".to_string());
+        names.push("__subclasshook__".to_string());
     }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
@@ -59747,6 +59774,9 @@ fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value> {
         "__init_subclass__" => {
             str_subclass_owner_value(&receiver).map(type_init_subclass_bound_method)
         }
+        "__subclasshook__" => {
+            str_subclass_owner_value(&receiver).map(type_subclasshook_bound_method)
+        }
         name if is_immutable_sequence_type_method("str", name) => Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("str.{name}"))),
             receiver: Box::new(receiver),
@@ -59766,6 +59796,7 @@ fn str_subclass_class_attribute(class: Value, name: &str) -> Option<Value> {
     match name {
         "__new__" => Some(Value::Builtin("str.__new__".to_string())),
         "__init_subclass__" => Some(type_init_subclass_bound_method(class)),
+        "__subclasshook__" => Some(type_subclasshook_bound_method(class)),
         name if is_immutable_sequence_type_method("str", name) => {
             Some(Value::Builtin(format!("str.{name}")))
         }
@@ -66381,6 +66412,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "str".to_string(),
             )))
         }
+        Value::String(_) | Value::IdentityString { .. } if name == "__subclasshook__" => {
+            Ok(type_subclasshook_bound_method(Value::Builtin(
+                "str".to_string(),
+            )))
+        }
         Value::String(value) | Value::IdentityString { value, .. } if name == "__setattr__" => {
             Ok(object_setattr_bound_method(Value::String(value)))
         }
@@ -68107,6 +68143,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     type_init_subclass_owner_name(&receiver)
                 )))
             }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "type.__subclasshook__") =>
+            {
+                Ok(Value::String(format!(
+                    "{}.__subclasshook__",
+                    type_subclasshook_owner_name(&receiver)
+                )))
+            }
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__call__")
@@ -68353,6 +68397,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "type.__init_subclass__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "type.__subclasshook__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -69231,6 +69280,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__init_subclass__" => {
             Ok(type_init_subclass_bound_method(Value::Builtin(
+                "str".to_string(),
+            )))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__subclasshook__" => {
+            Ok(type_subclasshook_bound_method(Value::Builtin(
                 "str".to_string(),
             )))
         }
@@ -71076,6 +71130,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($type, object, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "type.__subclasshook__" =>
+        {
+            Ok(Value::String("type.__subclasshook__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "type.__subclasshook__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "type.__subclasshook__" =>
+        {
+            Ok(Value::String("Abstract classes can override this to customize issubclass().\n\nThis is invoked early on by abc.ABCMeta.__subclasscheck__().\nIt should return True, False or NotImplemented.  If it returns\nNotImplemented, the normal algorithm is used.  Otherwise, it\noverrides the normal algorithm (and the outcome is cached).\n".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "type.__subclasshook__" =>
+        {
+            Ok(Value::String("($type, object, /)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__format__" =>
         {
             Ok(Value::String("function.__format__".to_string()))
@@ -71855,6 +71929,25 @@ fn type_init_subclass_bound_method(owner: Value) -> Value {
 }
 
 fn type_init_subclass_owner_name(owner: &Value) -> String {
+    match owner {
+        Value::Builtin(name) => builtin_public_name(name),
+        Value::Class { name, attrs, .. } => match class_qualname_value(name, attrs) {
+            Value::String(qualname) => qualname,
+            _ => name.clone(),
+        },
+        value => type_name(value).to_string(),
+    }
+}
+
+fn type_subclasshook_bound_method(owner: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("type.__subclasshook__".to_string())),
+        receiver: Box::new(owner),
+        identity: Rc::new(()),
+    }
+}
+
+fn type_subclasshook_owner_name(owner: &Value) -> String {
     match owner {
         Value::Builtin(name) => builtin_public_name(name),
         Value::Class { name, attrs, .. } => match class_qualname_value(name, attrs) {

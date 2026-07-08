@@ -56225,6 +56225,148 @@ fn string_direct_init_subclass_binding_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_subclasshook_binding_has_focused_diff_evidence() {
+    let subset_body = [
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_subclasshook_binding_dir_subset",
+        ),
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_subclasshook_binding_metadata_subset",
+        ),
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_subclasshook_binding_call_subset",
+        ),
+    ]
+    .join("\n");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__subclasshook__' in dir(str)",
+        "hasattr(str, '__subclasshook__')",
+        "'__subclasshook__' in dir(S)",
+        "hasattr(S, '__subclasshook__')",
+        "'__subclasshook__' in dir('ab')",
+        "hasattr('ab', '__subclasshook__')",
+        "'__subclasshook__' in dir(left)",
+        "hasattr(left, '__subclasshook__')",
+        "w = str.__subclasshook__",
+        "w = S.__subclasshook__",
+        "w = 'ab'.__subclasshook__",
+        "w = left.__subclasshook__",
+        "type(w).__name__",
+        "w.__name__",
+        "w.__qualname__",
+        "w.__self__.__name__",
+        "w.__doc__ is not None",
+        "w.__text_signature__",
+        "str.__subclasshook__(object)",
+        "'ab'.__subclasshook__(object)",
+        "left.__subclasshook__(object)",
+        "str.__subclasshook__()",
+        "left.__subclasshook__(object, object)",
+        "left.__subclasshook__(object=object)",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"attr type builtin_function_or_method __subclasshook__\"",
+        "\"qual type str.__subclasshook__ str True ($type, object, /)\"",
+        "\"attr subtype builtin_function_or_method __subclasshook__\"",
+        "\"qual subtype S.__subclasshook__ S True ($type, object, /)\"",
+        "\"attr exact builtin_function_or_method __subclasshook__\"",
+        "\"qual exact str.__subclasshook__ str True ($type, object, /)\"",
+        "\"attr sub builtin_function_or_method __subclasshook__\"",
+        "\"qual sub S.__subclasshook__ S True ($type, object, /)\"",
+        "\"type-call NotImplementedType NotImplemented\"",
+        "\"exact-call NotImplementedType NotImplemented\"",
+        "\"sub-call NotImplementedType NotImplemented\"",
+        "\"missing TypeError str.__subclasshook__() takes exactly one argument (0 given) ('str.__subclasshook__() takes exactly one argument (0 given)',)\"",
+        "\"extra TypeError S.__subclasshook__() takes exactly one argument (2 given) ('S.__subclasshook__() takes exactly one argument (2 given)',)\"",
+        "\"keyword TypeError S.__subclasshook__() takes no keyword arguments ('S.__subclasshook__() takes no keyword arguments',)\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str subclasshook binding subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = [
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-subclasshook-binding-dir"),
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-subclasshook-binding-metadata"),
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-subclasshook-binding-call"),
+    ]
+    .join("\n");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__subclasshook__' in dir(str)",
+        "hasattr(str, '__subclasshook__')",
+        "'__subclasshook__' in dir(S)",
+        "hasattr(S, '__subclasshook__')",
+        "'__subclasshook__' in dir('ab')",
+        "hasattr('ab', '__subclasshook__')",
+        "'__subclasshook__' in dir(left)",
+        "hasattr(left, '__subclasshook__')",
+        "w = str.__subclasshook__",
+        "w = S.__subclasshook__",
+        "w = 'ab'.__subclasshook__",
+        "w = left.__subclasshook__",
+        "type(w).__name__",
+        "w.__name__",
+        "w.__qualname__",
+        "w.__self__.__name__",
+        "w.__doc__ is not None",
+        "w.__text_signature__",
+        "str.__subclasshook__(object)",
+        "'ab'.__subclasshook__(object)",
+        "left.__subclasshook__(object)",
+        "str.__subclasshook__()",
+        "left.__subclasshook__(object, object)",
+        "left.__subclasshook__(object=object)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str subclasshook binding CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "names.push(\"__subclasshook__\".to_string());",
+        "\"__subclasshook__\" => Some(type_subclasshook_bound_method(class))",
+        "Value::String(_) | Value::IdentityString { .. } if name == \"__subclasshook__\"",
+        "Value::Builtin(name) if name == \"type.__subclasshook__\"",
+        "fn call_type_subclasshook(",
+        "fn type_subclasshook_bound_method(owner: Value) -> Value",
+        "fn type_subclasshook_owner_name(owner: &Value) -> String",
+        "type_subclasshook_owner_name(&receiver)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str subclasshook binding implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__subclasshook__` binding")
+                && document.contains("cpython_string_direct_subclasshook_binding_dir_subset")
+                && document.contains("cpython_string_direct_subclasshook_binding_metadata_subset")
+                && document.contains("cpython_string_direct_subclasshook_binding_call_subset")
+                && document.contains("cpython_string_direct_subclasshook_binding_dir_diff_subset")
+                && document
+                    .contains("cpython_string_direct_subclasshook_binding_metadata_diff_subset")
+                && document.contains("cpython_string_direct_subclasshook_binding_call_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str subclasshook binding evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

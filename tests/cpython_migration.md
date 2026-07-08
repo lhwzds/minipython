@@ -10579,6 +10579,23 @@ Completed in the str direct `__init_subclass__` binding pass:
   `pdb`/`breakpoint()`, pickle, host IO, network, process, C ABI, or full
   stdlib scope.
 
+Completed in the str direct `__subclasshook__` binding pass:
+
+- Added `cpython_string_direct_subclasshook_binding_dir_subset`,
+  `cpython_string_direct_subclasshook_binding_metadata_subset`, and
+  `cpython_string_direct_subclasshook_binding_call_subset` plus matching
+  `cpython_string_direct_subclasshook_binding_dir_diff_subset`,
+  `cpython_string_direct_subclasshook_binding_metadata_diff_subset`, and
+  `cpython_string_direct_subclasshook_binding_call_diff_subset`, keeping each
+  test-thread script small while covering `__subclasshook__` visibility
+  through `dir(str)`, str subclasses, exact str instances, and str subclass
+  instances, plus direct attribute lookup returning a bound
+  `builtin_function_or_method` with CPython-style owner-specific `__self__` /
+  `__qualname__`, NotImplemented calls, and representative argument and
+  keyword error paths.
+- This stays inside core string/object-model behavior and does not widen ABC
+  machinery, host IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__eq__` / `__ne__` methods pass:
 
 - Added `cpython_string_direct_equality_methods_subset` plus
