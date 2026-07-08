@@ -10225,6 +10225,19 @@ without adding general custom encoder/decoder class support.
   pickle behavior, custom instance state, and CPython object-layout internals
   outside the sandbox contract.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_getstate_descriptor_metadata_subset` with direct CPython
+  output parity in
+  `cpython_object_getstate_descriptor_metadata_diff_subset`, covering
+  `object.__getstate__` method_descriptor metadata:
+  `object.__getstate__.__qualname__`,
+  `object.__getstate__.__objclass__ is object`,
+  `object.__getstate__.__text_signature__`,
+  `str.__getstate__ is object.__getstate__`, and
+  `dir(object.__getstate__)` metadata membership. This keeps
+  method_descriptor metadata aligned with CPython without promoting pickle protocol behavior,
+  custom object-layout state, or CPython object-layout internals into the
+  sandbox contract.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_getstate_builtin_instance_subset` with direct CPython output
   parity in `cpython_object_getstate_builtin_instance_diff_subset`, covering
   inherited `object.__getstate__` on built-in pure-memory instances through

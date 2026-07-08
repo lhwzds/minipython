@@ -17140,6 +17140,23 @@ for label, cb in [
 }
 
 #[test]
+fn cpython_object_getstate_descriptor_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object.__getstate__ method descriptor metadata",
+        name: "object-getstate-descriptor-metadata",
+        source: r#"d = object.__getstate__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is object, d.__doc__, d.__text_signature__)
+print('inherited', str.__getstate__ is d, str.__getstate__.__qualname__, str.__getstate__.__objclass__ is object)
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+for name in ['__module__', '__self__']:
+    try:
+        print(name, getattr(d, name))
+    except Exception as error:
+        print(name, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_getstate_builtin_instance_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public inherited object.__getstate__ behavior for built-in pure-memory instances",
