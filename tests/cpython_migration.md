@@ -5449,6 +5449,15 @@ Completed in the differential parity harness pass:
   `str.__hash__ is object.__hash__` remaining false, and
   `dir(object.__hash__)` metadata membership without depending on concrete identity hash values
   or changing object.__hash__ call semantics. MiniPython now also exposes
+  `cpython_object_init_wrapper_descriptor_metadata_subset`, backed by
+  `cpython_object_init_wrapper_descriptor_metadata_diff_subset`, for
+  `object.__init__` wrapper_descriptor metadata:
+  `object.__init__.__qualname__`,
+  `object.__init__.__objclass__ is object`,
+  `object.__init__.__text_signature__`,
+  `str.__init__ is object.__init__`, and `dir(object.__init__)` metadata
+  membership without changing object.__init__ call semantics or constructor arity behavior.
+  MiniPython now also exposes
   `cpython_object_sizeof_descriptor_metadata_subset`, backed by
   `cpython_object_sizeof_descriptor_metadata_diff_subset`, for
   `object.__sizeof__` method_descriptor metadata:

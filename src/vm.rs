@@ -56066,7 +56066,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Builtin(name)
             if matches!(
                 name.as_str(),
-                "object.__hash__" | "object.__repr__" | "object.__str__"
+                "object.__hash__" | "object.__init__" | "object.__repr__" | "object.__str__"
             ) =>
         {
             names.extend(wrapper_descriptor_dir_names())
@@ -71889,6 +71889,38 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__self__" && function_name == "object.__hash__" =>
+        {
+            Err("AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
+                .to_string())
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "object.__init__" =>
+        {
+            Ok(Value::String("object.__init__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__objclass__" && function_name == "object.__init__" =>
+        {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "object.__init__" => {
+            Ok(Value::String(
+                "Initialize self.  See help(type(self)) for accurate signature.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "object.__init__" =>
+        {
+            Ok(Value::String("($self, /, *args, **kwargs)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "object.__init__" =>
+        {
+            Err("AttributeError: 'wrapper_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
+        Value::Builtin(function_name)
+            if name == "__self__" && function_name == "object.__init__" =>
         {
             Err("AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
                 .to_string())
