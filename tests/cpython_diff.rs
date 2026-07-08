@@ -11490,6 +11490,38 @@ for label, call in [('class-class', lambda: str.__getattribute__('ab', '__class_
 }
 
 #[test]
+fn cpython_string_direct_getnewargs_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__getnewargs__ direct method behavior",
+        name: "string-direct-getnewargs-method",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('class', type(str.__getnewargs__).__name__, hasattr(object, '__getnewargs__'))
+for label, expr in [
+    ('bound-exact', lambda: 'ab'.__getnewargs__()),
+    ('bound-sub', lambda: left.__getnewargs__()),
+    ('type-exact', lambda: str.__getnewargs__('ab')),
+    ('type-sub', lambda: str.__getnewargs__(left)),
+    ('type-list', lambda: str.__getnewargs__([1, 2])),
+    ('bound-extra', lambda: 'ab'.__getnewargs__(1)),
+    ('bound-keyword', lambda: 'ab'.__getnewargs__(x=1)),
+    ('type-missing', lambda: str.__getnewargs__()),
+    ('type-keyword-only', lambda: str.__getnewargs__(self='ab')),
+]:
+    try:
+        result = expr()
+        if isinstance(result, tuple):
+            print(label, type(result).__name__, len(result), type(result[0]).__name__, result[0], result[0] is left)
+        else:
+            print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__getnewargs__'), '__getnewargs__' in dir(left), '__getnewargs__' in dir(S), '__getnewargs__' in dir(str), type(left.__getnewargs__).__name__, type(str.__getnewargs__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_direct_sizeof_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str.__sizeof__ direct method behavior",

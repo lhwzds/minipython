@@ -10417,6 +10417,18 @@ Completed in the str direct `__getattribute__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__getnewargs__` method pass:
+
+- Added `cpython_string_direct_getnewargs_method_subset` plus
+  `cpython_string_direct_getnewargs_method_diff_subset`, covering direct
+  `__getnewargs__` calls on exact `str` and `str` subclass instances,
+  class-level `method_descriptor` visibility absent from `object`, bound
+  `builtin_function_or_method` behavior, one-item tuple results containing
+  exact string text, direct class calls, non-str receiver rejection,
+  representative argument/keyword error paths, and `dir()` visibility.
+- This stays inside core string/object-model behavior and does not widen pickle
+  module behavior, host IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__sizeof__` method pass:
 
 - Added `cpython_string_direct_sizeof_method_subset` plus

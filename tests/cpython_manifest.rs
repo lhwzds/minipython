@@ -55342,6 +55342,106 @@ fn string_direct_getattribute_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_getnewargs_method_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_getnewargs_method_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "type(str.__getnewargs__).__name__",
+        "hasattr(object, '__getnewargs__')",
+        "lambda: 'ab'.__getnewargs__()",
+        "lambda: left.__getnewargs__()",
+        "lambda: str.__getnewargs__('ab')",
+        "lambda: str.__getnewargs__(left)",
+        "lambda: str.__getnewargs__([1, 2])",
+        "lambda: 'ab'.__getnewargs__(1)",
+        "lambda: 'ab'.__getnewargs__(x=1)",
+        "lambda: str.__getnewargs__()",
+        "lambda: str.__getnewargs__(self='ab')",
+        "len(result)",
+        "type(result[0]).__name__",
+        "result[0] is left",
+        "__getnewargs__' in dir(left)",
+        "__getnewargs__' in dir(S)",
+        "__getnewargs__' in dir(str)",
+        "type(left.__getnewargs__).__name__",
+        "type(str.__getnewargs__).__name__",
+        "\"class method_descriptor False\"",
+        "\"bound-exact tuple 1 str ab False\"",
+        "\"bound-sub tuple 1 str ab False\"",
+        "\"type-exact tuple 1 str ab False\"",
+        "\"type-sub tuple 1 str ab False\"",
+        "\"type-list TypeError descriptor '__getnewargs__' for 'str' objects doesn't apply to a 'list' object",
+        "\"bound-extra TypeError str.__getnewargs__() takes no arguments (1 given)",
+        "\"bound-keyword TypeError str.__getnewargs__() takes no keyword arguments",
+        "\"type-missing TypeError unbound method str.__getnewargs__() needs an argument",
+        "\"type-keyword-only TypeError unbound method str.__getnewargs__() needs an argument",
+        "\"visible True True True True builtin_function_or_method method_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str getnewargs subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-getnewargs-method");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "type(str.__getnewargs__).__name__",
+        "hasattr(object, '__getnewargs__')",
+        "lambda: 'ab'.__getnewargs__()",
+        "lambda: left.__getnewargs__()",
+        "lambda: str.__getnewargs__('ab')",
+        "lambda: str.__getnewargs__(left)",
+        "lambda: str.__getnewargs__([1, 2])",
+        "lambda: 'ab'.__getnewargs__(1)",
+        "lambda: 'ab'.__getnewargs__(x=1)",
+        "lambda: str.__getnewargs__()",
+        "lambda: str.__getnewargs__(self='ab')",
+        "__getnewargs__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str getnewargs CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"str.__getnewargs__\"",
+        "self.call_str_getnewargs_method(args, keywords)",
+        "fn call_str_getnewargs_method(",
+        "TypeError: unbound method str.__getnewargs__() needs an argument",
+        "TypeError: str.__getnewargs__() takes no keyword arguments",
+        "TypeError: str.__getnewargs__() takes no arguments",
+        "descriptor '__getnewargs__' for 'str' objects doesn't apply",
+        "let Some(text) = str_method_text(receiver)",
+        "tuple_value(vec![Value::String(text.into_owned())])",
+        "| \"__getnewargs__\"",
+        "names.push(\"__getnewargs__\".to_string());",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str getnewargs implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__getnewargs__` method")
+                && document.contains("cpython_string_direct_getnewargs_method_subset")
+                && document.contains("cpython_string_direct_getnewargs_method_diff_subset")
+                && document.contains("one-item tuple")
+                && document.contains("pickle"),
+            "direct str getnewargs evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_direct_sizeof_method_has_focused_diff_evidence() {
     let subset_body =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_sizeof_method_subset");
