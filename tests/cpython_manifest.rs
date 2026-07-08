@@ -55284,6 +55284,77 @@ fn string_direct_ne_dir_surface_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_lt_dir_surface_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_lt_dir_surface_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('b')",
+        "for label, value in [('type', str), ('subtype', S), ('exact', 'b'), ('sub', left)]:",
+        "'__lt__' in dir(value)",
+        "hasattr(value, '__lt__')",
+        "type(str.__lt__).__name__",
+        "type('b'.__lt__).__name__",
+        "type(left.__lt__).__name__",
+        "str.__lt__('b', 'c')",
+        "str.__lt__(left, S('c'))",
+        "'b'.__lt__(S('c'))",
+        "left.__lt__(object())",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"descriptor wrapper_descriptor method-wrapper method-wrapper\"",
+        "\"calls True True True NotImplemented\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str lt dir surface subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-lt-dir-surface");
+    for required in [
+        "class S(str):",
+        "left = S('b')",
+        "'__lt__' in dir(value)",
+        "hasattr(value, '__lt__')",
+        "type(str.__lt__).__name__",
+        "type('b'.__lt__).__name__",
+        "type(left.__lt__).__name__",
+        "str.__lt__('b', 'c')",
+        "str.__lt__(left, S('c'))",
+        "'b'.__lt__(S('c'))",
+        "left.__lt__(object())",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str lt dir surface CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["names.push(\"__lt__\".to_string());"] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str lt dir surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__lt__` dir surface")
+                && document.contains("cpython_string_direct_lt_dir_surface_subset")
+                && document.contains("cpython_string_direct_lt_dir_surface_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str lt dir surface evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
