@@ -11490,6 +11490,38 @@ for label, call in [('class-class', lambda: str.__getattribute__('ab', '__class_
 }
 
 #[test]
+fn cpython_string_inherited_getstate_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __getstate__ method behavior",
+        name: "string-inherited-getstate-method",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+left.x = 1
+for name in ['__getstate__']:
+    print('class', name, type(getattr(str, name)).__name__, getattr(str, name) is getattr(object, name))
+for label, expr in [
+    ('bound-exact', lambda: 'ab'.__getstate__()),
+    ('bound-sub', lambda: left.__getstate__()),
+    ('object-exact', lambda: object.__getstate__('ab')),
+    ('type-exact', lambda: str.__getstate__('ab')),
+    ('type-sub', lambda: str.__getstate__(left)),
+    ('type-list', lambda: str.__getstate__([1, 2])),
+    ('bound-extra', lambda: 'ab'.__getstate__(1)),
+    ('bound-keyword', lambda: 'ab'.__getstate__(x=1)),
+    ('type-missing', lambda: str.__getstate__()),
+    ('type-keyword-only', lambda: str.__getstate__(self='ab')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__getstate__'), '__getstate__' in dir(left), '__getstate__' in dir(S), '__getstate__' in dir(str), type(left.__getstate__).__name__, type(str.__getstate__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_inherited_setattr_delattr_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str inherited __setattr__ / __delattr__ method behavior",

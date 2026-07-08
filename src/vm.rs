@@ -57416,6 +57416,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     names.extend(methods.iter().copied().map(str::to_string));
     if name == "str" {
         names.push("__delattr__".to_string());
+        names.push("__getstate__".to_string());
         names.push("__setattr__".to_string());
     }
     if name == "UserString" {
@@ -69047,6 +69048,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "str" && name == "__delattr__" => {
             Ok(Value::Builtin("object.__delattr__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "str" && name == "__getstate__" => {
+            Ok(Value::Builtin("object.__getstate__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "range" && name == "__new__" => {
             Ok(Value::Builtin("range.__new__".to_string()))
         }
@@ -74810,6 +74814,11 @@ fn object_getstate_value(receiver: &Value) -> Value {
             entries.extend(attrs.borrow().iter().cloned());
             dict_value(entries)
         }
+        Value::Instance {
+            fields,
+            class_bases,
+            ..
+        } if class_bases_include_builtin(class_bases, "str") => scope_dict_value(fields),
         _ => Value::None,
     }
 }

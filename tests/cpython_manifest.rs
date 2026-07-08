@@ -55342,6 +55342,95 @@ fn string_direct_getattribute_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_inherited_getstate_method_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_inherited_getstate_method_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "for name in ['__getstate__']:",
+        "getattr(str, name) is getattr(object, name)",
+        "lambda: 'ab'.__getstate__()",
+        "lambda: left.__getstate__()",
+        "lambda: object.__getstate__('ab')",
+        "lambda: str.__getstate__('ab')",
+        "lambda: str.__getstate__(left)",
+        "lambda: str.__getstate__([1, 2])",
+        "lambda: 'ab'.__getstate__(1)",
+        "lambda: 'ab'.__getstate__(x=1)",
+        "lambda: str.__getstate__()",
+        "lambda: str.__getstate__(self='ab')",
+        "__getstate__' in dir(left)",
+        "__getstate__' in dir(S)",
+        "__getstate__' in dir(str)",
+        "\"class __getstate__ method_descriptor True\"",
+        "\"bound-exact NoneType None\"",
+        "\"bound-sub dict {'x': 1}\"",
+        "\"object-exact NoneType None\"",
+        "\"type-sub dict {'x': 1}\"",
+        "\"type-list NoneType None\"",
+        "\"bound-extra TypeError object.__getstate__() takes no arguments (1 given)",
+        "\"bound-keyword TypeError object.__getstate__() takes no keyword arguments",
+        "\"type-missing TypeError unbound method object.__getstate__() needs an argument",
+        "\"visible True True True True builtin_function_or_method method_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "inherited str getstate subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-inherited-getstate-method");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "for name in ['__getstate__']:",
+        "getattr(str, name) is getattr(object, name)",
+        "lambda: 'ab'.__getstate__()",
+        "lambda: left.__getstate__()",
+        "lambda: object.__getstate__('ab')",
+        "lambda: str.__getstate__('ab')",
+        "lambda: str.__getstate__(left)",
+        "lambda: str.__getstate__([1, 2])",
+        "lambda: 'ab'.__getstate__(1)",
+        "lambda: 'ab'.__getstate__(x=1)",
+        "lambda: str.__getstate__()",
+        "lambda: str.__getstate__(self='ab')",
+        "__getstate__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "inherited str getstate CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "if name == \"str\" {\n        names.push(\"__delattr__\".to_string());\n        names.push(\"__getstate__\".to_string());\n        names.push(\"__setattr__\".to_string());\n    }",
+        "function_name == \"str\" && name == \"__getstate__\"",
+        "Value::Builtin(\"object.__getstate__\".to_string())",
+        "if class_bases_include_builtin(class_bases, \"str\") => scope_dict_value(fields)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "inherited str getstate implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str inherited `__getstate__`")
+                && document.contains("cpython_string_inherited_getstate_method_subset")
+                && document.contains("cpython_string_inherited_getstate_method_diff_subset"),
+            "inherited str getstate evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_inherited_setattr_delattr_methods_have_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
@@ -55416,7 +55505,8 @@ fn string_inherited_setattr_delattr_methods_have_focused_diff_evidence() {
     }
 
     for required in [
-        "if name == \"str\" {\n        names.push(\"__delattr__\".to_string());\n        names.push(\"__setattr__\".to_string());\n    }",
+        "names.push(\"__delattr__\".to_string());",
+        "names.push(\"__setattr__\".to_string());",
         "Value::String(value) | Value::IdentityString { value, .. } if name == \"__setattr__\"",
         "Ok(object_setattr_bound_method(Value::String(value)))",
         "Value::String(value) | Value::IdentityString { value, .. } if name == \"__delattr__\"",

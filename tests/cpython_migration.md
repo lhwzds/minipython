@@ -10417,6 +10417,20 @@ Completed in the str direct `__getattribute__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str inherited `__getstate__` method pass:
+
+- Added `cpython_string_inherited_getstate_method_subset` plus
+  `cpython_string_inherited_getstate_method_diff_subset`, covering
+  object-inherited `__getstate__` on exact `str` and `str` subclass instances,
+  class-level `method_descriptor` identity with `object`, bound
+  `builtin_function_or_method` visibility, no-state exact-string results,
+  subclass instance-dict state, non-str receiver fallback through the inherited
+  descriptor, `dir()` visibility, and representative argument/keyword error
+  paths.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, pickle, object-layout internals, or full stdlib
+  scope.
+
 Completed in the str inherited `__setattr__` / `__delattr__` methods pass:
 
 - Added `cpython_string_inherited_setattr_delattr_methods_subset` plus
