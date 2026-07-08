@@ -49320,6 +49320,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_get_absent_subset",
             "cpython_base_exception_bound_method_missing_attribute_subset",
             "cpython_base_exception_bound_method_attribute_mutation_subset",
+            "cpython_base_exception_bound_method_class_mutation_subset",
             "cpython_base_exception_bound_method_getattribute_wrapper_subset",
             "cpython_base_exception_bound_method_init_wrapper_subset",
             "cpython_base_exception_bound_method_init_subclass_subset",
@@ -49480,6 +49481,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_get_absent_diff_subset",
         "cpython_base_exception_bound_method_missing_attribute_diff_subset",
         "cpython_base_exception_bound_method_attribute_mutation_diff_subset",
+        "cpython_base_exception_bound_method_class_mutation_diff_subset",
         "cpython_base_exception_bound_method_getattribute_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_subclass_diff_subset",
@@ -62701,9 +62703,10 @@ fn base_exception_bound_method_attribute_mutation_subset_has_focused_diff_eviden
     }
 
     for required in [
-        "exception_helper_bound_method_attribute_mutation_error(name)",
+        "exception_helper_bound_method_store_attribute_error(name, &value)",
+        "exception_helper_bound_method_delete_attribute_error(name)",
         "is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())",
-        "\"__class__\" | \"__module__\" => None",
+        "\"__module__\" => None",
         "\"__doc__\" | \"__name__\" | \"__qualname__\" | \"__self__\" | \"__text_signature__\"",
         "attribute '{name}' of 'builtin_function_or_method' objects is not writable",
         "'builtin_function_or_method' object has no attribute '{name}' and no __dict__ for setting new attributes",
@@ -62724,6 +62727,83 @@ fn base_exception_bound_method_attribute_mutation_subset_has_focused_diff_eviden
                 && document.contains("BaseException helper bound method direct attribute mutation")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method attribute-mutation evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_class_mutation_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_class_mutation_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "obj.__class__",
+        "setattr(obj, '__class__', original)",
+        "setattr(obj, '__class__', object)",
+        "setattr(obj, '__class__', None)",
+        "delattr(obj, '__class__')",
+        "obj.__setattr__('__class__', original)",
+        "obj.__delattr__('__class__')",
+        "__class__ assignment only supported for mutable types or ModuleType subclasses",
+        "__class__ must be set to a class, not 'NoneType' object",
+        "can't delete __class__ attribute",
+        "IndexError-with_traceback after True builtin_function_or_method",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __class__ mutation subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_class_mutation_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __class__ mutation diagnostics",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "obj.__class__",
+        "setattr(obj, '__class__', original)",
+        "setattr(obj, '__class__', object)",
+        "setattr(obj, '__class__', None)",
+        "delattr(obj, '__class__')",
+        "obj.__setattr__('__class__', original)",
+        "obj.__delattr__('__class__')",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __class__ mutation CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn exception_helper_bound_method_class_assignment_error(",
+        "is_classinfo_type(value)",
+        "__class__ assignment only supported for mutable types or ModuleType subclasses",
+        "__class__ must be set to a class, not '{}' object",
+        "can't delete __class__ attribute",
+        "exception_helper_bound_method_class_assignment_error(value)",
+        "exception_helper_bound_method_store_attribute_error(name, &value)",
+        "exception_helper_bound_method_delete_attribute_error(name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __class__ mutation implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_class_mutation_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_class_mutation_diff_subset")
+                && document.contains("BaseException helper bound method `__class__` mutation")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __class__ mutation evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -2188,6 +2188,16 @@ Recent runtime migration notes:
   error for missing names such as `__dict__` and `custom`, including
   `IndexError.with_traceback`. `__module__` assignment/deletion remains outside
   this focused slice.
+- `cpython_base_exception_bound_method_class_mutation_subset`, backed by
+  `cpython_base_exception_bound_method_class_mutation_diff_subset`, keeps
+  BaseException helper bound method `__class__` mutation diagnostics aligned
+  with CPython: bound `add_note` and `with_traceback` methods on
+  `BaseException`, `Exception`, and `IndexError` reject direct and wrapper
+  `__class__` assignment to class objects with CPython's immutable-type message,
+  reject non-class values with CPython's class-required message, and reject
+  direct and wrapper deletion with CPython's `can't delete __class__ attribute`
+  error, including `IndexError.with_traceback`. `__module__`
+  assignment/deletion remains outside this focused slice.
 - `cpython_base_exception_bound_method_init_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`, keeps
   BaseException helper bound method `__init__` wrapper surface aligned with
@@ -2296,6 +2306,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_base_exception_bound_method_missing_attribute_diff_subset`,
   `cpython_base_exception_bound_method_attribute_mutation_diff_subset`,
+  `cpython_base_exception_bound_method_class_mutation_diff_subset`,
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_init_subclass_diff_subset`,
   `cpython_base_exception_bound_method_new_diff_subset`,

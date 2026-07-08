@@ -19291,10 +19291,7 @@ impl Vm {
         let name = attribute_name_arg(name)?;
         match name.as_str() {
             "__module__" => Ok(Value::None),
-            "__class__" => Err(format!(
-                "TypeError: __class__ must be set to a class, not '{}' object",
-                type_name(value)
-            )),
+            "__class__" => Err(exception_helper_bound_method_class_assignment_error(value)),
             "__call__" => Err(
                 "AttributeError: 'builtin_function_or_method' object attribute '__call__' is read-only"
                     .to_string(),
@@ -71480,9 +71477,40 @@ fn is_exception_helper_bound_method(function: &Value, receiver: &Value) -> bool 
     )
 }
 
-fn exception_helper_bound_method_attribute_mutation_error(name: &str) -> Option<String> {
+fn exception_helper_bound_method_class_assignment_error(value: &Value) -> String {
+    if is_classinfo_type(value) {
+        "TypeError: __class__ assignment only supported for mutable types or ModuleType subclasses"
+            .to_string()
+    } else {
+        format!(
+            "TypeError: __class__ must be set to a class, not '{}' object",
+            type_name(value)
+        )
+    }
+}
+
+fn exception_helper_bound_method_store_attribute_error(
+    name: &str,
+    value: &Value,
+) -> Option<String> {
     match name {
-        "__class__" | "__module__" => None,
+        "__module__" => None,
+        "__class__" => Some(exception_helper_bound_method_class_assignment_error(value)),
+        "__doc__" | "__name__" | "__qualname__" | "__self__" | "__text_signature__" => {
+            Some(format!(
+                "AttributeError: attribute '{name}' of 'builtin_function_or_method' objects is not writable"
+            ))
+        }
+        _ => Some(format!(
+            "AttributeError: 'builtin_function_or_method' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )),
+    }
+}
+
+fn exception_helper_bound_method_delete_attribute_error(name: &str) -> Option<String> {
+    match name {
+        "__module__" => None,
+        "__class__" => Some("TypeError: can't delete __class__ attribute".to_string()),
         "__doc__" | "__name__" | "__qualname__" | "__self__" | "__text_signature__" => {
             Some(format!(
                 "AttributeError: attribute '{name}' of 'builtin_function_or_method' objects is not writable"
@@ -72544,7 +72572,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         function, receiver, ..
     } = &object
         && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())
-        && let Some(error) = exception_helper_bound_method_attribute_mutation_error(name)
+        && let Some(error) = exception_helper_bound_method_store_attribute_error(name, &value)
     {
         return Err(error);
     }
@@ -73078,7 +73106,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         function, receiver, ..
     } = &object
         && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())
-        && let Some(error) = exception_helper_bound_method_attribute_mutation_error(name)
+        && let Some(error) = exception_helper_bound_method_delete_attribute_error(name)
     {
         return Err(error);
     }
