@@ -11522,6 +11522,78 @@ print('visible', hasattr(left, '__getstate__'), '__getstate__' in dir(left), '__
 }
 
 #[test]
+fn cpython_string_inherited_dir_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ method behavior",
+        name: "string-inherited-dir-method",
+        source: r#"print('class', type(str.__dir__).__name__, str.__dir__ is object.__dir__)
+class S(str):
+    pass
+left = S('ab')
+left.x = 1
+print('visible', hasattr(left, '__dir__'), '__dir__' in dir(left), '__dir__' in dir(S), '__dir__' in dir(str), type(left.__dir__).__name__, type(str.__dir__).__name__)"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ exact bound behavior",
+        name: "string-inherited-dir-bound-exact",
+        source: r#"def summarize(label, value):
+    names = value
+    print(label, type(names).__name__, isinstance(names, list), 'x' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, 'upper' in names, len(names) > 20)
+summarize('bound-exact', 'ab'.__dir__())"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ subclass bound behavior",
+        name: "string-inherited-dir-bound-subclass",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+left.x = 1
+def summarize(label, value):
+    names = value
+    print(label, type(names).__name__, isinstance(names, list), 'x' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, 'upper' in names, len(names) > 20)
+summarize('bound-sub', left.__dir__())"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ object direct behavior",
+        name: "string-inherited-dir-object-exact",
+        source: r#"def summarize(label, value):
+    names = value
+    print(label, type(names).__name__, isinstance(names, list), 'x' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, 'upper' in names, len(names) > 20)
+summarize('object-exact', object.__dir__('ab'))"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ type direct exact behavior",
+        name: "string-inherited-dir-type-exact",
+        source: r#"def summarize(label, value):
+    names = value
+    print(label, type(names).__name__, isinstance(names, list), 'x' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, 'upper' in names, len(names) > 20)
+summarize('type-exact', str.__dir__('ab'))"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ type direct subclass behavior",
+        name: "string-inherited-dir-type-subclass",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+left.x = 1
+def summarize(label, value):
+    names = value
+    print(label, type(names).__name__, isinstance(names, list), 'x' in names, '__class__' in names, '__getstate__' in names, '__setattr__' in names, 'upper' in names, len(names) > 20)
+summarize('type-sub', str.__dir__(left))"#,
+    });
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __dir__ error behavior",
+        name: "string-inherited-dir-method-errors",
+        source: r#"for label, expr in [('bound-extra', lambda: 'ab'.__dir__(1)), ('bound-keyword', lambda: 'ab'.__dir__(x=1)), ('type-missing', lambda: str.__dir__()), ('type-keyword-only', lambda: str.__dir__(self='ab'))]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_string_inherited_setattr_delattr_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str inherited __setattr__ / __delattr__ method behavior",

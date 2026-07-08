@@ -10431,6 +10431,18 @@ Completed in the str inherited `__getstate__` method pass:
   IO, network, process, C ABI, pickle, object-layout internals, or full stdlib
   scope.
 
+Completed in the str inherited `__dir__` method pass:
+
+- Added `cpython_string_inherited_dir_method_subset` plus
+  `cpython_string_inherited_dir_method_diff_subset`, covering
+  object-inherited `__dir__` on exact `str` and `str` subclass instances,
+  class-level `method_descriptor` identity with `object`, bound
+  `builtin_function_or_method` visibility, default dir-list shape and key
+  membership for exact strings and str subclass instance dictionaries,
+  `dir()` visibility, and representative argument/keyword error paths.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, object-layout internals, or full stdlib scope.
+
 Completed in the str inherited `__setattr__` / `__delattr__` methods pass:
 
 - Added `cpython_string_inherited_setattr_delattr_methods_subset` plus

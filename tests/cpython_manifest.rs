@@ -55431,6 +55431,130 @@ fn string_inherited_getstate_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_inherited_dir_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_inherited_dir_method_subset");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "type(str.__dir__).__name__",
+        "str.__dir__ is object.__dir__",
+        "summarize('bound-exact', 'ab'.__dir__())",
+        "summarize('bound-sub', left.__dir__())",
+        "summarize('object-exact', object.__dir__('ab'))",
+        "summarize('type-exact', str.__dir__('ab'))",
+        "summarize('type-sub', str.__dir__(left))",
+        "'x' in names",
+        "'__getstate__' in names",
+        "'__setattr__' in names",
+        "'upper' in names",
+        "__dir__' in dir(S)",
+        "__dir__' in dir(str)",
+        "lambda: 'ab'.__dir__(1)",
+        "lambda: 'ab'.__dir__(x=1)",
+        "lambda: str.__dir__()",
+        "lambda: str.__dir__(self='ab')",
+        "\"class method_descriptor True\"",
+        "\"bound-exact list True False True True True True True\"",
+        "\"bound-sub list True True True True True True True\"",
+        "\"object-exact list True False True True True True True\"",
+        "\"type-exact list True False True True True True True\"",
+        "\"type-sub list True True True True True True True\"",
+        "\"visible True True True True builtin_function_or_method method_descriptor\"",
+        "\"bound-extra TypeError object.__dir__() takes no arguments (1 given)",
+        "\"bound-keyword TypeError object.__dir__() takes no keyword arguments",
+        "\"type-missing TypeError unbound method object.__dir__() needs an argument",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "inherited str dir subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-inherited-dir-method");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "type(str.__dir__).__name__",
+        "str.__dir__ is object.__dir__",
+        "__dir__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "inherited str dir CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for (case_name, required) in [
+        (
+            "string-inherited-dir-bound-exact",
+            "summarize('bound-exact', 'ab'.__dir__())",
+        ),
+        (
+            "string-inherited-dir-bound-subclass",
+            "summarize('bound-sub', left.__dir__())",
+        ),
+        (
+            "string-inherited-dir-object-exact",
+            "summarize('object-exact', object.__dir__('ab'))",
+        ),
+        (
+            "string-inherited-dir-type-exact",
+            "summarize('type-exact', str.__dir__('ab'))",
+        ),
+        (
+            "string-inherited-dir-type-subclass",
+            "summarize('type-sub', str.__dir__(left))",
+        ),
+    ] {
+        let case_body = extract_diff_case_body(CPYTHON_DIFF, case_name);
+        assert!(
+            case_body.contains(required)
+                && case_body.contains("'__getstate__' in names")
+                && case_body.contains("'__setattr__' in names")
+                && case_body.contains("'upper' in names"),
+            "inherited str dir CPython diff case `{case_name}` must cover `{required}`"
+        );
+    }
+
+    let error_diff_case =
+        extract_diff_case_body(CPYTHON_DIFF, "string-inherited-dir-method-errors");
+    for required in [
+        "lambda: 'ab'.__dir__(1)",
+        "lambda: 'ab'.__dir__(x=1)",
+        "lambda: str.__dir__()",
+        "lambda: str.__dir__(self='ab')",
+    ] {
+        assert!(
+            error_diff_case.contains(required),
+            "inherited str dir CPython error diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"object\" | \"tuple\" | \"str\" | \"UserString\"",
+        "function_name == \"str\" && name == \"__dir__\"",
+        "Value::Builtin(\"object.__dir__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "inherited str dir implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str inherited `__dir__`")
+                && document.contains("cpython_string_inherited_dir_method_subset")
+                && document.contains("cpython_string_inherited_dir_method_diff_subset"),
+            "inherited str dir evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_inherited_setattr_delattr_methods_have_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

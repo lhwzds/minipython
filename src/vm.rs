@@ -16491,7 +16491,7 @@ impl Vm {
                 ),
             [] if self.is_module => Ok(sorted_name_list(scope_names(&self.globals))),
             [] => Ok(sorted_name_list(scope_names(&self.locals))),
-            [object] if matches!(object, Value::Builtin(name) if matches!(name.as_str(), "object" | "tuple" | "UserString")) => {
+            [object] if matches!(object, Value::Builtin(name) if matches!(name.as_str(), "object" | "tuple" | "str" | "UserString")) => {
                 Ok(sorted_name_list(
                     self.default_dir_names_value(object.clone())?,
                 ))
@@ -65022,7 +65022,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | Value::Function { .. }
                 | Value::BoundMethod { .. }
         )
-        && !matches!(&object, Value::Builtin(builtin) if matches!(builtin.as_str(), "object" | "tuple" | "UserString"))
+        && !matches!(&object, Value::Builtin(builtin) if matches!(builtin.as_str(), "object" | "tuple" | "str" | "UserString"))
     {
         return Ok(object_dir_bound_method(object));
     }
@@ -69050,6 +69050,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__getstate__" => {
             Ok(Value::Builtin("object.__getstate__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__dir__" => {
+            Ok(Value::Builtin("object.__dir__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "range" && name == "__new__" => {
             Ok(Value::Builtin("range.__new__".to_string()))
