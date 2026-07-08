@@ -77866,8 +77866,11 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
     if bytes.starts_with(&[0x00, 0x00, 0xfe, 0xff]) {
         return json_decode_utf32_bytes(&bytes[4..], TextEndian::Big, 4);
     }
-    if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
-        return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict);
+    if bytes.starts_with(&[0xff, 0xfe]) {
+        return json_decode_utf16_bytes(&bytes[2..], TextEndian::Little, 2);
+    }
+    if bytes.starts_with(&[0xfe, 0xff]) {
+        return json_decode_utf16_bytes(&bytes[2..], TextEndian::Big, 2);
     }
     if bytes.len() >= 4 {
         if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
@@ -77922,6 +77925,42 @@ fn json_utf8_decode_error(bytes: &[u8], error: std::str::Utf8Error) -> String {
         format!("bytes in position {start}-{}", end - 1)
     };
     format!("UnicodeDecodeError: 'utf-8' codec can't decode {range}: {reason}")
+}
+
+fn json_decode_utf16_bytes(
+    bytes: &[u8],
+    endian: TextEndian,
+    position_offset: usize,
+) -> Result<String, String> {
+    if bytes.len() % 2 != 0 {
+        let start = bytes.len() - 1;
+        return Err(json_utf16_decode_error(
+            endian,
+            bytes,
+            position_offset,
+            start,
+            "truncated data",
+        ));
+    }
+    decode_utf16_bytes(bytes, Some(endian), CodecErrorMode::Strict)
+}
+
+fn json_utf16_decode_error(
+    endian: TextEndian,
+    bytes: &[u8],
+    position_offset: usize,
+    start: usize,
+    reason: &str,
+) -> String {
+    let codec = match endian {
+        TextEndian::Little => "utf-16-le",
+        TextEndian::Big => "utf-16-be",
+    };
+    let absolute_start = position_offset + start;
+    let byte = bytes.get(start).copied().unwrap_or_default();
+    format!(
+        "UnicodeDecodeError: '{codec}' codec can't decode byte 0x{byte:02x} in position {absolute_start}: {reason}"
+    )
 }
 
 fn json_decode_utf32_bytes(

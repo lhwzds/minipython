@@ -14592,6 +14592,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_object_pairs_hook_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
             "cpython_json_loads_invalid_utf8_error_detail_subset",
+            "cpython_json_loads_invalid_utf16_error_detail_subset",
             "cpython_json_loads_invalid_utf32_error_detail_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ],
@@ -14755,6 +14756,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_object_pairs_hook_diff_subset",
         "cpython_json_loads_dumps_error_boundary_diff_subset",
         "cpython_json_loads_invalid_utf8_error_detail_diff_subset",
+        "cpython_json_loads_invalid_utf16_error_detail_diff_subset",
         "cpython_json_loads_invalid_utf32_error_detail_diff_subset",
         "cpython_json_loads_string_error_boundary_diff_subset",
     ] {
@@ -20145,6 +20147,90 @@ fn json_loads_invalid_utf8_error_detail_docs_cover_decode_boundary() {
             assert!(
                 document.contains(required),
                 "json docs must describe invalid UTF-8 detail boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_loads_invalid_utf16_error_detail_docs_cover_decode_boundary() {
+    let diff_name = "cpython_json_loads_invalid_utf16_error_detail_diff_subset";
+    let subset_name = "cpython_json_loads_invalid_utf16_error_detail_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads invalid UTF-16 detail CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads invalid UTF-16 detail runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "utf16le-truncated-bom-one",
+        "utf16be-truncated-bom-one",
+        "utf16le-truncated-bom-three",
+        "utf16be-truncated-bom-three",
+        "b'\\xff\\xfe{\\x00\"'",
+        "b'\\xfe\\xff\\x00{\\x00\"\\x00'",
+        "b'\\xff\\xfe{\\x00\"\\x00x'",
+        "b'\\xfe\\xff\\x00{\\x00\"\\x00x\\x00'",
+    ] {
+        let escaped_form = required.replace('\\', "\\\\").replace('"', "\\\"");
+        assert!(
+            diff_body.contains(required) || diff_body.contains(&escaped_form),
+            "json loads invalid UTF-16 detail diff must cover `{required}`"
+        );
+        assert!(
+            subset_body.contains(required) || subset_body.contains(&escaped_form),
+            "json loads invalid UTF-16 detail subset must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"utf16le-truncated-bom-one UnicodeDecodeError 'utf-16-le' codec can't decode byte 0x22 in position 4: truncated data\"",
+        "\"utf16be-truncated-bom-one UnicodeDecodeError 'utf-16-be' codec can't decode byte 0x00 in position 6: truncated data\"",
+        "\"utf16le-truncated-bom-three UnicodeDecodeError 'utf-16-le' codec can't decode byte 0x78 in position 6: truncated data\"",
+        "\"utf16be-truncated-bom-three UnicodeDecodeError 'utf-16-be' codec can't decode byte 0x00 in position 8: truncated data\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads invalid UTF-16 detail subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn json_decode_utf16_bytes",
+        "fn json_utf16_decode_error",
+        "json_decode_utf16_bytes(&bytes[2..], TextEndian::Little, 2)",
+        "json_decode_utf16_bytes(&bytes[2..], TextEndian::Big, 2)",
+        "TextEndian::Little => \"utf-16-le\"",
+        "TextEndian::Big => \"utf-16-be\"",
+        "truncated data",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json invalid UTF-16 decode implementation must include `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "invalid UTF-16 byte input `UnicodeDecodeError`",
+            "CPython-style codec/endian byte position/reason text",
+            "UTF-16 BOM-stripped bytes",
+            "truncated data",
+            "without adding unpaired surrogate storage or full `JSONDecodeError` compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe invalid UTF-16 detail boundary `{required}`"
             );
         }
     }
