@@ -57647,6 +57647,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__subclasshook__".to_string());
     }
     if name == "function" {
+        names.push("__format__".to_string());
         names.push("__repr__".to_string());
         names.push("__str__".to_string());
     }
@@ -68723,6 +68724,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__str__" => {
             Ok(Value::Builtin("object.__str__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))

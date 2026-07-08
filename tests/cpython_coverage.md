@@ -10134,6 +10134,18 @@ without adding general custom encoder/decoder class support.
   `function.__str__.__objclass__ is object`,
   `function.__str__.__text_signature__`,
   `dir(function.__str__)`, and descriptor call forwarding without changing function instance repr/str shape or depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_format_method_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_format_method_descriptor_metadata_diff_subset`,
+  covering function type `__format__` inherited method_descriptor metadata:
+  `function.__format__ is object.__format__`,
+  `function.__format__.__qualname__`,
+  `function.__format__.__objclass__ is object`,
+  `function.__format__.__text_signature__`,
+  `dir(function.__format__)`, empty-format descriptor forwarding, and
+  non-empty format-spec rejection without changing function instance __format__ wrappers
+  or depending on concrete addresses.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
