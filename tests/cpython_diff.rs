@@ -11350,6 +11350,21 @@ print('class', type(str.__add__).__name__, type(str.__add__('a', 'b')).__name__,
 }
 
 #[test]
+fn cpython_string_direct_add_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__add__ dir surface",
+        name: "string-direct-add-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__add__' in dir(value), hasattr(value, '__add__'))
+print('descriptor', type(str.__add__).__name__, type('ab'.__add__).__name__, type(left.__add__).__name__)
+print('calls', str.__add__('ab', 'c'), str.__add__(left, S('c')), 'ab'.__add__(S('d')), left.__add__('e'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
