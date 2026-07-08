@@ -11626,6 +11626,25 @@ print('calls', str.__repr__('ab'), str.__repr__(left), 'ab'.__repr__(), type(lef
 }
 
 #[test]
+fn cpython_string_direct_dict_dir_hiding_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__dict__ dir hiding",
+        name: "string-direct-dict-dir-hiding",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+left.x = 1
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__dict__' in dir(value), hasattr(value, '__dict__'))
+print('type-dict', type(str.__dict__).__name__, hasattr(str, '__dict__'))
+try:
+    print('exact-dict', 'ab'.__dict__)
+except Exception as error:
+    print('exact-dict-error', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",

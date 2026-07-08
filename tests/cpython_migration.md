@@ -10539,6 +10539,17 @@ Completed in the str direct `__repr__` dir surface pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__dict__` dir hiding pass:
+
+- Added `cpython_string_direct_dict_dir_hiding_subset` plus
+  `cpython_string_direct_dict_dir_hiding_diff_subset`, covering CPython's
+  hidden `__dict__` entry for `dir(str)` and exact str instances while
+  preserving readable `str.__dict__`, str subclass `dir()` visibility, and str
+  subclass instance dictionaries.
+- This stays inside core string/object-model behavior and does not widen
+  subtype mappingproxy behavior, host IO, network, process, C ABI, or full
+  stdlib scope.
+
 Completed in the str direct `__eq__` / `__ne__` methods pass:
 
 - Added `cpython_string_direct_equality_methods_subset` plus

@@ -55931,6 +55931,80 @@ fn string_direct_repr_dir_surface_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_dict_dir_hiding_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_dict_dir_hiding_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:",
+        "'__dict__' in dir(value)",
+        "hasattr(value, '__dict__')",
+        "type(str.__dict__).__name__",
+        "hasattr(str, '__dict__')",
+        "'ab'.__dict__",
+        "type(error).__name__",
+        "str(error)",
+        "error.args",
+        "\"type False True\"",
+        "\"subtype True True\"",
+        "\"exact False False\"",
+        "\"sub True True\"",
+        "\"type-dict mappingproxy True\"",
+        "\"exact-dict-error AttributeError 'str' object has no attribute '__dict__' (\\\"'str' object has no attribute '__dict__'\\\",)\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str dict dir hiding subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-dict-dir-hiding");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "left.x = 1",
+        "'__dict__' in dir(value)",
+        "hasattr(value, '__dict__')",
+        "type(str.__dict__).__name__",
+        "hasattr(str, '__dict__')",
+        "'ab'.__dict__",
+        "type(error).__name__",
+        "str(error)",
+        "error.args",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str dict dir hiding CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "if name == \"str\" {",
+        "names.retain(|attr| attr != \"__dict__\");",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str dict dir hiding implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__dict__` dir hiding")
+                && document.contains("cpython_string_direct_dict_dir_hiding_subset")
+                && document.contains("cpython_string_direct_dict_dir_hiding_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str dict dir hiding evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
