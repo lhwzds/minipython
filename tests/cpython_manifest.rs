@@ -49635,6 +49635,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_pow_builtin_subset",
             "cpython_chr_ord_builtin_subset",
             "cpython_format_builtin_and_custom_dunder_format_subset",
+            "cpython_format_conversion_repr_custom_dunder_subset",
             "cpython_format_builtin_keyword_error_subset",
             "cpython_ascii_builtin_subset",
             "cpython_builtin_cmp_absent_subset",
@@ -66398,6 +66399,102 @@ fn str_builtin_custom_dunder_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_str_builtin_custom_dunder_diff_subset"),
             "focused str custom-dunder evidence must be documented in coverage and CPython test manifest"
         );
+    }
+}
+
+#[test]
+fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_format_conversion_repr_custom_dunder_subset(",
+        "class FormatRepr:",
+        "return 'format-é'",
+        "f'{value!r}'",
+        "f'{value!a}'",
+        "'{!r}'.format(value)",
+        "'{!a}'.format(value)",
+        "class BadReturn:",
+        "return 42",
+        "class Boom:",
+        "format-repr-boom",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused format conversion repr subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_format_conversion_repr_custom_dunder_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_fstring.py and str.format public !r/!a custom __repr__ conversion subset",
+        "format-conversion-repr-custom-dunder",
+        "class FormatRepr:",
+        "f'{value!r}'",
+        "f'{value!a}'",
+        "'{!r}'.format(value)",
+        "'{!a}'.format(value)",
+        "class BadReturn:",
+        "class Boom:",
+        "format-repr-boom",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused format conversion repr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"format-repr format-é format-\\\\xe9 format-é format-\\\\xe9\"",
+        "\"f-r-bad TypeError __repr__ returned non-string (type int)\"",
+        "\"f-a-bad TypeError __repr__ returned non-string (type int)\"",
+        "\"format-r-bad TypeError __repr__ returned non-string (type int)\"",
+        "\"format-a-bad TypeError __repr__ returned non-string (type int)\"",
+        "\"f-r-boom ValueError format-repr-boom\"",
+        "\"f-a-boom ValueError format-repr-boom\"",
+        "\"format-r-boom ValueError format-repr-boom\"",
+        "\"format-a-boom ValueError format-repr-boom\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused format conversion repr subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "Some(FormatConversion::Repr) => repr_value_for_vm(vm, value)",
+        "Some(FormatConversion::Ascii) => ascii_repr_value_for_vm(vm, value)",
+        "fn repr_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String>",
+        "fn ascii_repr_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String>",
+        "fn repr_value(&mut self, value: &Value) -> Result<String, String>",
+        "self.stdlib_call_repr_method(value)?",
+        "TypeError: __repr__ returned non-string (type {})",
+        "repr_value_checked(value)",
+        "ascii_escape_text(&repr_value_for_vm(vm, value)?)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "format conversion repr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            "cpython_format_conversion_repr_custom_dunder_subset",
+            "cpython_format_conversion_repr_custom_dunder_diff_subset",
+            "f-string and",
+            "`str.format` `!r` / `!a`",
+            "class-level `__repr__`",
+            "ASCII-escapes `!a`",
+            "non-string-returning and raising `__repr__` paths",
+            "without expanding `__repr__` str-subclass return normalization",
+        ] {
+            assert!(
+                document.contains(required),
+                "format conversion repr docs must describe focused boundary `{required}`"
+            );
+        }
     }
 }
 

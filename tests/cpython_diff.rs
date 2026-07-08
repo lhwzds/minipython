@@ -16314,6 +16314,39 @@ print('str-sub', str(sub), f'{sub}', '%s' % sub, format(sub, '>6'))"#,
 }
 
 #[test]
+fn cpython_format_conversion_repr_custom_dunder_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_fstring.py and str.format public !r/!a custom __repr__ conversion subset",
+        name: "format-conversion-repr-custom-dunder",
+        source: r#"class FormatRepr:
+    def __repr__(self):
+        return 'format-é'
+value = FormatRepr()
+print('format-repr', f'{value!r}', f'{value!a}', '{!r}'.format(value), '{!a}'.format(value))
+class BadReturn:
+    def __repr__(self):
+        return 42
+class Boom:
+    def __repr__(self):
+        raise ValueError('format-repr-boom')
+for label, expr in [
+    ('f-r-bad', lambda: f'{BadReturn()!r}'),
+    ('f-a-bad', lambda: f'{BadReturn()!a}'),
+    ('format-r-bad', lambda: '{!r}'.format(BadReturn())),
+    ('format-a-bad', lambda: '{!a}'.format(BadReturn())),
+    ('f-r-boom', lambda: f'{Boom()!r}'),
+    ('f-a-boom', lambda: f'{Boom()!a}'),
+    ('format-r-boom', lambda: '{!r}'.format(Boom())),
+    ('format-a-boom', lambda: '{!a}'.format(Boom())),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_builtins_module_package_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py builtins module __package__ metadata subset",

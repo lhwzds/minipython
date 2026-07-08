@@ -1595,8 +1595,8 @@ fn render_format_value(
         None if format_spec.map_or(true, str::is_empty) => str_value_for_vm(vm, value),
         None => Ok(value.to_string()),
         Some(FormatConversion::Str) => str_value_for_vm(vm, value),
-        Some(FormatConversion::Repr) => repr_value_checked(value),
-        Some(FormatConversion::Ascii) => ascii_repr_value_checked(value),
+        Some(FormatConversion::Repr) => repr_value_for_vm(vm, value),
+        Some(FormatConversion::Ascii) => ascii_repr_value_for_vm(vm, value),
     }
 }
 
@@ -1696,6 +1696,17 @@ fn str_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String
         Some(vm) => vm.str_value(value),
         None => str_value_checked(value),
     }
+}
+
+fn repr_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String> {
+    match vm {
+        Some(vm) => vm.repr_value(value),
+        None => repr_value_checked(value),
+    }
+}
+
+fn ascii_repr_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String> {
+    Ok(ascii_escape_text(&repr_value_for_vm(vm, value)?))
 }
 
 fn dunder_str_result_text(value: Value) -> Result<String, String> {
@@ -22045,6 +22056,20 @@ impl Vm {
         }
 
         str_value_checked(value)
+    }
+
+    fn repr_value(&mut self, value: &Value) -> Result<String, String> {
+        if let Some(result) = self.stdlib_call_repr_method(value)? {
+            return match result {
+                Value::String(value) | Value::IdentityString { value, .. } => Ok(value),
+                value => Err(format!(
+                    "TypeError: __repr__ returned non-string (type {})",
+                    type_name(&value)
+                )),
+            };
+        }
+
+        repr_value_checked(value)
     }
 
     fn format_value_with_spec_object(

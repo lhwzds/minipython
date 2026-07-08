@@ -10235,6 +10235,13 @@ without adding general custom encoder/decoder class support.
   non-string result rejection on both conversion paths, propagated exceptions,
   ignored instance-level `__str__`, custom `__format__` precedence, and
   empty-format behavior for `str` subclasses overriding `__str__`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_format_conversion_repr_custom_dunder_subset`, backed by
+  `cpython_format_conversion_repr_custom_dunder_diff_subset`, covering
+  f-string and `str.format` `!r` / `!a` conversion through class-level
+  `__repr__`: MiniPython preserves CPython's custom repr text,
+  ASCII-escapes `!a`, and preserves non-string-returning and raising
+  `__repr__` paths, without expanding `__repr__` str-subclass return normalization.
 - The `BuiltinTest Core Runtime Method Audit` in `cpython_test_manifest.md`
   now pins the direct Rust evidence for 27 scalar, representation, and
   introspection methods that were previously covered only through the broader
