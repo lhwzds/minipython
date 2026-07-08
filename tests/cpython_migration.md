@@ -10393,6 +10393,18 @@ Completed in the str direct `__hash__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__format__` method pass:
+
+- Added `cpython_string_direct_format_method_subset` plus
+  `cpython_string_direct_format_method_diff_subset`, covering direct
+  `__format__` calls on exact `str` and `str` subclass instances, class-level
+  `method_descriptor` visibility, bound `builtin_function_or_method`
+  behavior, empty / `s` / str-subclass `s` / width specs, class-level calls,
+  str-subclass result preservation when formatting does not change the text,
+  and representative argument/spec/receiver error paths.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus

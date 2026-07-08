@@ -55137,6 +55137,111 @@ fn string_direct_hash_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_format_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_format_method_subset");
+    for required in [
+        "class S(str):",
+        "for name in ['__format__']:",
+        "m = getattr(value, '__format__')",
+        "type(m('')).__name__",
+        "type(m('s')).__name__",
+        "type(m('>5')).__name__",
+        "type(m(S('s'))).__name__",
+        "lambda: str.__format__('ab', '')",
+        "lambda: str.__format__(S('ab'), '')",
+        "lambda: str.__format__(S('ab'), 's')",
+        "lambda: str.__format__('ab', '>5')",
+        "lambda: 'ab'.__format__()",
+        "lambda: 'ab'.__format__('', 'x')",
+        "lambda: 'ab'.__format__(1)",
+        "lambda: str.__format__(1, '')",
+        "lambda: str.__format__(1, 's')",
+        "\"class __format__ method_descriptor\"",
+        "\"exact builtin_function_or_method str ab str ab str    ab str ab\"",
+        "\"subclass builtin_function_or_method str ab S ab str    ab S ab\"",
+        "\"class-empty str ab\"",
+        "\"class-subclass-empty str ab\"",
+        "\"class-subclass-s S ab\"",
+        "\"class-align str    ab\"",
+        "\"bound-missing TypeError str.__format__() takes exactly one argument (0 given)",
+        "\"bound-extra TypeError str.__format__() takes exactly one argument (2 given)",
+        "\"spec-int TypeError __format__() argument must be str, not int",
+        "\"bad-receiver TypeError descriptor '__format__' for 'str' objects doesn't apply to a 'int' object",
+        "\"bad-receiver-nonempty TypeError descriptor '__format__' for 'str' objects doesn't apply to a 'int' object",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str format subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-format-method");
+    for required in [
+        "class S(str):",
+        "for name in ['__format__']:",
+        "m = getattr(value, '__format__')",
+        "type(m('')).__name__",
+        "type(m('s')).__name__",
+        "type(m('>5')).__name__",
+        "type(m(S('s'))).__name__",
+        "lambda: str.__format__('ab', '')",
+        "lambda: str.__format__(S('ab'), '')",
+        "lambda: str.__format__(S('ab'), 's')",
+        "lambda: str.__format__('ab', '>5')",
+        "lambda: 'ab'.__format__()",
+        "lambda: 'ab'.__format__('', 'x')",
+        "lambda: 'ab'.__format__(1)",
+        "lambda: str.__format__(1, '')",
+        "lambda: str.__format__(1, 's')",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str format CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let method_start = VM_SOURCE
+        .find("fn is_builtin_method_descriptor_name")
+        .expect("method descriptor helper must exist");
+    let method_tail = &VM_SOURCE[method_start..];
+    assert!(
+        method_tail.contains("\"str\" => is_immutable_sequence_type_method(type_name, method)"),
+        "str method descriptor branch must route through immutable sequence methods"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"str.__format__\"",
+        "self.call_str_dunder_format_method(args, keywords)",
+        "fn call_str_dunder_format_method(",
+        "TypeError: unbound method str.__format__() needs an argument",
+        "TypeError: str.__format__() takes no keyword arguments",
+        "TypeError: str.__format__() takes exactly one argument",
+        "descriptor '__format__' for 'str' objects doesn't apply",
+        "let format_spec = dunder_format_spec_string(format_spec)",
+        "apply_format_spec(receiver, receiver_text.as_ref(), false, Some(&format_spec))",
+        "str_subclass_string(receiver).is_some()",
+        "&& !format_spec.is_empty()",
+        "&& rendered == receiver_text.as_ref()",
+        "| \"__format__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str format implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__format__` method")
+                && document.contains("cpython_string_direct_format_method_subset")
+                && document.contains("cpython_string_direct_format_method_diff_subset"),
+            "direct str format evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

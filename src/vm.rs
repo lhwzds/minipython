@@ -10743,6 +10743,9 @@ impl Vm {
             Value::Builtin(name) if name == "str.format_map" => {
                 self.call_str_format_map_method(args, keywords)
             }
+            Value::Builtin(name) if name == "str.__format__" => {
+                self.call_str_dunder_format_method(args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("str.") => {
                 call_str_method(self, &name, args, keywords)
             }
@@ -21896,6 +21899,51 @@ impl Vm {
         };
 
         self.render_str_format(&template, &[], &[], Some(mapping))
+    }
+
+    fn call_str_dunder_format_method(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: unbound method str.__format__() needs an argument".to_string(),
+                );
+            }
+            return Err("TypeError: str.__format__() takes no keyword arguments".to_string());
+        }
+
+        let [receiver, format_spec] = args.as_slice() else {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: unbound method str.__format__() needs an argument".to_string(),
+                );
+            }
+            return Err(format!(
+                "TypeError: str.__format__() takes exactly one argument ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+
+        let Some(receiver_text) = str_method_text(receiver) else {
+            return Err(format!(
+                "TypeError: descriptor '__format__' for 'str' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        };
+        let format_spec = dunder_format_spec_string(format_spec)?;
+        let rendered =
+            apply_format_spec(receiver, receiver_text.as_ref(), false, Some(&format_spec))?;
+        if str_subclass_string(receiver).is_some()
+            && !format_spec.is_empty()
+            && rendered == receiver_text.as_ref()
+        {
+            Ok(receiver.clone())
+        } else {
+            Ok(Value::String(rendered))
+        }
     }
 
     fn render_str_format(
@@ -62185,6 +62233,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                 name,
                 "__add__"
                     | "__eq__"
+                    | "__format__"
                     | "__ge__"
                     | "__gt__"
                     | "__hash__"

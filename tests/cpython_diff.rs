@@ -11448,6 +11448,27 @@ for label, call in [('class-exact', lambda: str.__hash__('abc')), ('class-subcla
 }
 
 #[test]
+fn cpython_string_direct_format_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__format__ direct method behavior",
+        name: "string-direct-format-method",
+        source: r#"class S(str):
+    pass
+for name in ['__format__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    m = getattr(value, '__format__')
+    print(label, type(m).__name__, type(m('')).__name__, m(''), type(m('s')).__name__, m('s'), type(m('>5')).__name__, m('>5'), type(m(S('s'))).__name__, m(S('s')))
+for label, call in [('class-empty', lambda: str.__format__('ab', '')), ('class-subclass-empty', lambda: str.__format__(S('ab'), '')), ('class-subclass-s', lambda: str.__format__(S('ab'), 's')), ('class-align', lambda: str.__format__('ab', '>5')), ('bound-missing', lambda: 'ab'.__format__()), ('bound-extra', lambda: 'ab'.__format__('', 'x')), ('spec-int', lambda: 'ab'.__format__(1)), ('bad-receiver', lambda: str.__format__(1, '')), ('bad-receiver-nonempty', lambda: str.__format__(1, 's'))]:
+    try:
+        result = call()
+        print(label, type(result).__name__, result)
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), getattr(exc, 'args', None))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",
