@@ -56067,6 +56067,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             if matches!(
                 name.as_str(),
                 "object.__delattr__"
+                    | "object.__eq__"
                     | "object.__getattribute__"
                     | "object.__hash__"
                     | "object.__init__"
@@ -72026,6 +72027,28 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__self__" && function_name == "object.__delattr__" =>
         {
+            Err("AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
+                .to_string())
+        }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "object.__eq__" => {
+            Ok(Value::String("object.__eq__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__objclass__" && function_name == "object.__eq__" => {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "object.__eq__" => {
+            Ok(Value::String("Return self==value.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "object.__eq__" =>
+        {
+            Ok(Value::String("($self, value, /)".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "object.__eq__" => {
+            Err("AttributeError: 'wrapper_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
+        Value::Builtin(function_name) if name == "__self__" && function_name == "object.__eq__" => {
             Err("AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
                 .to_string())
         }

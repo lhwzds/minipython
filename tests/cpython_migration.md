@@ -5428,6 +5428,14 @@ Completed in the differential parity harness pass:
   `object.__delattr__.__text_signature__`,
   and `dir(object.__delattr__)` metadata membership without changing attribute deletion
   or error semantics. MiniPython now also exposes
+  `cpython_object_eq_wrapper_descriptor_metadata_subset`, backed by
+  `cpython_object_eq_wrapper_descriptor_metadata_diff_subset`, for
+  `object.__eq__` wrapper_descriptor metadata:
+  `object.__eq__.__qualname__`,
+  `object.__eq__.__objclass__ is object`,
+  `object.__eq__.__text_signature__`,
+  and `dir(object.__eq__)` metadata membership without changing identity comparison behavior
+  or NotImplemented fallback semantics. MiniPython now also exposes
   `cpython_object_dir_descriptor_metadata_subset`, backed by
   `cpython_object_dir_descriptor_metadata_diff_subset`, for
   `object.__dir__` method_descriptor metadata:

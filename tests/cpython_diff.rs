@@ -17205,6 +17205,22 @@ for name in ['__module__', '__self__']:
 }
 
 #[test]
+fn cpython_object_eq_wrapper_descriptor_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public object.__eq__ wrapper descriptor metadata",
+        name: "object-eq-wrapper-descriptor-metadata",
+        source: r#"d = object.__eq__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is object, d.__doc__, d.__text_signature__)
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+for name in ['__module__', '__self__']:
+    try:
+        print(name, getattr(d, name))
+    except Exception as error:
+        print(name, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_object_dir_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public object.__dir__ method descriptor metadata",
