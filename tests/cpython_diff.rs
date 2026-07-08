@@ -11581,6 +11581,21 @@ print('calls', str.__format__('ab', ''), str.__format__(left, 's'), 'ab'.__forma
 }
 
 #[test]
+fn cpython_string_direct_getattribute_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__getattribute__ dir surface",
+        name: "string-direct-getattribute-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__getattribute__' in dir(value), hasattr(value, '__getattribute__'))
+print('descriptor', type(str.__getattribute__).__name__, type('ab'.__getattribute__).__name__, type(left.__getattribute__).__name__)
+print('calls', str.__getattribute__('ab', '__class__') is str, str.__getattribute__(left, '__class__') is S, 'ab'.__getattribute__('upper')(), type(left.__getattribute__('upper')).__name__, left.__getattribute__('upper')())"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
