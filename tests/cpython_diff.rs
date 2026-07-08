@@ -14059,6 +14059,30 @@ fn cpython_base_exception_bound_method_class_mutation_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_module_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public __module__ mutation behavior",
+        name: "base-exception-bound-method-module-mutation-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for helper in ['add_note', 'with_traceback']:
+        obj = getattr(exc, helper)
+        label = exc.__class__.__name__ + '-' + helper
+        print(label, 'initial', type(obj.__module__).__name__, repr(obj.__module__), '__module__' in dir(obj))
+        direct_set = setattr(obj, '__module__', 'custom')
+        getattribute_module = obj.__getattribute__('__module__')
+        fresh_after_direct = getattr(exc, helper).__module__
+        print(label, 'direct-set', type(direct_set).__name__, repr(direct_set), type(obj.__module__).__name__, repr(obj.__module__), type(getattribute_module).__name__, repr(getattribute_module), type(fresh_after_direct).__name__, repr(fresh_after_direct))
+        direct_del = delattr(obj, '__module__')
+        print(label, 'direct-del', type(direct_del).__name__, repr(direct_del), type(obj.__module__).__name__, repr(obj.__module__))
+        wrapper_set = obj.__setattr__('__module__', 123)
+        fresh_after_wrapper = getattr(exc, helper).__module__
+        print(label, 'wrapper-set', type(wrapper_set).__name__, repr(wrapper_set), type(obj.__module__).__name__, repr(obj.__module__), type(fresh_after_wrapper).__name__, repr(fresh_after_wrapper))
+        wrapper_del = obj.__delattr__('__module__')
+        print(label, 'wrapper-del', type(wrapper_del).__name__, repr(wrapper_del), type(obj.__module__).__name__, repr(obj.__module__))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_init_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __init__ wrapper surface",

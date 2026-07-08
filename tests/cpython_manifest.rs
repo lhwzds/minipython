@@ -49321,6 +49321,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_missing_attribute_subset",
             "cpython_base_exception_bound_method_attribute_mutation_subset",
             "cpython_base_exception_bound_method_class_mutation_subset",
+            "cpython_base_exception_bound_method_module_mutation_subset",
             "cpython_base_exception_bound_method_getattribute_wrapper_subset",
             "cpython_base_exception_bound_method_init_wrapper_subset",
             "cpython_base_exception_bound_method_init_subclass_subset",
@@ -49482,6 +49483,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_missing_attribute_diff_subset",
         "cpython_base_exception_bound_method_attribute_mutation_diff_subset",
         "cpython_base_exception_bound_method_class_mutation_diff_subset",
+        "cpython_base_exception_bound_method_module_mutation_diff_subset",
         "cpython_base_exception_bound_method_getattribute_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_subclass_diff_subset",
@@ -62804,6 +62806,79 @@ fn base_exception_bound_method_class_mutation_subset_has_focused_diff_evidence()
                 && document.contains("BaseException helper bound method `__class__` mutation")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __class__ mutation evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_module_mutation_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_module_mutation_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "obj.__module__",
+        "setattr(obj, '__module__', 'custom')",
+        "obj.__getattribute__('__module__')",
+        "getattr(exc, helper).__module__",
+        "delattr(obj, '__module__')",
+        "obj.__setattr__('__module__', 123)",
+        "obj.__delattr__('__module__')",
+        "IndexError-with_traceback wrapper-del NoneType None NoneType None",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __module__ mutation subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_module_mutation_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __module__ mutation behavior",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "obj.__module__",
+        "setattr(obj, '__module__', 'custom')",
+        "obj.__getattribute__('__module__')",
+        "getattr(exc, helper).__module__",
+        "delattr(obj, '__module__')",
+        "obj.__setattr__('__module__', 123)",
+        "obj.__delattr__('__module__')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __module__ mutation CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "EXCEPTION_BOUND_METHOD_MODULES",
+        "fn exception_bound_method_module_value(",
+        "fn set_exception_bound_method_module_value(",
+        "fn delete_exception_bound_method_module_value(",
+        "set_exception_bound_method_module_value(identity, value.clone())",
+        "delete_exception_bound_method_module_value(identity)",
+        "set_exception_bound_method_module_value(&identity, value)",
+        "delete_exception_bound_method_module_value(&identity)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __module__ mutation implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_module_mutation_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_module_mutation_diff_subset")
+                && document.contains("BaseException helper bound method `__module__` mutation")
+                && document.contains("fresh bound method objects"),
+            "focused BaseException helper bound method __module__ mutation evidence must be documented in coverage and migration notes"
         );
     }
 }

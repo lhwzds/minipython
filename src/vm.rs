@@ -120,6 +120,7 @@ thread_local! {
     static JSON_BUILTIN_DEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static EXCEPTION_NOTES: RefCell<HashMap<usize, (Rc<()>, Value)>> = RefCell::new(HashMap::new());
+    static EXCEPTION_BOUND_METHOD_MODULES: RefCell<HashMap<usize, (Rc<()>, Value)>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
 
@@ -19215,7 +19216,7 @@ impl Vm {
         let Value::BoundMethod {
             function,
             receiver: method_receiver,
-            ..
+            identity,
         } = receiver
         else {
             return Err(
@@ -19236,7 +19237,10 @@ impl Vm {
         };
         let name = attribute_name_arg(name)?;
         match name.as_str() {
-            "__module__" => Ok(Value::None),
+            "__module__" => {
+                delete_exception_bound_method_module_value(identity);
+                Ok(Value::None)
+            }
             "__class__" => Err("TypeError: can't delete __class__ attribute".to_string()),
             "__call__" => Err(
                 "AttributeError: 'builtin_function_or_method' object attribute '__call__' is read-only"
@@ -19269,7 +19273,7 @@ impl Vm {
         let Value::BoundMethod {
             function,
             receiver: method_receiver,
-            ..
+            identity,
         } = receiver
         else {
             return Err(
@@ -19290,7 +19294,10 @@ impl Vm {
         };
         let name = attribute_name_arg(name)?;
         match name.as_str() {
-            "__module__" => Ok(Value::None),
+            "__module__" => {
+                set_exception_bound_method_module_value(identity, value.clone());
+                Ok(Value::None)
+            }
             "__class__" => Err(exception_helper_bound_method_class_assignment_error(value)),
             "__call__" => Err(
                 "AttributeError: 'builtin_function_or_method' object attribute '__call__' is read-only"
@@ -67667,7 +67674,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__module__"
                 if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
             {
-                Ok(Value::None)
+                Ok(exception_bound_method_module_value(&identity))
             }
             "__doc__"
                 if matches!(function.as_ref(), Value::Builtin(name) if exception_bound_method_name(name, &receiver).is_some()) =>
@@ -72773,6 +72780,16 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             }
             store_function_custom_attribute(&attrs, name, value)
         }
+        Value::BoundMethod {
+            function,
+            receiver,
+            identity,
+        } if name == "__module__"
+            && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref()) =>
+        {
+            set_exception_bound_method_module_value(&identity, value);
+            Ok(())
+        }
         Value::RecursiveReprWrapper { attrs, .. } => {
             if name == "__dict__" {
                 return set_function_dict(&attrs, value);
@@ -73243,6 +73260,16 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 return Err("TypeError: __type_params__ must be set to a tuple".to_string());
             }
             delete_function_custom_attribute(&attrs, name)
+        }
+        Value::BoundMethod {
+            function,
+            receiver,
+            identity,
+        } if name == "__module__"
+            && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref()) =>
+        {
+            delete_exception_bound_method_module_value(&identity);
+            Ok(())
         }
         Value::RecursiveReprWrapper { attrs, .. } => {
             if name == "__dict__" {
@@ -75801,6 +75828,32 @@ fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
 
 fn exception_identity_key(identity: &Rc<()>) -> usize {
     Rc::as_ptr(identity) as usize
+}
+
+fn exception_bound_method_module_value(identity: &Rc<()>) -> Value {
+    EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
+        modules
+            .borrow()
+            .get(&exception_identity_key(identity))
+            .map(|(_, value)| value.clone())
+            .unwrap_or(Value::None)
+    })
+}
+
+fn set_exception_bound_method_module_value(identity: &Rc<()>, value: Value) {
+    EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
+        modules
+            .borrow_mut()
+            .insert(exception_identity_key(identity), (identity.clone(), value));
+    });
+}
+
+fn delete_exception_bound_method_module_value(identity: &Rc<()>) {
+    EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
+        modules
+            .borrow_mut()
+            .remove(&exception_identity_key(identity));
+    });
 }
 
 fn exception_notes_value(identity: &Rc<()>) -> Option<Value> {
