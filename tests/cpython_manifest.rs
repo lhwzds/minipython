@@ -70222,6 +70222,99 @@ fn object_format_descriptor_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn object_repr_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_repr_wrapper_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__repr__",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__",
+        "d.__text_signature__",
+        "str.__repr__ is d",
+        "type(str.__repr__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor wrapper_descriptor __repr__ object.__repr__ True Return repr(self). ($self, /)",
+        "str-separate False wrapper_descriptor",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'wrapper_descriptor' object has no attribute '__module__'",
+        "'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object repr wrapper descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_repr_wrapper_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__repr__ wrapper descriptor metadata",
+        "object-repr-wrapper-descriptor-metadata",
+        "d = object.__repr__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "str.__repr__ is d",
+        "type(str.__repr__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object repr wrapper descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"object.__repr__\"",
+        "wrapper_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__repr__\"",
+        "name == \"__objclass__\" && function_name == \"object.__repr__\"",
+        "name == \"__doc__\" && function_name == \"object.__repr__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__repr__\"",
+        "name == \"__module__\" && function_name == \"object.__repr__\"",
+        "name == \"__self__\" && function_name == \"object.__repr__\"",
+        "\"object.__repr__\"",
+        "\"Return repr(self).\"",
+        "\"($self, /)\"",
+        "'wrapper_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object repr wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_repr_wrapper_descriptor_metadata_subset",
+            "cpython_object_repr_wrapper_descriptor_metadata_diff_subset",
+            "`object.__repr__.__qualname__`",
+            "`object.__repr__.__objclass__ is object`",
+            "`object.__repr__.__text_signature__`",
+            "`str.__repr__ is object.__repr__`",
+            "`dir(object.__repr__)`",
+            "wrapper_descriptor metadata",
+            "without depending on object address rendering",
+            "object.__repr__ call semantics",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object repr wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_sizeof_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
