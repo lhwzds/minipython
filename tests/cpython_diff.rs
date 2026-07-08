@@ -11380,6 +11380,21 @@ print('calls', str.__contains__('abc', 'b'), str.__contains__(left, S('a')), 'ab
 }
 
 #[test]
+fn cpython_string_direct_getitem_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__getitem__ dir surface",
+        name: "string-direct-getitem-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('abc')
+for label, value in [('type', str), ('subtype', S), ('exact', 'abc'), ('sub', left)]:
+    print(label, '__getitem__' in dir(value), hasattr(value, '__getitem__'))
+print('descriptor', type(str.__getitem__).__name__, type('abc'.__getitem__).__name__, type(left.__getitem__).__name__)
+print('calls', str.__getitem__('abc', 1), str.__getitem__(left, 0), 'abc'.__getitem__(slice(1, 3)), left.__getitem__(-1))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",

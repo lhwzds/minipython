@@ -54775,6 +54775,77 @@ fn string_direct_contains_dir_surface_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_getitem_dir_surface_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_getitem_dir_surface_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('abc')",
+        "for label, value in [('type', str), ('subtype', S), ('exact', 'abc'), ('sub', left)]:",
+        "'__getitem__' in dir(value)",
+        "hasattr(value, '__getitem__')",
+        "type(str.__getitem__).__name__",
+        "type('abc'.__getitem__).__name__",
+        "type(left.__getitem__).__name__",
+        "str.__getitem__('abc', 1)",
+        "str.__getitem__(left, 0)",
+        "'abc'.__getitem__(slice(1, 3))",
+        "left.__getitem__(-1)",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"descriptor wrapper_descriptor method-wrapper method-wrapper\"",
+        "\"calls b a bc c\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str getitem dir surface subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-getitem-dir-surface");
+    for required in [
+        "class S(str):",
+        "left = S('abc')",
+        "'__getitem__' in dir(value)",
+        "hasattr(value, '__getitem__')",
+        "type(str.__getitem__).__name__",
+        "type('abc'.__getitem__).__name__",
+        "type(left.__getitem__).__name__",
+        "str.__getitem__('abc', 1)",
+        "str.__getitem__(left, 0)",
+        "'abc'.__getitem__(slice(1, 3))",
+        "left.__getitem__(-1)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str getitem dir surface CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["names.push(\"__getitem__\".to_string());"] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str getitem dir surface implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__getitem__` dir surface")
+                && document.contains("cpython_string_direct_getitem_dir_surface_subset")
+                && document.contains("cpython_string_direct_getitem_dir_surface_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str getitem dir surface evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
