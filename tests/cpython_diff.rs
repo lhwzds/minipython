@@ -16323,6 +16323,13 @@ fn cpython_format_conversion_repr_custom_dunder_diff_subset() {
         return 'format-é'
 value = FormatRepr()
 print('format-repr', f'{value!r}', f'{value!a}', '{!r}'.format(value), '{!a}'.format(value))
+class ReprSub(str):
+    pass
+class ReprSubReturn:
+    def __repr__(self):
+        return ReprSub('sub-é')
+sub_value = ReprSubReturn()
+print('repr-subclass-result', type(f'{sub_value!r}').__name__, f'{sub_value!r}', type(f'{sub_value!a}').__name__, f'{sub_value!a}', type('{!r}'.format(sub_value)).__name__, '{!r}'.format(sub_value), type('{!a}'.format(sub_value)).__name__, '{!a}'.format(sub_value))
 class BadReturn:
     def __repr__(self):
         return 42

@@ -12536,8 +12536,9 @@ Completed in the format conversion repr protocol pass:
 - Added `cpython_format_conversion_repr_custom_dunder_subset`, backed by
   `cpython_format_conversion_repr_custom_dunder_diff_subset`, so f-string and
   `str.format` `!r` / `!a` conversion dispatch through class-level `__repr__`,
-  preserve CPython's custom repr text, ASCII-escapes `!a`, and preserve
-  non-string-returning and raising `__repr__` paths, without expanding `__repr__` str-subclass return normalization.
+  preserve CPython's custom repr text, normalize str-subclass `__repr__` results
+  to formatted `str` output, ASCII-escapes `!a`, and preserve
+  non-string-returning and raising `__repr__` paths, without expanding `repr()` / `ascii()` / old-style `%r` / `%a` str-subclass result identity.
 
 Completed in the integer digit-limit runtime pass:
 

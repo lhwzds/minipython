@@ -66412,6 +66412,9 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
         "f'{value!a}'",
         "'{!r}'.format(value)",
         "'{!a}'.format(value)",
+        "class ReprSub(str):",
+        "return ReprSub('sub-é')",
+        "repr-subclass-result",
         "class BadReturn:",
         "return 42",
         "class Boom:",
@@ -66435,6 +66438,9 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
         "f'{value!a}'",
         "'{!r}'.format(value)",
         "'{!a}'.format(value)",
+        "class ReprSub(str):",
+        "return ReprSub('sub-é')",
+        "repr-subclass-result",
         "class BadReturn:",
         "class Boom:",
         "format-repr-boom",
@@ -66447,6 +66453,7 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
 
     for required in [
         "\"format-repr format-é format-\\\\xe9 format-é format-\\\\xe9\"",
+        "\"repr-subclass-result str sub-é str sub-\\\\xe9 str sub-é str sub-\\\\xe9\"",
         "\"f-r-bad TypeError __repr__ returned non-string (type int)\"",
         "\"f-a-bad TypeError __repr__ returned non-string (type int)\"",
         "\"format-r-bad TypeError __repr__ returned non-string (type int)\"",
@@ -66469,6 +66476,8 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
         "fn ascii_repr_value_for_vm(vm: Option<&mut Vm>, value: &Value) -> Result<String, String>",
         "fn repr_value(&mut self, value: &Value) -> Result<String, String>",
         "self.stdlib_call_repr_method(value)?",
+        "value if str_subclass_string(&value).is_some()",
+        "str_subclass_string(&value).expect(\"str subclass storage exists after guard\")",
         "TypeError: __repr__ returned non-string (type {})",
         "repr_value_checked(value)",
         "ascii_escape_text(&repr_value_for_vm(vm, value)?)",
@@ -66486,9 +66495,10 @@ fn format_conversion_repr_custom_dunder_subset_has_focused_diff_evidence() {
             "f-string and",
             "`str.format` `!r` / `!a`",
             "class-level `__repr__`",
+            "str-subclass `__repr__` results",
             "ASCII-escapes `!a`",
             "non-string-returning and raising `__repr__` paths",
-            "without expanding `__repr__` str-subclass return normalization",
+            "without expanding `repr()` / `ascii()` / old-style `%r` / `%a` str-subclass result identity",
         ] {
             assert!(
                 document.contains(required),

@@ -22062,6 +22062,10 @@ impl Vm {
         if let Some(result) = self.stdlib_call_repr_method(value)? {
             return match result {
                 Value::String(value) | Value::IdentityString { value, .. } => Ok(value),
+                value if str_subclass_string(&value).is_some() => {
+                    Ok(str_subclass_string(&value)
+                        .expect("str subclass storage exists after guard"))
+                }
                 value => Err(format!(
                     "TypeError: __repr__ returned non-string (type {})",
                     type_name(&value)
