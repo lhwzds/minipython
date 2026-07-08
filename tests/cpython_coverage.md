@@ -10254,6 +10254,17 @@ without adding general custom encoder/decoder class support.
   `dir(object.__repr__)` metadata membership without depending on object address rendering
   or changing object.__repr__ call semantics.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_str_wrapper_descriptor_metadata_subset` with direct CPython
+  output parity in
+  `cpython_object_str_wrapper_descriptor_metadata_diff_subset`, covering
+  `object.__str__` wrapper_descriptor metadata:
+  `object.__str__.__qualname__`,
+  `object.__str__.__objclass__ is object`,
+  `object.__str__.__text_signature__`,
+  `str.__str__ is object.__str__` remaining false, and
+  `dir(object.__str__)` metadata membership without changing object.__str__ call semantics
+  or its delegation through repr.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_sizeof_descriptor_metadata_subset` with direct CPython output
   parity in `cpython_object_sizeof_descriptor_metadata_diff_subset`, covering
   `object.__sizeof__` method_descriptor metadata:

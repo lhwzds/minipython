@@ -5431,6 +5431,15 @@ Completed in the differential parity harness pass:
   `str.__repr__ is object.__repr__` remaining false, and
   `dir(object.__repr__)` metadata membership without depending on object address rendering
   or changing object.__repr__ call semantics. MiniPython now also exposes
+  `cpython_object_str_wrapper_descriptor_metadata_subset`, backed by
+  `cpython_object_str_wrapper_descriptor_metadata_diff_subset`, for
+  `object.__str__` wrapper_descriptor metadata:
+  `object.__str__.__qualname__`,
+  `object.__str__.__objclass__ is object`,
+  `object.__str__.__text_signature__`,
+  `str.__str__ is object.__str__` remaining false, and
+  `dir(object.__str__)` metadata membership without changing object.__str__ call semantics
+  or its delegation through repr. MiniPython now also exposes
   `cpython_object_sizeof_descriptor_metadata_subset`, backed by
   `cpython_object_sizeof_descriptor_metadata_diff_subset`, for
   `object.__sizeof__` method_descriptor metadata:
