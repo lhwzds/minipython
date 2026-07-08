@@ -56005,6 +56005,86 @@ fn string_direct_dict_dir_hiding_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_new_binding_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_new_binding_subset");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:",
+        "'__new__' in dir(value)",
+        "hasattr(value, '__new__')",
+        "type(str.__new__).__name__",
+        "type('ab'.__new__).__name__",
+        "type(left.__new__).__name__",
+        "str.__new__.__name__",
+        "'ab'.__new__.__name__",
+        "left.__new__.__name__",
+        "str.__new__(str, 'xy')",
+        "'ab'.__new__(str, 'uv')",
+        "type(left.__new__(S, 'qr')).__name__",
+        "left.__new__(S, 'qr')",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"descriptor builtin_function_or_method builtin_function_or_method builtin_function_or_method\"",
+        "\"names __new__ __new__ __new__\"",
+        "\"calls xy uv S qr\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str new binding subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-new-binding");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__new__' in dir(value)",
+        "hasattr(value, '__new__')",
+        "type(str.__new__).__name__",
+        "type('ab'.__new__).__name__",
+        "type(left.__new__).__name__",
+        "str.__new__.__name__",
+        "'ab'.__new__.__name__",
+        "left.__new__.__name__",
+        "str.__new__(str, 'xy')",
+        "'ab'.__new__(str, 'uv')",
+        "type(left.__new__(S, 'qr')).__name__",
+        "left.__new__(S, 'qr')",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str new binding CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "names.push(\"__new__\".to_string());",
+        "\"__new__\" => Some(Value::Builtin(\"str.__new__\".to_string()))",
+        "Value::String(_) | Value::IdentityString { .. } if name == \"__new__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str new binding implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__new__` binding")
+                && document.contains("cpython_string_direct_new_binding_subset")
+                && document.contains("cpython_string_direct_new_binding_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str new binding evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

@@ -10550,6 +10550,17 @@ Completed in the str direct `__dict__` dir hiding pass:
   subtype mappingproxy behavior, host IO, network, process, C ABI, or full
   stdlib scope.
 
+Completed in the str direct `__new__` binding pass:
+
+- Added `cpython_string_direct_new_binding_subset` plus
+  `cpython_string_direct_new_binding_diff_subset`, covering `__new__`
+  visibility through `dir(str)`, str subclasses, exact str instances, and str
+  subclass instances, plus direct attribute lookup returning the existing
+  `str.__new__` builtin constructor path for exact str and str subclass
+  results.
+- This stays inside core string/object-model behavior and does not widen
+  pickle, host IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__eq__` / `__ne__` methods pass:
 
 - Added `cpython_string_direct_equality_methods_subset` plus

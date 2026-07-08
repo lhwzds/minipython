@@ -11645,6 +11645,22 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_string_direct_new_binding_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__new__ binding",
+        name: "string-direct-new-binding",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__new__' in dir(value), hasattr(value, '__new__'))
+print('descriptor', type(str.__new__).__name__, type('ab'.__new__).__name__, type(left.__new__).__name__)
+print('names', str.__new__.__name__, 'ab'.__new__.__name__, left.__new__.__name__)
+print('calls', str.__new__(str, 'xy'), 'ab'.__new__(str, 'uv'), type(left.__new__(S, 'qr')).__name__, left.__new__(S, 'qr'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",

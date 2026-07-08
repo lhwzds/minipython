@@ -57510,6 +57510,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__mod__".to_string());
         names.push("__mul__".to_string());
         names.push("__ne__".to_string());
+        names.push("__new__".to_string());
         names.push("__repr__".to_string());
         names.push("__rmod__".to_string());
         names.push("__rmul__".to_string());
@@ -59689,14 +59690,17 @@ fn str_subclass_string(value: &Value) -> Option<String> {
 }
 
 fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value> {
-    if str_subclass_string(&receiver).is_some() && is_immutable_sequence_type_method("str", name) {
-        Some(Value::BoundMethod {
+    if str_subclass_string(&receiver).is_none() {
+        return None;
+    }
+    match name {
+        "__new__" => Some(Value::Builtin("str.__new__".to_string())),
+        name if is_immutable_sequence_type_method("str", name) => Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("str.{name}"))),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
-        })
-    } else {
-        None
+        }),
+        _ => None,
     }
 }
 
@@ -66316,6 +66320,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .expect("str builtin type doc exists")
                 .to_string(),
         )),
+        Value::String(_) | Value::IdentityString { .. } if name == "__new__" => {
+            Ok(Value::Builtin("str.__new__".to_string()))
+        }
         Value::String(value) | Value::IdentityString { value, .. } if name == "__setattr__" => {
             Ok(object_setattr_bound_method(Value::String(value)))
         }
