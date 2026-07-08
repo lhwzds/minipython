@@ -11395,6 +11395,21 @@ print('calls', str.__getitem__('abc', 1), str.__getitem__(left, 0), 'abc'.__geti
 }
 
 #[test]
+fn cpython_string_direct_len_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__len__ dir surface",
+        name: "string-direct-len-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('abc')
+for label, value in [('type', str), ('subtype', S), ('exact', 'abc'), ('sub', left)]:
+    print(label, '__len__' in dir(value), hasattr(value, '__len__'))
+print('descriptor', type(str.__len__).__name__, type('abc'.__len__).__name__, type(left.__len__).__name__)
+print('calls', str.__len__('abc'), str.__len__(left), 'abc'.__len__(), left.__len__())"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
