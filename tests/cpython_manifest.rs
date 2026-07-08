@@ -55242,6 +55242,106 @@ fn string_direct_format_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_getattribute_method_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_getattribute_method_subset",
+    );
+    for required in [
+        "class S(str):",
+        "for name in ['__getattribute__']:",
+        "m = getattr(value, '__getattribute__')",
+        "m('__class__') is type(value)",
+        "type(m('upper')).__name__",
+        "m('upper')()",
+        "lambda: str.__getattribute__('ab', '__class__') is str",
+        "lambda: str.__getattribute__(S('ab'), '__class__') is S",
+        "lambda: str.__getattribute__('ab', 'upper')()",
+        "lambda: 'ab'.__getattribute__()",
+        "lambda: 'ab'.__getattribute__('upper', 'x')",
+        "lambda: 'ab'.__getattribute__(1)",
+        "lambda: 'ab'.__getattribute__('missing_attr')",
+        "lambda: str.__getattribute__(1, '__class__')",
+        "\"class __getattribute__ wrapper_descriptor\"",
+        "\"exact method-wrapper type True builtin_function_or_method AB\"",
+        "\"subclass method-wrapper type True builtin_function_or_method AB\"",
+        "\"class-class bool True\"",
+        "\"class-subclass-class bool True\"",
+        "\"class-upper str AB\"",
+        "\"bound-missing TypeError expected 1 argument, got 0",
+        "\"bound-extra TypeError expected 1 argument, got 2",
+        "\"name-int TypeError attribute name must be string, not 'int'",
+        "\"missing AttributeError 'str' object has no attribute 'missing_attr'",
+        "\"bad-receiver type <class 'int'>\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str getattribute subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-getattribute-method");
+    for required in [
+        "class S(str):",
+        "for name in ['__getattribute__']:",
+        "m = getattr(value, '__getattribute__')",
+        "m('__class__') is type(value)",
+        "type(m('upper')).__name__",
+        "m('upper')()",
+        "lambda: str.__getattribute__('ab', '__class__') is str",
+        "lambda: str.__getattribute__(S('ab'), '__class__') is S",
+        "lambda: str.__getattribute__('ab', 'upper')()",
+        "lambda: 'ab'.__getattribute__()",
+        "lambda: 'ab'.__getattribute__('upper', 'x')",
+        "lambda: 'ab'.__getattribute__(1)",
+        "lambda: 'ab'.__getattribute__('missing_attr')",
+        "lambda: str.__getattribute__(1, '__class__')",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str getattribute CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    assert!(
+        str_wrapper_block.contains("\"__getattribute__\""),
+        "str wrapper descriptor branch must include `__getattribute__`"
+    );
+
+    for required in [
+        "Value::Builtin(name) if name == \"str.__getattribute__\"",
+        "self.call_object_getattribute(args, keywords)",
+        "| \"__getattribute__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str getattribute implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__getattribute__` method")
+                && document.contains("cpython_string_direct_getattribute_method_subset")
+                && document.contains("cpython_string_direct_getattribute_method_diff_subset"),
+            "direct str getattribute evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

@@ -10405,6 +10405,18 @@ Completed in the str direct `__format__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__getattribute__` method pass:
+
+- Added `cpython_string_direct_getattribute_method_subset` plus
+  `cpython_string_direct_getattribute_method_diff_subset`, covering the
+  inherited direct `__getattribute__` wrapper on exact `str` and `str` subclass
+  instances, class-level `wrapper_descriptor` visibility, bound
+  `method-wrapper` behavior, ordinary lookup for `__class__` and `upper`,
+  direct class calls including non-str receivers, and representative
+  argument/name/missing-attribute error paths.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus

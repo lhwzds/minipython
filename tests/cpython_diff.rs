@@ -11469,6 +11469,27 @@ for label, call in [('class-empty', lambda: str.__format__('ab', '')), ('class-s
 }
 
 #[test]
+fn cpython_string_direct_getattribute_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__getattribute__ direct method behavior",
+        name: "string-direct-getattribute-method",
+        source: r#"class S(str):
+    pass
+for name in ['__getattribute__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    m = getattr(value, '__getattribute__')
+    print(label, type(m).__name__, type(m('__class__')).__name__, m('__class__') is type(value), type(m('upper')).__name__, m('upper')())
+for label, call in [('class-class', lambda: str.__getattribute__('ab', '__class__') is str), ('class-subclass-class', lambda: str.__getattribute__(S('ab'), '__class__') is S), ('class-upper', lambda: str.__getattribute__('ab', 'upper')()), ('bound-missing', lambda: 'ab'.__getattribute__()), ('bound-extra', lambda: 'ab'.__getattribute__('upper', 'x')), ('name-int', lambda: 'ab'.__getattribute__(1)), ('missing', lambda: 'ab'.__getattribute__('missing_attr')), ('bad-receiver', lambda: str.__getattribute__(1, '__class__'))]:
+    try:
+        result = call()
+        print(label, type(result).__name__, result)
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc), getattr(exc, 'args', None))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

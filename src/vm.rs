@@ -10260,6 +10260,9 @@ impl Vm {
             Value::Builtin(name) if name == "object.__getattribute__" => {
                 self.call_object_getattribute(args, keywords)
             }
+            Value::Builtin(name) if name == "str.__getattribute__" => {
+                self.call_object_getattribute(args, keywords)
+            }
             Value::Builtin(name) if name == "object.__getstate__" => {
                 self.call_object_getstate(args, keywords)
             }
@@ -62235,6 +62238,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                     | "__eq__"
                     | "__format__"
                     | "__ge__"
+                    | "__getattribute__"
                     | "__gt__"
                     | "__hash__"
                     | "__le__"
@@ -74285,6 +74289,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__contains__"
                 | "__eq__"
                 | "__ge__"
+                | "__getattribute__"
                 | "__gt__"
                 | "__hash__"
                 | "__getitem__"
