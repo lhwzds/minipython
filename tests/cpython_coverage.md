@@ -10271,6 +10271,15 @@ without adding general custom encoder/decoder class support.
   and `dir(object.__ne__)` metadata membership without changing inequality behavior
   or NotImplemented fallback semantics.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_lt_wrapper_descriptor_metadata_subset` with direct CPython
+  output parity in `cpython_object_lt_wrapper_descriptor_metadata_diff_subset`,
+  covering `object.__lt__` wrapper_descriptor metadata:
+  `object.__lt__.__qualname__`,
+  `object.__lt__.__objclass__ is object`,
+  `object.__lt__.__text_signature__`,
+  and `dir(object.__lt__)` metadata membership without changing ordering comparison behavior
+  or NotImplemented fallback semantics.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_dir_descriptor_metadata_subset` with direct CPython output
   parity in `cpython_object_dir_descriptor_metadata_diff_subset`, covering
   `object.__dir__` method_descriptor metadata:
