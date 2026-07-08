@@ -40256,7 +40256,22 @@ print('My name is {0[name]}'.format({'name': 'Fred'}))
 class C:
     def __init__(self):
         self._x = 20
-print('{foo._x}'.format_map({'foo': C()}))"#,
+print('{foo._x}'.format_map({'foo': C()}))
+class S(str):
+    pass
+class F:
+    def __format__(self, spec):
+        return 'fmt-' + spec
+for label, expr in [
+    ('format-visible', lambda: hasattr(S('{}'), 'format')),
+    ('format-bound-type', lambda: type(S('{}').format).__name__),
+    ('format-result', lambda: S('{:x}').format(F())),
+    ('format-map-visible', lambda: hasattr(S('{x}'), 'format_map')),
+    ('format-map-bound-type', lambda: type(S('{x}').format_map).__name__),
+    ('format-map-result', lambda: S('{x:y}').format_map({'x': F()})),
+]:
+    value = expr()
+    print(label, type(value).__name__, value)"#,
         },
         DiffCase {
             origin: "Lib/test/test_format.py numeric grouping option rendering",

@@ -54347,6 +54347,71 @@ fn format_custom_dunder_preserves_str_subclass_results_has_focused_diff_evidence
 }
 
 #[test]
+fn string_format_methods_accept_str_subclass_receivers_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_format_and_format_map_subset",
+    );
+    for required in [
+        "class S(str):",
+        "('format-visible', lambda: hasattr(S('{}'), 'format'))",
+        "('format-bound-type', lambda: type(S('{}').format).__name__)",
+        "('format-result', lambda: S('{:x}').format(F()))",
+        "('format-map-visible', lambda: hasattr(S('{x}'), 'format_map'))",
+        "('format-map-bound-type', lambda: type(S('{x}').format_map).__name__)",
+        "('format-map-result', lambda: S('{x:y}').format_map({'x': F()}))",
+        "\"format-visible bool True\"",
+        "\"format-bound-type str builtin_function_or_method\"",
+        "\"format-result str fmt-x\"",
+        "\"format-map-visible bool True\"",
+        "\"format-map-bound-type str builtin_function_or_method\"",
+        "\"format-map-result str fmt-y\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "str subclass format/format_map subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-format-and-format-map");
+    for required in [
+        "class S(str):",
+        "('format-visible', lambda: hasattr(S('{}'), 'format'))",
+        "('format-bound-type', lambda: type(S('{}').format).__name__)",
+        "('format-result', lambda: S('{:x}').format(F()))",
+        "('format-map-visible', lambda: hasattr(S('{x}'), 'format_map'))",
+        "('format-map-bound-type', lambda: type(S('{x}').format_map).__name__)",
+        "('format-map-result', lambda: S('{x:y}').format_map({'x': F()}))",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "str subclass format/format_map CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value>",
+        "matches!(name, \"format\" | \"format_map\")",
+        "if let Some(value) = str_subclass_attribute(instance.clone(), name)",
+        "value if str_subclass_string(value).is_some()",
+        "Value::Builtin(format!(\"str.{name}\"))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str subclass format/format_map implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str subclass `format` / `format_map` bound methods")
+                && document.contains("str-subclass receiver"),
+            "str subclass format/format_map evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

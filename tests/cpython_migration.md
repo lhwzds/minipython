@@ -10318,6 +10318,9 @@ Completed in the string format/format_map method pass:
 - Added first-pass VM support for `str.format()` and `str.format_map()` by
   parsing replacement fields and reusing the existing VM `format()` / f-string
   formatting path for value rendering.
+- Added str subclass `format` / `format_map` bound methods on a str-subclass receiver,
+  keeping CPython's inherited string method lookup for this supported formatting surface
+  without widening host IO, network, process, C ABI, or full stdlib scope.
 
 Completed in the format grouping-option error pass:
 

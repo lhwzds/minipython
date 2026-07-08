@@ -15344,6 +15344,10 @@ impl Vm {
                     return Ok(value);
                 }
 
+                if let Some(value) = str_subclass_attribute(instance.clone(), name) {
+                    return Ok(value);
+                }
+
                 if let Some(value) = bytes_subclass_attribute(instance.clone(), name) {
                     return Ok(value);
                 }
@@ -21848,11 +21852,21 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let [Value::String(template), positional @ ..] = args.as_slice() else {
+        let [receiver, positional @ ..] = args.as_slice() else {
             return Err("TypeError: format() expected a str receiver".to_string());
         };
+        let template = match receiver {
+            Value::String(template)
+            | Value::IdentityString {
+                value: template, ..
+            } => template.clone(),
+            value if str_subclass_string(value).is_some() => {
+                str_subclass_string(value).expect("str subclass storage exists after guard")
+            }
+            _ => return Err("TypeError: format() expected a str receiver".to_string()),
+        };
 
-        self.render_str_format(template, positional, &keywords, None)
+        self.render_str_format(&template, positional, &keywords, None)
     }
 
     fn call_str_format_map_method(
@@ -21863,14 +21877,24 @@ impl Vm {
         if !keywords.is_empty() {
             return Err("TypeError: str.format_map() takes no keyword arguments".to_string());
         }
-        let [Value::String(template), mapping] = args.as_slice() else {
+        let [receiver, mapping] = args.as_slice() else {
             return Err(format!(
                 "TypeError: format_map() expected 1 argument, got {}",
                 method_arg_count(&args)
             ));
         };
+        let template = match receiver {
+            Value::String(template)
+            | Value::IdentityString {
+                value: template, ..
+            } => template.clone(),
+            value if str_subclass_string(value).is_some() => {
+                str_subclass_string(value).expect("str subclass storage exists after guard")
+            }
+            _ => return Err("TypeError: format_map() expected a str receiver".to_string()),
+        };
 
-        self.render_str_format(template, &[], &[], Some(mapping))
+        self.render_str_format(&template, &[], &[], Some(mapping))
     }
 
     fn render_str_format(
@@ -59499,6 +59523,18 @@ fn str_subclass_string(value: &Value) -> Option<String> {
     match fields.borrow().get(STR_SUBCLASS_STORAGE_FIELD).cloned() {
         Some(Value::String(value)) => Some(value),
         _ => None,
+    }
+}
+
+fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value> {
+    if str_subclass_string(&receiver).is_some() && matches!(name, "format" | "format_map") {
+        Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("str.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        })
+    } else {
+        None
     }
 }
 
