@@ -10115,6 +10115,15 @@ without adding general custom encoder/decoder class support.
   nested function qualname display, `__name__` versus `__qualname__` effects,
   visible `__repr__` / `__str__` method-wrapper attributes, and wrapper
   arity/keyword errors without depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_repr_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_repr_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__repr__` wrapper_descriptor metadata:
+  `function.__repr__.__qualname__`,
+  `function.__repr__.__objclass__ is function`,
+  `function.__repr__.__text_signature__`,
+  `dir(function.__repr__)`, and descriptor call forwarding without changing function instance repr/str shape or depending on concrete addresses.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

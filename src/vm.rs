@@ -56079,6 +56079,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                     | "object.__repr__"
                     | "object.__setattr__"
                     | "object.__str__"
+                    | "function.__repr__"
             ) =>
         {
             names.extend(wrapper_descriptor_dir_names())
@@ -57644,6 +57645,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__setattr__".to_string());
         names.push("__str__".to_string());
         names.push("__subclasshook__".to_string());
+    }
+    if name == "function" {
+        names.push("__repr__".to_string());
     }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
@@ -68713,6 +68717,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "defaultdict" && name == "__init__" => {
             Ok(Value::Builtin("defaultdict.__init__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "function" && name == "__repr__" => {
+            Ok(Value::Builtin("function.__repr__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
@@ -71025,6 +71032,38 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(
                 "Built-in function in the MiniPython sandbox.".to_string(),
             ))
+        }
+        Value::Builtin(function_name)
+            if function_name == "function.__repr__"
+                && matches!(
+                    name,
+                    "__class__"
+                        | "__name__"
+                        | "__qualname__"
+                        | "__objclass__"
+                        | "__doc__"
+                        | "__text_signature__"
+                        | "__module__"
+                        | "__self__"
+                ) =>
+        {
+            match name {
+                "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
+                "__name__" => Ok(Value::String("__repr__".to_string())),
+                "__qualname__" => Ok(Value::String("function.__repr__".to_string())),
+                "__objclass__" => Ok(Value::Builtin("function".to_string())),
+                "__doc__" => Ok(Value::String("Return repr(self).".to_string())),
+                "__text_signature__" => Ok(Value::String("($self, /)".to_string())),
+                "__module__" => Err(
+                    "AttributeError: 'wrapper_descriptor' object has no attribute '__module__'"
+                        .to_string(),
+                ),
+                "__self__" => Err(
+                    "AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
+                        .to_string(),
+                ),
+                _ => unreachable!("guard checked function __repr__ wrapper descriptor metadata"),
+            }
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__call__" =>
@@ -75203,6 +75242,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
         ),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
+        "function" => matches!(method, "__repr__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
         _ => false,
