@@ -11350,6 +11350,25 @@ print('class', type(str.__add__).__name__, type(str.__add__('a', 'b')).__name__,
 }
 
 #[test]
+fn cpython_string_sequence_dunder_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str sequence dunder descriptor behavior",
+        name: "string-sequence-dunder-descriptor",
+        source: r#"class S(str):
+    pass
+for name in ['__len__', '__contains__', '__getitem__', '__iter__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__len__', '__contains__', '__getitem__', '__iter__']:
+        print(label, name, type(getattr(value, name)).__name__)
+print('call-len', 'ab'.__len__(), S('ab').__len__(), str.__len__('ab'), str.__len__(S('ab')))
+print('call-contains', 'ab'.__contains__('a'), S('ab').__contains__(S('a')), str.__contains__('ab', S('b')))
+print('call-getitem', 'ab'.__getitem__(1), S('ab').__getitem__(0), str.__getitem__(S('ab'), 1))
+print('call-iter', list('ab'.__iter__()), list(S('ab').__iter__()), list(str.__iter__(S('ab'))))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

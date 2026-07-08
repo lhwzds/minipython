@@ -74221,7 +74221,16 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
-        "str" => matches!(method, "__add__" | "__repr__" | "__str__"),
+        "str" => matches!(
+            method,
+            "__add__"
+                | "__contains__"
+                | "__getitem__"
+                | "__iter__"
+                | "__len__"
+                | "__repr__"
+                | "__str__"
+        ),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),

@@ -54543,7 +54543,10 @@ fn string_direct_str_repr_methods_have_focused_diff_evidence() {
         "Ok(Value::String(receiver.into_owned()))",
         "\"__repr__\"",
         "| \"__str__\"",
-        "\"str\" => matches!(method, \"__add__\" | \"__repr__\" | \"__str__\")",
+        "\"str\" => matches!(",
+        "\"__add__\"",
+        "| \"__repr__\"",
+        "| \"__str__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -54609,7 +54612,9 @@ fn string_direct_add_method_has_focused_diff_evidence() {
         "let Some(right) = str_method_text(other)",
         "can only concatenate str (not",
         "\"__add__\"",
-        "\"str\" => matches!(method, \"__add__\" | \"__repr__\" | \"__str__\")",
+        "\"str\" => matches!(",
+        "| \"__repr__\"",
+        "| \"__str__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -54623,6 +54628,110 @@ fn string_direct_add_method_has_focused_diff_evidence() {
                 && document.contains("cpython_string_direct_add_method_subset")
                 && document.contains("cpython_string_direct_add_method_diff_subset"),
             "direct str add evidence must be documented"
+        );
+    }
+}
+
+#[test]
+fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_sequence_dunder_descriptor_subset",
+    );
+    for required in [
+        "class S(str):",
+        "for name in ['__len__', '__contains__', '__getitem__', '__iter__']:",
+        "type(getattr(str, name)).__name__",
+        "type(getattr(value, name)).__name__",
+        "str.__len__('ab')",
+        "str.__contains__('ab', S('b'))",
+        "str.__getitem__(S('ab'), 1)",
+        "list(str.__iter__(S('ab')))",
+        "\"class __len__ wrapper_descriptor\"",
+        "\"class __contains__ wrapper_descriptor\"",
+        "\"class __getitem__ wrapper_descriptor\"",
+        "\"class __iter__ wrapper_descriptor\"",
+        "\"exact __len__ method-wrapper\"",
+        "\"exact __contains__ method-wrapper\"",
+        "\"exact __getitem__ method-wrapper\"",
+        "\"exact __iter__ method-wrapper\"",
+        "\"subclass __len__ method-wrapper\"",
+        "\"subclass __contains__ method-wrapper\"",
+        "\"subclass __getitem__ method-wrapper\"",
+        "\"subclass __iter__ method-wrapper\"",
+        "\"call-len 2 2 2 2\"",
+        "\"call-contains True True True\"",
+        "\"call-getitem b a b\"",
+        "\"call-iter ['a', 'b'] ['a', 'b'] ['a', 'b']\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "str sequence dunder descriptor subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-sequence-dunder-descriptor");
+    for required in [
+        "class S(str):",
+        "for name in ['__len__', '__contains__', '__getitem__', '__iter__']:",
+        "type(getattr(str, name)).__name__",
+        "type(getattr(value, name)).__name__",
+        "str.__len__('ab')",
+        "str.__contains__('ab', S('b'))",
+        "str.__getitem__(S('ab'), 1)",
+        "list(str.__iter__(S('ab')))",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "str sequence dunder descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    for required in [
+        "\"__contains__\"",
+        "\"__getitem__\"",
+        "\"__iter__\"",
+        "\"__len__\"",
+    ] {
+        assert!(
+            str_wrapper_block.contains(required),
+            "str wrapper descriptor branch must include `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__contains__\" => {",
+        "\"__getitem__\" => {",
+        "\"__len__\" => {",
+        "\"__iter__\" => {",
+        "load_subscript(receiver.clone(), index.clone())",
+        "vm.len_value(receiver.clone())?",
+        "get_iter(receiver.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str sequence dunder implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str sequence dunder descriptors")
+                && document.contains("cpython_string_sequence_dunder_descriptor_subset")
+                && document.contains("cpython_string_sequence_dunder_descriptor_diff_subset"),
+            "str sequence dunder descriptor evidence must be documented"
         );
     }
 }

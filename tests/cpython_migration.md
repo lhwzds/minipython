@@ -10359,6 +10359,17 @@ Completed in the str direct `__add__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str sequence dunder descriptors pass:
+
+- Added `cpython_string_sequence_dunder_descriptor_subset` plus
+  `cpython_string_sequence_dunder_descriptor_diff_subset`, covering
+  `str.__len__`, `str.__contains__`, `str.__getitem__`, and `str.__iter__`
+  class-level `wrapper_descriptor` visibility plus bound `method-wrapper`
+  behavior on exact `str` and `str` subclass instances.
+- This reclassifies already-supported core sequence dunder methods and keeps
+  their call results unchanged; it does not widen host IO, network, process,
+  C ABI, or full stdlib scope.
+
 Completed in the format grouping-option error pass:
 
 - Added `cpython_format_grouping_option_errors_subset` from
