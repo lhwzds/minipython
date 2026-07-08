@@ -11478,6 +11478,38 @@ print('visible', hasattr(left, '__mod__'), '__mod__' in dir(left), '__mod__' in 
 }
 
 #[test]
+fn cpython_string_direct_rmod_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__rmod__ direct method behavior",
+        name: "string-direct-rmod-method",
+        source: r#"class S(str):
+    pass
+right = S('%s-%d')
+print('class', type(str.__rmod__).__name__, hasattr(str, '__rmod__'), '__rmod__' in dir(str))
+for label, expr in [
+    ('bound-exact', lambda: '%s'.__rmod__('value %s')),
+    ('bound-exact-error', lambda: '%s'.__rmod__('plain')),
+    ('bound-sub', lambda: right.__rmod__(('a', 3))),
+    ('type-exact', lambda: str.__rmod__('%s', 'value %s')),
+    ('type-sub', lambda: str.__rmod__(right, ('a', 3))),
+    ('operator-int-str', lambda: 5 % '%s'),
+    ('operator-str-str', lambda: 'plain' % '%s'),
+    ('bad-receiver', lambda: str.__rmod__(1, 'a')),
+    ('class-missing', lambda: str.__rmod__()),
+    ('bound-missing', lambda: '%s'.__rmod__()),
+    ('bound-extra', lambda: '%s'.__rmod__('a', 'b')),
+    ('keyword', lambda: '%s'.__rmod__(value='a')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(right, '__rmod__'), '__rmod__' in dir(right), '__rmod__' in dir(S), '__rmod__' in dir(str), type(right.__rmod__).__name__, type(str.__rmod__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_direct_format_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str.__format__ direct method behavior",

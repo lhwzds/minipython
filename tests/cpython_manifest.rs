@@ -55241,9 +55241,126 @@ fn string_direct_mod_method_has_focused_diff_evidence() {
             document.contains("str direct `__mod__` method")
                 && document.contains("cpython_string_direct_mod_method_subset")
                 && document.contains("cpython_string_direct_mod_method_diff_subset")
-                && document.contains("percent-formatting")
-                && document.contains("`str.__rmod__`"),
+                && document.contains("percent-formatting"),
             "direct str mod evidence must be documented"
+        );
+    }
+}
+
+#[test]
+fn string_direct_rmod_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_rmod_method_subset");
+    for required in [
+        "class S(str):",
+        "right = S('%s-%d')",
+        "type(str.__rmod__).__name__",
+        "hasattr(str, '__rmod__')",
+        "__rmod__' in dir(str)",
+        "lambda: '%s'.__rmod__('value %s')",
+        "lambda: '%s'.__rmod__('plain')",
+        "lambda: right.__rmod__(('a', 3))",
+        "lambda: str.__rmod__('%s', 'value %s')",
+        "lambda: str.__rmod__(right, ('a', 3))",
+        "lambda: 5 % '%s'",
+        "lambda: 'plain' % '%s'",
+        "lambda: str.__rmod__(1, 'a')",
+        "lambda: str.__rmod__()",
+        "lambda: '%s'.__rmod__()",
+        "lambda: '%s'.__rmod__('a', 'b')",
+        "lambda: '%s'.__rmod__(value='a')",
+        "__rmod__' in dir(right)",
+        "__rmod__' in dir(S)",
+        "type(right.__rmod__).__name__",
+        "type(str.__rmod__).__name__",
+        "\"class wrapper_descriptor True True\"",
+        "\"bound-exact str value %s\"",
+        "\"bound-exact-error TypeError not all arguments converted during string formatting",
+        "\"bound-sub NotImplementedType NotImplemented\"",
+        "\"type-exact str value %s\"",
+        "\"type-sub NotImplementedType NotImplemented\"",
+        "\"operator-int-str TypeError unsupported operand type(s) for %: 'int' and 'str'",
+        "\"operator-str-str TypeError not all arguments converted during string formatting",
+        "\"bad-receiver TypeError descriptor '__rmod__' requires a 'str' object but received a 'int'",
+        "\"class-missing TypeError descriptor '__rmod__' of 'str' object needs an argument",
+        "\"bound-missing TypeError expected 1 argument, got 0",
+        "\"bound-extra TypeError expected 1 argument, got 2",
+        "\"keyword TypeError wrapper __rmod__() takes no keyword arguments",
+        "\"visible True True True True method-wrapper wrapper_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str rmod subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-rmod-method");
+    for required in [
+        "class S(str):",
+        "right = S('%s-%d')",
+        "type(str.__rmod__).__name__",
+        "lambda: '%s'.__rmod__('value %s')",
+        "lambda: '%s'.__rmod__('plain')",
+        "lambda: right.__rmod__(('a', 3))",
+        "lambda: str.__rmod__('%s', 'value %s')",
+        "lambda: str.__rmod__(right, ('a', 3))",
+        "lambda: 5 % '%s'",
+        "lambda: 'plain' % '%s'",
+        "lambda: str.__rmod__(1, 'a')",
+        "lambda: str.__rmod__()",
+        "lambda: '%s'.__rmod__()",
+        "lambda: '%s'.__rmod__('a', 'b')",
+        "lambda: '%s'.__rmod__(value='a')",
+        "__rmod__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str rmod CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    assert!(
+        str_wrapper_block.contains("\"__rmod__\""),
+        "str wrapper descriptor branch must include `__rmod__`"
+    );
+
+    for required in [
+        "\"str.__rmod__\" => return call_str_rmod_method(vm, name, args)",
+        "fn call_str_rmod_method(vm: &mut Vm, name: &str, args: Vec<Value>)",
+        "TypeError: descriptor '__rmod__' of 'str' object needs an argument",
+        "TypeError: expected 1 argument, got {}",
+        "descriptor '{method}' requires a 'str' object",
+        "modulo_values_with_vm(vm, other.clone(), receiver.clone())",
+        "Ok(Value::NotImplemented)",
+        "names.push(\"__rmod__\".to_string());",
+        "| \"__rmod__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str rmod implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__rmod__` method")
+                && document.contains("cpython_string_direct_rmod_method_subset")
+                && document.contains("cpython_string_direct_rmod_method_diff_subset")
+                && document.contains("reversed percent-formatting")
+                && document.contains("NotImplemented"),
+            "direct str rmod evidence must be documented"
         );
     }
 }

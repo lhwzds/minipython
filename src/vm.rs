@@ -57494,6 +57494,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__getstate__".to_string());
         names.push("__init__".to_string());
         names.push("__mod__".to_string());
+        names.push("__rmod__".to_string());
         names.push("__sizeof__".to_string());
         names.push("__setattr__".to_string());
     }
@@ -62331,6 +62332,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                     | "__mul__"
                     | "__ne__"
                     | "__repr__"
+                    | "__rmod__"
                     | "__rmul__"
                     | "__sizeof__"
                     | "__str__"
@@ -74415,6 +74417,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__mul__"
                 | "__ne__"
                 | "__repr__"
+                | "__rmod__"
                 | "__rmul__"
                 | "__str__"
         ),
@@ -83599,6 +83602,7 @@ fn call_immutable_sequence_method(
         }
         "str.__hash__" => return call_str_hash_method(name, args),
         "str.__mod__" => return call_str_mod_method(vm, name, args),
+        "str.__rmod__" => return call_str_rmod_method(vm, name, args),
         "str.__mul__" | "str.__rmul__" => return call_str_repeat_method(vm, name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
@@ -83970,6 +83974,32 @@ fn call_str_mod_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Valu
         format.as_ref(),
         other.clone(),
     )?))
+}
+
+fn call_str_rmod_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    if args.is_empty() {
+        return Err(
+            "TypeError: descriptor '__rmod__' of 'str' object needs an argument".to_string(),
+        );
+    }
+    let [receiver, other] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+
+    match receiver {
+        Value::String(_) | Value::IdentityString { .. } => {
+            modulo_values_with_vm(vm, other.clone(), receiver.clone())
+        }
+        value if str_subclass_string(value).is_some() => Ok(Value::NotImplemented),
+        value => Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(value)
+        )),
+    }
 }
 
 fn call_str_repeat_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, String> {
