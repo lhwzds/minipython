@@ -49493,6 +49493,61 @@ fn pow_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn repr_builtin_str_subclass_result_is_guarded() {
+    let subset_name = "cpython_repr_builtin_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_diff_case_body(CPYTHON_DIFF, "repr-builtin");
+
+    for required in [
+        "class ReprSub(str):",
+        "class ReprSubReturn:",
+        "return ReprSub('sub-é')",
+        "sub_repr = repr(ReprSubReturn())",
+        "repr-subclass",
+        "type(sub_repr).__name__",
+        "isinstance(sub_repr, ReprSub)",
+        "type(sub_repr) is ReprSub",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "repr builtin str-subclass result evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        subset_body.contains("\"repr-subclass ReprSub sub-é True True\""),
+        "repr builtin subset output must pin str-subclass result preservation"
+    );
+
+    for required in [
+        "pub(crate) fn call_repr_builtin",
+        "context.stdlib_call_repr_method(value)?",
+        "context.stdlib_str_subclass_string(&value).is_some()",
+        "fn stdlib_str_subclass_string(&self, value: &Value) -> Option<String>",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "repr builtin str-subclass implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        for required in [
+            "cpython_repr_builtin_subset",
+            "repr-builtin",
+            "top-level `repr()` custom `__repr__` dispatch",
+            "preserves str-subclass `__repr__` results",
+            "blocked or non-string-returning `__repr__` paths",
+        ] {
+            assert!(
+                document.contains(required),
+                "repr builtin docs must describe str-subclass boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn ascii_builtin_custom_repr_dispatch_is_guarded() {
     let diff_name = "cpython_ascii_builtin_diff_subset";
     let subset_name = "cpython_ascii_builtin_subset";
@@ -49508,6 +49563,14 @@ fn ascii_builtin_custom_repr_dispatch_is_guarded() {
         "return 42",
         "class Boom",
         "raise ValueError('ascii-boom')",
+        "class ReprSub(str):",
+        "class ReprSubPlain:",
+        "return ReprSub('plain')",
+        "class ReprSubNonAscii:",
+        "return ReprSub('sub-é')",
+        "type(result).__name__",
+        "isinstance(result, ReprSub)",
+        "type(result) is ReprSub",
         "bad-return",
         "boom",
     ] {
@@ -49520,6 +49583,8 @@ fn ascii_builtin_custom_repr_dispatch_is_guarded() {
     for required in [
         "\"custom-repr\"",
         "\"\\\\xe9 snow\"",
+        "\"plain ReprSub plain True True\"",
+        "\"nonascii str sub-\\\\xe9 False False\"",
         "\"bad-return TypeError __repr__ returned non-string (type int)\"",
         "\"boom ValueError ascii-boom\"",
     ] {
@@ -49533,11 +49598,14 @@ fn ascii_builtin_custom_repr_dispatch_is_guarded() {
         "pub(crate) fn call_ascii",
         "context.stdlib_call_repr_method(value)?",
         "context.stdlib_ascii_escape_text(&value)",
+        "context.stdlib_str_subclass_string(&value).is_some()",
+        "if escaped == text",
         "TypeError: __repr__ returned non-string (type {})",
         "fn stdlib_ascii_escape_text(&self, text: &str) -> String",
+        "fn stdlib_str_subclass_string(&self, value: &Value) -> Option<String>",
     ] {
         assert!(
-            STDLIB_SOURCE.contains(required),
+            STDLIB_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "ascii builtin implementation must contain `{required}`"
         );
     }
@@ -49547,12 +49615,14 @@ fn ascii_builtin_custom_repr_dispatch_is_guarded() {
         "VM stdlib context must expose raw repr-text ASCII escaping for ascii()"
     );
 
-    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
         for required in [
             "cpython_ascii_builtin_subset",
             "cpython_ascii_builtin_diff_subset",
             "top-level `ascii()` custom `__repr__` dispatch",
             "ASCII-escapes the returned repr text",
+            "preserves str-subclass `__repr__` results when no escaping is needed",
+            "returns exact `str` after ASCII escaping",
             "non-string-returning and raising `__repr__` paths",
             "without expanding container-recursive custom `__repr__` dispatch",
         ] {
@@ -84475,6 +84545,16 @@ fn extract_rust_test_body<'a>(source: &'a str, name: &str) -> &'a str {
         .unwrap_or_else(|| panic!("missing Rust test `{name}`"));
     let tail = &source[start..];
     let end = tail.find("\n#[test]").unwrap_or(tail.len());
+    &tail[..end]
+}
+
+fn extract_diff_case_body<'a>(source: &'a str, name: &str) -> &'a str {
+    let needle = format!("name: \"{name}\"");
+    let start = source
+        .find(&needle)
+        .unwrap_or_else(|| panic!("missing CPython diff case `{name}`"));
+    let tail = &source[start..];
+    let end = tail.find("\n        DiffCase {").unwrap_or(tail.len());
     &tail[..end]
 }
 

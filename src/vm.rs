@@ -529,6 +529,10 @@ impl StdlibContext for Vm {
         repr_value_checked(value)
     }
 
+    fn stdlib_str_subclass_string(&self, value: &Value) -> Option<String> {
+        str_subclass_string(value)
+    }
+
     fn stdlib_truth_value(&mut self, value: Value) -> Result<bool, String> {
         self.truth_value(value)
     }

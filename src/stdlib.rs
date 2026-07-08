@@ -374,6 +374,8 @@ pub(crate) trait StdlibContext {
 
     fn stdlib_repr_value(&self, value: &Value) -> Result<String, String>;
 
+    fn stdlib_str_subclass_string(&self, value: &Value) -> Option<String>;
+
     fn stdlib_truth_value(&mut self, value: Value) -> Result<bool, String>;
 
     fn stdlib_resolve_import_name_from_globals_value(
@@ -2159,6 +2161,7 @@ pub(crate) fn call_repr_builtin<C: StdlibContext + ?Sized>(
     if let Some(result) = context.stdlib_call_repr_method(value)? {
         return match result {
             Value::String(value) | Value::IdentityString { value, .. } => Ok(Value::String(value)),
+            value if context.stdlib_str_subclass_string(&value).is_some() => Ok(value),
             value => Err(format!(
                 "TypeError: __repr__ returned non-string (type {})",
                 stdlib_type_name(&value)
@@ -2312,6 +2315,17 @@ pub(crate) fn call_ascii<C: StdlibContext + ?Sized>(
         return match result {
             Value::String(value) | Value::IdentityString { value, .. } => {
                 Ok(Value::String(context.stdlib_ascii_escape_text(&value)))
+            }
+            value if context.stdlib_str_subclass_string(&value).is_some() => {
+                let text = context
+                    .stdlib_str_subclass_string(&value)
+                    .expect("str subclass storage exists after guard");
+                let escaped = context.stdlib_ascii_escape_text(&text);
+                if escaped == text {
+                    Ok(value)
+                } else {
+                    Ok(Value::String(escaped))
+                }
             }
             value => Err(format!(
                 "TypeError: __repr__ returned non-string (type {})",

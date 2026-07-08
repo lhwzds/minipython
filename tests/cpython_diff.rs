@@ -10827,7 +10827,18 @@ class BadReturn:
 class Boom:
     def __repr__(self):
         raise ValueError('ascii-boom')
+class ReprSub(str):
+    pass
+class ReprSubPlain:
+    def __repr__(self):
+        return ReprSub('plain')
+class ReprSubNonAscii:
+    def __repr__(self):
+        return ReprSub('sub-é')
 print(ascii(Custom()))
+for label, value in [('plain', ReprSubPlain()), ('nonascii', ReprSubNonAscii())]:
+    result = ascii(value)
+    print(label, type(result).__name__, result, isinstance(result, ReprSub), type(result) is ReprSub)
 for label, value in [('bad-return', BadReturn()), ('boom', Boom())]:
     try:
         print(label, ascii(value))
@@ -40029,12 +40040,19 @@ print(repr(d))
 class Custom:
     def __repr__(self):
         return 'custom repr'
+class ReprSub(str):
+    pass
+class ReprSubReturn:
+    def __repr__(self):
+        return ReprSub('sub-é')
 class Blocked:
     __repr__ = None
 class Bad:
     def __repr__(self):
         return 42
 print(repr(Custom()))
+sub_repr = repr(ReprSubReturn())
+print('repr-subclass', type(sub_repr).__name__, sub_repr, isinstance(sub_repr, ReprSub), type(sub_repr) is ReprSub)
 for value in [Blocked(), Bad()]:
     try:
         repr(value)

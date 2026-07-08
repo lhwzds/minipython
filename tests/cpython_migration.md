@@ -5557,7 +5557,8 @@ Completed in the differential parity harness pass:
   handles recursive list/dict repr placeholders for the supported container
   model. Lone surrogate strings remain future Unicode-runtime work.
 - Extended `cpython_ascii_builtin_subset`, backed by
-  `cpython_ascii_builtin_diff_subset`, so top-level `ascii()` custom `__repr__` dispatch matches CPython: it ASCII-escapes the returned repr text
+  `cpython_ascii_builtin_diff_subset`, so top-level `ascii()` custom `__repr__` dispatch matches CPython: it ASCII-escapes the returned repr text,
+  preserves str-subclass `__repr__` results when no escaping is needed, returns exact `str` after ASCII escaping,
   and preserves non-string-returning and raising `__repr__` paths,
   without expanding container-recursive custom `__repr__` dispatch.
 - Migrated first-pass `sorted()` coverage from
@@ -12419,8 +12420,8 @@ Completed in the repr builtin pass:
 - Covered builtin scalar/container repr for the CPython subset plus recursive
   list and dict placeholders.
 - Added runtime support for `repr(instance)` dispatch through class-level
-  `__repr__`, including TypeError rejection for blocked or non-string-returning
-  `__repr__` paths.
+  `__repr__`, including TypeError rejection for blocked or non-string-returning `__repr__` paths.
+- Extended top-level `repr()` custom `__repr__` dispatch; it preserves str-subclass `__repr__` results, backed by the existing `repr-builtin` CPython diff case.
 - Added a CPython/MiniPython differential parity case for the supported
   `test_repr` subset.
 - Added `cpython_object_instance_default_repr_shape_subset`, backed by
