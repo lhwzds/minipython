@@ -70379,6 +70379,92 @@ fn object_eq_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn object_ne_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_ne_wrapper_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__ne__",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__",
+        "d.__text_signature__",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor wrapper_descriptor __ne__ object.__ne__ True Return self!=value. ($self, value, /)",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'wrapper_descriptor' object has no attribute '__module__'",
+        "'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object ne wrapper descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_ne_wrapper_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__ne__ wrapper descriptor metadata",
+        "object-ne-wrapper-descriptor-metadata",
+        "d = object.__ne__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object ne wrapper descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"object.__ne__\"",
+        "wrapper_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__ne__\"",
+        "name == \"__objclass__\" && function_name == \"object.__ne__\"",
+        "name == \"__doc__\" && function_name == \"object.__ne__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__ne__\"",
+        "name == \"__module__\" && function_name == \"object.__ne__\"",
+        "name == \"__self__\" && function_name == \"object.__ne__\"",
+        "\"Return self!=value.\"",
+        "\"($self, value, /)\"",
+        "'wrapper_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object ne wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_ne_wrapper_descriptor_metadata_subset",
+            "cpython_object_ne_wrapper_descriptor_metadata_diff_subset",
+            "`object.__ne__.__qualname__`",
+            "`object.__ne__.__objclass__ is object`",
+            "`object.__ne__.__text_signature__`",
+            "`dir(object.__ne__)`",
+            "wrapper_descriptor metadata",
+            "without changing inequality behavior",
+            "NotImplemented fallback semantics",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object ne wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_dir_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
