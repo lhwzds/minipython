@@ -57493,6 +57493,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__contains__".to_string());
         names.push("__delattr__".to_string());
         names.push("__eq__".to_string());
+        names.push("__format__".to_string());
         names.push("__ge__".to_string());
         names.push("__getitem__".to_string());
         names.push("__getnewargs__".to_string());

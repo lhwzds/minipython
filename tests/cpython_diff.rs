@@ -11566,6 +11566,21 @@ print('calls', type(str.__hash__('ab')).__name__, str.__hash__('ab') == 'ab'.__h
 }
 
 #[test]
+fn cpython_string_direct_format_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__format__ dir surface",
+        name: "string-direct-format-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__format__' in dir(value), hasattr(value, '__format__'))
+print('descriptor', type(str.__format__).__name__, type('ab'.__format__).__name__, type(left.__format__).__name__)
+print('calls', str.__format__('ab', ''), str.__format__(left, 's'), 'ab'.__format__('>5'), type(left.__format__('s')).__name__, left.__format__('s'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
