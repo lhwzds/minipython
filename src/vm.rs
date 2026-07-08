@@ -19115,8 +19115,15 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let owner = args
+            .first()
+            .filter(|receiver| is_exception_helper_bound_method_value(receiver))
+            .map(|_| "builtin_function_or_method")
+            .unwrap_or("method");
         if !keywords.is_empty() {
-            return Err("TypeError: method.__dir__() takes no keyword arguments".to_string());
+            return Err(format!(
+                "TypeError: {owner}.__dir__() takes no keyword arguments"
+            ));
         }
         let Some((receiver, rest)) = args.split_first() else {
             return Err(
@@ -19130,7 +19137,7 @@ impl Vm {
         }
         if !rest.is_empty() {
             return Err(format!(
-                "TypeError: method.__dir__() takes no arguments ({} given)",
+                "TypeError: {owner}.__dir__() takes no arguments ({} given)",
                 rest.len()
             ));
         }
@@ -67704,6 +67711,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             {
                 Ok(Value::String(
                     "builtin_function_or_method.__repr__".to_string(),
+                ))
+            }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__dir__")
+                    && is_exception_helper_bound_method_value(&receiver) =>
+            {
+                Ok(Value::String(
+                    "builtin_function_or_method.__dir__".to_string(),
                 ))
             }
             "__qualname__"

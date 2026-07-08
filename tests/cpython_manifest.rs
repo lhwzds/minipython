@@ -17622,8 +17622,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "fn call_method_dir(",
-        "method.__dir__() takes no arguments",
-        "method.__dir__() takes no keyword arguments",
+        "{owner}.__dir__() takes no arguments",
+        "{owner}.__dir__() takes no keyword arguments",
+        ".unwrap_or(\"method\")",
         "Value::Builtin(\"method.__dir__\".to_string())",
         "Default dir() implementation.",
         "($self, /)",
@@ -49305,6 +49306,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_metadata_subset",
             "cpython_base_exception_bound_method_dir_metadata_subset",
             "cpython_base_exception_bound_method_call_wrapper_subset",
+            "cpython_base_exception_bound_method_dir_wrapper_subset",
             "cpython_base_exception_bound_method_repr_wrapper_subset",
             "cpython_base_exception_bound_method_str_wrapper_subset",
             "cpython_base_exception_bound_method_format_wrapper_subset",
@@ -49462,6 +49464,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_metadata_diff_subset",
         "cpython_base_exception_bound_method_dir_metadata_diff_subset",
         "cpython_base_exception_bound_method_call_wrapper_diff_subset",
+        "cpython_base_exception_bound_method_dir_wrapper_diff_subset",
         "cpython_base_exception_bound_method_repr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_str_wrapper_diff_subset",
         "cpython_base_exception_bound_method_format_wrapper_diff_subset",
@@ -61710,6 +61713,91 @@ fn base_exception_bound_method_call_wrapper_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__call__` wrapper")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __call__ wrapper evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_dir_wrapper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_dir_wrapper_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "obj.__dir__",
+        "'__dir__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__qualname__",
+        "wrapper.__module__",
+        "wrapper.__text_signature__",
+        "wrapper.__doc__",
+        "builtin_function_or_method.__dir__",
+        "Default dir() implementation.",
+        "wrapper()",
+        "wrapper(1)",
+        "wrapper(value=1)",
+        "'__name__' in value",
+        "'__get__' in value",
+        "IndexError-with_traceback meta True __dir__ builtin_function_or_method.__dir__ None ($self, /) Default dir() implementation.",
+        "IndexError-with_traceback empty list True True False 30",
+        "IndexError-with_traceback extra TypeError builtin_function_or_method.__dir__() takes no arguments (1 given)",
+        "IndexError-with_traceback kw TypeError builtin_function_or_method.__dir__() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method __dir__ wrapper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_dir_wrapper_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public __dir__ wrapper surface",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "obj.__dir__",
+        "'__dir__' in dir(obj)",
+        "wrapper.__self__ is obj",
+        "wrapper.__text_signature__",
+        "wrapper.__module__",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method __dir__ wrapper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_method_dir(",
+        "is_exception_helper_bound_method_value(receiver)",
+        "let owner = args",
+        "builtin_function_or_method.__dir__",
+        "\"builtin_function_or_method\"",
+        "{owner}.__dir__() takes no arguments",
+        "{owner}.__dir__() takes no keyword arguments",
+        "Value::Builtin(\"method.__dir__\".to_string())",
+        "\"method.__dir__\"",
+        "\"Default dir() implementation.\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method __dir__ wrapper implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_dir_wrapper_subset")
+                && document.contains("cpython_base_exception_bound_method_dir_wrapper_diff_subset")
+                && document.contains("BaseException helper bound method `__dir__` wrapper")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method __dir__ wrapper evidence must be documented in coverage and migration notes"
         );
     }
 }

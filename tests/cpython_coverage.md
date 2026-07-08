@@ -2044,6 +2044,15 @@ Recent runtime migration notes:
   `dir()`; the wrapper has CPython `builtin_function_or_method.__call__`
   metadata, keeps `__module__` absent, forwards valid calls to the helper, and
   preserves CPython argument errors, including `IndexError.with_traceback`.
+- `cpython_base_exception_bound_method_dir_wrapper_subset`, backed by
+  `cpython_base_exception_bound_method_dir_wrapper_diff_subset`, keeps the
+  BaseException helper bound method `__dir__` wrapper surface aligned with
+  CPython: bound `add_note` and `with_traceback` methods on `BaseException`,
+  `Exception`, and `IndexError` expose a `builtin_function_or_method`
+  `__dir__` through `dir()`; the wrapper has CPython
+  `builtin_function_or_method.__dir__` metadata, keeps `__module__` as `None`,
+  returns the helper bound method dir list, and preserves CPython argument
+  errors, including `IndexError.with_traceback`.
 - `cpython_base_exception_bound_method_repr_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_repr_wrapper_diff_subset`, keeps the
   BaseException helper bound method `__repr__` wrapper surface aligned with
@@ -2251,6 +2260,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_metadata_diff_subset`,
   `cpython_base_exception_bound_method_dir_metadata_diff_subset`,
   `cpython_base_exception_bound_method_call_wrapper_diff_subset`,
+  `cpython_base_exception_bound_method_dir_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_repr_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_str_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_format_wrapper_diff_subset`,
