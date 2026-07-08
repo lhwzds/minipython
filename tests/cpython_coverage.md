@@ -10265,6 +10265,17 @@ without adding general custom encoder/decoder class support.
   `dir(object.__str__)` metadata membership without changing object.__str__ call semantics
   or its delegation through repr.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_hash_wrapper_descriptor_metadata_subset` with direct CPython
+  output parity in
+  `cpython_object_hash_wrapper_descriptor_metadata_diff_subset`, covering
+  `object.__hash__` wrapper_descriptor metadata:
+  `object.__hash__.__qualname__`,
+  `object.__hash__.__objclass__ is object`,
+  `object.__hash__.__text_signature__`,
+  `str.__hash__ is object.__hash__` remaining false, and
+  `dir(object.__hash__)` metadata membership without depending on concrete identity hash values
+  or changing object.__hash__ call semantics.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_sizeof_descriptor_metadata_subset` with direct CPython output
   parity in `cpython_object_sizeof_descriptor_metadata_diff_subset`, covering
   `object.__sizeof__` method_descriptor metadata:
