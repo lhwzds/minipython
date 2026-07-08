@@ -10749,6 +10749,9 @@ impl Vm {
             Value::Builtin(name) if name == "str.__format__" => {
                 self.call_str_dunder_format_method(args, keywords)
             }
+            Value::Builtin(name) if name == "str.__sizeof__" => {
+                self.call_str_sizeof_method(args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("str.") => {
                 call_str_method(self, &name, args, keywords)
             }
@@ -21947,6 +21950,39 @@ impl Vm {
         } else {
             Ok(Value::String(rendered))
         }
+    }
+
+    fn call_str_sizeof_method(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: unbound method str.__sizeof__() needs an argument".to_string(),
+                );
+            }
+            return Err("TypeError: str.__sizeof__() takes no keyword arguments".to_string());
+        }
+
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: unbound method str.__sizeof__() needs an argument".to_string());
+        };
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: str.__sizeof__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+        if str_method_text(receiver).is_none() {
+            return Err(format!(
+                "TypeError: descriptor '__sizeof__' for 'str' objects doesn't apply to a '{}' object",
+                type_name(receiver)
+            ));
+        }
+
+        Ok(Value::Number(24))
     }
 
     fn render_str_format(
@@ -57418,6 +57454,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__delattr__".to_string());
         names.push("__getstate__".to_string());
         names.push("__init__".to_string());
+        names.push("__sizeof__".to_string());
         names.push("__setattr__".to_string());
     }
     if name == "UserString" {
@@ -62253,6 +62290,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                     | "__ne__"
                     | "__repr__"
                     | "__rmul__"
+                    | "__sizeof__"
                     | "__str__"
                     | "startswith"
                     | "endswith"

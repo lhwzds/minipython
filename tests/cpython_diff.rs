@@ -11490,6 +11490,39 @@ for label, call in [('class-class', lambda: str.__getattribute__('ab', '__class_
 }
 
 #[test]
+fn cpython_string_direct_sizeof_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__sizeof__ direct method behavior",
+        name: "string-direct-sizeof-method",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('class', type(str.__sizeof__).__name__, str.__sizeof__ is object.__sizeof__)
+for label, expr in [
+    ('bound-exact', lambda: 'ab'.__sizeof__()),
+    ('bound-sub', lambda: left.__sizeof__()),
+    ('object-exact', lambda: object.__sizeof__('ab')),
+    ('type-exact', lambda: str.__sizeof__('ab')),
+    ('type-sub', lambda: str.__sizeof__(left)),
+    ('type-list', lambda: str.__sizeof__([1, 2])),
+    ('bound-extra', lambda: 'ab'.__sizeof__(1)),
+    ('bound-keyword', lambda: 'ab'.__sizeof__(x=1)),
+    ('type-missing', lambda: str.__sizeof__()),
+    ('type-keyword-only', lambda: str.__sizeof__(self='ab')),
+]:
+    try:
+        result = expr()
+        if label in ['bound-exact', 'bound-sub', 'object-exact', 'type-exact', 'type-sub']:
+            print(label, type(result).__name__, isinstance(result, int), result > 0)
+        else:
+            print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__sizeof__'), '__sizeof__' in dir(left), '__sizeof__' in dir(S), '__sizeof__' in dir(str), type(left.__sizeof__).__name__, type(str.__sizeof__).__name__, type(object.__sizeof__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_inherited_getstate_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str inherited __getstate__ method behavior",

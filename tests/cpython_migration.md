@@ -10417,6 +10417,19 @@ Completed in the str direct `__getattribute__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__sizeof__` method pass:
+
+- Added `cpython_string_direct_sizeof_method_subset` plus
+  `cpython_string_direct_sizeof_method_diff_subset`, covering direct
+  `__sizeof__` calls on exact `str` and `str` subclass instances, class-level
+  `method_descriptor` visibility distinct from `object.__sizeof__`, bound
+  `builtin_function_or_method` behavior, direct class calls, non-str receiver
+  rejection, representative argument/keyword error paths, `dir()` visibility,
+  and positive integer return shape.
+- This stays inside core string/object-model behavior and does not pin CPython
+  allocation sizes, object-layout internals, host IO, network, process, C ABI,
+  or full stdlib scope.
+
 Completed in the str inherited `__getstate__` method pass:
 
 - Added `cpython_string_inherited_getstate_method_subset` plus

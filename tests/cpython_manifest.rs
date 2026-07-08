@@ -55342,6 +55342,107 @@ fn string_direct_getattribute_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_sizeof_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_sizeof_method_subset");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "type(str.__sizeof__).__name__",
+        "str.__sizeof__ is object.__sizeof__",
+        "lambda: 'ab'.__sizeof__()",
+        "lambda: left.__sizeof__()",
+        "lambda: object.__sizeof__('ab')",
+        "lambda: str.__sizeof__('ab')",
+        "lambda: str.__sizeof__(left)",
+        "lambda: str.__sizeof__([1, 2])",
+        "lambda: 'ab'.__sizeof__(1)",
+        "lambda: 'ab'.__sizeof__(x=1)",
+        "lambda: str.__sizeof__()",
+        "lambda: str.__sizeof__(self='ab')",
+        "isinstance(result, int)",
+        "result > 0",
+        "__sizeof__' in dir(left)",
+        "__sizeof__' in dir(S)",
+        "__sizeof__' in dir(str)",
+        "type(left.__sizeof__).__name__",
+        "type(str.__sizeof__).__name__",
+        "type(object.__sizeof__).__name__",
+        "\"class method_descriptor False\"",
+        "\"bound-exact int True True\"",
+        "\"bound-sub int True True\"",
+        "\"object-exact int True True\"",
+        "\"type-exact int True True\"",
+        "\"type-sub int True True\"",
+        "\"type-list TypeError descriptor '__sizeof__' for 'str' objects doesn't apply to a 'list' object",
+        "\"bound-extra TypeError str.__sizeof__() takes no arguments (1 given)",
+        "\"bound-keyword TypeError str.__sizeof__() takes no keyword arguments",
+        "\"type-missing TypeError unbound method str.__sizeof__() needs an argument",
+        "\"type-keyword-only TypeError unbound method str.__sizeof__() needs an argument",
+        "\"visible True True True True builtin_function_or_method method_descriptor method_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str sizeof subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-sizeof-method");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "type(str.__sizeof__).__name__",
+        "str.__sizeof__ is object.__sizeof__",
+        "lambda: 'ab'.__sizeof__()",
+        "lambda: left.__sizeof__()",
+        "lambda: object.__sizeof__('ab')",
+        "lambda: str.__sizeof__('ab')",
+        "lambda: str.__sizeof__(left)",
+        "lambda: str.__sizeof__([1, 2])",
+        "lambda: 'ab'.__sizeof__(1)",
+        "lambda: 'ab'.__sizeof__(x=1)",
+        "lambda: str.__sizeof__()",
+        "lambda: str.__sizeof__(self='ab')",
+        "__sizeof__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str sizeof CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::Builtin(name) if name == \"str.__sizeof__\"",
+        "self.call_str_sizeof_method(args, keywords)",
+        "fn call_str_sizeof_method(",
+        "TypeError: unbound method str.__sizeof__() needs an argument",
+        "TypeError: str.__sizeof__() takes no keyword arguments",
+        "TypeError: str.__sizeof__() takes no arguments",
+        "descriptor '__sizeof__' for 'str' objects doesn't apply",
+        "str_method_text(receiver).is_none()",
+        "Ok(Value::Number(24))",
+        "| \"__sizeof__\"",
+        "names.push(\"__sizeof__\".to_string());",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str sizeof implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__sizeof__` method")
+                && document.contains("cpython_string_direct_sizeof_method_subset")
+                && document.contains("cpython_string_direct_sizeof_method_diff_subset")
+                && document.contains("positive integer")
+                && document.contains("object-layout internals"),
+            "direct str sizeof evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_inherited_getstate_method_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
