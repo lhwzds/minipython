@@ -62183,7 +62183,9 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
         || (type_name == "str"
             && matches!(
                 name,
-                "startswith"
+                "__repr__"
+                    | "__str__"
+                    | "startswith"
                     | "endswith"
                     | "find"
                     | "rfind"
@@ -74218,6 +74220,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
+        "str" => matches!(method, "__repr__" | "__str__"),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
@@ -83387,6 +83390,8 @@ fn call_immutable_sequence_method(
     args: Vec<Value>,
 ) -> Result<Value, String> {
     match name {
+        "str.__str__" => return call_str_display_method(name, args, false),
+        "str.__repr__" => return call_str_display_method(name, args, true),
         "str.startswith" => return call_str_prefix_suffix_method(name, args, true),
         "str.endswith" => return call_str_prefix_suffix_method(name, args, false),
         "str.find" => return call_str_find_method(name, args, false, false),
@@ -83701,6 +83706,24 @@ fn call_str_prefix_suffix_method(
         }
     });
     Ok(Value::Bool(matched))
+}
+
+fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 0 arguments, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
+        return Err(format!("TypeError: {method}() expected a str receiver"));
+    };
+    if repr {
+        Ok(Value::String(repr_string(receiver.as_ref())))
+    } else {
+        Ok(Value::String(receiver.into_owned()))
+    }
 }
 
 fn call_str_find_method(

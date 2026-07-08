@@ -54499,6 +54499,69 @@ fn string_subclass_inherited_methods_have_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_str_repr_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_str_repr_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:",
+        "for name in ['__str__', '__repr__']:",
+        "print(label, name, type(m).__name__, type(m()).__name__, m())",
+        "type(str.__str__).__name__",
+        "\"exact __str__ method-wrapper str ab\"",
+        "\"exact __repr__ method-wrapper str 'ab'\"",
+        "\"subclass __str__ method-wrapper str ab\"",
+        "\"subclass __repr__ method-wrapper str 'ab'\"",
+        "\"class wrapper_descriptor wrapper_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str/repr subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-str-repr-methods");
+    for required in [
+        "class S(str):",
+        "for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:",
+        "for name in ['__str__', '__repr__']:",
+        "type(str.__str__).__name__",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str/repr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str.__str__\" => return call_str_display_method(name, args, false)",
+        "\"str.__repr__\" => return call_str_display_method(name, args, true)",
+        "fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool)",
+        "Ok(Value::String(repr_string(receiver.as_ref())))",
+        "Ok(Value::String(receiver.into_owned()))",
+        "\"__repr__\"",
+        "| \"__str__\"",
+        "\"str\" => matches!(method, \"__repr__\" | \"__str__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str/repr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__str__` / `__repr__` methods")
+                && document.contains("cpython_string_direct_str_repr_methods_subset")
+                && document.contains("cpython_string_direct_str_repr_methods_diff_subset"),
+            "direct str/repr evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

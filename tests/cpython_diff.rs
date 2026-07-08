@@ -11317,6 +11317,21 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_string_direct_str_repr_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__str__ and str.__repr__ direct method behavior",
+        name: "string-direct-str-repr-methods",
+        source: r#"class S(str):
+    pass
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__str__', '__repr__']:
+        m = getattr(value, name)
+        print(label, name, type(m).__name__, type(m()).__name__, m())
+print('class', type(str.__str__).__name__, type(str.__repr__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

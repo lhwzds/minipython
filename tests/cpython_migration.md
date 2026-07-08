@@ -10338,6 +10338,17 @@ Completed in the str subclass inherited string methods pass:
   encode, and translate paths; this remains core string/object-model behavior
   and does not widen host IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__str__` / `__repr__` methods pass:
+
+- Added `cpython_string_direct_str_repr_methods_subset` plus
+  `cpython_string_direct_str_repr_methods_diff_subset`, covering direct
+  `__str__` / `__repr__` calls on exact `str` and `str` subclass instances.
+- Added `str.__str__` / `str.__repr__` wrapper-descriptor visibility and bound
+  `method-wrapper` behavior, returning the stored string text or repr text
+  rather than falling back to object display for subclasses.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the format grouping-option error pass:
 
 - Added `cpython_format_grouping_option_errors_subset` from
