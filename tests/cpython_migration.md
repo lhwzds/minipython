@@ -10381,6 +10381,18 @@ Completed in the str direct ordering methods pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__hash__` method pass:
+
+- Added `cpython_string_direct_hash_method_subset` plus
+  `cpython_string_direct_hash_method_diff_subset`, covering direct `__hash__`
+  calls on exact `str` and `str` subclass instances, bound `method-wrapper`
+  behavior, class-level `wrapper_descriptor` visibility, class-level calls,
+  inherited `hash()` dispatch for `str` subclasses, same-process hash equality,
+  and representative argument/receiver error paths without pinning
+  process-randomized hash integers.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus

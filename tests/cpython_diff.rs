@@ -11426,6 +11426,28 @@ print('class-call', type(str.__lt__('b', S('c'))).__name__, str.__lt__('b', S('c
 }
 
 #[test]
+fn cpython_string_direct_hash_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__hash__ direct method behavior",
+        name: "string-direct-hash-method",
+        source: r#"class S(str):
+    pass
+for name in ['__hash__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'abc'), ('subclass', S('abc'))]:
+    m = getattr(value, '__hash__')
+    result = m()
+    print(label, type(m).__name__, type(result).__name__, result == str.__hash__('abc'), result == hash(value), result == hash('abc'))
+for label, call in [('class-exact', lambda: str.__hash__('abc')), ('class-subclass', lambda: str.__hash__(S('abc'))), ('bound-extra', lambda: 'abc'.__hash__(1)), ('bad-receiver', lambda: str.__hash__(1))]:
+    try:
+        result = call()
+        print(label, type(result).__name__, result == str.__hash__('abc'))
+    except Exception as exc:
+        print(label, type(exc).__name__, str(exc))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

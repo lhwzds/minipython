@@ -55042,6 +55042,101 @@ fn string_direct_ordering_methods_have_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_hash_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_hash_method_subset");
+    for required in [
+        "class S(str):",
+        "for name in ['__hash__']:",
+        "m = getattr(value, '__hash__')",
+        "result = m()",
+        "result == str.__hash__('abc')",
+        "result == hash(value)",
+        "result == hash('abc')",
+        "lambda: str.__hash__('abc')",
+        "lambda: str.__hash__(S('abc'))",
+        "lambda: 'abc'.__hash__(1)",
+        "lambda: str.__hash__(1)",
+        "\"class __hash__ wrapper_descriptor\"",
+        "\"exact method-wrapper int True True True\"",
+        "\"subclass method-wrapper int True True True\"",
+        "\"class-exact int True\"",
+        "\"class-subclass int True\"",
+        "\"bound-extra TypeError expected 0 arguments, got 1\"",
+        "\"bad-receiver TypeError descriptor '__hash__' requires a 'str' object but received a 'int'\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str hash subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-hash-method");
+    for required in [
+        "class S(str):",
+        "for name in ['__hash__']:",
+        "m = getattr(value, '__hash__')",
+        "result = m()",
+        "result == str.__hash__('abc')",
+        "result == hash(value)",
+        "result == hash('abc')",
+        "lambda: str.__hash__('abc')",
+        "lambda: str.__hash__(S('abc'))",
+        "lambda: 'abc'.__hash__(1)",
+        "lambda: str.__hash__(1)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str hash CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    assert!(
+        str_wrapper_block.contains("\"__hash__\""),
+        "str wrapper descriptor branch must include `__hash__`"
+    );
+
+    for required in [
+        "\"str.__hash__\" => return call_str_hash_method(name, args)",
+        "fn call_str_hash_method(name: &str, args: Vec<Value>) -> Result<Value, String>",
+        "let [receiver] = args.as_slice()",
+        "TypeError: expected 0 arguments, got {}",
+        "let Some(receiver) = str_method_text(receiver)",
+        "descriptor '{method}' requires a 'str' object",
+        "hash_value(&Value::String(receiver.into_owned()))",
+        "str_subclass_string(value).is_some()",
+        "\"str.__hash__\".to_string()",
+        "| \"__hash__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str hash implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__hash__` method")
+                && document.contains("cpython_string_direct_hash_method_subset")
+                && document.contains("cpython_string_direct_hash_method_diff_subset"),
+            "direct str hash evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

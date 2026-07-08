@@ -62187,6 +62187,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                     | "__eq__"
                     | "__ge__"
                     | "__gt__"
+                    | "__hash__"
                     | "__le__"
                     | "__lt__"
                     | "__mul__"
@@ -74236,6 +74237,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__eq__"
                 | "__ge__"
                 | "__gt__"
+                | "__hash__"
                 | "__getitem__"
                 | "__iter__"
                 | "__le__"
@@ -83421,6 +83423,7 @@ fn call_immutable_sequence_method(
         "str.__lt__" | "str.__le__" | "str.__gt__" | "str.__ge__" => {
             return call_str_ordering_method(name, args);
         }
+        "str.__hash__" => return call_str_hash_method(name, args),
         "str.__mul__" | "str.__rmul__" => return call_str_repeat_method(vm, name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
@@ -83833,6 +83836,23 @@ fn call_str_ordering_method(name: &str, args: Vec<Value>) -> Result<Value, Strin
         _ => unreachable!("str ordering dispatch only routes rich ordering methods"),
     };
     Ok(Value::Bool(result))
+}
+
+fn call_str_hash_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: expected 0 arguments, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    hash_value(&Value::String(receiver.into_owned()))
 }
 
 fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {
@@ -94423,6 +94443,12 @@ fn instance_hash_method(value: &Value) -> Result<Option<Value>, String> {
         Ok(Some(Value::BoundMethod {
             function: Box::new(Value::Builtin("tuple.__hash__".to_string())),
             receiver: Box::new(Value::Tuple(items)),
+            identity: Rc::new(()),
+        }))
+    } else if str_subclass_string(value).is_some() {
+        Ok(Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin("str.__hash__".to_string())),
+            receiver: Box::new(value.clone()),
             identity: Rc::new(()),
         }))
     } else if let Some(method) = find_base_attr_by_mro(class_bases, "__hash__") {
