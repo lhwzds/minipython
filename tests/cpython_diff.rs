@@ -11443,6 +11443,24 @@ print('calls', str.__mul__('ab', 3), str.__mul__(left, I()), 'ab'.__mul__(I()), 
 }
 
 #[test]
+fn cpython_string_direct_rmul_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__rmul__ dir surface",
+        name: "string-direct-rmul-dir-surface",
+        source: r#"class S(str):
+    pass
+class I:
+    def __index__(self):
+        return 2
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__rmul__' in dir(value), hasattr(value, '__rmul__'))
+print('descriptor', type(str.__rmul__).__name__, type('ab'.__rmul__).__name__, type(left.__rmul__).__name__)
+print('calls', str.__rmul__('ab', 3), str.__rmul__(left, I()), 'ab'.__rmul__(I()), left.__rmul__(0))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
