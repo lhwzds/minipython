@@ -2177,6 +2177,17 @@ Recent runtime migration notes:
   `__dict__`, `missing_attr`, `__wrapped__`, and `__defaults__`, including
   `IndexError.with_traceback`, while ordinary method fallback behavior remains
   separate.
+- `cpython_base_exception_bound_method_attribute_mutation_subset`, backed by
+  `cpython_base_exception_bound_method_attribute_mutation_diff_subset`, keeps
+  BaseException helper bound method direct attribute mutation diagnostics
+  aligned with CPython: bound `add_note` and `with_traceback` methods on
+  `BaseException`, `Exception`, and `IndexError` report
+  `builtin_function_or_method` read-only errors for public metadata such as
+  `__doc__`, `__name__`, `__qualname__`, `__self__`, and
+  `__text_signature__`, and report the no-`__dict__` setting-new-attributes
+  error for missing names such as `__dict__` and `custom`, including
+  `IndexError.with_traceback`. `__module__` assignment/deletion remains outside
+  this focused slice.
 - `cpython_base_exception_bound_method_init_wrapper_subset`, backed by
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`, keeps
   BaseException helper bound method `__init__` wrapper surface aligned with
@@ -2284,6 +2295,7 @@ Recent runtime migration notes:
   `cpython_base_exception_bound_method_func_absent_diff_subset`,
   `cpython_base_exception_bound_method_get_absent_diff_subset`,
   `cpython_base_exception_bound_method_missing_attribute_diff_subset`,
+  `cpython_base_exception_bound_method_attribute_mutation_diff_subset`,
   `cpython_base_exception_bound_method_init_wrapper_diff_subset`,
   `cpython_base_exception_bound_method_init_subclass_diff_subset`,
   `cpython_base_exception_bound_method_new_diff_subset`,

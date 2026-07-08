@@ -14006,6 +14006,31 @@ fn cpython_base_exception_bound_method_missing_attribute_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_attribute_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public direct attribute mutation diagnostics",
+        name: "base-exception-bound-method-attribute-mutation-direct",
+        source: r#"def show(label, op, attr, call):
+    try:
+        call()
+        print(label, op, attr, 'OK')
+    except Exception as error:
+        print(label, op, attr, type(error).__name__, str(error), error.args)
+
+for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for helper in ['add_note', 'with_traceback']:
+        obj = getattr(exc, helper)
+        label = exc.__class__.__name__ + '-' + helper
+        for op in ['set', 'del']:
+            for attr in ['__doc__', '__name__', '__qualname__', '__self__', '__text_signature__', '__dict__', 'custom']:
+                if op == 'set':
+                    show(label, op, attr, lambda obj=obj, attr=attr: setattr(obj, attr, 'x'))
+                else:
+                    show(label, op, attr, lambda obj=obj, attr=attr: delattr(obj, attr))"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_init_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __init__ wrapper surface",

@@ -71480,6 +71480,20 @@ fn is_exception_helper_bound_method(function: &Value, receiver: &Value) -> bool 
     )
 }
 
+fn exception_helper_bound_method_attribute_mutation_error(name: &str) -> Option<String> {
+    match name {
+        "__class__" | "__module__" => None,
+        "__doc__" | "__name__" | "__qualname__" | "__self__" | "__text_signature__" => {
+            Some(format!(
+                "AttributeError: attribute '{name}' of 'builtin_function_or_method' objects is not writable"
+            ))
+        }
+        _ => Some(format!(
+            "AttributeError: 'builtin_function_or_method' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )),
+    }
+}
+
 fn numeric_from_number_classmethod_value(owner: &str) -> Value {
     Value::BoundMethod {
         function: Box::new(Value::Builtin(format!("{owner}.from_number.classmethod"))),
@@ -72526,6 +72540,15 @@ fn is_collections_abc_bytestring_module_attr(module: &Value, attr: &str) -> bool
 }
 
 fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String> {
+    if let Value::BoundMethod {
+        function, receiver, ..
+    } = &object
+        && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())
+        && let Some(error) = exception_helper_bound_method_attribute_mutation_error(name)
+    {
+        return Err(error);
+    }
+
     match object {
         Value::Instance {
             fields,
@@ -73051,6 +73074,15 @@ fn type_name_for_type_assignment_error(value: &Value) -> &str {
 }
 
 fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
+    if let Value::BoundMethod {
+        function, receiver, ..
+    } = &object
+        && is_exception_helper_bound_method(function.as_ref(), receiver.as_ref())
+        && let Some(error) = exception_helper_bound_method_attribute_mutation_error(name)
+    {
+        return Err(error);
+    }
+
     match object {
         Value::Instance {
             class_name, fields, ..
