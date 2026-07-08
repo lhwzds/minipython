@@ -57513,6 +57513,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__rmul__".to_string());
         names.push("__sizeof__".to_string());
         names.push("__setattr__".to_string());
+        names.push("__str__".to_string());
     }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
