@@ -70126,6 +70126,102 @@ fn object_dir_descriptor_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn object_format_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_format_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__format__",
+        "Default object formatter.",
+        "Return str(self) if format_spec is empty. Raise TypeError otherwise.",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__ == doc",
+        "d.__text_signature__",
+        "str.__format__ is d",
+        "type(str.__format__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor method_descriptor __format__ object.__format__ True True ($self, format_spec, /)",
+        "str-separate False method_descriptor",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'method_descriptor' object has no attribute '__module__'",
+        "'method_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object format descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_format_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__format__ method descriptor metadata",
+        "object-format-descriptor-metadata",
+        "d = object.__format__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "str.__format__ is d",
+        "type(str.__format__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object format descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "object.__format__",
+        "method_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__format__\"",
+        "name == \"__objclass__\" && function_name == \"object.__format__\"",
+        "name == \"__doc__\" && function_name == \"object.__format__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__format__\"",
+        "name == \"__module__\" && function_name == \"object.__format__\"",
+        "name == \"__self__\" && function_name == \"object.__format__\"",
+        "\"object.__format__\"",
+        "\"Default object formatter.",
+        "Return str(self) if format_spec is empty. Raise TypeError otherwise.\"",
+        "\"($self, format_spec, /)\"",
+        "'method_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object format descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_format_descriptor_metadata_subset",
+            "cpython_object_format_descriptor_metadata_diff_subset",
+            "`object.__format__.__qualname__`",
+            "`object.__format__.__objclass__ is object`",
+            "`object.__format__.__text_signature__`",
+            "`str.__format__ is object.__format__`",
+            "`dir(object.__format__)`",
+            "method_descriptor metadata",
+            "without changing object.__format__ call semantics",
+            "format-spec support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object format descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_sizeof_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
