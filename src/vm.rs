@@ -10469,6 +10469,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__init_subclass__" => {
                 self.call_function_init_subclass(args, keywords)
             }
+            Value::Builtin(name) if name == "type.__init_subclass__" => {
+                self.call_type_init_subclass(args, keywords)
+            }
             Value::Builtin(name) if name == "function.__subclasshook__" => {
                 self.call_function_subclasshook(args, keywords)
             }
@@ -19069,6 +19072,29 @@ impl Vm {
         if !rest.is_empty() {
             return Err(format!(
                 "TypeError: function.__init_subclass__() takes no arguments ({} given)",
+                rest.len()
+            ));
+        }
+        Ok(Value::None)
+    }
+
+    fn call_type_init_subclass(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err("TypeError: descriptor method wrapper requires a type object".to_string());
+        };
+        let owner = type_init_subclass_owner_name(receiver);
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {owner}.__init_subclass__() takes no keyword arguments"
+            ));
+        }
+        if !rest.is_empty() {
+            return Err(format!(
+                "TypeError: {owner}.__init_subclass__() takes no arguments ({} given)",
                 rest.len()
             ));
         }
@@ -57502,6 +57528,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__getstate__".to_string());
         names.push("__gt__".to_string());
         names.push("__hash__".to_string());
+        names.push("__init_subclass__".to_string());
         names.push("__init__".to_string());
         names.push("__iter__".to_string());
         names.push("__le__".to_string());
@@ -59689,12 +59716,37 @@ fn str_subclass_string(value: &Value) -> Option<String> {
     }
 }
 
+fn str_subclass_owner_value(value: &Value) -> Option<Value> {
+    let Value::Instance {
+        class_name,
+        class_attrs,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "str") {
+        return None;
+    }
+    Some(Value::Class {
+        name: class_name.clone(),
+        type_params: Vec::new(),
+        metaclass: None,
+        bases: class_bases.clone(),
+        attrs: class_attrs.clone(),
+    })
+}
+
 fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value> {
     if str_subclass_string(&receiver).is_none() {
         return None;
     }
     match name {
         "__new__" => Some(Value::Builtin("str.__new__".to_string())),
+        "__init_subclass__" => {
+            str_subclass_owner_value(&receiver).map(type_init_subclass_bound_method)
+        }
         name if is_immutable_sequence_type_method("str", name) => Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("str.{name}"))),
             receiver: Box::new(receiver),
@@ -59713,6 +59765,7 @@ fn str_subclass_class_attribute(class: Value, name: &str) -> Option<Value> {
     }
     match name {
         "__new__" => Some(Value::Builtin("str.__new__".to_string())),
+        "__init_subclass__" => Some(type_init_subclass_bound_method(class)),
         name if is_immutable_sequence_type_method("str", name) => {
             Some(Value::Builtin(format!("str.{name}")))
         }
@@ -66323,6 +66376,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::String(_) | Value::IdentityString { .. } if name == "__new__" => {
             Ok(Value::Builtin("str.__new__".to_string()))
         }
+        Value::String(_) | Value::IdentityString { .. } if name == "__init_subclass__" => {
+            Ok(type_init_subclass_bound_method(Value::Builtin(
+                "str".to_string(),
+            )))
+        }
         Value::String(value) | Value::IdentityString { value, .. } if name == "__setattr__" => {
             Ok(object_setattr_bound_method(Value::String(value)))
         }
@@ -68041,6 +68099,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         .to_string(),
                 ))
             }
+            "__qualname__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "type.__init_subclass__") =>
+            {
+                Ok(Value::String(format!(
+                    "{}.__init_subclass__",
+                    type_init_subclass_owner_name(&receiver)
+                )))
+            }
             "__name__" => load_attribute(*function, "__name__"),
             "__qualname__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "method.__call__")
@@ -68282,6 +68348,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__init_subclass__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "type.__init_subclass__") =>
             {
                 load_attribute(*function, "__text_signature__")
             }
@@ -69157,6 +69228,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__new__" => {
             Ok(Value::Builtin("str.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__init_subclass__" => {
+            Ok(type_init_subclass_bound_method(Value::Builtin(
+                "str".to_string(),
+            )))
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__setattr__" => {
             Ok(Value::Builtin("object.__setattr__".to_string()))
@@ -70960,6 +71036,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($type, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "type.__init_subclass__" =>
+        {
+            Ok(Value::String("type.__init_subclass__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "type.__init_subclass__" =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "type.__init_subclass__" =>
+        {
+            Ok(Value::String("This method is called when a class is subclassed.\n\nThe default implementation does nothing. It may be\noverridden to extend subclasses.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "type.__init_subclass__" =>
+        {
+            Ok(Value::String("($type, /)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__subclasshook__" =>
         {
             Ok(Value::String("function.__subclasshook__".to_string()))
@@ -71748,6 +71844,25 @@ fn builtin_public_name(name: &str) -> String {
         return "Union".to_string();
     }
     name.rsplit('.').next().unwrap_or(name).to_string()
+}
+
+fn type_init_subclass_bound_method(owner: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("type.__init_subclass__".to_string())),
+        receiver: Box::new(owner),
+        identity: Rc::new(()),
+    }
+}
+
+fn type_init_subclass_owner_name(owner: &Value) -> String {
+    match owner {
+        Value::Builtin(name) => builtin_public_name(name),
+        Value::Class { name, attrs, .. } => match class_qualname_value(name, attrs) {
+            Value::String(qualname) => qualname,
+            _ => name.clone(),
+        },
+        value => type_name(value).to_string(),
+    }
 }
 
 fn exception_method_descriptor_name(name: &str) -> Option<&'static str> {

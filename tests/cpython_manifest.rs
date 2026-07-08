@@ -56085,6 +56085,146 @@ fn string_direct_new_binding_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_init_subclass_binding_has_focused_diff_evidence() {
+    let subset_body = [
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_init_subclass_binding_dir_subset",
+        ),
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_init_subclass_binding_metadata_subset",
+        ),
+        extract_rust_test_body(
+            CPYTHON_SUBSET,
+            "cpython_string_direct_init_subclass_binding_call_subset",
+        ),
+    ]
+    .join("\n");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__init_subclass__' in dir(str)",
+        "hasattr(str, '__init_subclass__')",
+        "'__init_subclass__' in dir(S)",
+        "hasattr(S, '__init_subclass__')",
+        "'__init_subclass__' in dir('ab')",
+        "hasattr('ab', '__init_subclass__')",
+        "'__init_subclass__' in dir(left)",
+        "hasattr(left, '__init_subclass__')",
+        "w = str.__init_subclass__",
+        "w = S.__init_subclass__",
+        "w = 'ab'.__init_subclass__",
+        "w = left.__init_subclass__",
+        "type(w).__name__",
+        "w.__name__",
+        "w.__qualname__",
+        "w.__self__.__name__",
+        "w.__doc__ is not None",
+        "w.__text_signature__",
+        "str.__init_subclass__()",
+        "'ab'.__init_subclass__()",
+        "left.__init_subclass__()",
+        "'ab'.__init_subclass__(1)",
+        "left.__init_subclass__(flag=True)",
+        "\"type True True\"",
+        "\"subtype True True\"",
+        "\"exact True True\"",
+        "\"sub True True\"",
+        "\"attr type builtin_function_or_method __init_subclass__\"",
+        "\"qual type str.__init_subclass__ str True ($type, /)\"",
+        "\"attr subtype builtin_function_or_method __init_subclass__\"",
+        "\"qual subtype S.__init_subclass__ S True ($type, /)\"",
+        "\"attr exact builtin_function_or_method __init_subclass__\"",
+        "\"qual exact str.__init_subclass__ str True ($type, /)\"",
+        "\"attr sub builtin_function_or_method __init_subclass__\"",
+        "\"qual sub S.__init_subclass__ S True ($type, /)\"",
+        "\"type-call None\"",
+        "\"exact-call None\"",
+        "\"sub-call None\"",
+        "\"exact-extra TypeError str.__init_subclass__() takes no arguments (1 given) ('str.__init_subclass__() takes no arguments (1 given)',)\"",
+        "\"sub-keyword TypeError S.__init_subclass__() takes no keyword arguments ('S.__init_subclass__() takes no keyword arguments',)\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str init_subclass binding subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = [
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-init-subclass-binding-dir"),
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-init-subclass-binding-metadata"),
+        extract_diff_case_body(CPYTHON_DIFF, "string-direct-init-subclass-binding-call"),
+    ]
+    .join("\n");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "'__init_subclass__' in dir(str)",
+        "hasattr(str, '__init_subclass__')",
+        "'__init_subclass__' in dir(S)",
+        "hasattr(S, '__init_subclass__')",
+        "'__init_subclass__' in dir('ab')",
+        "hasattr('ab', '__init_subclass__')",
+        "'__init_subclass__' in dir(left)",
+        "hasattr(left, '__init_subclass__')",
+        "w = str.__init_subclass__",
+        "w = S.__init_subclass__",
+        "w = 'ab'.__init_subclass__",
+        "w = left.__init_subclass__",
+        "type(w).__name__",
+        "w.__name__",
+        "w.__qualname__",
+        "w.__self__.__name__",
+        "w.__doc__ is not None",
+        "w.__text_signature__",
+        "str.__init_subclass__()",
+        "'ab'.__init_subclass__()",
+        "left.__init_subclass__()",
+        "'ab'.__init_subclass__(1)",
+        "left.__init_subclass__(flag=True)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str init_subclass binding CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "names.push(\"__init_subclass__\".to_string());",
+        "\"__init_subclass__\" => Some(type_init_subclass_bound_method(class))",
+        "Value::String(_) | Value::IdentityString { .. } if name == \"__init_subclass__\"",
+        "Value::Builtin(name) if name == \"type.__init_subclass__\"",
+        "fn call_type_init_subclass(",
+        "fn type_init_subclass_bound_method(owner: Value) -> Value",
+        "fn type_init_subclass_owner_name(owner: &Value) -> String",
+        "type_init_subclass_owner_name(&receiver)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str init_subclass binding implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__init_subclass__` binding")
+                && document.contains("cpython_string_direct_init_subclass_binding_dir_subset")
+                && document.contains("cpython_string_direct_init_subclass_binding_metadata_subset")
+                && document.contains("cpython_string_direct_init_subclass_binding_call_subset")
+                && document.contains("cpython_string_direct_init_subclass_binding_dir_diff_subset")
+                && document
+                    .contains("cpython_string_direct_init_subclass_binding_metadata_diff_subset")
+                && document
+                    .contains("cpython_string_direct_init_subclass_binding_call_diff_subset")
+                && document.contains("dir(str)")
+                && document.contains("dir()"),
+            "direct str init_subclass binding evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_sequence_dunder_descriptor_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

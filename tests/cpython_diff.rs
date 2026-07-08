@@ -11661,6 +11661,66 @@ print('calls', str.__new__(str, 'xy'), 'ab'.__new__(str, 'uv'), type(left.__new_
 }
 
 #[test]
+fn cpython_string_direct_init_subclass_binding_dir_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__init_subclass__ dir binding",
+        name: "string-direct-init-subclass-binding-dir",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('type', '__init_subclass__' in dir(str), hasattr(str, '__init_subclass__'))
+print('subtype', '__init_subclass__' in dir(S), hasattr(S, '__init_subclass__'))
+print('exact', '__init_subclass__' in dir('ab'), hasattr('ab', '__init_subclass__'))
+print('sub', '__init_subclass__' in dir(left), hasattr(left, '__init_subclass__'))"#,
+    });
+}
+
+#[test]
+fn cpython_string_direct_init_subclass_binding_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__init_subclass__ metadata binding",
+        name: "string-direct-init-subclass-binding-metadata",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+w = str.__init_subclass__
+print('attr type', type(w).__name__, w.__name__)
+print('qual type', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = S.__init_subclass__
+print('attr subtype', type(w).__name__, w.__name__)
+print('qual subtype', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = 'ab'.__init_subclass__
+print('attr exact', type(w).__name__, w.__name__)
+print('qual exact', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)
+w = left.__init_subclass__
+print('attr sub', type(w).__name__, w.__name__)
+print('qual sub', w.__qualname__, w.__self__.__name__, w.__doc__ is not None, w.__text_signature__)"#,
+    });
+}
+
+#[test]
+fn cpython_string_direct_init_subclass_binding_call_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__init_subclass__ call binding",
+        name: "string-direct-init-subclass-binding-call",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+print('type-call', str.__init_subclass__())
+print('exact-call', 'ab'.__init_subclass__())
+print('sub-call', left.__init_subclass__())
+try:
+    'ab'.__init_subclass__(1)
+except Exception as error:
+    print('exact-extra', type(error).__name__, str(error), error.args)
+try:
+    left.__init_subclass__(flag=True)
+except Exception as error:
+    print('sub-keyword', type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
