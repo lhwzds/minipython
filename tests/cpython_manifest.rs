@@ -49318,6 +49318,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_bound_method_delattr_wrapper_subset",
             "cpython_base_exception_bound_method_func_absent_subset",
             "cpython_base_exception_bound_method_get_absent_subset",
+            "cpython_base_exception_bound_method_missing_attribute_subset",
             "cpython_base_exception_bound_method_getattribute_wrapper_subset",
             "cpython_base_exception_bound_method_init_wrapper_subset",
             "cpython_base_exception_bound_method_init_subclass_subset",
@@ -49476,6 +49477,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_bound_method_delattr_wrapper_diff_subset",
         "cpython_base_exception_bound_method_func_absent_diff_subset",
         "cpython_base_exception_bound_method_get_absent_diff_subset",
+        "cpython_base_exception_bound_method_missing_attribute_diff_subset",
         "cpython_base_exception_bound_method_getattribute_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_wrapper_diff_subset",
         "cpython_base_exception_bound_method_init_subclass_diff_subset",
@@ -62579,6 +62581,73 @@ fn base_exception_bound_method_get_absent_subset_has_focused_diff_evidence() {
                 && document.contains("BaseException helper bound method `__get__` absence")
                 && document.contains("IndexError.with_traceback"),
             "focused BaseException helper bound method __get__ absence evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn base_exception_bound_method_missing_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_bound_method_missing_attribute_subset(",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "['__dict__', 'missing_attr', '__wrapped__', '__defaults__']",
+        "getattr(obj, attr)",
+        "'builtin_function_or_method' object has no attribute '__dict__'",
+        "'builtin_function_or_method' object has no attribute 'missing_attr'",
+        "'builtin_function_or_method' object has no attribute '__wrapped__'",
+        "'builtin_function_or_method' object has no attribute '__defaults__'",
+        "IndexError-with_traceback missing_attr AttributeError 'builtin_function_or_method' object has no attribute 'missing_attr'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException helper bound method missing-attribute subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_base_exception_bound_method_missing_attribute_diff_subset",
+    );
+    for required in [
+        "BaseException helper bound method public missing-attribute error shape",
+        "BaseException('b')",
+        "Exception('e')",
+        "IndexError('i')",
+        "getattr(exc, helper)",
+        "['__dict__', 'missing_attr', '__wrapped__', '__defaults__']",
+        "getattr(obj, attr)",
+        "except Exception as error",
+        "str(error), error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException helper bound method missing-attribute CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "is_exception_helper_bound_method(function.as_ref(), &receiver)",
+        "'builtin_function_or_method' object has no attribute '{name}'",
+        "AttributeError: method has no attribute '{name}'",
+        "Value::LruCacheWrapper",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "BaseException helper bound method missing-attribute implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_bound_method_missing_attribute_subset")
+                && document
+                    .contains("cpython_base_exception_bound_method_missing_attribute_diff_subset")
+                && document.contains("BaseException helper bound method missing-attribute")
+                && document.contains("IndexError.with_traceback"),
+            "focused BaseException helper bound method missing-attribute evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -68010,6 +68010,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ if matches!(function.as_ref(), Value::LruCacheWrapper { .. }) => {
                 load_attribute(*function, name)
             }
+            _ if is_exception_helper_bound_method(function.as_ref(), &receiver) => Err(format!(
+                "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
+            )),
             _ => Err(format!("AttributeError: method has no attribute '{name}'")),
         },
         Value::AsyncGenerator(state) => match name {

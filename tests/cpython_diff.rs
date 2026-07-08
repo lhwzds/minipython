@@ -13988,6 +13988,24 @@ fn cpython_base_exception_bound_method_get_absent_diff_subset() {
 }
 
 #[test]
+fn cpython_base_exception_bound_method_missing_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "BaseException helper bound method public missing-attribute error shape",
+        name: "base-exception-bound-method-missing-attribute-direct",
+        source: r#"for exc in [BaseException('b'), Exception('e'), IndexError('i')]:
+    for helper in ['add_note', 'with_traceback']:
+        obj = getattr(exc, helper)
+        label = exc.__class__.__name__ + '-' + helper
+        for attr in ['__dict__', 'missing_attr', '__wrapped__', '__defaults__']:
+            try:
+                value = getattr(obj, attr)
+                print(label, attr, 'OK', type(value).__name__, repr(value))
+            except Exception as error:
+                print(label, attr, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_bound_method_init_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "BaseException helper bound method public __init__ wrapper surface",
