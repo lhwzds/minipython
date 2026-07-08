@@ -5950,6 +5950,33 @@ for label, data in [
 }
 
 #[test]
+fn cpython_json_loads_invalid_utf32_error_detail_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads invalid UTF-32 decode error detail subset",
+        name: "json-loads-invalid-utf32-error-detail",
+        source: r#"import json
+
+def show(label, data):
+    try:
+        json.loads(data)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+    else:
+        print(label, 'OK')
+
+for label, data in [
+    ('utf32le-truncated-bom', b'\xff\xfe\x00\x00{\x00\x00'),
+    ('utf32be-truncated-bom', b'\x00\x00\xfe\xff\x00\x00\x00{\x00'),
+    ('utf32le-truncated-detect', b'{\x00\x00\x00"'),
+    ('utf32be-truncated-detect', b'\x00\x00\x00{\x00'),
+    ('utf32le-bad-codepoint', b'\xff\xfe\x00\x00\x00\x00\x11\x00'),
+    ('utf32be-bad-codepoint', b'\x00\x00\xfe\xff\x00\x11\x00\x00'),
+]:
+    show(label, data)"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_string_bom_message_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public string-input BOM decode messages subset",

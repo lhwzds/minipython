@@ -14592,6 +14592,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_object_pairs_hook_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
             "cpython_json_loads_invalid_utf8_error_detail_subset",
+            "cpython_json_loads_invalid_utf32_error_detail_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ],
         &[
@@ -14754,6 +14755,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_object_pairs_hook_diff_subset",
         "cpython_json_loads_dumps_error_boundary_diff_subset",
         "cpython_json_loads_invalid_utf8_error_detail_diff_subset",
+        "cpython_json_loads_invalid_utf32_error_detail_diff_subset",
         "cpython_json_loads_string_error_boundary_diff_subset",
     ] {
         assert!(
@@ -20143,6 +20145,98 @@ fn json_loads_invalid_utf8_error_detail_docs_cover_decode_boundary() {
             assert!(
                 document.contains(required),
                 "json docs must describe invalid UTF-8 detail boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_loads_invalid_utf32_error_detail_docs_cover_decode_boundary() {
+    let diff_name = "cpython_json_loads_invalid_utf32_error_detail_diff_subset";
+    let subset_name = "cpython_json_loads_invalid_utf32_error_detail_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads invalid UTF-32 detail CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads invalid UTF-32 detail runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "utf32le-truncated-bom",
+        "utf32be-truncated-bom",
+        "utf32le-truncated-detect",
+        "utf32be-truncated-detect",
+        "utf32le-bad-codepoint",
+        "utf32be-bad-codepoint",
+        "b'\\xff\\xfe\\x00\\x00{\\x00\\x00'",
+        "b'\\x00\\x00\\xfe\\xff\\x00\\x00\\x00{\\x00'",
+        "b'{\\x00\\x00\\x00\"'",
+        "b'\\x00\\x00\\x00{\\x00'",
+        "b'\\xff\\xfe\\x00\\x00\\x00\\x00\\x11\\x00'",
+        "b'\\x00\\x00\\xfe\\xff\\x00\\x11\\x00\\x00'",
+    ] {
+        let escaped_form = required.replace('\\', "\\\\").replace('"', "\\\"");
+        assert!(
+            diff_body.contains(required) || diff_body.contains(&escaped_form),
+            "json loads invalid UTF-32 detail diff must cover `{required}`"
+        );
+        assert!(
+            subset_body.contains(required) || subset_body.contains(&escaped_form),
+            "json loads invalid UTF-32 detail subset must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"utf32le-truncated-bom UnicodeDecodeError 'utf-32-le' codec can't decode bytes in position 4-6: truncated data\"",
+        "\"utf32be-truncated-bom UnicodeDecodeError 'utf-32-be' codec can't decode byte 0x00 in position 8: truncated data\"",
+        "\"utf32le-truncated-detect UnicodeDecodeError 'utf-32-le' codec can't decode byte 0x22 in position 4: truncated data\"",
+        "\"utf32be-truncated-detect UnicodeDecodeError 'utf-32-be' codec can't decode byte 0x00 in position 4: truncated data\"",
+        "\"utf32le-bad-codepoint UnicodeDecodeError 'utf-32-le' codec can't decode bytes in position 4-7: code point not in range(0x110000)\"",
+        "\"utf32be-bad-codepoint UnicodeDecodeError 'utf-32-be' codec can't decode bytes in position 4-7: code point not in range(0x110000)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads invalid UTF-32 detail subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for required in [
+        "fn json_decode_utf32_bytes",
+        "fn json_utf32_decode_error",
+        "position_offset",
+        "json_decode_utf32_bytes(&bytes[4..], TextEndian::Little, 4)",
+        "json_decode_utf32_bytes(&bytes[4..], TextEndian::Big, 4)",
+        "TextEndian::Little => \"utf-32-le\"",
+        "TextEndian::Big => \"utf-32-be\"",
+        "truncated data",
+        "code point not in range(0x110000)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json invalid UTF-32 decode implementation must include `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "invalid UTF-32 byte input `UnicodeDecodeError`",
+            "CPython-style codec/endian byte position/reason text",
+            "UTF-32 BOM-stripped bytes and heuristic UTF-32 byte detection",
+            "truncated data and out-of-range code point cases",
+            "without adding unpaired surrogate storage or full `JSONDecodeError` compatibility",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe invalid UTF-32 detail boundary `{required}`"
             );
         }
     }

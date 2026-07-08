@@ -77861,20 +77861,20 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
         return json_loads_decode_utf8_bytes(&bytes[3..]);
     }
     if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) {
-        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Little);
+        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Little, 4);
     }
     if bytes.starts_with(&[0x00, 0x00, 0xfe, 0xff]) {
-        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Big);
+        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Big, 4);
     }
     if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
         return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict);
     }
     if bytes.len() >= 4 {
         if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
-            return json_decode_utf32_bytes(bytes, TextEndian::Big);
+            return json_decode_utf32_bytes(bytes, TextEndian::Big, 0);
         }
         if bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
-            return json_decode_utf32_bytes(bytes, TextEndian::Little);
+            return json_decode_utf32_bytes(bytes, TextEndian::Little, 0);
         }
         if bytes[0] == 0 && bytes[2] == 0 {
             return decode_utf16_bytes(bytes, Some(TextEndian::Big), CodecErrorMode::Strict);
@@ -77924,21 +77924,70 @@ fn json_utf8_decode_error(bytes: &[u8], error: std::str::Utf8Error) -> String {
     format!("UnicodeDecodeError: 'utf-8' codec can't decode {range}: {reason}")
 }
 
-fn json_decode_utf32_bytes(bytes: &[u8], endian: TextEndian) -> Result<String, String> {
+fn json_decode_utf32_bytes(
+    bytes: &[u8],
+    endian: TextEndian,
+    position_offset: usize,
+) -> Result<String, String> {
     if bytes.len() % 4 != 0 {
-        return Err("UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string());
+        let start = bytes.len() - (bytes.len() % 4);
+        return Err(json_utf32_decode_error(
+            endian,
+            bytes,
+            position_offset,
+            start,
+            bytes.len(),
+            "truncated data",
+        ));
     }
     let mut output = String::new();
-    for chunk in bytes.chunks_exact(4) {
+    for (index, chunk) in bytes.chunks_exact(4).enumerate() {
         let codepoint = match endian {
             TextEndian::Little => u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
             TextEndian::Big => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
         };
-        let ch = char::from_u32(codepoint)
-            .ok_or_else(|| "UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string())?;
+        let ch = char::from_u32(codepoint).ok_or_else(|| {
+            let position = index * 4;
+            let reason = if (0xd800..=0xdfff).contains(&codepoint) {
+                "code point in surrogate code point range(0xd800, 0xe000)"
+            } else {
+                "code point not in range(0x110000)"
+            };
+            json_utf32_decode_error(
+                endian,
+                bytes,
+                position_offset,
+                position,
+                position + 4,
+                reason,
+            )
+        })?;
         output.push(ch);
     }
     Ok(output)
+}
+
+fn json_utf32_decode_error(
+    endian: TextEndian,
+    bytes: &[u8],
+    position_offset: usize,
+    start: usize,
+    end: usize,
+    reason: &str,
+) -> String {
+    let codec = match endian {
+        TextEndian::Little => "utf-32-le",
+        TextEndian::Big => "utf-32-be",
+    };
+    let absolute_start = position_offset + start;
+    let absolute_end = position_offset + end;
+    let range = if end.saturating_sub(start) <= 1 {
+        let byte = bytes.get(start).copied().unwrap_or_default();
+        format!("byte 0x{byte:02x} in position {absolute_start}")
+    } else {
+        format!("bytes in position {absolute_start}-{}", absolute_end - 1)
+    };
+    format!("UnicodeDecodeError: '{codec}' codec can't decode {range}: {reason}")
 }
 
 fn json_unsupported_keyword_none(

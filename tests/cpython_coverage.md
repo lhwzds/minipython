@@ -1668,6 +1668,13 @@ Recent runtime migration notes:
   invalid continuation bytes, one-byte and multi-byte unexpected end-of-data
   cases, and nonzero byte positions now preserve CPython-style invalid byte
   position/reason text without adding full `JSONDecodeError` compatibility.
+- `cpython_json_loads_invalid_utf32_error_detail_subset`, backed by
+  `cpython_json_loads_invalid_utf32_error_detail_diff_subset`, now keeps
+  `json.loads()` invalid UTF-32 byte input `UnicodeDecodeError` diagnostics
+  aligned with CPython for UTF-32 BOM-stripped bytes and heuristic UTF-32 byte
+  detection: truncated data and out-of-range code point cases preserve
+  CPython-style codec/endian byte position/reason text without adding unpaired
+  surrogate storage or full `JSONDecodeError` compatibility.
 - `cpython_name_error_name_attribute_subset`, backed by
   `cpython_name_error_name_attribute_diff_subset`, now pins the public
   `NameError.name` attribute for runtime missing-name failures,
@@ -3161,7 +3168,8 @@ Recent runtime migration notes:
   `cpython_json_loads_object_hook_diff_subset`,
   `cpython_json_loads_object_pairs_hook_diff_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset`,
-  `cpython_json_loads_invalid_utf8_error_detail_diff_subset`, and
+  `cpython_json_loads_invalid_utf8_error_detail_diff_subset`,
+  `cpython_json_loads_invalid_utf32_error_detail_diff_subset`, and
   `cpython_json_loads_string_error_boundary_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
@@ -3891,6 +3899,8 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_error_boundary_subset`, plus
   `cpython_json_loads_invalid_utf8_error_detail_diff_subset` /
   `cpython_json_loads_invalid_utf8_error_detail_subset`,
+  `cpython_json_loads_invalid_utf32_error_detail_diff_subset` /
+  `cpython_json_loads_invalid_utf32_error_detail_subset`,
   `cpython_json_loads_escape_and_duplicate_key_diff_subset` /
   `cpython_json_loads_escape_and_duplicate_key_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset` /
@@ -4105,7 +4115,9 @@ Recent runtime migration notes:
   `None`, `enum.StrEnum` values and keys, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   invalid UTF-8 byte input `UnicodeDecodeError` type classification and
-  CPython-style invalid byte position/reason text, and
+  CPython-style invalid byte position/reason text,
+  invalid UTF-32 byte input `UnicodeDecodeError` CPython-style codec/endian byte
+  position/reason text, and
   first-pass type, structural, literal, and data error classification. File APIs,
   non-`None` encoder/decoder hooks other than `object_hook`,
   `object_pairs_hook`, `parse_int`, `parse_float`, `parse_constant`, and
@@ -4428,6 +4440,11 @@ and circular-reference rejection for list, dict, tuple, list/dict subclasses, an
 for `bytes`, UTF-8-BOM-stripped bytes, and `bytearray`: invalid start bytes, invalid continuation bytes,
 one-byte and multi-byte unexpected end-of-data cases, and nonzero byte positions now preserve
 CPython-style invalid byte position/reason text without adding full `JSONDecodeError` compatibility.
+`cpython_json_loads_invalid_utf32_error_detail_subset`, backed by
+`cpython_json_loads_invalid_utf32_error_detail_diff_subset`, keeps `json.loads()` invalid UTF-32 byte input `UnicodeDecodeError`
+diagnostics aligned with CPython for UTF-32 BOM-stripped bytes and heuristic UTF-32 byte detection:
+truncated data and out-of-range code point cases preserve CPython-style codec/endian byte position/reason text
+without adding unpaired surrogate storage or full `JSONDecodeError` compatibility.
 CPython public string-input UTF-8 BOM messages include line/column/char positions;
 `cpython_json_loads_string_bom_message_subset`, backed by
 `cpython_json_loads_string_bom_message_diff_subset`, pins those public `str(error)` / `args` values
