@@ -10225,6 +10225,14 @@ without adding general custom encoder/decoder class support.
   pickle behavior, custom instance state, and CPython object-layout internals
   outside the sandbox contract.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_dir_descriptor_metadata_subset` with direct CPython output
+  parity in `cpython_object_dir_descriptor_metadata_diff_subset`, covering
+  `object.__dir__` method_descriptor metadata:
+  `object.__dir__.__qualname__`, `object.__dir__.__objclass__ is object`,
+  `object.__dir__.__text_signature__`,
+  `str.__dir__ is object.__dir__`, and `dir(object.__dir__)` metadata
+  membership without changing object.__dir__ list semantics or adding custom descriptor behavior.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_getstate_descriptor_metadata_subset` with direct CPython
   output parity in
   `cpython_object_getstate_descriptor_metadata_diff_subset`, covering

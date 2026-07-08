@@ -5404,6 +5404,15 @@ Completed in the differential parity harness pass:
   preserve CPython's public `TypeError` text. Pickle behavior, custom instance
   state, and CPython object-layout internals remain outside this sandbox
   contract. MiniPython now also exposes
+  `cpython_object_dir_descriptor_metadata_subset`, backed by
+  `cpython_object_dir_descriptor_metadata_diff_subset`, for
+  `object.__dir__` method_descriptor metadata:
+  `object.__dir__.__qualname__`,
+  `object.__dir__.__objclass__ is object`,
+  `object.__dir__.__text_signature__`,
+  `str.__dir__ is object.__dir__`, and `dir(object.__dir__)` metadata
+  membership without changing object.__dir__ list semantics or adding custom descriptor behavior.
+  MiniPython now also exposes
   `cpython_object_getstate_descriptor_metadata_subset`, backed by
   `cpython_object_getstate_descriptor_metadata_diff_subset`, for
   `object.__getstate__` method_descriptor metadata:

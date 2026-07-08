@@ -56052,7 +56052,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("path".to_string());
             }
         }
-        Value::Builtin(name) if name == "object.__getstate__" => {
+        Value::Builtin(name)
+            if matches!(name.as_str(), "object.__dir__" | "object.__getstate__") =>
+        {
             names.extend(method_descriptor_dir_names())
         }
         Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => {
@@ -71760,6 +71762,34 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__doc__" && function_name == "method.__get__" => {
             Ok(Value::String("Return an attribute of instance, which is of type owner.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "object.__dir__" =>
+        {
+            Ok(Value::String("object.__dir__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__objclass__" && function_name == "object.__dir__" =>
+        {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "object.__dir__" => {
+            Ok(Value::String("Default dir() implementation.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "object.__dir__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "object.__dir__" =>
+        {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
+        Value::Builtin(function_name) if name == "__self__" && function_name == "object.__dir__" => {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__self__'"
+                .to_string())
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "object.__getstate__" =>

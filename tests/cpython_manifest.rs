@@ -70035,6 +70035,97 @@ fn object_getstate_descriptor_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn object_dir_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_dir_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__dir__",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__",
+        "d.__text_signature__",
+        "str.__dir__ is d",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor method_descriptor __dir__ object.__dir__ True Default dir() implementation. ($self, /)",
+        "inherited True object.__dir__ True",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'method_descriptor' object has no attribute '__module__'",
+        "'method_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object dir descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_dir_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__dir__ method descriptor metadata",
+        "object-dir-descriptor-metadata",
+        "d = object.__dir__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "str.__dir__ is d",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object dir descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "object.__dir__",
+        "method_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__dir__\"",
+        "name == \"__objclass__\" && function_name == \"object.__dir__\"",
+        "name == \"__doc__\" && function_name == \"object.__dir__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__dir__\"",
+        "name == \"__module__\" && function_name == \"object.__dir__\"",
+        "name == \"__self__\" && function_name == \"object.__dir__\"",
+        "\"object.__dir__\"",
+        "\"Default dir() implementation.\"",
+        "\"($self, /)\"",
+        "'method_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object dir descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_dir_descriptor_metadata_subset",
+            "cpython_object_dir_descriptor_metadata_diff_subset",
+            "`object.__dir__.__qualname__`",
+            "`object.__dir__.__objclass__ is object`",
+            "`object.__dir__.__text_signature__`",
+            "`str.__dir__ is object.__dir__`",
+            "`dir(object.__dir__)`",
+            "method_descriptor metadata",
+            "without changing object.__dir__ list semantics",
+            "custom descriptor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object dir descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_getstate_builtin_instance_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
