@@ -2485,6 +2485,9 @@ Recent runtime migration notes:
   `cpython_builtin_print_keyword_diff_subset`,
   `cpython_round_builtin_diff_subset`,
   `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
+  which includes str-subclass `__format__` results for single-field `format()`,
+  single-field f-string, and single-field `str.format` outputs while keeping
+  concatenated formatted strings as exact `str`,
   `cpython_format_builtin_keyword_error_diff_subset`,
   `cpython_hash_id_builtins_diff_subset`,
   `cpython_builtin_breakpoint_custom_hook_diff_subset`,

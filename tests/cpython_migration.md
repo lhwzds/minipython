@@ -10284,6 +10284,9 @@ Completed in the custom `__format__` pass:
   class `__format__` lookup. Instance attributes named `__format__` remain
   visible through ordinary attribute access, but do not override the formatting
   protocol lookup, matching CPython's type-level special-method behavior.
+- Preserved str-subclass `__format__` results for single-field `format()`,
+  single-field f-string, and single-field `str.format` outputs, while
+  concatenated formatted strings still normalize to exact `str`.
 - Added first-pass `object.__format__` inheritance for ordinary instances:
   empty specs return the object's string form, non-string specs raise
   `TypeError`, and non-empty specs on classes without a custom `__format__`

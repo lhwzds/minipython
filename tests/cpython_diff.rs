@@ -19494,10 +19494,27 @@ y.__format__ = lambda spec: 'instance:' + spec
 print(y.__format__('direct'))
 print(format(y, 'real'))
 print(f'{y:field}')
+class FormatSub(str):
+    pass
+class ReturnsFormatSub:
+    def __format__(self, spec):
+        return FormatSub('fmt-' + spec)
+def show(label, value):
+    print(label, type(value).__name__, value, isinstance(value, FormatSub), type(value) is FormatSub)
+show('format-builtin', format(ReturnsFormatSub(), 'x'))
+show('fstring-only', f'{ReturnsFormatSub():y}')
+show('fstring-literal', f'pre{ReturnsFormatSub():q}')
+show('str-format-only', '{:z}'.format(ReturnsFormatSub()))
+show('str-format-literal', 'pre{:q}'.format(ReturnsFormatSub()))
+show('str-format-map-only', '{item:q}'.format_map({'item': ReturnsFormatSub()}))
 class BadFormatResult:
     def __format__(self, spec):
         return 1.0
-for expr in [lambda: format(BadFormatResult(), ''), lambda: format(object(), 4), lambda: format(object(), object())]:
+try:
+    format(BadFormatResult(), '')
+except TypeError as error:
+    print(error.__class__.__name__, str(error))
+for expr in [lambda: format(object(), 4), lambda: format(object(), object())]:
     try:
         expr()
     except TypeError as error:

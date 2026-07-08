@@ -66,6 +66,7 @@ pub enum Instruction {
         src: Register,
         conversion: Option<FormatConversion>,
         format_spec: Option<Register>,
+        preserve_type: bool,
     },
     BuildTemplate {
         dst: Register,

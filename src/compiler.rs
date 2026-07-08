@@ -4352,6 +4352,30 @@ impl Compiler {
     }
 
     fn compile_joined_string_expr(&mut self, parts: &[FStringPart]) -> Result<Register, String> {
+        if let [
+            FStringPart::Formatted {
+                value,
+                conversion,
+                format_spec,
+            },
+        ] = parts
+        {
+            let src = self.compile_expr(value)?;
+            let format_spec = format_spec
+                .as_deref()
+                .map(|parts| self.compile_joined_string_expr(parts))
+                .transpose()?;
+            let register = self.alloc_register();
+            self.instructions.push(Instruction::FormatValue {
+                dst: register,
+                src,
+                conversion: conversion.map(f_string_conversion_to_bytecode),
+                format_spec,
+                preserve_type: true,
+            });
+            return Ok(register);
+        }
+
         let dst = self.alloc_register();
         self.instructions.push(Instruction::LoadConst {
             dst,
@@ -4384,6 +4408,7 @@ impl Compiler {
                         src,
                         conversion: conversion.map(f_string_conversion_to_bytecode),
                         format_spec,
+                        preserve_type: false,
                     });
                     register
                 }
@@ -10740,7 +10765,8 @@ mod tests {
                     dst: 4,
                     src: 3,
                     conversion: Some(FormatConversion::Repr),
-                    format_spec: None
+                    format_spec: None,
+                    preserve_type: false
                 },
                 Instruction::Add {
                     dst: 1,

@@ -5298,22 +5298,45 @@ impl Vm {
                     src,
                     conversion,
                     format_spec,
+                    preserve_type,
                 } => {
                     let value = self.read_register(src)?.clone();
                     let format_spec = format_spec
                         .map(|register| {
-                            let value = self.read_register(register)?;
-                            match value {
-                                Value::String(value) => Ok(value.clone()),
+                            let value = self.read_register(register)?.clone();
+                            match &value {
+                                Value::String(text) | Value::IdentityString { value: text, .. } => {
+                                    Ok((text.clone(), value))
+                                }
+                                value if str_subclass_string(value).is_some() => Ok((
+                                    str_subclass_string(value)
+                                        .expect("str subclass storage exists after guard"),
+                                    value.clone(),
+                                )),
                                 value => {
                                     Err(format!("format specifier must be a string, got {value}"))
                                 }
                             }
                         })
                         .transpose()?;
-                    let formatted =
-                        self.format_value(&value, conversion, format_spec.as_deref())?;
-                    self.write_register(dst, Value::String(formatted));
+                    let format_spec_text = format_spec.as_ref().map(|(text, _)| text.as_str());
+                    let format_spec_object = format_spec.as_ref().map(|(_, value)| value.clone());
+                    let formatted = if preserve_type {
+                        self.format_value_result_with_spec_object(
+                            &value,
+                            conversion,
+                            format_spec_text,
+                            format_spec_object,
+                        )?
+                    } else {
+                        Value::String(self.format_value_with_spec_object(
+                            &value,
+                            conversion,
+                            format_spec_text,
+                            format_spec_object,
+                        )?)
+                    };
+                    self.write_register(dst, formatted);
                 }
                 Instruction::BuildTemplate { dst, parts } => {
                     let value = self.build_template(parts)?;
@@ -21026,7 +21049,7 @@ impl Vm {
     fn call_format(&mut self, args: Vec<Value>) -> Result<Value, String> {
         let (value, format_spec, format_spec_object) = match args.as_slice() {
             [value] => {
-                return self.format_value(value, None, Some("")).map(Value::String);
+                return self.format_value_result(value, None, Some(""));
             }
             [value, format_spec] => (
                 value,
@@ -21042,13 +21065,12 @@ impl Vm {
             }
         };
 
-        self.format_value_with_spec_object(
+        self.format_value_result_with_spec_object(
             value,
             None,
             Some(&format_spec),
             Some(format_spec_object),
         )
-        .map(Value::String)
     }
 
     fn call_compile(
@@ -21831,7 +21853,6 @@ impl Vm {
         };
 
         self.render_str_format(template, positional, &keywords, None)
-            .map(Value::String)
     }
 
     fn call_str_format_map_method(
@@ -21850,7 +21871,6 @@ impl Vm {
         };
 
         self.render_str_format(template, &[], &[], Some(mapping))
-            .map(Value::String)
     }
 
     fn render_str_format(
@@ -21859,22 +21879,29 @@ impl Vm {
         positional: &[Value],
         keywords: &[(String, Value)],
         mapping: Option<&Value>,
-    ) -> Result<String, String> {
+    ) -> Result<Value, String> {
         let chars = template.chars().collect::<Vec<_>>();
         let mut output = String::new();
         let mut index = 0usize;
         let mut auto_index = 0usize;
         let mut used_auto = false;
         let mut used_manual = false;
+        let mut field_count = 0usize;
+        let mut saw_literal = false;
+        let mut single_field_value = None;
 
         while index < chars.len() {
             match chars[index] {
                 '{' if chars.get(index + 1) == Some(&'{') => {
                     output.push('{');
+                    saw_literal = true;
+                    single_field_value = None;
                     index += 2;
                 }
                 '}' if chars.get(index + 1) == Some(&'}') => {
                     output.push('}');
+                    saw_literal = true;
+                    single_field_value = None;
                     index += 2;
                 }
                 '{' => {
@@ -21899,7 +21926,14 @@ impl Vm {
                         &mut used_auto,
                         &mut used_manual,
                     )?;
-                    output.push_str(&value);
+                    let text = Self::format_value_result_text(value.clone())?;
+                    if field_count == 0 && !saw_literal && output.is_empty() {
+                        single_field_value = Some(value);
+                    } else {
+                        single_field_value = None;
+                    }
+                    field_count += 1;
+                    output.push_str(&text);
                     index = field_end + 1;
                 }
                 '}' => {
@@ -21907,12 +21941,18 @@ impl Vm {
                 }
                 ch => {
                     output.push(ch);
+                    saw_literal = true;
+                    single_field_value = None;
                     index += 1;
                 }
             }
         }
 
-        Ok(output)
+        if field_count == 1 && !saw_literal {
+            Ok(single_field_value.expect("single-field format stores a value"))
+        } else {
+            Ok(Value::String(output))
+        }
     }
 
     fn render_str_format_field(
@@ -21924,7 +21964,7 @@ impl Vm {
         auto_index: &mut usize,
         used_auto: &mut bool,
         used_manual: &mut bool,
-    ) -> Result<String, String> {
+    ) -> Result<Value, String> {
         let parts = parse_str_format_field(field)?;
         let value = self.resolve_str_format_field(
             parts.field_name,
@@ -21935,7 +21975,7 @@ impl Vm {
             used_auto,
             used_manual,
         )?;
-        self.format_value(&value, parts.conversion, Some(parts.format_spec))
+        self.format_value_result(&value, parts.conversion, Some(parts.format_spec))
     }
 
     fn resolve_str_format_field(
@@ -22033,13 +22073,26 @@ impl Vm {
         Ok(value)
     }
 
-    fn format_value(
+    fn format_value_result(
         &mut self,
         value: &Value,
         conversion: Option<FormatConversion>,
         format_spec: Option<&str>,
-    ) -> Result<String, String> {
-        self.format_value_with_spec_object(value, conversion, format_spec, None)
+    ) -> Result<Value, String> {
+        self.format_value_result_with_spec_object(value, conversion, format_spec, None)
+    }
+
+    fn format_value_result_text(value: Value) -> Result<String, String> {
+        match value {
+            Value::String(value) | Value::IdentityString { value, .. } => Ok(value),
+            value if str_subclass_string(&value).is_some() => {
+                Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+            }
+            value => Err(format!(
+                "__format__ must return a str, not {}",
+                type_name(&value)
+            )),
+        }
     }
 
     fn str_value(&mut self, value: &Value) -> Result<String, String> {
@@ -22087,6 +22140,22 @@ impl Vm {
         format_spec: Option<&str>,
         format_spec_object: Option<Value>,
     ) -> Result<String, String> {
+        let result = self.format_value_result_with_spec_object(
+            value,
+            conversion,
+            format_spec,
+            format_spec_object,
+        )?;
+        Self::format_value_result_text(result)
+    }
+
+    fn format_value_result_with_spec_object(
+        &mut self,
+        value: &Value,
+        conversion: Option<FormatConversion>,
+        format_spec: Option<&str>,
+        format_spec_object: Option<Value>,
+    ) -> Result<Value, String> {
         if conversion.is_none()
             && let Some(method) = instance_special_method(value, "__format__")
         {
@@ -22095,13 +22164,10 @@ impl Vm {
                 .unwrap_or_else(|| Value::String(format_spec.unwrap_or_default().to_string()));
             let result = self.call_value(method, vec![format_spec_value])?;
             return match result {
-                Value::String(value) | Value::IdentityString { value, .. } => Ok(value),
-                value if str_subclass_string(&value).is_some() => {
-                    Ok(str_subclass_string(&value)
-                        .expect("str subclass storage exists after guard"))
-                }
+                value @ (Value::String(_) | Value::IdentityString { .. }) => Ok(value),
+                value if str_subclass_string(&value).is_some() => Ok(value),
                 value => Err(format!(
-                    "__format__ must return a string, got {}",
+                    "__format__ must return a str, not {}",
                     type_name(&value)
                 )),
             };
@@ -22112,29 +22178,33 @@ impl Vm {
         {
             if format_spec.map_or(true, str::is_empty) {
                 let rendered = self.str_value(value)?;
-                return apply_format_spec(value, &rendered, false, format_spec);
+                return apply_format_spec(value, &rendered, false, format_spec).map(Value::String);
             }
             return format_builtin_value(
                 Some(self),
                 &Value::String(storage),
                 conversion,
                 format_spec,
-            );
+            )
+            .map(Value::String);
         }
 
         if conversion.is_none() && is_set_subclass_display_value(value) {
-            return format_set_subclass_value(Some(self), value, format_spec);
+            return format_set_subclass_value(Some(self), value, format_spec).map(Value::String);
         }
 
         if conversion.is_none() && matches!(value, Value::Instance { .. }) {
-            return self.call_object_format(vec![
-                value.clone(),
-                format_spec_object
-                    .unwrap_or_else(|| Value::String(format_spec.unwrap_or_default().to_string())),
-            ]);
+            return self
+                .call_object_format(vec![
+                    value.clone(),
+                    format_spec_object.unwrap_or_else(|| {
+                        Value::String(format_spec.unwrap_or_default().to_string())
+                    }),
+                ])
+                .map(Value::String);
         }
 
-        format_builtin_value(Some(self), value, conversion, format_spec)
+        format_builtin_value(Some(self), value, conversion, format_spec).map(Value::String)
     }
 
     fn call_range(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -38177,7 +38247,6 @@ impl Vm {
             ));
         };
         self.render_str_format(&data.borrow(), positional, keywords, None)
-            .map(Value::String)
     }
 
     fn user_string_format_map_value(
@@ -38192,7 +38261,6 @@ impl Vm {
             ));
         };
         self.render_str_format(&data.borrow(), &[], &[], Some(&mapping))
-            .map(Value::String)
     }
 
     fn user_string_mod_value(&mut self, receiver: &Value, args: Value) -> Result<Value, String> {
@@ -104550,6 +104618,7 @@ mod tests {
                 src: 1,
                 conversion: Some(FormatConversion::Repr),
                 format_spec: None,
+                preserve_type: false,
             },
             Instruction::Call {
                 dst: 3,
@@ -104585,6 +104654,7 @@ mod tests {
                 src: 1,
                 conversion: None,
                 format_spec: Some(2),
+                preserve_type: false,
             },
             Instruction::Call {
                 dst: 4,

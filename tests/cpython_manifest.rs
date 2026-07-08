@@ -54274,6 +54274,79 @@ fn slice_instance_doc_attribute_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn format_custom_dunder_preserves_str_subclass_results_has_focused_diff_evidence() {
+    for required in [
+        "class FormatSub(str):",
+        "class ReturnsFormatSub:",
+        "show('format-builtin', format(ReturnsFormatSub(), 'x'))",
+        "show('fstring-only', f'{ReturnsFormatSub():y}')",
+        "show('fstring-literal', f'pre{ReturnsFormatSub():q}')",
+        "show('str-format-only', '{:z}'.format(ReturnsFormatSub()))",
+        "show('str-format-literal', 'pre{:q}'.format(ReturnsFormatSub()))",
+        "show('str-format-map-only', '{item:q}'.format_map({'item': ReturnsFormatSub()}))",
+        "\"format-builtin FormatSub fmt-x True True\"",
+        "\"fstring-only FormatSub fmt-y True True\"",
+        "\"fstring-literal str prefmt-q False False\"",
+        "\"str-format-only FormatSub fmt-z True True\"",
+        "\"str-format-literal str prefmt-q False False\"",
+        "\"str-format-map-only FormatSub fmt-q True True\"",
+        "__format__ must return a str, not float",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "custom __format__ str-subclass subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_format_builtin_and_custom_dunder_format_diff_subset",
+    );
+    for required in [
+        "class FormatSub(str):",
+        "class ReturnsFormatSub:",
+        "show('format-builtin', format(ReturnsFormatSub(), 'x'))",
+        "show('fstring-only', f'{ReturnsFormatSub():y}')",
+        "show('fstring-literal', f'pre{ReturnsFormatSub():q}')",
+        "show('str-format-only', '{:z}'.format(ReturnsFormatSub()))",
+        "show('str-format-literal', 'pre{:q}'.format(ReturnsFormatSub()))",
+        "show('str-format-map-only', '{item:q}'.format_map({'item': ReturnsFormatSub()}))",
+        "format(BadFormatResult(), '')",
+        "print(error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            body.contains(required),
+            "custom __format__ str-subclass CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn format_value_result_with_spec_object(",
+        "value if str_subclass_string(&value).is_some() => Ok(value)",
+        "fn format_value_result_text(value: Value) -> Result<String, String>",
+        "field_count == 1 && !saw_literal",
+        "single_field_value.expect(\"single-field format stores a value\")",
+        "preserve_type",
+        "__format__ must return a str, not {}",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "custom __format__ str-subclass implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        assert!(
+            document.contains("str-subclass `__format__` results")
+                && document.contains("single-field `format()`")
+                && document.contains("single-field f-string")
+                && document.contains("single-field `str.format`"),
+            "custom __format__ str-subclass evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",
