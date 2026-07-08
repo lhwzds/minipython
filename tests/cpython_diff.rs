@@ -11461,6 +11461,21 @@ print('calls', str.__rmul__('ab', 3), str.__rmul__(left, I()), 'ab'.__rmul__(I()
 }
 
 #[test]
+fn cpython_string_direct_eq_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__eq__ dir surface",
+        name: "string-direct-eq-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__eq__' in dir(value), hasattr(value, '__eq__'))
+print('descriptor', type(str.__eq__).__name__, type('ab'.__eq__).__name__, type(left.__eq__).__name__)
+print('calls', str.__eq__('ab', 'ab'), str.__eq__(left, S('ab')), 'ab'.__eq__(S('ab')), left.__eq__(object()))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
