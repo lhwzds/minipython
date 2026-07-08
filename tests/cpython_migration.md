@@ -10349,6 +10349,16 @@ Completed in the str direct `__str__` / `__repr__` methods pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct `__add__` method pass:
+
+- Added `cpython_string_direct_add_method_subset` plus
+  `cpython_string_direct_add_method_diff_subset`, covering direct `__add__`
+  calls on exact `str` and `str` subclass instances, absent `__radd__`, bound
+  `method-wrapper` behavior, class-level `wrapper_descriptor` visibility,
+  `str` subclass arguments, and exact `str` result normalization.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the format grouping-option error pass:
 
 - Added `cpython_format_grouping_option_errors_subset` from

@@ -62183,7 +62183,8 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
         || (type_name == "str"
             && matches!(
                 name,
-                "__repr__"
+                "__add__"
+                    | "__repr__"
                     | "__str__"
                     | "startswith"
                     | "endswith"
@@ -74220,7 +74221,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
                 | "__ge__"
                 | "__hash__"
         ),
-        "str" => matches!(method, "__repr__" | "__str__"),
+        "str" => matches!(method, "__add__" | "__repr__" | "__str__"),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
@@ -83390,6 +83391,7 @@ fn call_immutable_sequence_method(
     args: Vec<Value>,
 ) -> Result<Value, String> {
     match name {
+        "str.__add__" => return call_str_add_method(name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
         "str.startswith" => return call_str_prefix_suffix_method(name, args, true),
@@ -83706,6 +83708,33 @@ fn call_str_prefix_suffix_method(
         }
     });
     Ok(Value::Bool(matched))
+}
+
+fn call_str_add_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, other] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(left) = str_method_text(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    let Some(right) = str_method_text(other) else {
+        return Err(format!(
+            "TypeError: can only concatenate str (not \"{}\") to str",
+            type_name(other)
+        ));
+    };
+    Ok(Value::String(format!(
+        "{}{}",
+        left.as_ref(),
+        right.as_ref()
+    )))
 }
 
 fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {

@@ -54543,7 +54543,7 @@ fn string_direct_str_repr_methods_have_focused_diff_evidence() {
         "Ok(Value::String(receiver.into_owned()))",
         "\"__repr__\"",
         "| \"__str__\"",
-        "\"str\" => matches!(method, \"__repr__\" | \"__str__\")",
+        "\"str\" => matches!(method, \"__add__\" | \"__repr__\" | \"__str__\")",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -54557,6 +54557,72 @@ fn string_direct_str_repr_methods_have_focused_diff_evidence() {
                 && document.contains("cpython_string_direct_str_repr_methods_subset")
                 && document.contains("cpython_string_direct_str_repr_methods_diff_subset"),
             "direct str/repr evidence must be documented"
+        );
+    }
+}
+
+#[test]
+fn string_direct_add_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_add_method_subset");
+    for required in [
+        "class S(str):",
+        "for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:",
+        "for name in ['__add__', '__radd__']:",
+        "m = value.__add__",
+        "type(str.__add__).__name__",
+        "\"exact __add__ True\"",
+        "\"exact __radd__ False\"",
+        "\"subclass __add__ True\"",
+        "\"subclass __radd__ False\"",
+        "\"exact bound-type method-wrapper str abc\"",
+        "\"exact sub-arg str abd\"",
+        "\"subclass bound-type method-wrapper str abc\"",
+        "\"subclass sub-arg str abd\"",
+        "\"class wrapper_descriptor str ab\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str add subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-add-method");
+    for required in [
+        "class S(str):",
+        "for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:",
+        "for name in ['__add__', '__radd__']:",
+        "m = value.__add__",
+        "type(str.__add__).__name__",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str add CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str.__add__\" => return call_str_add_method(name, args)",
+        "fn call_str_add_method(name: &str, args: Vec<Value>) -> Result<Value, String>",
+        "let [receiver, other] = args.as_slice()",
+        "let Some(left) = str_method_text(receiver)",
+        "let Some(right) = str_method_text(other)",
+        "can only concatenate str (not",
+        "\"__add__\"",
+        "\"str\" => matches!(method, \"__add__\" | \"__repr__\" | \"__str__\")",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str add implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__add__` method")
+                && document.contains("cpython_string_direct_add_method_subset")
+                && document.contains("cpython_string_direct_add_method_diff_subset"),
+            "direct str add evidence must be documented"
         );
     }
 }

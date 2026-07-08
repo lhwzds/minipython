@@ -11332,6 +11332,24 @@ print('class', type(str.__str__).__name__, type(str.__repr__).__name__)"#,
 }
 
 #[test]
+fn cpython_string_direct_add_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__add__ direct method behavior",
+        name: "string-direct-add-method",
+        source: r#"class S(str):
+    pass
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    for name in ['__add__', '__radd__']:
+        print(label, name, hasattr(value, name))
+for label, value in [('exact', 'ab'), ('subclass', S('ab'))]:
+    m = value.__add__
+    print(label, 'bound-type', type(m).__name__, type(m('c')).__name__, m('c'))
+    print(label, 'sub-arg', type(m(S('d'))).__name__, m(S('d')))
+print('class', type(str.__add__).__name__, type(str.__add__('a', 'b')).__name__, str.__add__('a', 'b'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",
