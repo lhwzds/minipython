@@ -55137,6 +55137,118 @@ fn string_direct_hash_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_mod_method_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_mod_method_subset");
+    for required in [
+        "class S(str):",
+        "left = S('%s-%d')",
+        "type(str.__mod__).__name__",
+        "hasattr(str, '__mod__')",
+        "__mod__' in dir(str)",
+        "lambda: '%s-%d'.__mod__(('a', 3))",
+        "lambda: left.__mod__(('a', 3))",
+        "lambda: '%s-%d' % ('a', 3)",
+        "lambda: str.__mod__('%s-%d', ('a', 3))",
+        "lambda: str.__mod__(left, ('a', 3))",
+        "lambda: str.__mod__(1, ('a', 3))",
+        "lambda: str.__mod__()",
+        "lambda: '%s'.__mod__()",
+        "lambda: '%s'.__mod__('a', 'b')",
+        "lambda: '%s'.__mod__(value='a')",
+        "__mod__' in dir(left)",
+        "__mod__' in dir(S)",
+        "type(left.__mod__).__name__",
+        "type(str.__mod__).__name__",
+        "\"class wrapper_descriptor True True\"",
+        "\"bound-exact str a-3\"",
+        "\"bound-sub str a-3\"",
+        "\"operator-exact str a-3\"",
+        "\"type-exact str a-3\"",
+        "\"type-sub str a-3\"",
+        "\"bad-receiver TypeError descriptor '__mod__' requires a 'str' object but received a 'int'",
+        "\"class-missing TypeError descriptor '__mod__' of 'str' object needs an argument",
+        "\"bound-missing TypeError expected 1 argument, got 0",
+        "\"bound-extra TypeError expected 1 argument, got 2",
+        "\"keyword TypeError wrapper __mod__() takes no keyword arguments",
+        "\"visible True True True True method-wrapper wrapper_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str mod subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-mod-method");
+    for required in [
+        "class S(str):",
+        "left = S('%s-%d')",
+        "type(str.__mod__).__name__",
+        "lambda: '%s-%d'.__mod__(('a', 3))",
+        "lambda: left.__mod__(('a', 3))",
+        "lambda: '%s-%d' % ('a', 3)",
+        "lambda: str.__mod__('%s-%d', ('a', 3))",
+        "lambda: str.__mod__(left, ('a', 3))",
+        "lambda: str.__mod__(1, ('a', 3))",
+        "lambda: str.__mod__()",
+        "lambda: '%s'.__mod__()",
+        "lambda: '%s'.__mod__('a', 'b')",
+        "lambda: '%s'.__mod__(value='a')",
+        "__mod__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str mod CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    assert!(
+        str_wrapper_block.contains("\"__mod__\""),
+        "str wrapper descriptor branch must include `__mod__`"
+    );
+
+    for required in [
+        "\"str.__mod__\" => return call_str_mod_method(vm, name, args)",
+        "fn call_str_mod_method(vm: &mut Vm, name: &str, args: Vec<Value>)",
+        "TypeError: descriptor '__mod__' of 'str' object needs an argument",
+        "TypeError: expected 1 argument, got {}",
+        "descriptor '{method}' requires a 'str' object",
+        "percent_format_string(",
+        "Ok(Value::String(percent_format_string(",
+        "names.push(\"__mod__\".to_string());",
+        "| \"__mod__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str mod implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct `__mod__` method")
+                && document.contains("cpython_string_direct_mod_method_subset")
+                && document.contains("cpython_string_direct_mod_method_diff_subset")
+                && document.contains("percent-formatting")
+                && document.contains("`str.__rmod__`"),
+            "direct str mod evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn string_direct_format_method_has_focused_diff_evidence() {
     let subset_body =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_string_direct_format_method_subset");

@@ -11448,6 +11448,36 @@ for label, call in [('class-exact', lambda: str.__hash__('abc')), ('class-subcla
 }
 
 #[test]
+fn cpython_string_direct_mod_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__mod__ direct method behavior",
+        name: "string-direct-mod-method",
+        source: r#"class S(str):
+    pass
+left = S('%s-%d')
+print('class', type(str.__mod__).__name__, hasattr(str, '__mod__'), '__mod__' in dir(str))
+for label, expr in [
+    ('bound-exact', lambda: '%s-%d'.__mod__(('a', 3))),
+    ('bound-sub', lambda: left.__mod__(('a', 3))),
+    ('operator-exact', lambda: '%s-%d' % ('a', 3)),
+    ('type-exact', lambda: str.__mod__('%s-%d', ('a', 3))),
+    ('type-sub', lambda: str.__mod__(left, ('a', 3))),
+    ('bad-receiver', lambda: str.__mod__(1, ('a', 3))),
+    ('class-missing', lambda: str.__mod__()),
+    ('bound-missing', lambda: '%s'.__mod__()),
+    ('bound-extra', lambda: '%s'.__mod__('a', 'b')),
+    ('keyword', lambda: '%s'.__mod__(value='a')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__mod__'), '__mod__' in dir(left), '__mod__' in dir(S), '__mod__' in dir(str), type(left.__mod__).__name__, type(str.__mod__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_direct_format_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str.__format__ direct method behavior",
