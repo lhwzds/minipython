@@ -11521,6 +11521,21 @@ print('calls', str.__le__('b', 'b'), str.__le__(left, S('b')), 'b'.__le__(S('b')
 }
 
 #[test]
+fn cpython_string_direct_gt_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__gt__ dir surface",
+        name: "string-direct-gt-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('b')
+for label, value in [('type', str), ('subtype', S), ('exact', 'b'), ('sub', left)]:
+    print(label, '__gt__' in dir(value), hasattr(value, '__gt__'))
+print('descriptor', type(str.__gt__).__name__, type('b'.__gt__).__name__, type(left.__gt__).__name__)
+print('calls', str.__gt__('b', 'a'), str.__gt__(left, S('a')), 'b'.__gt__(S('a')), left.__gt__(object()))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",

@@ -57496,6 +57496,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__getitem__".to_string());
         names.push("__getnewargs__".to_string());
         names.push("__getstate__".to_string());
+        names.push("__gt__".to_string());
         names.push("__init__".to_string());
         names.push("__iter__".to_string());
         names.push("__le__".to_string());
