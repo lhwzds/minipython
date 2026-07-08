@@ -57417,6 +57417,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     if name == "str" {
         names.push("__delattr__".to_string());
         names.push("__getstate__".to_string());
+        names.push("__init__".to_string());
         names.push("__setattr__".to_string());
     }
     if name == "UserString" {
@@ -66220,6 +66221,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::String(value) | Value::IdentityString { value, .. } if name == "__delattr__" => {
             Ok(object_delattr_bound_method(Value::String(value)))
         }
+        Value::String(value) | Value::IdentityString { value, .. } if name == "__init__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__init__".to_string())),
+                receiver: Box::new(Value::String(value)),
+                identity: Rc::new(()),
+            })
+        }
         Value::String(value) | Value::IdentityString { value, .. } => {
             immutable_sequence_method("str", Value::String(value), name)
         }
@@ -69053,6 +69061,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__dir__" => {
             Ok(Value::Builtin("object.__dir__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__init__" => {
+            Ok(Value::Builtin("object.__init__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "range" && name == "__new__" => {
             Ok(Value::Builtin("range.__new__".to_string()))

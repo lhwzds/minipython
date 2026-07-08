@@ -55409,7 +55409,10 @@ fn string_inherited_getstate_method_has_focused_diff_evidence() {
     }
 
     for required in [
-        "if name == \"str\" {\n        names.push(\"__delattr__\".to_string());\n        names.push(\"__getstate__\".to_string());\n        names.push(\"__setattr__\".to_string());\n    }",
+        "if name == \"str\"",
+        "names.push(\"__delattr__\".to_string());",
+        "names.push(\"__getstate__\".to_string());",
+        "names.push(\"__setattr__\".to_string());",
         "function_name == \"str\" && name == \"__getstate__\"",
         "Value::Builtin(\"object.__getstate__\".to_string())",
         "if class_bases_include_builtin(class_bases, \"str\") => scope_dict_value(fields)",
@@ -55550,6 +55553,85 @@ fn string_inherited_dir_method_has_focused_diff_evidence() {
                 && document.contains("cpython_string_inherited_dir_method_subset")
                 && document.contains("cpython_string_inherited_dir_method_diff_subset"),
             "inherited str dir evidence must be documented"
+        );
+    }
+}
+
+#[test]
+fn string_inherited_init_method_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_inherited_init_method_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "lambda: 'ab'.__init__()",
+        "lambda: left.__init__()",
+        "lambda: object.__init__('ab')",
+        "lambda: str.__init__('ab')",
+        "lambda: str.__init__(left)",
+        "lambda: str.__init__(object())",
+        "__init__' in dir(left)",
+        "__init__' in dir(S)",
+        "__init__' in dir(str)",
+        "type(left.__init__).__name__",
+        "type(str.__init__).__name__",
+        "str.__init__ is object.__init__",
+        "type(object.__init__).__name__",
+        "\"init-exact NoneType None\"",
+        "\"init-sub NoneType None\"",
+        "\"object-init-exact NoneType None\"",
+        "\"type-init-exact NoneType None\"",
+        "\"type-init-sub NoneType None\"",
+        "\"type-init-object NoneType None\"",
+        "\"visible True True True True method-wrapper wrapper_descriptor True wrapper_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "inherited str init subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-inherited-init-method");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "lambda: 'ab'.__init__()",
+        "lambda: left.__init__()",
+        "lambda: object.__init__('ab')",
+        "lambda: str.__init__('ab')",
+        "lambda: str.__init__(left)",
+        "lambda: str.__init__(object())",
+        "__init__' in dir(str)",
+        "str.__init__ is object.__init__",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "inherited str init CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "names.push(\"__init__\".to_string());",
+        "Value::String(value) | Value::IdentityString { value, .. } if name == \"__init__\"",
+        "Value::Builtin(\"object.__init__\".to_string())",
+        "function_name == \"str\" && name == \"__init__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "inherited str init implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str inherited `__init__`")
+                && document.contains("cpython_string_inherited_init_method_subset")
+                && document.contains("cpython_string_inherited_init_method_diff_subset")
+                && document.contains("object.__init__")
+                && document.contains("arity-message parity"),
+            "inherited str init evidence must be documented"
         );
     }
 }

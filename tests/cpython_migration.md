@@ -10443,6 +10443,19 @@ Completed in the str inherited `__dir__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, object-layout internals, or full stdlib scope.
 
+Completed in the str inherited `__init__` method pass:
+
+- Added `cpython_string_inherited_init_method_subset` plus
+  `cpython_string_inherited_init_method_diff_subset`, covering
+  object-inherited `__init__` on exact `str` and `str` subclass instances,
+  class-level `wrapper_descriptor` identity with `object`, bound
+  `method-wrapper` visibility, no-op no-argument direct and bound calls,
+  non-str receiver support through the inherited descriptor, and `dir()`
+  visibility.
+- This stays inside core string/object-model behavior and does not widen str
+  construction, `object.__init__` arity-message parity, host IO, network,
+  process, C ABI, object-layout internals, or full stdlib scope.
+
 Completed in the str inherited `__setattr__` / `__delattr__` methods pass:
 
 - Added `cpython_string_inherited_setattr_delattr_methods_subset` plus

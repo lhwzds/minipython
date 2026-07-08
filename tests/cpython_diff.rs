@@ -11594,6 +11594,31 @@ summarize('type-sub', str.__dir__(left))"#,
 }
 
 #[test]
+fn cpython_string_inherited_init_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __init__ method behavior",
+        name: "string-inherited-init-method",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, expr in [
+    ('init-exact', lambda: 'ab'.__init__()),
+    ('init-sub', lambda: left.__init__()),
+    ('object-init-exact', lambda: object.__init__('ab')),
+    ('type-init-exact', lambda: str.__init__('ab')),
+    ('type-init-sub', lambda: str.__init__(left)),
+    ('type-init-object', lambda: str.__init__(object())),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible', hasattr(left, '__init__'), '__init__' in dir(left), '__init__' in dir(S), '__init__' in dir(str), type(left.__init__).__name__, type(str.__init__).__name__, str.__init__ is object.__init__, type(object.__init__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_inherited_setattr_delattr_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str inherited __setattr__ / __delattr__ method behavior",
