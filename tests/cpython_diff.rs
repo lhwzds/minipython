@@ -11425,6 +11425,24 @@ print('calls', list(str.__iter__('ab')), list(str.__iter__(S('ab'))), list('ab'.
 }
 
 #[test]
+fn cpython_string_direct_mul_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__mul__ dir surface",
+        name: "string-direct-mul-dir-surface",
+        source: r#"class S(str):
+    pass
+class I:
+    def __index__(self):
+        return 2
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__mul__' in dir(value), hasattr(value, '__mul__'))
+print('descriptor', type(str.__mul__).__name__, type('ab'.__mul__).__name__, type(left.__mul__).__name__)
+print('calls', str.__mul__('ab', 3), str.__mul__(left, I()), 'ab'.__mul__(I()), left.__mul__(0))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
