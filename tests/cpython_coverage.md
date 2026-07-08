@@ -10124,6 +10124,16 @@ without adding general custom encoder/decoder class support.
   `function.__repr__.__objclass__ is function`,
   `function.__repr__.__text_signature__`,
   `dir(function.__repr__)`, and descriptor call forwarding without changing function instance repr/str shape or depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_str_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_str_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__str__` inherited wrapper_descriptor metadata:
+  `function.__str__ is object.__str__`,
+  `function.__str__.__qualname__`,
+  `function.__str__.__objclass__ is object`,
+  `function.__str__.__text_signature__`,
+  `dir(function.__str__)`, and descriptor call forwarding without changing function instance repr/str shape or depending on concrete addresses.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
