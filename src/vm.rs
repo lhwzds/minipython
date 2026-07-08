@@ -56053,7 +56053,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             }
         }
         Value::Builtin(name)
-            if matches!(name.as_str(), "object.__dir__" | "object.__getstate__") =>
+            if matches!(
+                name.as_str(),
+                "object.__dir__" | "object.__getstate__" | "object.__sizeof__"
+            ) =>
         {
             names.extend(method_descriptor_dir_names())
         }
@@ -71788,6 +71791,38 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .to_string())
         }
         Value::Builtin(function_name) if name == "__self__" && function_name == "object.__dir__" => {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__self__'"
+                .to_string())
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "object.__sizeof__" =>
+        {
+            Ok(Value::String("object.__sizeof__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__objclass__" && function_name == "object.__sizeof__" =>
+        {
+            Ok(Value::Builtin("object".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && function_name == "object.__sizeof__" =>
+        {
+            Ok(Value::String("Size of object in memory, in bytes.".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "object.__sizeof__" =>
+        {
+            Ok(Value::String("($self, /)".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name == "object.__sizeof__" =>
+        {
+            Err("AttributeError: 'method_descriptor' object has no attribute '__module__'"
+                .to_string())
+        }
+        Value::Builtin(function_name)
+            if name == "__self__" && function_name == "object.__sizeof__" =>
+        {
             Err("AttributeError: 'method_descriptor' object has no attribute '__self__'"
                 .to_string())
         }

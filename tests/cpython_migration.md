@@ -5413,6 +5413,15 @@ Completed in the differential parity harness pass:
   `str.__dir__ is object.__dir__`, and `dir(object.__dir__)` metadata
   membership without changing object.__dir__ list semantics or adding custom descriptor behavior.
   MiniPython now also exposes
+  `cpython_object_sizeof_descriptor_metadata_subset`, backed by
+  `cpython_object_sizeof_descriptor_metadata_diff_subset`, for
+  `object.__sizeof__` method_descriptor metadata:
+  `object.__sizeof__.__qualname__`,
+  `object.__sizeof__.__objclass__ is object`,
+  `object.__sizeof__.__text_signature__`,
+  `str.__sizeof__ is object.__sizeof__` remaining false, and
+  `dir(object.__sizeof__)` metadata membership without depending on CPython allocation sizes
+  or object-layout internals. MiniPython now also exposes
   `cpython_object_getstate_descriptor_metadata_subset`, backed by
   `cpython_object_getstate_descriptor_metadata_diff_subset`, for
   `object.__getstate__` method_descriptor metadata:

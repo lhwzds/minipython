@@ -70126,6 +70126,99 @@ fn object_dir_descriptor_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn object_sizeof_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_object_sizeof_descriptor_metadata_subset",
+    );
+    for required in [
+        "d = object.__sizeof__",
+        "type(d).__name__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__doc__",
+        "d.__text_signature__",
+        "str.__sizeof__ is d",
+        "type(str.__sizeof__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+        "descriptor method_descriptor __sizeof__ object.__sizeof__ True Size of object in memory, in bytes. ($self, /)",
+        "str-separate False method_descriptor",
+        "dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']",
+        "'method_descriptor' object has no attribute '__module__'",
+        "'method_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused object sizeof descriptor metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_sizeof_descriptor_metadata_diff_subset",
+    );
+    for required in [
+        "CPython public object.__sizeof__ method descriptor metadata",
+        "object-sizeof-descriptor-metadata",
+        "d = object.__sizeof__",
+        "d.__qualname__",
+        "d.__objclass__ is object",
+        "d.__text_signature__",
+        "str.__sizeof__ is d",
+        "type(str.__sizeof__).__name__",
+        "dir(d)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused object sizeof descriptor metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "object.__sizeof__",
+        "method_descriptor_dir_names()",
+        "name == \"__qualname__\" && function_name == \"object.__sizeof__\"",
+        "name == \"__objclass__\" && function_name == \"object.__sizeof__\"",
+        "name == \"__doc__\" && function_name == \"object.__sizeof__\"",
+        "name == \"__text_signature__\" && function_name == \"object.__sizeof__\"",
+        "name == \"__module__\" && function_name == \"object.__sizeof__\"",
+        "name == \"__self__\" && function_name == \"object.__sizeof__\"",
+        "\"object.__sizeof__\"",
+        "\"Size of object in memory, in bytes.\"",
+        "\"($self, /)\"",
+        "'method_descriptor' object has no attribute",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "object sizeof descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_object_sizeof_descriptor_metadata_subset",
+            "cpython_object_sizeof_descriptor_metadata_diff_subset",
+            "`object.__sizeof__.__qualname__`",
+            "`object.__sizeof__.__objclass__ is object`",
+            "`object.__sizeof__.__text_signature__`",
+            "`str.__sizeof__ is object.__sizeof__`",
+            "`dir(object.__sizeof__)`",
+            "method_descriptor metadata",
+            "without depending on CPython allocation sizes",
+            "object-layout internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused object sizeof descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn object_getstate_builtin_instance_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

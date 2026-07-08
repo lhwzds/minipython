@@ -10233,6 +10233,16 @@ without adding general custom encoder/decoder class support.
   `str.__dir__ is object.__dir__`, and `dir(object.__dir__)` metadata
   membership without changing object.__dir__ list semantics or adding custom descriptor behavior.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_object_sizeof_descriptor_metadata_subset` with direct CPython output
+  parity in `cpython_object_sizeof_descriptor_metadata_diff_subset`, covering
+  `object.__sizeof__` method_descriptor metadata:
+  `object.__sizeof__.__qualname__`,
+  `object.__sizeof__.__objclass__ is object`,
+  `object.__sizeof__.__text_signature__`,
+  `str.__sizeof__ is object.__sizeof__` remaining false, and
+  `dir(object.__sizeof__)` metadata membership without depending on CPython allocation sizes
+  or object-layout internals.
+- `RUNTIME_BUILTINS` also includes
   `cpython_object_getstate_descriptor_metadata_subset` with direct CPython
   output parity in
   `cpython_object_getstate_descriptor_metadata_diff_subset`, covering
