@@ -54934,6 +54934,114 @@ fn string_direct_equality_methods_have_focused_diff_evidence() {
 }
 
 #[test]
+fn string_direct_ordering_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_direct_ordering_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "for name in ['__lt__', '__le__', '__gt__', '__ge__']:",
+        "m = getattr(value, name)",
+        "other = m(1)",
+        "type(other).__name__, other",
+        "type(str.__lt__('b', S('c'))).__name__",
+        "str.__lt__('b', S('c'))",
+        "type(str.__ge__(S('b'), 'b')).__name__",
+        "str.__ge__(S('b'), 'b')",
+        "\"class __lt__ wrapper_descriptor\"",
+        "\"class __le__ wrapper_descriptor\"",
+        "\"class __gt__ wrapper_descriptor\"",
+        "\"class __ge__ wrapper_descriptor\"",
+        "\"exact __lt__ method-wrapper False False True NotImplementedType NotImplemented\"",
+        "\"exact __le__ method-wrapper False True True NotImplementedType NotImplemented\"",
+        "\"exact __gt__ method-wrapper True False False NotImplementedType NotImplemented\"",
+        "\"exact __ge__ method-wrapper True True False NotImplementedType NotImplemented\"",
+        "\"subclass __lt__ method-wrapper False False True NotImplementedType NotImplemented\"",
+        "\"subclass __le__ method-wrapper False True True NotImplementedType NotImplemented\"",
+        "\"subclass __gt__ method-wrapper True False False NotImplementedType NotImplemented\"",
+        "\"subclass __ge__ method-wrapper True True False NotImplementedType NotImplemented\"",
+        "\"class-call bool True bool True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "direct str ordering subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-direct-ordering-methods");
+    for required in [
+        "class S(str):",
+        "for name in ['__lt__', '__le__', '__gt__', '__ge__']:",
+        "m = getattr(value, name)",
+        "other = m(1)",
+        "type(other).__name__, other",
+        "type(str.__lt__('b', S('c'))).__name__",
+        "str.__lt__('b', S('c'))",
+        "type(str.__ge__(S('b'), 'b')).__name__",
+        "str.__ge__(S('b'), 'b')",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "direct str ordering CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_start = VM_SOURCE
+        .find("fn is_builtin_wrapper_descriptor_name")
+        .expect("wrapper descriptor helper must exist");
+    let wrapper_tail = &VM_SOURCE[wrapper_start..];
+    let str_wrapper_start = wrapper_tail
+        .find("\"str\" => matches!(")
+        .expect("str wrapper descriptor branch must exist");
+    let str_wrapper_tail = &wrapper_tail[str_wrapper_start..];
+    let str_wrapper_block = &str_wrapper_tail[..str_wrapper_tail
+        .find("),")
+        .expect("str wrapper descriptor branch must close")
+        + 2];
+    for required in ["\"__lt__\"", "\"__le__\"", "\"__gt__\"", "\"__ge__\""] {
+        assert!(
+            str_wrapper_block.contains(required),
+            "str wrapper descriptor branch must include `{required}`"
+        );
+    }
+
+    for required in [
+        "\"str.__lt__\" | \"str.__le__\" | \"str.__gt__\" | \"str.__ge__\"",
+        "return call_str_ordering_method(name, args)",
+        "fn call_str_ordering_method(name: &str, args: Vec<Value>) -> Result<Value, String>",
+        "let [receiver, other] = args.as_slice()",
+        "let Some(left) = str_method_text(receiver)",
+        "let Some(right) = str_method_text(other) else",
+        "return Ok(Value::NotImplemented)",
+        "let ordering = left.as_ref().cmp(right.as_ref())",
+        "\"__lt__\" => ordering.is_lt()",
+        "\"__le__\" => ordering.is_le()",
+        "\"__gt__\" => ordering.is_gt()",
+        "\"__ge__\" => ordering.is_ge()",
+        "Ok(Value::Bool(result))",
+        "| \"__lt__\"",
+        "| \"__le__\"",
+        "| \"__gt__\"",
+        "| \"__ge__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "direct str ordering implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str direct ordering methods")
+                && document.contains("cpython_string_direct_ordering_methods_subset")
+                && document.contains("cpython_string_direct_ordering_methods_diff_subset"),
+            "direct str ordering evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

@@ -62185,6 +62185,10 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                 name,
                 "__add__"
                     | "__eq__"
+                    | "__ge__"
+                    | "__gt__"
+                    | "__le__"
+                    | "__lt__"
                     | "__mul__"
                     | "__ne__"
                     | "__repr__"
@@ -74230,9 +74234,13 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
             "__add__"
                 | "__contains__"
                 | "__eq__"
+                | "__ge__"
+                | "__gt__"
                 | "__getitem__"
                 | "__iter__"
+                | "__le__"
                 | "__len__"
+                | "__lt__"
                 | "__mul__"
                 | "__ne__"
                 | "__repr__"
@@ -83410,6 +83418,9 @@ fn call_immutable_sequence_method(
     match name {
         "str.__add__" => return call_str_add_method(name, args),
         "str.__eq__" | "str.__ne__" => return call_str_equality_method(name, args),
+        "str.__lt__" | "str.__le__" | "str.__gt__" | "str.__ge__" => {
+            return call_str_ordering_method(name, args);
+        }
         "str.__mul__" | "str.__rmul__" => return call_str_repeat_method(vm, name, args),
         "str.__str__" => return call_str_display_method(name, args, false),
         "str.__repr__" => return call_str_display_method(name, args, true),
@@ -83794,6 +83805,34 @@ fn call_str_equality_method(name: &str, args: Vec<Value>) -> Result<Value, Strin
     };
     let equal = left.as_ref() == right.as_ref();
     Ok(Value::Bool(if method == "__eq__" { equal } else { !equal }))
+}
+
+fn call_str_ordering_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, other] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(left) = str_method_text(receiver) else {
+        return Err(format!(
+            "TypeError: descriptor '{method}' requires a 'str' object but received a '{}'",
+            type_name(receiver)
+        ));
+    };
+    let Some(right) = str_method_text(other) else {
+        return Ok(Value::NotImplemented);
+    };
+    let ordering = left.as_ref().cmp(right.as_ref());
+    let result = match method {
+        "__lt__" => ordering.is_lt(),
+        "__le__" => ordering.is_le(),
+        "__gt__" => ordering.is_gt(),
+        "__ge__" => ordering.is_ge(),
+        _ => unreachable!("str ordering dispatch only routes rich ordering methods"),
+    };
+    Ok(Value::Bool(result))
 }
 
 fn call_str_display_method(name: &str, args: Vec<Value>, repr: bool) -> Result<Value, String> {

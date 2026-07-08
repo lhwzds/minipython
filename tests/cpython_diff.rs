@@ -11408,6 +11408,24 @@ print('class-call', type(str.__eq__('ab', S('ab'))).__name__, str.__eq__('ab', S
 }
 
 #[test]
+fn cpython_string_direct_ordering_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str rich-ordering direct method behavior",
+        name: "string-direct-ordering-methods",
+        source: r#"class S(str):
+    pass
+for name in ['__lt__', '__le__', '__gt__', '__ge__']:
+    print('class', name, type(getattr(str, name)).__name__)
+for label, value in [('exact', 'b'), ('subclass', S('b'))]:
+    for name in ['__lt__', '__le__', '__gt__', '__ge__']:
+        m = getattr(value, name)
+        other = m(1)
+        print(label, name, type(m).__name__, m('a'), m(S('b')), m('c'), type(other).__name__, other)
+print('class-call', type(str.__lt__('b', S('c'))).__name__, str.__lt__('b', S('c')), type(str.__ge__(S('b'), 'b')).__name__, str.__ge__(S('b'), 'b'))"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

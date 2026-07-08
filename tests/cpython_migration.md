@@ -10370,6 +10370,17 @@ Completed in the str direct `__eq__` / `__ne__` methods pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str direct ordering methods pass:
+
+- Added `cpython_string_direct_ordering_methods_subset` plus
+  `cpython_string_direct_ordering_methods_diff_subset`, covering direct
+  `__lt__`, `__le__`, `__gt__`, and `__ge__` calls on exact `str` and `str`
+  subclass instances, bound `method-wrapper` behavior, class-level
+  `wrapper_descriptor` visibility, `str` subclass operands, bool ordering
+  results, and `NotImplemented` for unsupported operand types.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus
