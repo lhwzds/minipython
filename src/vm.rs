@@ -52,6 +52,7 @@ use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use num_traits::{Signed, ToPrimitive, Zero};
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, hash_map::DefaultHasher};
@@ -39263,15 +39264,15 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
-        let Some(separator) = value_as_string(receiver) else {
+        let Some(separator) = str_method_text(receiver) else {
             return Err(format!("TypeError: {method}() expected a str receiver"));
         };
 
         let values = self.collect_iterable_values(iterable.clone())?;
         let mut parts = Vec::with_capacity(values.len());
         for (index, value) in values.into_iter().enumerate() {
-            if let Some(part) = value_as_string(&value) {
-                parts.push(part.to_string());
+            if let Some(part) = str_method_text(&value) {
+                parts.push(part.into_owned());
             } else {
                 return Err(format!(
                     "TypeError: sequence item {index}: expected str instance, {} found",
@@ -39280,7 +39281,7 @@ impl Vm {
             }
         }
 
-        Ok(Value::String(parts.join(separator)))
+        Ok(Value::String(parts.join(separator.as_ref())))
     }
 
     fn call_bytes_join_method(
@@ -53498,6 +53499,13 @@ fn value_as_string(value: &Value) -> Option<&str> {
     }
 }
 
+fn str_method_text(value: &Value) -> Option<Cow<'_, str>> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => Some(Cow::Borrowed(value)),
+        value => str_subclass_string(value).map(Cow::Owned),
+    }
+}
+
 fn ast_compare_get_attr(value: &Value, name: &str) -> Option<Value> {
     match value {
         Value::AstNode { kind, attrs, .. } => {
@@ -59527,7 +59535,7 @@ fn str_subclass_string(value: &Value) -> Option<String> {
 }
 
 fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value> {
-    if str_subclass_string(&receiver).is_some() && matches!(name, "format" | "format_map") {
+    if str_subclass_string(&receiver).is_some() && is_immutable_sequence_type_method("str", name) {
         Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("str.{name}"))),
             receiver: Box::new(receiver),
@@ -83475,9 +83483,18 @@ fn call_immutable_sequence_method(
                     method_arg_count(&args)
                 ));
             };
-            let len = i64::try_from(value_len(receiver)?)
+            let len = i64::try_from(vm.len_value(receiver.clone())?)
                 .map_err(|_| "len() result is too large".to_string())?;
             Ok(Value::Number(len))
+        }
+        "__iter__" => {
+            let [receiver] = args.as_slice() else {
+                return Err(format!(
+                    "__iter__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            get_iter(receiver.clone())
         }
         "__repr__" => {
             let [receiver] = args.as_slice() else {
@@ -83644,7 +83661,7 @@ fn call_str_prefix_suffix_method(
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.is_empty() {
@@ -83699,7 +83716,7 @@ fn call_str_find_method(
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.is_empty() {
@@ -83714,14 +83731,14 @@ fn call_str_find_method(
         ));
     }
 
-    let needle = value_as_string(&rest[0]).ok_or_else(|| {
+    let needle = str_method_text(&rest[0]).ok_or_else(|| {
         format!(
             "TypeError: {method} first arg must be str, not {}",
             type_name(&rest[0])
         )
     })?;
     let (start, stop) = string_search_bounds(&rest[1..], receiver.chars().count(), method)?;
-    match string_find_index(receiver, needle, start, stop, reverse)? {
+    match string_find_index(receiver.as_ref(), needle.as_ref(), start, stop, reverse)? {
         Some(index) => Ok(Value::Number(index)),
         None if raise_on_missing => Err("ValueError: substring not found".to_string()),
         None => Ok(Value::Number(-1)),
@@ -83779,7 +83796,7 @@ fn call_str_count_method(name: &str, args: Vec<Value>) -> Result<Value, String> 
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.is_empty() {
@@ -83794,14 +83811,14 @@ fn call_str_count_method(name: &str, args: Vec<Value>) -> Result<Value, String> 
         ));
     }
 
-    let needle = value_as_string(&rest[0]).ok_or_else(|| {
+    let needle = str_method_text(&rest[0]).ok_or_else(|| {
         format!(
             "TypeError: {method} first arg must be str, not {}",
             type_name(&rest[0])
         )
     })?;
     let (start, stop) = string_search_bounds(&rest[1..], receiver.chars().count(), method)?;
-    string_count_matches(receiver, needle, start, stop).map(Value::Number)
+    string_count_matches(receiver.as_ref(), needle.as_ref(), start, stop).map(Value::Number)
 }
 
 fn string_count_matches(
@@ -83861,7 +83878,7 @@ fn call_str_case_method(name: &str, args: Vec<Value>, upper: bool) -> Result<Val
             .flat_map(char::to_uppercase)
             .collect::<String>()
     } else {
-        string_lower(receiver)
+        string_lower(receiver.as_ref())
     };
     Ok(Value::String(value))
 }
@@ -83880,7 +83897,7 @@ fn call_str_transform_method(
         ));
     }
 
-    Ok(Value::String(transform(receiver)))
+    Ok(Value::String(transform(receiver.as_ref())))
 }
 
 fn call_str_predicate_method(
@@ -83897,17 +83914,17 @@ fn call_str_predicate_method(
         ));
     }
 
-    Ok(Value::Bool(predicate(receiver)))
+    Ok(Value::Bool(predicate(receiver.as_ref())))
 }
 
 fn str_method_receiver<'a>(
     method: &str,
     args: &'a [Value],
-) -> Result<(&'a str, &'a [Value]), String> {
+) -> Result<(Cow<'a, str>, &'a [Value]), String> {
     let [receiver, rest @ ..] = args else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     Ok((receiver, rest))
@@ -84255,7 +84272,7 @@ fn call_str_splitlines_method(
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.len() + keywords.len() > 1 {
@@ -84277,7 +84294,7 @@ fn call_str_splitlines_method(
         _ => unreachable!("splitlines arity checked above"),
     };
 
-    let lines = string_splitlines(receiver, keepends)
+    let lines = string_splitlines(receiver.as_ref(), keepends)
         .into_iter()
         .map(Value::String)
         .collect::<Vec<_>>();
@@ -84342,7 +84359,7 @@ fn call_str_expandtabs_method(
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.len() + keywords.len() > 1 {
@@ -84364,7 +84381,10 @@ fn call_str_expandtabs_method(
         _ => unreachable!("expandtabs arity checked above"),
     };
 
-    Ok(Value::String(string_expandtabs(receiver, tabsize)?))
+    Ok(Value::String(string_expandtabs(
+        receiver.as_ref(),
+        tabsize,
+    )?))
 }
 
 fn string_expandtabs(value: &str, tabsize: i32) -> Result<String, String> {
@@ -84421,7 +84441,7 @@ fn call_str_replace_method(name: &str, args: Vec<Value>) -> Result<Value, String
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.len() < 2 {
@@ -84437,13 +84457,13 @@ fn call_str_replace_method(name: &str, args: Vec<Value>) -> Result<Value, String
         ));
     }
 
-    let old = value_as_string(&rest[0]).ok_or_else(|| {
+    let old = str_method_text(&rest[0]).ok_or_else(|| {
         format!(
             "TypeError: {method} first arg must be str, not {}",
             type_name(&rest[0])
         )
     })?;
-    let new = value_as_string(&rest[1]).ok_or_else(|| {
+    let new = str_method_text(&rest[1]).ok_or_else(|| {
         format!(
             "TypeError: {method} second arg must be str, not {}",
             type_name(&rest[1])
@@ -84454,7 +84474,12 @@ fn call_str_replace_method(name: &str, args: Vec<Value>) -> Result<Value, String
         None => -1,
     };
 
-    Ok(Value::String(string_replace(receiver, old, new, count)?))
+    Ok(Value::String(string_replace(
+        receiver.as_ref(),
+        old.as_ref(),
+        new.as_ref(),
+        count,
+    )?))
 }
 
 fn call_str_remove_affix_method(
@@ -84469,10 +84494,10 @@ fn call_str_remove_affix_method(
             method_arg_count(&args)
         ));
     };
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
-    let affix = value_as_string(affix).ok_or_else(|| {
+    let affix = str_method_text(affix).ok_or_else(|| {
         format!(
             "TypeError: {method} first arg must be str, not {}",
             type_name(affix)
@@ -84480,11 +84505,15 @@ fn call_str_remove_affix_method(
     })?;
 
     let value = if remove_prefix {
-        receiver.strip_prefix(affix).unwrap_or(receiver)
-    } else if affix.is_empty() {
         receiver
+            .strip_prefix(affix.as_ref())
+            .unwrap_or(receiver.as_ref())
+    } else if affix.is_empty() {
+        receiver.as_ref()
     } else {
-        receiver.strip_suffix(affix).unwrap_or(receiver)
+        receiver
+            .strip_suffix(affix.as_ref())
+            .unwrap_or(receiver.as_ref())
     };
     Ok(Value::String(value.to_string()))
 }
@@ -84497,10 +84526,10 @@ fn call_str_partition_method(name: &str, args: Vec<Value>, reverse: bool) -> Res
             method_arg_count(&args)
         ));
     };
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
-    let separator = value_as_string(separator).ok_or_else(|| {
+    let separator = str_method_text(separator).ok_or_else(|| {
         format!(
             "TypeError: {method} first arg must be str, not {}",
             type_name(separator)
@@ -84511,7 +84540,7 @@ fn call_str_partition_method(name: &str, args: Vec<Value>, reverse: bool) -> Res
     }
 
     Ok(tuple_value(
-        string_partition(receiver, separator, reverse)
+        string_partition(receiver.as_ref(), separator.as_ref(), reverse)
             .into_iter()
             .map(Value::String)
             .collect(),
@@ -84577,12 +84606,15 @@ fn call_str_encode_method(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     let method = method_display_name(name);
-    let [Value::String(receiver), rest @ ..] = args.as_slice() else {
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!("TypeError: {method}() expected a str receiver"));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
 
     Ok(bytes_value(encode_text_with_options(
-        receiver, rest, keywords,
+        &receiver, rest, keywords,
     )?))
 }
 
@@ -85578,7 +85610,7 @@ fn call_str_translate_method(name: &str, args: Vec<Value>) -> Result<Value, Stri
             method_arg_count(&args)
         ));
     };
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
 
@@ -85596,13 +85628,13 @@ fn call_str_translate_method(name: &str, args: Vec<Value>) -> Result<Value, Stri
         match dict_lookup(&entries, &key) {
             None => translated.push(ch),
             Some(Value::None) => {}
-            Some(
-                Value::String(replacement)
-                | Value::IdentityString {
-                    value: replacement, ..
-                },
-            ) => translated.push_str(&replacement),
-            Some(value) => translated.push(translation_codepoint_char(&value)?),
+            Some(value) => {
+                if let Some(replacement) = str_method_text(&value) {
+                    translated.push_str(&replacement);
+                } else {
+                    translated.push(translation_codepoint_char(&value)?);
+                }
+            }
         }
     }
 
@@ -85899,7 +85931,13 @@ fn str_split_arguments(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<(String, Option<String>, i64), String> {
-    let [Value::String(receiver), rest @ ..] = args.as_slice() else {
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {}() expected a str receiver",
+            method_display_name(name)
+        ));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!(
             "TypeError: {}() expected a str receiver",
             method_display_name(name)
@@ -85943,15 +85981,17 @@ fn str_split_arguments(
 
     let separator = match separator {
         None | Some(Value::None) => None,
-        Some(Value::String(value) | Value::IdentityString { value, .. }) if value.is_empty() => {
-            return Err("ValueError: empty separator".to_string());
-        }
-        Some(Value::String(value) | Value::IdentityString { value, .. }) => Some(value),
         Some(value) => {
-            return Err(format!(
-                "TypeError: {method} separator must be str or None, not {}",
-                type_name(&value)
-            ));
+            let Some(value_text) = str_method_text(&value) else {
+                return Err(format!(
+                    "TypeError: {method} separator must be str or None, not {}",
+                    type_name(&value)
+                ));
+            };
+            if value_text.is_empty() {
+                return Err("ValueError: empty separator".to_string());
+            }
+            Some(value_text.into_owned())
         }
     };
     let maxsplit = match maxsplit {
@@ -85959,7 +85999,7 @@ fn str_split_arguments(
         None => -1,
     };
 
-    Ok((receiver.to_string(), separator, maxsplit))
+    Ok((receiver.into_owned(), separator, maxsplit))
 }
 
 fn string_split_separator(
@@ -86157,7 +86197,13 @@ fn call_str_justify_method(
     args: Vec<Value>,
     mode: JustifyMode,
 ) -> Result<Value, String> {
-    let [Value::String(receiver), rest @ ..] = args.as_slice() else {
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {}() expected a str receiver",
+            method_display_name(name)
+        ));
+    };
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!(
             "TypeError: {}() expected a str receiver",
             method_display_name(name)
@@ -86183,7 +86229,7 @@ fn call_str_justify_method(
     };
     let length = receiver.chars().count();
     if width <= length {
-        return Ok(Value::String(receiver.clone()));
+        return Ok(Value::String(receiver.into_owned()));
     }
 
     let padding = width - length;
@@ -86195,7 +86241,7 @@ fn call_str_justify_method(
     Ok(Value::String(format!(
         "{}{}{}",
         fill.to_string().repeat(left),
-        receiver,
+        receiver.as_ref(),
         fill.to_string().repeat(right)
     )))
 }
@@ -86209,7 +86255,7 @@ fn call_str_zfill_method(name: &str, args: Vec<Value>) -> Result<Value, String> 
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     let width = string_width_argument(width, method)?;
@@ -86248,7 +86294,7 @@ fn string_width_argument(value: &Value, method: &str) -> Result<usize, String> {
 }
 
 fn string_fill_character(value: &Value, method: &str) -> Result<char, String> {
-    let Some(fill) = value_as_string(value) else {
+    let Some(fill) = str_method_text(value) else {
         return Err(format!(
             "TypeError: {method} fill character must be str, not {}",
             type_name(value)
@@ -86277,7 +86323,7 @@ fn call_str_strip_method(
         ));
     };
     let method = method_display_name(name);
-    let Some(receiver) = value_as_string(receiver) else {
+    let Some(receiver) = str_method_text(receiver) else {
         return Err(format!("TypeError: {method}() expected a str receiver"));
     };
     if rest.len() > 1 {
@@ -86289,12 +86335,14 @@ fn call_str_strip_method(
 
     let stripped = match rest.first() {
         None | Some(Value::None) => {
-            string_strip_by(receiver, strip_left, strip_right, |ch| ch.is_whitespace())
+            string_strip_by(receiver.as_ref(), strip_left, strip_right, |ch| {
+                ch.is_whitespace()
+            })
         }
-        Some(value) if value_as_string(value).is_some() => {
-            let chars = value_as_string(value).expect("guard checked string value");
+        Some(value) if str_method_text(value).is_some() => {
+            let chars = str_method_text(value).expect("guard checked string value");
             let strip_chars = chars.chars().collect::<Vec<_>>();
-            string_strip_by(receiver, strip_left, strip_right, |ch| {
+            string_strip_by(receiver.as_ref(), strip_left, strip_right, |ch| {
                 strip_chars.contains(&ch)
             })
         }
@@ -86336,11 +86384,15 @@ fn string_strip_by(
 
 fn str_prefix_suffix_values(value: &Value, method: &str) -> Result<Vec<String>, String> {
     match value {
-        Value::String(value) | Value::IdentityString { value, .. } => Ok(vec![value.clone()]),
+        value if str_method_text(value).is_some() => Ok(vec![
+            str_method_text(value)
+                .expect("guard checked string value")
+                .into_owned(),
+        ]),
         Value::Tuple(items) => items
             .iter()
             .map(|item| {
-                value_as_string(item).map(str::to_string).ok_or_else(|| {
+                str_method_text(item).map(Cow::into_owned).ok_or_else(|| {
                     format!(
                         "TypeError: {method} first arg must be str or a tuple of str, not {}",
                         type_name(item)
@@ -95342,6 +95394,14 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 index: 0,
             }))
         }
+        value if str_subclass_string(&value).is_some() => {
+            let value =
+                str_subclass_string(&value).expect("str subclass storage exists after guard");
+            Ok(shared_iterator(Value::StringIterator {
+                chars: value.chars().map(|ch| ch.to_string()).collect(),
+                index: 0,
+            }))
+        }
         Value::UserString { data, .. } => user_string_iter_value(&data.borrow()),
         Value::Bytes(value) => Ok(shared_iterator(Value::BytesIterator {
             bytes: value.as_ref().clone(),
@@ -98129,6 +98189,11 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                     .ok_or_else(|| "string index out of range".to_string())
             }
         },
+        value if str_subclass_string(&value).is_some() => {
+            let value =
+                str_subclass_string(&value).expect("str subclass storage exists after guard");
+            load_subscript(Value::String(value), index)
+        }
         Value::Bytes(value) => match index {
             Value::Slice {
                 start, stop, step, ..
@@ -103058,14 +103123,24 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
         Value::String(haystack)
         | Value::IdentityString {
             value: haystack, ..
-        } => match needle {
-            Value::String(needle) | Value::IdentityString { value: needle, .. } => {
-                Ok(haystack.contains(&needle))
-            }
-            value => Err(format!(
-                "string membership requires string left operand, got {value}"
-            )),
-        },
+        } => {
+            let Some(needle) = str_method_text(&needle) else {
+                return Err(format!(
+                    "string membership requires string left operand, got {needle}"
+                ));
+            };
+            Ok(haystack.contains(needle.as_ref()))
+        }
+        value if str_subclass_string(&value).is_some() => {
+            let haystack =
+                str_subclass_string(&value).expect("str subclass storage exists after guard");
+            let Some(needle) = str_method_text(&needle) else {
+                return Err(format!(
+                    "string membership requires string left operand, got {needle}"
+                ));
+            };
+            Ok(haystack.contains(needle.as_ref()))
+        }
         Value::UserString { data, .. } => user_string_contains_value(&data.borrow(), needle),
         Value::Bytes(haystack) => match needle {
             Value::Bool(needle) => Ok(haystack.contains(&(bool_as_i64(needle) as u8))),

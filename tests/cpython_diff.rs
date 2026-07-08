@@ -11286,6 +11286,37 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_string_subclass_inherited_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython inherited string method behavior for str subclasses",
+        name: "string-subclass-inherited-methods",
+        source: r#"class S(str):
+    pass
+s = S('Abc def')
+for label, expr in [
+    ('iter-visible', lambda: hasattr(s, '__iter__')),
+    ('iter-result', lambda: list(s.__iter__())),
+    ('len-result', lambda: s.__len__()),
+    ('contains-result', lambda: s.__contains__(S('b'))),
+    ('getitem-result', lambda: s.__getitem__(1)),
+    ('upper-visible', lambda: hasattr(s, 'upper')),
+    ('upper-bound-type', lambda: type(s.upper).__name__),
+    ('upper-self', lambda: (type(s.upper.__self__).__name__, s.upper.__self__ is s)),
+    ('upper-result', lambda: s.upper()),
+    ('replace-result', lambda: s.replace(S('b'), S('B'))),
+    ('startswith-result', lambda: s.startswith(S('A'))),
+    ('split-result', lambda: s.split(S(' '))),
+    ('strip-result', lambda: S('  x  ').strip(S(' '))),
+    ('join-result', lambda: S('-').join([S('a'), S('b')])),
+    ('encode-result', lambda: S('Az').encode('ascii')),
+    ('translate-result', lambda: S('az').translate({ord('a'): S('A')})),
+]:
+    value = expr()
+    print(label, type(value).__name__, value)"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

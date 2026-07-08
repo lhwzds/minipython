@@ -10322,6 +10322,22 @@ Completed in the string format/format_map method pass:
   keeping CPython's inherited string method lookup for this supported formatting surface
   without widening host IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str subclass inherited string methods pass:
+
+- Added `cpython_string_subclass_inherited_methods_subset` plus
+  `cpython_string_subclass_inherited_methods_diff_subset`, covering inherited
+  string method visibility on a `str` subclass instance, preserved bound-method
+  `__self__`, inherited sequence dunders (`__iter__`, `__len__`,
+  `__contains__`, `__getitem__`), `str` subclass arguments/items, and exact
+  `str` / `bytes` / `list` result normalization.
+- Extended `str` subclass instance method binding from `format` / `format_map`
+  to the existing sandbox-safe string method set, while keeping method receiver
+  extraction local to string-method dispatch instead of widening global string
+  conversion behavior.
+- The covered methods include representative case, search, split, strip, join,
+  encode, and translate paths; this remains core string/object-model behavior
+  and does not widen host IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the format grouping-option error pass:
 
 - Added `cpython_format_grouping_option_errors_subset` from

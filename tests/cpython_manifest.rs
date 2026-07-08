@@ -54391,7 +54391,7 @@ fn string_format_methods_accept_str_subclass_receivers_has_focused_diff_evidence
 
     for required in [
         "fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value>",
-        "matches!(name, \"format\" | \"format_map\")",
+        "is_immutable_sequence_type_method(\"str\", name)",
         "if let Some(value) = str_subclass_attribute(instance.clone(), name)",
         "value if str_subclass_string(value).is_some()",
         "Value::Builtin(format!(\"str.{name}\"))",
@@ -54407,6 +54407,93 @@ fn string_format_methods_accept_str_subclass_receivers_has_focused_diff_evidence
             document.contains("str subclass `format` / `format_map` bound methods")
                 && document.contains("str-subclass receiver"),
             "str subclass format/format_map evidence must be documented"
+        );
+    }
+}
+
+#[test]
+fn string_subclass_inherited_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_subclass_inherited_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "('iter-visible', lambda: hasattr(s, '__iter__'))",
+        "('iter-result', lambda: list(s.__iter__()))",
+        "('len-result', lambda: s.__len__())",
+        "('contains-result', lambda: s.__contains__(S('b')))",
+        "('getitem-result', lambda: s.__getitem__(1))",
+        "('upper-visible', lambda: hasattr(s, 'upper'))",
+        "('upper-bound-type', lambda: type(s.upper).__name__)",
+        "('upper-self', lambda: (type(s.upper.__self__).__name__, s.upper.__self__ is s))",
+        "('replace-result', lambda: s.replace(S('b'), S('B')))",
+        "('startswith-result', lambda: s.startswith(S('A')))",
+        "('split-result', lambda: s.split(S(' ')))",
+        "('strip-result', lambda: S('  x  ').strip(S(' ')))",
+        "('join-result', lambda: S('-').join([S('a'), S('b')]))",
+        "('encode-result', lambda: S('Az').encode('ascii'))",
+        "('translate-result', lambda: S('az').translate({ord('a'): S('A')}))",
+        "\"iter-result list ['A', 'b', 'c', ' ', 'd', 'e', 'f']\"",
+        "\"len-result int 7\"",
+        "\"contains-result bool True\"",
+        "\"getitem-result str b\"",
+        "\"upper-self tuple ('S', True)\"",
+        "\"join-result str a-b\"",
+        "\"translate-result str Az\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "str subclass inherited-method subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case = extract_diff_case_body(CPYTHON_DIFF, "string-subclass-inherited-methods");
+    for required in [
+        "class S(str):",
+        "('iter-visible', lambda: hasattr(s, '__iter__'))",
+        "('iter-result', lambda: list(s.__iter__()))",
+        "('len-result', lambda: s.__len__())",
+        "('contains-result', lambda: s.__contains__(S('b')))",
+        "('getitem-result', lambda: s.__getitem__(1))",
+        "('upper-visible', lambda: hasattr(s, 'upper'))",
+        "('upper-self', lambda: (type(s.upper.__self__).__name__, s.upper.__self__ is s))",
+        "('replace-result', lambda: s.replace(S('b'), S('B')))",
+        "('join-result', lambda: S('-').join([S('a'), S('b')]))",
+        "('translate-result', lambda: S('az').translate({ord('a'): S('A')}))",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "str subclass inherited-method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn str_method_text(value: &Value) -> Option<Cow<'_, str>>",
+        "str_subclass_string(value).map(Cow::Owned)",
+        "fn str_subclass_attribute(receiver: Value, name: &str) -> Option<Value>",
+        "is_immutable_sequence_type_method(\"str\", name)",
+        "value if str_subclass_string(&value).is_some() => {",
+        "vm.len_value(receiver.clone())?",
+        "get_iter(receiver.clone())",
+        "string membership requires string left operand",
+        "load_subscript(Value::String(value), index)",
+        "let Some(receiver) = str_method_text(receiver)",
+        "let Some(separator) = str_method_text(receiver)",
+        "parts.join(separator.as_ref())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "str subclass inherited-method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str subclass inherited string methods")
+                && document.contains("cpython_string_subclass_inherited_methods_subset")
+                && document.contains("cpython_string_subclass_inherited_methods_diff_subset"),
+            "str subclass inherited-method evidence must be documented"
         );
     }
 }
