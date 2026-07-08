@@ -55342,6 +55342,108 @@ fn string_direct_getattribute_method_has_focused_diff_evidence() {
 }
 
 #[test]
+fn string_inherited_setattr_delattr_methods_have_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_string_inherited_setattr_delattr_methods_subset",
+    );
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "for name in ['__setattr__', '__delattr__']:",
+        "getattr(str, name) is getattr(object, name)",
+        "lambda: 'ab'.__setattr__('x', 1)",
+        "lambda: left.__setattr__('x', 1)",
+        "lambda: str.__setattr__('ab', 'x', 1)",
+        "lambda: str.__setattr__(left, 'x', 1)",
+        "lambda: str.__setattr__([1, 2], 'x', 1)",
+        "lambda: 'ab'.__setattr__(1, 2)",
+        "lambda: 'ab'.__setattr__(name='x', value=1)",
+        "lambda: 'ab'.__delattr__('x')",
+        "lambda: left.__delattr__('x')",
+        "lambda: str.__delattr__('ab', 'x')",
+        "lambda: str.__delattr__(left, 'x')",
+        "lambda: str.__delattr__([1, 2], 'x')",
+        "lambda: 'ab'.__delattr__(1)",
+        "lambda: 'ab'.__delattr__(name='x')",
+        "__setattr__' in dir(S)",
+        "__setattr__' in dir(str)",
+        "__delattr__' in dir(S)",
+        "__delattr__' in dir(str)",
+        "\"class __setattr__ wrapper_descriptor True\"",
+        "\"class __delattr__ wrapper_descriptor True\"",
+        "\"setattr-exact AttributeError 'str' object has no attribute 'x'",
+        "\"setattr-sub NoneType None 1\"",
+        "\"type-setattr-list AttributeError 'list' object has no attribute 'x'",
+        "\"setattr-keyword TypeError wrapper __setattr__() takes no keyword arguments",
+        "\"delattr-exact AttributeError 'str' object has no attribute 'x'",
+        "\"delattr-sub-existing NoneType None missing\"",
+        "\"type-delattr-sub-missing AttributeError 'S' object has no attribute 'x'",
+        "\"delattr-keyword TypeError wrapper __delattr__() takes no keyword arguments",
+        "\"visible-set True True True True method-wrapper wrapper_descriptor\"",
+        "\"visible-del True True True True method-wrapper wrapper_descriptor\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "inherited str setattr/delattr subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_case =
+        extract_diff_case_body(CPYTHON_DIFF, "string-inherited-setattr-delattr-methods");
+    for required in [
+        "class S(str):",
+        "left = S('ab')",
+        "for name in ['__setattr__', '__delattr__']:",
+        "getattr(str, name) is getattr(object, name)",
+        "lambda: 'ab'.__setattr__('x', 1)",
+        "lambda: left.__setattr__('x', 1)",
+        "lambda: str.__setattr__('ab', 'x', 1)",
+        "lambda: str.__setattr__(left, 'x', 1)",
+        "lambda: str.__setattr__([1, 2], 'x', 1)",
+        "lambda: 'ab'.__delattr__('x')",
+        "lambda: left.__delattr__('x')",
+        "lambda: str.__delattr__('ab', 'x')",
+        "lambda: str.__delattr__(left, 'x')",
+        "lambda: str.__delattr__([1, 2], 'x')",
+        "__setattr__' in dir(str)",
+        "__delattr__' in dir(str)",
+    ] {
+        assert!(
+            diff_case.contains(required),
+            "inherited str setattr/delattr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "if name == \"str\" {\n        names.push(\"__delattr__\".to_string());\n        names.push(\"__setattr__\".to_string());\n    }",
+        "Value::String(value) | Value::IdentityString { value, .. } if name == \"__setattr__\"",
+        "Ok(object_setattr_bound_method(Value::String(value)))",
+        "Value::String(value) | Value::IdentityString { value, .. } if name == \"__delattr__\"",
+        "Ok(object_delattr_bound_method(Value::String(value)))",
+        "function_name == \"str\" && name == \"__setattr__\"",
+        "Value::Builtin(\"object.__setattr__\".to_string())",
+        "function_name == \"str\" && name == \"__delattr__\"",
+        "Value::Builtin(\"object.__delattr__\".to_string())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "inherited str setattr/delattr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str inherited `__setattr__` / `__delattr__` methods")
+                && document.contains("cpython_string_inherited_setattr_delattr_methods_subset")
+                && document
+                    .contains("cpython_string_inherited_setattr_delattr_methods_diff_subset"),
+            "inherited str setattr/delattr evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_format_builtin_keyword_error_subset(",

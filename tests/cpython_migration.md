@@ -10417,6 +10417,18 @@ Completed in the str direct `__getattribute__` method pass:
 - This stays inside core string/object-model behavior and does not widen host
   IO, network, process, C ABI, or full stdlib scope.
 
+Completed in the str inherited `__setattr__` / `__delattr__` methods pass:
+
+- Added `cpython_string_inherited_setattr_delattr_methods_subset` plus
+  `cpython_string_inherited_setattr_delattr_methods_diff_subset`, covering the
+  object-inherited mutation wrappers on exact `str` and `str` subclass
+  instances, class-level `wrapper_descriptor` identity with `object`, bound
+  `method-wrapper` visibility, exact-string mutation rejection, subclass
+  attribute set/delete, non-str receivers through the inherited descriptor,
+  `dir()` visibility, and representative name/keyword/error paths.
+- This stays inside core string/object-model behavior and does not widen host
+  IO, network, process, C ABI, or full stdlib scope.
+
 Completed in the str direct `__mul__` / `__rmul__` methods pass:
 
 - Added `cpython_string_direct_repeat_methods_subset` plus

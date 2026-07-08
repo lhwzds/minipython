@@ -11490,6 +11490,42 @@ for label, call in [('class-class', lambda: str.__getattribute__('ab', '__class_
 }
 
 #[test]
+fn cpython_string_inherited_setattr_delattr_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str inherited __setattr__ / __delattr__ method behavior",
+        name: "string-inherited-setattr-delattr-methods",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for name in ['__setattr__', '__delattr__']:
+    print('class', name, type(getattr(str, name)).__name__, getattr(str, name) is getattr(object, name))
+for label, expr in [
+    ('setattr-exact', lambda: 'ab'.__setattr__('x', 1)),
+    ('setattr-sub', lambda: left.__setattr__('x', 1)),
+    ('type-setattr-exact', lambda: str.__setattr__('ab', 'x', 1)),
+    ('type-setattr-sub', lambda: str.__setattr__(left, 'x', 1)),
+    ('type-setattr-list', lambda: str.__setattr__([1, 2], 'x', 1)),
+    ('setattr-name-type', lambda: 'ab'.__setattr__(1, 2)),
+    ('setattr-keyword', lambda: 'ab'.__setattr__(name='x', value=1)),
+    ('delattr-exact', lambda: 'ab'.__delattr__('x')),
+    ('delattr-sub-existing', lambda: left.__delattr__('x')),
+    ('type-delattr-exact', lambda: str.__delattr__('ab', 'x')),
+    ('type-delattr-sub-missing', lambda: str.__delattr__(left, 'x')),
+    ('type-delattr-list', lambda: str.__delattr__([1, 2], 'x')),
+    ('delattr-name-type', lambda: 'ab'.__delattr__(1)),
+    ('delattr-keyword', lambda: 'ab'.__delattr__(name='x')),
+]:
+    try:
+        result = expr()
+        print(label, type(result).__name__, result, getattr(left, 'x', 'missing'))
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args, getattr(left, 'x', 'missing'))
+print('visible-set', hasattr(left, '__setattr__'), '__setattr__' in dir(left), '__setattr__' in dir(S), '__setattr__' in dir(str), type(left.__setattr__).__name__, type(str.__setattr__).__name__)
+print('visible-del', hasattr(left, '__delattr__'), '__delattr__' in dir(left), '__delattr__' in dir(S), '__delattr__' in dir(str), type(left.__delattr__).__name__, type(str.__delattr__).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_string_alignment_and_zfill_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",

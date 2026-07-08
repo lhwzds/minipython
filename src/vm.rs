@@ -57414,6 +57414,10 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     };
 
     names.extend(methods.iter().copied().map(str::to_string));
+    if name == "str" {
+        names.push("__delattr__".to_string());
+        names.push("__setattr__".to_string());
+    }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
         names.push("__add__".to_string());
@@ -66209,6 +66213,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .expect("str builtin type doc exists")
                 .to_string(),
         )),
+        Value::String(value) | Value::IdentityString { value, .. } if name == "__setattr__" => {
+            Ok(object_setattr_bound_method(Value::String(value)))
+        }
+        Value::String(value) | Value::IdentityString { value, .. } if name == "__delattr__" => {
+            Ok(object_delattr_bound_method(Value::String(value)))
+        }
         Value::String(value) | Value::IdentityString { value, .. } => {
             immutable_sequence_method("str", Value::String(value), name)
         }
@@ -69030,6 +69040,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "str" && name == "__new__" => {
             Ok(Value::Builtin("str.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__setattr__" => {
+            Ok(Value::Builtin("object.__setattr__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "str" && name == "__delattr__" => {
+            Ok(Value::Builtin("object.__delattr__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "range" && name == "__new__" => {
             Ok(Value::Builtin("range.__new__".to_string()))
