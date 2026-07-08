@@ -11551,6 +11551,21 @@ print('calls', str.__ge__('b', 'b'), str.__ge__(left, S('b')), 'b'.__ge__(S('b')
 }
 
 #[test]
+fn cpython_string_direct_hash_dir_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public str.__hash__ dir surface",
+        name: "string-direct-hash-dir-surface",
+        source: r#"class S(str):
+    pass
+left = S('ab')
+for label, value in [('type', str), ('subtype', S), ('exact', 'ab'), ('sub', left)]:
+    print(label, '__hash__' in dir(value), hasattr(value, '__hash__'))
+print('descriptor', type(str.__hash__).__name__, type('ab'.__hash__).__name__, type(left.__hash__).__name__)
+print('calls', type(str.__hash__('ab')).__name__, str.__hash__('ab') == 'ab'.__hash__(), type(left.__hash__()).__name__, left.__hash__() == hash(left))"#,
+    });
+}
+
+#[test]
 fn cpython_string_sequence_dunder_descriptor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public str sequence dunder descriptor behavior",
