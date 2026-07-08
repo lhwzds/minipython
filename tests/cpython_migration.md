@@ -5556,6 +5556,10 @@ Completed in the differential parity harness pass:
   builtin, shares the same CPython-style ASCII escaping with f-string `!a`, and
   handles recursive list/dict repr placeholders for the supported container
   model. Lone surrogate strings remain future Unicode-runtime work.
+- Extended `cpython_ascii_builtin_subset`, backed by
+  `cpython_ascii_builtin_diff_subset`, so top-level `ascii()` custom `__repr__` dispatch matches CPython: it ASCII-escapes the returned repr text
+  and preserves non-string-returning and raising `__repr__` paths,
+  without expanding container-recursive custom `__repr__` dispatch.
 - Migrated first-pass `sorted()` coverage from
   `Lib/test/test_builtin.py::TestSorted`. The VM now exposes `sorted()` for
   supported iterables, keeps the input list unchanged, returns a new list,

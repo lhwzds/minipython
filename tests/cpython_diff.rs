@@ -10817,6 +10817,22 @@ for item in ['\x85', '\u1fff', '\U00012fff', '\U0001d121', 'é']:
     print(ascii(item))
 supplement = '\U0001d121'
 print(f'{"é"!a}', f'{supplement!a}')
+class Custom:
+    def __repr__(self):
+        print('custom-repr')
+        return 'é snow'
+class BadReturn:
+    def __repr__(self):
+        return 42
+class Boom:
+    def __repr__(self):
+        raise ValueError('ascii-boom')
+print(ascii(Custom()))
+for label, value in [('bad-return', BadReturn()), ('boom', Boom())]:
+    try:
+        print(label, ascii(value))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
 for expr in [lambda: ascii(), lambda: ascii(1, 2)]:
     try:
         expr()

@@ -469,6 +469,10 @@ impl StdlibContext for Vm {
         }
     }
 
+    fn stdlib_ascii_escape_text(&self, text: &str) -> String {
+        ascii_escape_text(text)
+    }
+
     fn stdlib_ascii_repr_value(&self, value: &Value) -> Result<String, String> {
         ascii_repr_value_checked(value)
     }

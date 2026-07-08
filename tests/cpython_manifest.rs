@@ -49493,6 +49493,78 @@ fn pow_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn ascii_builtin_custom_repr_dispatch_is_guarded() {
+    let diff_name = "cpython_ascii_builtin_diff_subset";
+    let subset_name = "cpython_ascii_builtin_subset";
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+
+    for required in [
+        "class Custom",
+        "def __repr__(self):",
+        "return 'é snow'",
+        "print(ascii(Custom()))",
+        "class BadReturn",
+        "return 42",
+        "class Boom",
+        "raise ValueError('ascii-boom')",
+        "bad-return",
+        "boom",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "ascii builtin custom __repr__ diff and subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"custom-repr\"",
+        "\"\\\\xe9 snow\"",
+        "\"bad-return TypeError __repr__ returned non-string (type int)\"",
+        "\"boom ValueError ascii-boom\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "ascii builtin custom __repr__ subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "pub(crate) fn call_ascii",
+        "context.stdlib_call_repr_method(value)?",
+        "context.stdlib_ascii_escape_text(&value)",
+        "TypeError: __repr__ returned non-string (type {})",
+        "fn stdlib_ascii_escape_text(&self, text: &str) -> String",
+    ] {
+        assert!(
+            STDLIB_SOURCE.contains(required),
+            "ascii builtin implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains("fn stdlib_ascii_escape_text(&self, text: &str) -> String")
+            && VM_SOURCE.contains("ascii_escape_text(text)"),
+        "VM stdlib context must expose raw repr-text ASCII escaping for ascii()"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_ascii_builtin_subset",
+            "cpython_ascii_builtin_diff_subset",
+            "top-level `ascii()` custom `__repr__` dispatch",
+            "ASCII-escapes the returned repr text",
+            "non-string-returning and raising `__repr__` paths",
+            "without expanding container-recursive custom `__repr__` dispatch",
+        ] {
+            assert!(
+                document.contains(required),
+                "ascii builtin docs must describe custom __repr__ boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",

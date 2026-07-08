@@ -349,6 +349,8 @@ pub(crate) trait StdlibContext {
 
     fn stdlib_call_value(&mut self, callee: Value, args: Vec<Value>) -> Result<Value, String>;
 
+    fn stdlib_ascii_escape_text(&self, text: &str) -> String;
+
     fn stdlib_ascii_repr_value(&self, value: &Value) -> Result<String, String>;
 
     fn stdlib_greater_values(&mut self, left: Value, right: Value) -> Result<bool, String>;
@@ -2294,7 +2296,7 @@ pub(crate) fn call_int_base_builtin<C: StdlibContext + ?Sized>(
 }
 
 pub(crate) fn call_ascii<C: StdlibContext + ?Sized>(
-    context: &C,
+    context: &mut C,
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
@@ -2305,6 +2307,18 @@ pub(crate) fn call_ascii<C: StdlibContext + ?Sized>(
             args.len()
         ));
     };
+
+    if let Some(result) = context.stdlib_call_repr_method(value)? {
+        return match result {
+            Value::String(value) | Value::IdentityString { value, .. } => {
+                Ok(Value::String(context.stdlib_ascii_escape_text(&value)))
+            }
+            value => Err(format!(
+                "TypeError: __repr__ returned non-string (type {})",
+                stdlib_type_name(&value)
+            )),
+        };
+    }
 
     Ok(Value::String(context.stdlib_ascii_repr_value(value)?))
 }

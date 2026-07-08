@@ -10080,6 +10080,8 @@ without adding general custom encoder/decoder class support.
   `object.__eq__` / `object.__ne__` direct-call identity comparison,
   `NoneType` `NotImplemented` fallback for unrelated objects, and CPython's
   direct `object.__ne__` bool result for builtin containers.
+- `cpython_ascii_builtin_subset`, backed by
+  `cpython_ascii_builtin_diff_subset`, now keeps top-level `ascii()` custom `__repr__` dispatch aligned with CPython: it ASCII-escapes the returned repr text and preserves non-string-returning and raising `__repr__` paths, without expanding container-recursive custom `__repr__` dispatch.
 - `RUNTIME_BUILTINS` also includes `cpython_object_repr_str_direct_subset` with
   direct CPython output parity in
   `cpython_object_repr_str_direct_diff_subset`, covering direct
