@@ -68773,6 +68773,91 @@ fn function_type_getstate_method_descriptor_metadata_subset_has_focused_diff_evi
 }
 
 #[test]
+fn function_type_dir_method_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_dir_method_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_dir_method_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__dir__",
+        "d is object.__dir__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__dir__' in dir(function)",
+        "dir(d)",
+        "names = d(f)",
+        "direct = object.__dir__(f)",
+        "names == direct",
+        "'__name__' in names",
+        "'__dict__' in names",
+        "'__call__' in names",
+        "d(f, 1)",
+        "d(f, x=1)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __dir__ method descriptor metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor method_descriptor __dir__ object.__dir__ True True Default dir() implementation. ($self, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call list True True True True True\"",
+        "\"extra TypeError object.__dir__() takes no arguments (1 given)",
+        "\"keyword TypeError object.__dir__() takes no keyword arguments",
+        "\"__module__ AttributeError 'method_descriptor' object has no attribute '__module__'",
+        "\"__self__ AttributeError 'method_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __dir__ method descriptor metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__dir__\"",
+        "\"object.__dir__\".to_string()",
+        "matches!(name.as_str(), \"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\")",
+        "function_name == \"object.__dir__\"",
+        "method_descriptor_dir_names()",
+        "\"Default dir() implementation.\"",
+        "\"($self, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __dir__ method descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__dir__` inherited method_descriptor metadata",
+            "`function.__dir__ is object.__dir__`",
+            "`function.__dir__.__qualname__`",
+            "`function.__dir__.__objclass__ is object`",
+            "`function.__dir__.__text_signature__`",
+            "`dir(function.__dir__)`",
+            "object.__dir__ list-shape forwarding",
+            "without changing object.__dir__ list semantics",
+            "without adding custom descriptor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __dir__ method descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";
