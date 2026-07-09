@@ -1843,6 +1843,27 @@ for name in ['loads', 'dumps']:
 }
 
 #[test]
+fn cpython_json_function_parameters_missing_attr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public function __parameters__ missing attr subset",
+        name: "json-function-parameters-missing-attr",
+        source: r#"import json
+for name in ['loads', 'dumps']:
+    function = getattr(json, name)
+    for label in ['direct', 'function-getattribute', 'object-getattribute']:
+        try:
+            if label == 'direct':
+                function.__parameters__
+            elif label == 'function-getattribute':
+                function.__getattribute__('__parameters__')
+            else:
+                object.__getattribute__(function, '__parameters__')
+        except AttributeError as error:
+            print(name, label, type(error).__name__, str(error), error.args, '__parameters__' in dir(function))"#,
+    });
+}
+
+#[test]
 fn cpython_json_function_get_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public function __get__ descriptor metadata subset",

@@ -71016,6 +71016,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__parameters__" && is_json_builtin(&function_name) =>
+        {
+            Err("AttributeError: 'function' object has no attribute '__parameters__'".to_string())
+        }
+        Value::Builtin(function_name)
             if name == "__text_signature__" && is_json_builtin(&function_name) =>
         {
             Err("AttributeError: 'function' object has no attribute '__text_signature__'"

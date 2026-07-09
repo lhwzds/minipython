@@ -4885,6 +4885,14 @@ function `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 `dir(function)` visibility aligned with CPython for `json.loads` and
 `json.dumps`, without adding function `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
+`cpython_json_function_parameters_missing_attr_subset`, backed by
+`cpython_json_function_parameters_missing_attr_diff_subset`, keeps json public function `__parameters__` missing-attribute
+`AttributeError` text, `args`, `function.__getattribute__('__parameters__')`,
+`object.__getattribute__(function, '__parameters__')`, and `dir(function)`
+visibility aligned with CPython for `json.loads` and `json.dumps`, without
+adding generic parameter metadata, function `__code__`, file APIs, module
+`__all__`, or encoder/decoder classes.
+
 `cpython_json_function_bound_method_name_dir_visibility_subset`, backed by
 `cpython_json_function_bound_method_name_dir_visibility_diff_subset`, keeps json
 public function bound method name metadata aligned with CPython by preserving

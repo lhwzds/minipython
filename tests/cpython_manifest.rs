@@ -14493,6 +14493,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_kwdefaults_identity_metadata_subset",
             "cpython_json_function_dir_metadata_subset",
             "cpython_json_function_text_signature_missing_attr_subset",
+            "cpython_json_function_parameters_missing_attr_subset",
             "cpython_json_function_get_descriptor_metadata_subset",
             "cpython_json_function_get_missing_owner_error_subset",
             "cpython_json_function_bound_method_repr_subset",
@@ -14659,6 +14660,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_kwdefaults_identity_metadata_diff_subset",
         "cpython_json_function_dir_metadata_diff_subset",
         "cpython_json_function_text_signature_missing_attr_diff_subset",
+        "cpython_json_function_parameters_missing_attr_diff_subset",
         "cpython_json_function_get_descriptor_metadata_diff_subset",
         "cpython_json_function_get_missing_owner_error_diff_subset",
         "cpython_json_function_bound_method_repr_diff_subset",
@@ -18952,6 +18954,72 @@ fn json_function_text_signature_missing_attr_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "json public function __text_signature__ missing attr docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_function_parameters_missing_attr_has_focused_diff_evidence() {
+    let diff_name = "cpython_json_function_parameters_missing_attr_diff_subset";
+    let subset_name = "cpython_json_function_parameters_missing_attr_subset";
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+
+    for required in [
+        "import json",
+        "function = getattr(json, name)",
+        "function.__parameters__",
+        "function.__getattribute__('__parameters__')",
+        "object.__getattribute__(function, '__parameters__')",
+        "'__parameters__' in dir(function)",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "json public function __parameters__ missing attr diff and subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"loads direct AttributeError 'function' object has no attribute '__parameters__'",
+        "\"loads function-getattribute AttributeError 'function' object has no attribute '__parameters__'",
+        "\"loads object-getattribute AttributeError 'function' object has no attribute '__parameters__'",
+        "\"dumps direct AttributeError 'function' object has no attribute '__parameters__'",
+        "\"dumps function-getattribute AttributeError 'function' object has no attribute '__parameters__'",
+        "\"dumps object-getattribute AttributeError 'function' object has no attribute '__parameters__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "json public function __parameters__ missing attr subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"__parameters__\" && is_json_builtin(&function_name)",
+        "AttributeError: 'function' object has no attribute '__parameters__'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function __parameters__ missing attr implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "json public function `__parameters__` missing-attribute",
+            "`function.__getattribute__('__parameters__')`",
+            "`object.__getattribute__(function, '__parameters__')`",
+            "`dir(function)`",
+            "generic parameter metadata",
+            "function `__code__`",
+            "file APIs",
+            "encoder/decoder classes",
+        ] {
+            assert!(
+                document.contains(required),
+                "json public function __parameters__ missing attr docs must contain `{required}`"
             );
         }
     }
