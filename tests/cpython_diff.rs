@@ -17056,6 +17056,28 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_type_new_builtin_method_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function.__new__ type-level builtin method metadata",
+        name: "function-type-new-builtin-method-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+d = function.__new__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__self__ is function, d.__doc__, d.__module__, d.__text_signature__)
+print('dir-type', '__new__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+class C:
+    pass
+for label, call in [('call-function', lambda: d(function)), ('type-call-function', lambda: function.__new__(function)), ('missing', lambda: d()), ('bad-type', lambda: d(object)), ('instance-type', lambda: d(f)), ('custom-type', lambda: d(C)), ('extra', lambda: d(function, 1)), ('keyword', lambda: d(function, x=1)), ('func', lambda: d.__func__), ('objclass', lambda: d.__objclass__)]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_init_wrapper_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function.__init__ type-level wrapper descriptor metadata",

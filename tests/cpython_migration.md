@@ -13218,6 +13218,13 @@ Completed in the repr builtin pass:
   `function.__get__.__text_signature__`, `dir(function.__get__)`,
   type-level descriptor lookup, descriptor binding results, and TypeError paths
   without changing bound function descriptor behavior.
+- Added `cpython_function_type_new_builtin_method_metadata_subset`,
+  backed by `cpython_function_type_new_builtin_method_metadata_diff_subset`,
+  covering function type `__new__` builtin method metadata:
+  `function.__new__.__qualname__`, `function.__new__.__self__ is function`,
+  `function.__new__.__text_signature__`, `dir(function.__new__)`,
+  type-level builtin method lookup, constructor-rejection TypeError paths, and
+  missing `__func__` / `__objclass__` attributes without promoting full code/globals-based function construction.
 - Added `cpython_function_type_init_wrapper_descriptor_metadata_subset`,
   backed by
   `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,

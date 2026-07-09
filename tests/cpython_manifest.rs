@@ -69922,6 +69922,102 @@ fn function_type_get_wrapper_descriptor_metadata_subset_has_focused_diff_evidenc
 }
 
 #[test]
+fn function_type_new_builtin_method_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_new_builtin_method_metadata_subset";
+    let diff_name = "cpython_function_type_new_builtin_method_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__new__",
+        "d.__self__ is function",
+        "d.__module__",
+        "d.__text_signature__",
+        "'__new__' in dir(function)",
+        "dir(d)",
+        "class C:",
+        "d(function)",
+        "function.__new__(function)",
+        "d()",
+        "d(object)",
+        "d(f)",
+        "d(C)",
+        "d(function, 1)",
+        "d(function, x=1)",
+        "d.__func__",
+        "d.__objclass__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __new__ builtin method subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor builtin_function_or_method __new__ function.__new__ True Create and return a new object.  See help(type) for accurate signature. None ($type, *args, **kwargs)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__module__', '__name__', '__qualname__', '__self__', '__text_signature__']\"",
+        "\"call-function TypeError function() missing required argument 'code' (pos 1)",
+        "\"type-call-function TypeError function() missing required argument 'code' (pos 1)",
+        "\"missing TypeError function.__new__(): not enough arguments",
+        "\"bad-type TypeError function.__new__(object): object is not a subtype of function",
+        "\"instance-type TypeError function.__new__(X): X is not a type object (function)",
+        "\"custom-type TypeError function.__new__(C): C is not a subtype of function",
+        "\"extra TypeError function() missing required argument 'globals' (pos 2)",
+        "\"keyword TypeError function() missing required argument 'code' (pos 1)",
+        "\"func AttributeError 'builtin_function_or_method' object has no attribute '__func__'",
+        "\"objclass AttributeError 'builtin_function_or_method' object has no attribute '__objclass__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __new__ builtin method subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__new__\"",
+        "\"function.__new__\".to_string()",
+        "names.push(\"__new__\".to_string())",
+        "self.call_function_new(args, keywords)",
+        "fn call_function_new(",
+        "function.__new__(): not enough arguments",
+        "function() missing required argument 'code' (pos 1)",
+        "function() missing required argument 'globals' (pos 2)",
+        "is_function_type_new_bound_method(function.as_ref(), receiver)",
+        "fn is_function_type_new_bound_method(",
+        "name == \"__qualname__\" && function_name == \"function.__new__\"",
+        "name == \"__module__\" && function_name == \"function.__new__\"",
+        "($type, *args, **kwargs)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __new__ builtin method metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__new__` builtin method metadata",
+            "`function.__new__.__qualname__`",
+            "`function.__new__.__self__ is function`",
+            "`function.__new__.__text_signature__`",
+            "`dir(function.__new__)`",
+            "type-level builtin method lookup",
+            "without promoting full code/globals-based function construction",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __new__ builtin method docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_init_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_init_wrapper_descriptor_metadata_subset";
     let diff_name = "cpython_function_type_init_wrapper_descriptor_metadata_diff_subset";

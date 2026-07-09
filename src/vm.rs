@@ -10385,6 +10385,9 @@ impl Vm {
             Value::Builtin(name) if name == "function.__call__" => {
                 self.call_function_call(args, keywords)
             }
+            Value::Builtin(name) if name == "function.__new__" => {
+                self.call_function_new(args, keywords)
+            }
             Value::Builtin(name) if name == "method.__dir__" => {
                 self.call_method_dir(args, keywords)
             }
@@ -18794,6 +18797,48 @@ impl Vm {
             ));
         }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
+    }
+
+    fn call_function_new(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((_receiver, rest)) = args.split_first() else {
+            return Err("TypeError: function.__new__(): not enough arguments".to_string());
+        };
+        let Some(class) = rest.first() else {
+            return Err("TypeError: function.__new__(): not enough arguments".to_string());
+        };
+
+        match class {
+            Value::Builtin(name) if name == "function" => {
+                if rest.len() == 1 && !keywords.iter().any(|(name, _)| name == "code") {
+                    Err(
+                        "TypeError: function() missing required argument 'code' (pos 1)"
+                            .to_string(),
+                    )
+                } else {
+                    Err(
+                        "TypeError: function() missing required argument 'globals' (pos 2)"
+                            .to_string(),
+                    )
+                }
+            }
+            Value::Builtin(name) if is_class_like_builtin(name) || is_exception_type_name(name) => {
+                let public_name = builtin_public_name(name);
+                Err(format!(
+                    "TypeError: function.__new__({public_name}): {public_name} is not a subtype of function"
+                ))
+            }
+            Value::Class { name, .. } => Err(format!(
+                "TypeError: function.__new__({name}): {name} is not a subtype of function"
+            )),
+            value => Err(format!(
+                "TypeError: function.__new__(X): X is not a type object ({})",
+                type_name(value)
+            )),
+        }
     }
 
     fn call_function_get(
@@ -56474,7 +56519,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.retain(|name| name != "__get__");
                 names.extend(exception_bound_method_dir_names());
             }
-            if is_function_type_init_subclass_bound_method(function.as_ref(), receiver)
+            if is_function_type_new_bound_method(function.as_ref(), receiver)
+                || is_function_type_init_subclass_bound_method(function.as_ref(), receiver)
                 || is_function_type_subclasshook_bound_method(function.as_ref(), receiver)
             {
                 names.extend(
@@ -57678,6 +57724,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__le__".to_string());
         names.push("__lt__".to_string());
         names.push("__ne__".to_string());
+        names.push("__new__".to_string());
         names.push("__repr__".to_string());
         names.push("__setattr__".to_string());
         names.push("__sizeof__".to_string());
@@ -68505,6 +68552,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 load_attribute(*function, "__text_signature__")
             }
             "__text_signature__"
+                if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__new__") =>
+            {
+                load_attribute(*function, "__text_signature__")
+            }
+            "__text_signature__"
                 if matches!(function.as_ref(), Value::Builtin(name) if name == "function.__getstate__") =>
             {
                 load_attribute(*function, "__text_signature__")
@@ -68602,6 +68654,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ if is_exception_helper_bound_method(function.as_ref(), &receiver) => Err(format!(
                 "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
             )),
+            _ if is_function_type_new_bound_method(function.as_ref(), &receiver) => {
+                Err(format!(
+                    "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
+                ))
+            }
             _ if is_function_type_init_subclass_bound_method(function.as_ref(), &receiver) => {
                 Err(format!(
                     "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
@@ -68796,6 +68853,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__hash__" => {
             Ok(Value::Builtin("object.__hash__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__new__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("function.__new__".to_string())),
+                receiver: Box::new(Value::Builtin("function".to_string())),
+                identity: Rc::new(()),
+            })
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__init__" => {
             Ok(Value::Builtin("object.__init__".to_string()))
@@ -71304,6 +71368,25 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("($self, name, /)".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "function.__new__" =>
+        {
+            Ok(Value::String("function.__new__".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "function.__new__" => {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "function.__new__" => {
+            Ok(Value::String(
+                "Create and return a new object.  See help(type) for accurate signature."
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "function.__new__" =>
+        {
+            Ok(Value::String("($type, *args, **kwargs)".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__init__" =>
         {
             Ok(Value::String("object.__init__".to_string()))
@@ -72799,8 +72882,17 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
 fn bound_method_omits_func_attribute(function: &Value, receiver: &Value) -> bool {
     matches!(function, Value::Builtin(name) if is_numeric_from_number_classmethod(name))
         || is_exception_helper_bound_method(function, receiver)
+        || is_function_type_new_bound_method(function, receiver)
         || is_function_type_init_subclass_bound_method(function, receiver)
         || is_function_type_subclasshook_bound_method(function, receiver)
+}
+
+fn is_function_type_new_bound_method(function: &Value, receiver: &Value) -> bool {
+    matches!(
+        (function, receiver),
+        (Value::Builtin(function_name), Value::Builtin(receiver_name))
+            if function_name == "function.__new__" && receiver_name == "function"
+    )
 }
 
 fn is_function_type_init_subclass_bound_method(function: &Value, receiver: &Value) -> bool {

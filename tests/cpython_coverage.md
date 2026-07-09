@@ -10328,6 +10328,15 @@ without adding general custom encoder/decoder class support.
   type-level descriptor lookup, descriptor binding results, and TypeError paths
   without changing bound function descriptor behavior.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_new_builtin_method_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_new_builtin_method_metadata_diff_subset`,
+  covering function type `__new__` builtin method metadata:
+  `function.__new__.__qualname__`, `function.__new__.__self__ is function`,
+  `function.__new__.__text_signature__`, `dir(function.__new__)`,
+  type-level builtin method lookup, constructor-rejection TypeError paths, and
+  missing `__func__` / `__objclass__` attributes without promoting full code/globals-based function construction.
+- `RUNTIME_BUILTINS` also includes
   `cpython_function_type_init_wrapper_descriptor_metadata_subset` with direct
   CPython output parity in
   `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,
