@@ -5039,8 +5039,10 @@ lookup content equality with the underlying function doc, without adding
 
 `cpython_json_function_bound_method_text_signature_missing_attr_subset`, backed by
 `cpython_json_function_bound_method_text_signature_missing_attr_diff_subset`, keeps json public function bound method `__text_signature__` missing-attribute
-`AttributeError` text, `args`, `__getattribute__('__text_signature__')`, and
-`dir(bound)` visibility aligned with CPython for `loads.__get__(...)` and
+`AttributeError` text, `args`, `bound.__text_signature__`,
+`bound.__getattribute__('__text_signature__')`,
+`object.__getattribute__(bound, '__text_signature__')`, and `dir(bound)`
+visibility aligned with CPython for `loads.__get__(...)` and
 `dumps.__get__(...)`, without adding `__reduce__`, `__reduce_ex__`, function
 `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 

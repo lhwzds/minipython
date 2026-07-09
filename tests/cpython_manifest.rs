@@ -18055,6 +18055,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "bound.__text_signature__",
         "bound.__getattribute__('__text_signature__')",
+        "object.__getattribute__(bound, '__text_signature__')",
         "except AttributeError as error",
         "str(error)",
         "error.args",
@@ -18070,12 +18071,26 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "\"loads direct AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
         "\"loads getattribute AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+        "\"loads object-getattribute AttributeError 'method' object has no attribute '__text_signature__' (\\\"'method' object has no attribute '__text_signature__'\\\",) False\"",
         "\"dumps direct AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
         "\"dumps getattribute AttributeError 'function' object has no attribute '__text_signature__' (\\\"'function' object has no attribute '__text_signature__'\\\",) False\"",
+        "\"dumps object-getattribute AttributeError 'method' object has no attribute '__text_signature__' (\\\"'method' object has no attribute '__text_signature__'\\\",) False\"",
     ] {
         assert!(
             json_function_bound_method_text_signature_missing_attr_subset_body.contains(required),
             "json public function bound method __text_signature__ missing attr subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "object.__getattribute__",
+        "matches!(name.as_str(), \"__parameters__\" | \"__text_signature__\")",
+        "is_json_builtin(function_name)",
+        "AttributeError: 'method' object has no attribute '{name}'",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function bound method __text_signature__ missing attr implementation must contain `{required}`"
         );
     }
     for required in [
@@ -18109,10 +18124,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "object.__getattribute__",
-        "name == \"__parameters__\"",
+        "matches!(name.as_str(), \"__parameters__\" | \"__text_signature__\")",
         "is_json_builtin(function_name)",
         "load_attribute(*function, \"__parameters__\")",
-        "AttributeError: 'method' object has no attribute '__parameters__'",
+        "AttributeError: 'method' object has no attribute '{name}'",
         "AttributeError: 'function' object has no attribute '__parameters__'",
     ] {
         assert!(

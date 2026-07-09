@@ -2226,14 +2226,16 @@ fn cpython_json_function_bound_method_text_signature_missing_attr_diff_subset() 
         source: r#"import json
 for name in ['loads', 'dumps']:
     bound = getattr(json, name).__get__('receiver', str)
-    try:
-        bound.__text_signature__
-    except AttributeError as error:
-        print(name, 'direct', type(error).__name__, str(error), error.args, '__text_signature__' in dir(bound))
-    try:
-        bound.__getattribute__('__text_signature__')
-    except AttributeError as error:
-        print(name, 'getattribute', type(error).__name__, str(error), error.args, '__text_signature__' in dir(bound))"#,
+    for label in ['direct', 'getattribute', 'object-getattribute']:
+        try:
+            if label == 'direct':
+                bound.__text_signature__
+            elif label == 'getattribute':
+                bound.__getattribute__('__text_signature__')
+            else:
+                object.__getattribute__(bound, '__text_signature__')
+        except AttributeError as error:
+            print(name, label, type(error).__name__, str(error), error.args, '__text_signature__' in dir(bound))"#,
     });
 }
 

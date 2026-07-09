@@ -17161,16 +17161,16 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if name == "__parameters__"
+        if matches!(name.as_str(), "__parameters__" | "__text_signature__")
             && matches!(
                 object,
                 Value::BoundMethod { function, .. }
                     if matches!(function.as_ref(), Value::Builtin(function_name) if is_json_builtin(function_name))
             )
         {
-            return Err(
-                "AttributeError: 'method' object has no attribute '__parameters__'".to_string(),
-            );
+            return Err(format!(
+                "AttributeError: 'method' object has no attribute '{name}'"
+            ));
         }
         let result = self.load_attribute_without_custom_getattribute(object.clone(), &name);
         if object_getattribute_type_object_missing_attribute(&object, &name, &result) {
