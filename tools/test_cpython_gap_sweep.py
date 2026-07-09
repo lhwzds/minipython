@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -147,6 +148,15 @@ class ClassifyTests(unittest.TestCase):
             exception_class="ValueError",
         )
         self.assertEqual(gap.normalized_message(mini), "ValueError: bad")
+
+
+class ParseArgsTests(unittest.TestCase):
+    def test_default_cpython_oracle_is_homebrew_python(self):
+        with patch.object(sys, "argv", ["cpython_gap_sweep.py", "--require-version", "3.14.6"]):
+            args = gap.parse_args()
+
+        self.assertEqual(args.cpython, "/opt/homebrew/bin/python3")
+        self.assertEqual(args.require_version, "3.14.6")
 
 
 class CorpusLoadingTests(unittest.TestCase):

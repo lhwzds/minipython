@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_CPYTHON_ORACLE = "/opt/homebrew/bin/python3"
+
 STATUSES = [
     "MATCH",
     "OUTPUT_DIFF",
@@ -94,8 +96,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--cpython",
-        default=sys.executable,
-        help="CPython oracle executable. Defaults to the interpreter running this script.",
+        default=DEFAULT_CPYTHON_ORACLE,
+        help=f"CPython oracle executable. Defaults to {DEFAULT_CPYTHON_ORACLE}.",
     )
     parser.add_argument(
         "--require-version",

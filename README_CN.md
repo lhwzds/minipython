@@ -51,15 +51,15 @@ echo "print(1)" | mnpy  # 管道输入
 ## 测试
 
 ```bash
-uv run --python "$(cat .python-version)" python tools/test_cpython_gap_sweep.py
+/opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
 tools/run_cpython_gap_sweep.sh
 ```
 
-第一条命令会快速测试 gap-sweep driver 本身。gap sweep 会用固定
-`.python-version` 通过 `uv run --python` 启动 CPython oracle，先构建
-`mnpy`，再比较有边界的 corpus。它是发现差异的循环；提升为支持面的行为仍然
-需要对应的 `cpython_subset`、`cpython_diff`、manifest、coverage 和 migration
-证据。
+第一条命令会快速测试 gap-sweep driver 本身。gap sweep 会固定使用
+`/opt/homebrew/bin/python3` 作为 CPython oracle，并用 `.python-version` 校验
+版本，先构建 `mnpy`，再比较有边界的 corpus。它是发现差异的循环；提升为支持
+面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、coverage
+和 migration 证据。
 gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver interpreter
 路径，避免过期 oracle 混进结果里。
 

@@ -92310,6 +92310,8 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "--require-version",
         "--minipython",
         "--fail-on-diff",
+        "DEFAULT_CPYTHON_ORACLE",
+        "/opt/homebrew/bin/python3",
         "EXPECTED_STATUS_BY_MARKER",
         "INTENTIONAL_SANDBOX_BLOCK",
         "UNSUPPORTED_OUT_OF_SCOPE",
@@ -92344,6 +92346,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     for required in [
         "unittest",
         "ClassifyTests",
+        "ParseArgsTests",
         "CorpusLoadingTests",
         "ReportTests",
         "gap.classify",
@@ -92355,6 +92358,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "test_unsupported_out_of_scope_expected_overrides_nonmatching_results",
         "test_stdlib_missing_expected_overrides_nonmatching_results",
         "test_cpython_internal_expected_overrides_nonmatching_results",
+        "test_default_cpython_oracle_is_homebrew_python",
         "test_load_cases_rejects_unknown_expected_marker",
         "test_load_cases_rejects_unknown_category",
         "if __name__ == \"__main__\"",
@@ -92366,24 +92370,31 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     }
 
     for required in [
-        "uv run",
-        "--python \"$python_version\"",
+        "cpython=\"/opt/homebrew/bin/python3\"",
+        "[[ ! -x \"$cpython\" ]]",
         "cargo build --bin mnpy",
         "CARGO_TARGET_DIR:=/tmp/minipython-target",
         "tools/cpython_gap_sweep.py",
+        "--cpython \"$cpython\"",
         "--require-version \"$python_version\"",
         "--fail-on-diff",
         "reports/cpython-gap-sweep",
     ] {
         assert!(
             GAP_SWEEP_RUNNER.contains(required),
-            "gap sweep uv runner must keep `{required}`"
+            "gap sweep fixed-oracle runner must keep `{required}`"
         );
     }
 
+    assert!(
+        !GAP_SWEEP_RUNNER.contains("uv run"),
+        "gap sweep runner must use the fixed /opt/homebrew/bin/python3 oracle directly"
+    );
+
     for required in [
-        "uv run --python \"$(cat .python-version)\" python tools/test_cpython_gap_sweep.py",
+        "/opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py",
         "tools/run_cpython_gap_sweep.sh",
+        "/opt/homebrew/bin/python3",
         "oracle/driver interpreter",
     ] {
         assert!(
@@ -92429,7 +92440,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "`wont_fix`",
         "cpython_diff",
         "tools/run_cpython_gap_sweep.sh",
-        "uv run --python",
+        "/opt/homebrew/bin/python3",
         "expected = \"unsupported_out_of_scope\"",
         "expected = \"stdlib_missing\"",
         "expected = \"cpython_internal\"",
