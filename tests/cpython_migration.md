@@ -13230,6 +13230,10 @@ Completed in the repr builtin pass:
   `function.__bases__ == (object,)`,
   `object.__getattribute__(function, '__base__')`, `dir(function)` visibility,
   and function instance AttributeError paths without adding function type MRO or mappingproxy metadata.
+- Added `cpython_function_type_mro_metadata_subset`, backed by
+  `cpython_function_type_mro_metadata_diff_subset`, covering function type `__mro__` metadata: `function.__mro__ == (function, object)`,
+  `object.__getattribute__(function, '__mro__')`,
+  `__mro__ not in dir(function)`, and the function instance AttributeError path without adding function type mappingproxy metadata.
 - Added `cpython_function_type_doc_metadata_subset`, backed by
   `cpython_function_type_doc_metadata_diff_subset`, covering function type `__doc__` metadata: `function.__doc__`,
   `object.__getattribute__(function, '__doc__')`, `dir(function)`, repeated

@@ -17121,6 +17121,29 @@ print('visible-inst', '__base__' in dir(f), '__bases__' in dir(f))"#,
 }
 
 #[test]
+fn cpython_function_type_mro_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __mro__ metadata",
+        name: "function-type-mro-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+mro = function.__mro__
+object_mro = object.__getattribute__(function, '__mro__')
+print('mro', type(mro).__name__, len(mro), mro[0] is function, mro[1] is object)
+print('mro-names', mro[0].__module__, mro[0].__qualname__, mro[1].__module__, mro[1].__qualname__)
+print('object-mro', type(object_mro).__name__, len(object_mro), object_mro[0] is function, object_mro[1] is object)
+try:
+    value = f.__mro__
+    print('instance-mro', value)
+except Exception as error:
+    print('instance-mro', type(error).__name__, str(error), error.args)
+print('visible-type', '__mro__' in dir(function), '__base__' in dir(function), '__bases__' in dir(function))
+print('visible-inst', '__mro__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function type __doc__ metadata",

@@ -70096,6 +70096,79 @@ fn function_type_base_bases_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn function_type_mro_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_mro_metadata_subset";
+    let diff_name = "cpython_function_type_mro_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "mro = function.__mro__",
+        "object.__getattribute__(function, '__mro__')",
+        "mro[0] is function",
+        "mro[1] is object",
+        "object_mro[0] is function",
+        "object_mro[1] is object",
+        "f.__mro__",
+        "'__mro__' in dir(function)",
+        "'__base__' in dir(function)",
+        "'__bases__' in dir(function)",
+        "'__mro__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __mro__ metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"mro tuple 2 True True\"",
+        "\"mro-names builtins function builtins object\"",
+        "\"object-mro tuple 2 True True\"",
+        "\"instance-mro AttributeError 'function' object has no attribute '__mro__'",
+        "\"visible-type False False False\"",
+        "\"visible-inst False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __mro__ metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__mro__\"",
+        "class_mro(&Value::Builtin(function_name)).map(tuple_value)",
+        "\"__base__\" | \"__bases__\" | \"__mro__\" => Err(format!(",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __mro__ metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__mro__` metadata",
+            "`function.__mro__ == (function, object)`",
+            "`object.__getattribute__(function, '__mro__')`",
+            "`__mro__ not in dir(function)`",
+            "function instance AttributeError path",
+            "without adding function type mappingproxy metadata",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __mro__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_doc_metadata_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_doc_metadata_subset";
     let diff_name = "cpython_function_type_doc_metadata_diff_subset";
