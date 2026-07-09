@@ -14508,6 +14508,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_hash_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_wrapper_subset",
             "cpython_json_function_bound_method_getattribute_missing_attr_subset",
+            "cpython_json_function_bound_method_parameters_missing_attr_subset",
             "cpython_json_function_bound_method_defaults_metadata_subset",
             "cpython_json_function_bound_method_kwdefaults_metadata_subset",
             "cpython_json_function_bound_method_annotations_metadata_subset",
@@ -14675,6 +14676,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_function_bound_method_hash_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_wrapper_diff_subset",
         "cpython_json_function_bound_method_getattribute_missing_attr_diff_subset",
+        "cpython_json_function_bound_method_parameters_missing_attr_diff_subset",
         "cpython_json_function_bound_method_defaults_metadata_diff_subset",
         "cpython_json_function_bound_method_kwdefaults_metadata_diff_subset",
         "cpython_json_function_bound_method_annotations_metadata_diff_subset",
@@ -15260,6 +15262,14 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     let json_function_bound_method_text_signature_missing_attr_subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,
         "cpython_json_function_bound_method_text_signature_missing_attr_subset",
+    );
+    let json_function_bound_method_parameters_missing_attr_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_json_function_bound_method_parameters_missing_attr_diff_subset",
+    );
+    let json_function_bound_method_parameters_missing_attr_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_json_function_bound_method_parameters_missing_attr_subset",
     );
     let json_function_bound_method_annotate_metadata_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -18069,6 +18079,65 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "bound.__parameters__",
+        "bound.__getattribute__('__parameters__')",
+        "object.__getattribute__(bound, '__parameters__')",
+        "except AttributeError as error",
+        "str(error)",
+        "error.args",
+        "'__parameters__' in dir(bound)",
+    ] {
+        assert!(
+            json_function_bound_method_parameters_missing_attr_diff_body.contains(required)
+                && json_function_bound_method_parameters_missing_attr_subset_body
+                    .contains(required),
+            "json public function bound method __parameters__ missing attr diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"loads direct AttributeError 'function' object has no attribute '__parameters__' (\\\"'function' object has no attribute '__parameters__'\\\",) False\"",
+        "\"loads getattribute AttributeError 'function' object has no attribute '__parameters__' (\\\"'function' object has no attribute '__parameters__'\\\",) False\"",
+        "\"loads object-getattribute AttributeError 'method' object has no attribute '__parameters__' (\\\"'method' object has no attribute '__parameters__'\\\",) False\"",
+        "\"dumps direct AttributeError 'function' object has no attribute '__parameters__' (\\\"'function' object has no attribute '__parameters__'\\\",) False\"",
+        "\"dumps getattribute AttributeError 'function' object has no attribute '__parameters__' (\\\"'function' object has no attribute '__parameters__'\\\",) False\"",
+        "\"dumps object-getattribute AttributeError 'method' object has no attribute '__parameters__' (\\\"'method' object has no attribute '__parameters__'\\\",) False\"",
+    ] {
+        assert!(
+            json_function_bound_method_parameters_missing_attr_subset_body.contains(required),
+            "json public function bound method __parameters__ missing attr subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "object.__getattribute__",
+        "name == \"__parameters__\"",
+        "is_json_builtin(function_name)",
+        "load_attribute(*function, \"__parameters__\")",
+        "AttributeError: 'method' object has no attribute '__parameters__'",
+        "AttributeError: 'function' object has no attribute '__parameters__'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json public function bound method __parameters__ missing attr implementation must contain `{required}`"
+        );
+    }
+    for required in [
+        "cpython_json_function_bound_method_parameters_missing_attr_subset",
+        "cpython_json_function_bound_method_parameters_missing_attr_diff_subset",
+        "json public function bound method `__parameters__` missing-attribute",
+        "`bound.__parameters__`",
+        "`bound.__getattribute__('__parameters__')`",
+        "`object.__getattribute__(bound, '__parameters__')`",
+        "generic parameter metadata",
+        "function `__code__`",
+        "file APIs",
+        "encoder/decoder classes",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "json public function bound method __parameters__ missing attr docs must contain `{required}`"
+        );
+    }
+    for required in [
         "value = bound.__annotate__",
         "value is function.__annotate__",
         "bound.__getattribute__('__annotate__') is function.__annotate__",
@@ -18799,6 +18868,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_function_bound_method_doc_dir_metadata_diff_subset",
             "cpython_json_function_bound_method_text_signature_missing_attr_subset",
             "cpython_json_function_bound_method_text_signature_missing_attr_diff_subset",
+            "cpython_json_function_bound_method_parameters_missing_attr_subset",
+            "cpython_json_function_bound_method_parameters_missing_attr_diff_subset",
             "cpython_json_function_bound_method_annotate_metadata_subset",
             "cpython_json_function_bound_method_annotate_metadata_diff_subset",
             "cpython_json_function_bound_method_type_params_metadata_subset",

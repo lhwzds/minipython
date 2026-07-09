@@ -5044,6 +5044,15 @@ lookup content equality with the underlying function doc, without adding
 `dumps.__get__(...)`, without adding `__reduce__`, `__reduce_ex__`, function
 `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
+`cpython_json_function_bound_method_parameters_missing_attr_subset`, backed by
+`cpython_json_function_bound_method_parameters_missing_attr_diff_subset`, keeps json public function bound method `__parameters__` missing-attribute
+`AttributeError` text, `args`, `bound.__parameters__`,
+`bound.__getattribute__('__parameters__')`,
+`object.__getattribute__(bound, '__parameters__')`, and `dir(bound)`
+visibility aligned with CPython for `loads.__get__(...)` and
+`dumps.__get__(...)`, without adding generic parameter metadata, function
+`__code__`, file APIs, module `__all__`, or encoder/decoder classes.
+
 `cpython_json_function_bound_method_annotate_metadata_subset`, backed by
 `cpython_json_function_bound_method_annotate_metadata_diff_subset`, keeps json public function bound method `__annotate__` metadata
 and `__getattribute__('__annotate__')` lookup aligned with CPython for

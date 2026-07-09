@@ -17161,6 +17161,17 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
+        if name == "__parameters__"
+            && matches!(
+                object,
+                Value::BoundMethod { function, .. }
+                    if matches!(function.as_ref(), Value::Builtin(function_name) if is_json_builtin(function_name))
+            )
+        {
+            return Err(
+                "AttributeError: 'method' object has no attribute '__parameters__'".to_string(),
+            );
+        }
         let result = self.load_attribute_without_custom_getattribute(object.clone(), &name);
         if object_getattribute_type_object_missing_attribute(&object, &name, &result) {
             return Err(missing_type_attribute_error("type", &name));
@@ -68470,6 +68481,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
             {
                 load_attribute(*function, "__closure__")
+            }
+            "__parameters__"
+                if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
+            {
+                load_attribute(*function, "__parameters__")
             }
             "__defaults__"
                 if matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name)) =>
