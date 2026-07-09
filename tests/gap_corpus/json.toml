@@ -155,6 +155,46 @@ except Exception as error:
 '''
 
 [[case]]
+name = "json-dumps-error-boundaries"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-error-boundaries"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+try:
+    json.dumps()
+except Exception as error:
+    print('no-args', isinstance(error, TypeError), isinstance(error, ValueError))
+try:
+    json.dumps({}, 1)
+except Exception as error:
+    print('extra-arg', isinstance(error, TypeError), isinstance(error, ValueError))
+try:
+    json.dumps({}, unknown=1)
+except Exception as error:
+    print('unknown-keyword', isinstance(error, TypeError), isinstance(error, ValueError))
+for label, value in [('object', object()), ('bytes', b'abc'), ('bad-key', {(1, 2): 3})]:
+    try:
+        json.dumps(value)
+    except Exception as error:
+        print(label, isinstance(error, TypeError), isinstance(error, ValueError))
+cycle_list = []
+cycle_list.append(cycle_list)
+try:
+    json.dumps(cycle_list)
+except Exception as error:
+    print('list-cycle', isinstance(error, TypeError), isinstance(error, ValueError))
+cycle_dict = {}
+cycle_dict['self'] = cycle_dict
+try:
+    json.dumps(cycle_dict)
+except Exception as error:
+    print('dict-cycle', isinstance(error, TypeError), isinstance(error, ValueError))
+'''
+
+[[case]]
 name = "json-file-api-out-of-scope"
 scope = "stdlib-sandbox"
 category = "stdlib-missing"
