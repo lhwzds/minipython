@@ -456,6 +456,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
         "triage": dict(Counter(result.triage_status for result in results)),
         "categories": dict(Counter(result.category for result in results)),
         "root_causes": dict(Counter(result.root_cause for result in results)),
+        "root_cause_summary": summarize_root_causes(results),
         "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
     }
@@ -463,9 +464,58 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
     (prefix.with_suffix(".md")).write_text(render_markdown(meta, results))
 
 
+def summarize_root_causes(results: list[SweepResult]) -> dict[str, dict[str, Any]]:
+    summaries: dict[str, dict[str, Any]] = {}
+    for result in results:
+        summary = summaries.setdefault(
+            result.root_cause,
+            {
+                "count": 0,
+                "triage": Counter(),
+                "statuses": Counter(),
+                "modules": set(),
+                "categories": set(),
+                "priorities": Counter(),
+                "cases": [],
+            },
+        )
+        summary["count"] += 1
+        summary["triage"][result.triage_status] += 1
+        summary["statuses"][result.status] += 1
+        summary["modules"].update(result.modules)
+        summary["categories"].add(result.category)
+        summary["priorities"][result.priority] += 1
+        summary["cases"].append(result.name)
+
+    normalized: dict[str, dict[str, Any]] = {}
+    for root_cause in sorted(summaries):
+        summary = summaries[root_cause]
+        normalized[root_cause] = {
+            "count": summary["count"],
+            "triage": sorted_counter(summary["triage"]),
+            "statuses": sorted_counter(summary["statuses"]),
+            "modules": sorted(summary["modules"]),
+            "categories": sorted(summary["categories"]),
+            "priorities": sorted_counter(summary["priorities"]),
+            "cases": sorted(summary["cases"]),
+        }
+    return normalized
+
+
+def sorted_counter(counter: Counter[str]) -> dict[str, int]:
+    return {key: counter[key] for key in sorted(counter)}
+
+
+def format_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={count}" for key, count in counts.items())
+
+
 def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     summary = Counter(result.status for result in results)
     triage_summary = Counter(result.triage_status for result in results)
+    root_cause_summary = summarize_root_causes(results)
     lines = [
         "# CPython Gap Sweep",
         "",
@@ -517,14 +567,14 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
             "",
             "## Root Causes",
             "",
-            "| Root Cause | Count |",
-            "| --- | ---: |",
+            "| Root Cause | Cases | Triage | Statuses | Modules |",
+            "| --- | ---: | --- | --- | --- |",
         ]
     )
-    for root_cause, count in sorted(
-        Counter(result.root_cause for result in results).items()
-    ):
-        lines.append(f"| `{root_cause}` | {count} |")
+    for root_cause, data in root_cause_summary.items():
+        lines.append(
+            f"| `{root_cause}` | {data['count']} | `{format_counts(data['triage'])}` | `{format_counts(data['statuses'])}` | `{', '.join(data['modules'])}` |"
+        )
     lines.extend(
         [
             "",

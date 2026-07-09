@@ -426,6 +426,50 @@ class VersionGuardTests(unittest.TestCase):
             gap.oracle_version = original_oracle_version
 
 
+class RootCauseSummaryTests(unittest.TestCase):
+    def test_root_cause_summary_groups_cases_and_metadata(self):
+        results = [
+            gap.SweepResult(
+                name="case-one",
+                scope="stdlib-sandbox",
+                category="runtime-semantic",
+                root_cause="json-loads-core",
+                modules=["json"],
+                priority="should_fix",
+                status="MATCH",
+                triage_status="passing",
+                expected=None,
+                diff="",
+                cpython=run_result(stdout="ok\n"),
+                minipython=run_result(stdout="ok\n"),
+            ),
+            gap.SweepResult(
+                name="case-two",
+                scope="stdlib-sandbox",
+                category="runtime-semantic",
+                root_cause="json-loads-core",
+                modules=["json", "builtins"],
+                priority="must_fix",
+                status="OUTPUT_DIFF",
+                triage_status="needs_triage",
+                expected=None,
+                diff="stdout differs",
+                cpython=run_result(stdout="1\n"),
+                minipython=run_result(stdout="2\n"),
+            ),
+        ]
+
+        summary = gap.summarize_root_causes(results)
+
+        self.assertEqual(summary["json-loads-core"]["count"], 2)
+        self.assertEqual(summary["json-loads-core"]["triage"], {"needs_triage": 1, "passing": 1})
+        self.assertEqual(summary["json-loads-core"]["statuses"], {"MATCH": 1, "OUTPUT_DIFF": 1})
+        self.assertEqual(summary["json-loads-core"]["modules"], ["builtins", "json"])
+        self.assertEqual(summary["json-loads-core"]["categories"], ["runtime-semantic"])
+        self.assertEqual(summary["json-loads-core"]["priorities"], {"must_fix": 1, "should_fix": 1})
+        self.assertEqual(summary["json-loads-core"]["cases"], ["case-one", "case-two"])
+
+
 class ReportTests(unittest.TestCase):
     def test_write_reports_emits_json_summary_and_markdown_details(self):
         meta = {
@@ -481,6 +525,18 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["triage"], {"needs_triage": 1})
         self.assertEqual(payload["categories"], {"syntax": 1})
         self.assertEqual(payload["root_causes"], {"json-loads-core": 1})
+        self.assertEqual(
+            payload["root_cause_summary"]["json-loads-core"],
+            {
+                "count": 1,
+                "triage": {"needs_triage": 1},
+                "statuses": {"OUTPUT_DIFF": 1},
+                "modules": ["json"],
+                "categories": ["syntax"],
+                "priorities": {"must_fix": 1},
+                "cases": ["case-one"],
+            },
+        )
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
@@ -521,7 +577,10 @@ class ReportTests(unittest.TestCase):
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("| `needs_triage` | 1 |", markdown)
         self.assertIn("| `syntax` | 1 |", markdown)
-        self.assertIn("| `json-loads-core` | 1 |", markdown)
+        self.assertIn(
+            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` |",
+            markdown,
+        )
         self.assertIn("| `json` | 1 |", markdown)
         self.assertIn(
             "| `case-one` | `syntax` | `syntax` | `json-loads-core` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
