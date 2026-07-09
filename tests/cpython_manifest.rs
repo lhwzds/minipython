@@ -69654,6 +69654,93 @@ fn function_type_init_subclass_builtin_method_metadata_subset_has_focused_diff_e
 }
 
 #[test]
+fn function_type_subclasshook_builtin_method_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_subclasshook_builtin_method_metadata_subset";
+    let diff_name = "cpython_function_type_subclasshook_builtin_method_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__subclasshook__",
+        "doc = d.__doc__",
+        "d.__self__ is function",
+        "doc.startswith('Abstract classes can override')",
+        "'This is invoked early' in doc",
+        "d.__module__",
+        "d.__text_signature__",
+        "'__subclasshook__' in dir(function)",
+        "dir(d)",
+        "d(object)",
+        "function.__subclasshook__(object)",
+        "d()",
+        "d(object, object)",
+        "d(object=object)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __subclasshook__ builtin method subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor builtin_function_or_method __subclasshook__ function.__subclasshook__ True True True None ($type, object, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__module__', '__name__', '__qualname__', '__self__', '__text_signature__']\"",
+        "\"call-object NotImplemented\"",
+        "\"type-call-object NotImplemented\"",
+        "\"missing TypeError function.__subclasshook__() takes exactly one argument (0 given)",
+        "\"extra TypeError function.__subclasshook__() takes exactly one argument (2 given)",
+        "\"keyword TypeError function.__subclasshook__() takes no keyword arguments",
+        "\"__objclass__ AttributeError 'builtin_function_or_method' object has no attribute '__objclass__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __subclasshook__ builtin method subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__subclasshook__\"",
+        "\"function.__subclasshook__\".to_string()",
+        "Value::Builtin(\"function\".to_string())",
+        "names.push(\"__subclasshook__\".to_string())",
+        "is_function_type_subclasshook_bound_method(function.as_ref(), receiver)",
+        "self.call_function_subclasshook(args, keywords)",
+        "fn call_function_subclasshook(",
+        "function_name == \"function.__subclasshook__\"",
+        "\"Abstract classes can override this to customize issubclass().",
+        "\"($type, object, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __subclasshook__ builtin method metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__subclasshook__` builtin method metadata",
+            "`function.__subclasshook__.__qualname__`",
+            "`function.__subclasshook__.__self__ is function`",
+            "`function.__subclasshook__.__text_signature__`",
+            "`dir(function.__subclasshook__)`",
+            "type-level descriptor lookup",
+            "without changing subclass-check behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __subclasshook__ builtin method docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";

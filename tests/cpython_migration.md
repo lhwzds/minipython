@@ -13191,6 +13191,15 @@ Completed in the repr builtin pass:
   `function.__init_subclass__.__text_signature__`,
   `dir(function.__init_subclass__)`, type-level descriptor lookup, no-op calls,
   and TypeError paths without changing subclass initialization behavior.
+- Added `cpython_function_type_subclasshook_builtin_method_metadata_subset`,
+  backed by
+  `cpython_function_type_subclasshook_builtin_method_metadata_diff_subset`,
+  covering function type `__subclasshook__` builtin method metadata:
+  `function.__subclasshook__.__qualname__`,
+  `function.__subclasshook__.__self__ is function`,
+  `function.__subclasshook__.__text_signature__`,
+  `dir(function.__subclasshook__)`, type-level descriptor lookup,
+  NotImplemented fallback, and TypeError paths without changing subclass-check behavior.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing

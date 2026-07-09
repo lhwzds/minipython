@@ -56472,7 +56472,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.retain(|name| name != "__get__");
                 names.extend(exception_bound_method_dir_names());
             }
-            if is_function_type_init_subclass_bound_method(function.as_ref(), receiver) {
+            if is_function_type_init_subclass_bound_method(function.as_ref(), receiver)
+                || is_function_type_subclasshook_bound_method(function.as_ref(), receiver)
+            {
                 names.extend(
                     [
                         "__module__",
@@ -57675,6 +57677,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__setattr__".to_string());
         names.push("__sizeof__".to_string());
         names.push("__str__".to_string());
+        names.push("__subclasshook__".to_string());
     }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
@@ -68587,6 +68590,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
                 ))
             }
+            _ if is_function_type_subclasshook_bound_method(function.as_ref(), &receiver) => {
+                Err(format!(
+                    "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
+                ))
+            }
             _ => Err(format!("AttributeError: method has no attribute '{name}'")),
         },
         Value::AsyncGenerator(state) => match name {
@@ -68802,6 +68810,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "function" && name == "__init_subclass__" => {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("function.__init_subclass__".to_string())),
+                receiver: Box::new(Value::Builtin("function".to_string())),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__subclasshook__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("function.__subclasshook__".to_string())),
                 receiver: Box::new(Value::Builtin("function".to_string())),
                 identity: Rc::new(()),
             })
@@ -72711,6 +72726,7 @@ fn bound_method_omits_func_attribute(function: &Value, receiver: &Value) -> bool
     matches!(function, Value::Builtin(name) if is_numeric_from_number_classmethod(name))
         || is_exception_helper_bound_method(function, receiver)
         || is_function_type_init_subclass_bound_method(function, receiver)
+        || is_function_type_subclasshook_bound_method(function, receiver)
 }
 
 fn is_function_type_init_subclass_bound_method(function: &Value, receiver: &Value) -> bool {
@@ -72718,6 +72734,14 @@ fn is_function_type_init_subclass_bound_method(function: &Value, receiver: &Valu
         (function, receiver),
         (Value::Builtin(function_name), Value::Builtin(receiver_name))
             if function_name == "function.__init_subclass__" && receiver_name == "function"
+    )
+}
+
+fn is_function_type_subclasshook_bound_method(function: &Value, receiver: &Value) -> bool {
+    matches!(
+        (function, receiver),
+        (Value::Builtin(function_name), Value::Builtin(receiver_name))
+            if function_name == "function.__subclasshook__" && receiver_name == "function"
     )
 }
 

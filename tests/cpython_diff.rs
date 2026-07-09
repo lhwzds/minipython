@@ -16968,6 +16968,32 @@ for name in ['__objclass__']:
 }
 
 #[test]
+fn cpython_function_type_subclasshook_builtin_method_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function.__subclasshook__ type-level builtin method metadata",
+        name: "function-type-subclasshook-builtin-method-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+d = function.__subclasshook__
+doc = d.__doc__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__self__ is function, doc.startswith('Abstract classes can override'), 'This is invoked early' in doc, d.__module__, d.__text_signature__)
+print('dir-type', '__subclasshook__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+for label, call in [('call-object', lambda: d(object)), ('type-call-object', lambda: function.__subclasshook__(object)), ('missing', lambda: d()), ('extra', lambda: d(object, object)), ('keyword', lambda: d(object=object))]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+for name in ['__objclass__']:
+    try:
+        print(name, getattr(d, name))
+    except Exception as error:
+        print(name, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_call_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",
