@@ -68943,6 +68943,92 @@ fn function_type_setattr_wrapper_descriptor_metadata_subset_has_focused_diff_evi
 }
 
 #[test]
+fn function_type_delattr_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_delattr_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_delattr_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__delattr__",
+        "d is object.__delattr__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__delattr__' in dir(function)",
+        "dir(d)",
+        "f.extra = 3",
+        "d(f, 'extra')",
+        "f.__dict__",
+        "object.__delattr__(f, 'extra2')",
+        "d(f)",
+        "d(f, 'x', 1)",
+        "d(f, name='x')",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __delattr__ wrapper descriptor metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __delattr__ object.__delattr__ True True Implement delattr(self, name). ($self, name, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call None False {}\"",
+        "\"object-call None False\"",
+        "\"missing-name TypeError expected 1 argument, got 0",
+        "\"extra TypeError expected 1 argument, got 2",
+        "\"keyword TypeError wrapper __delattr__() takes no keyword arguments",
+        "\"__module__ AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"__self__ AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __delattr__ wrapper descriptor metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__delattr__\"",
+        "\"object.__delattr__\".to_string()",
+        "names.push(\"__delattr__\".to_string())",
+        "Value::Builtin(name) if name == \"object.__delattr__\"",
+        "function_name == \"object.__delattr__\"",
+        "wrapper_descriptor_dir_names()",
+        "\"Implement delattr(self, name).\"",
+        "\"($self, name, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __delattr__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__delattr__` inherited wrapper_descriptor metadata",
+            "`function.__delattr__ is object.__delattr__`",
+            "`function.__delattr__.__qualname__`",
+            "`function.__delattr__.__objclass__ is object`",
+            "`function.__delattr__.__text_signature__`",
+            "`dir(function.__delattr__)`",
+            "direct function attribute deletion",
+            "without changing custom delattr hooks",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __delattr__ wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";

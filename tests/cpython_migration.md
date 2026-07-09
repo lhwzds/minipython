@@ -13119,6 +13119,15 @@ Completed in the repr builtin pass:
   `function.__setattr__.__text_signature__`,
   `dir(function.__setattr__)`, direct function attribute assignment, and
   TypeError paths without changing custom setattr hooks.
+- Added `cpython_function_type_delattr_wrapper_descriptor_metadata_subset`,
+  backed by `cpython_function_type_delattr_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__delattr__` inherited wrapper_descriptor metadata:
+  `function.__delattr__ is object.__delattr__`,
+  `function.__delattr__.__qualname__`,
+  `function.__delattr__.__objclass__ is object`,
+  `function.__delattr__.__text_signature__`,
+  `dir(function.__delattr__)`, direct function attribute deletion, and
+  TypeError paths without changing custom delattr hooks.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing
