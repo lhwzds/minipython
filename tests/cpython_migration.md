@@ -13218,6 +13218,14 @@ Completed in the repr builtin pass:
   `function.__get__.__text_signature__`, `dir(function.__get__)`,
   type-level descriptor lookup, descriptor binding results, and TypeError paths
   without changing bound function descriptor behavior.
+- Added `cpython_function_type_init_wrapper_descriptor_metadata_subset`,
+  backed by
+  `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__init__` wrapper_descriptor metadata:
+  `function.__init__.__qualname__`, `function.__init__ is object.__init__`,
+  `function.__init__.__text_signature__`, `dir(function.__init__)`,
+  type-level descriptor lookup, function-receiver no-op initialization, and
+  TypeError paths without changing exact object constructor behavior.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing

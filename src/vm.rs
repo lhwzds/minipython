@@ -10183,18 +10183,7 @@ impl Vm {
                 self.call_property_constructor(args, keywords)
             }
             Value::Builtin(name) if name == "object.__init__" => {
-                if matches!(args.first(), Some(Value::Builtin(function_name)) if is_json_builtin(function_name))
-                {
-                    return Ok(Value::None);
-                }
-                if !keywords.is_empty() {
-                    return Err(
-                        "TypeError: object.__init__() takes exactly one argument (the instance to initialize)"
-                            .to_string(),
-                    );
-                }
-
-                self.call_object_init(args)
+                self.call_object_init(args, keywords)
             }
             Value::Builtin(name) if name == "object.__hash__" => {
                 if !keywords.is_empty() {
@@ -16907,18 +16896,21 @@ impl Vm {
         }
     }
 
-    fn call_object_init(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [receiver] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: object.__init__() expected 0 arguments, got {}",
-                method_arg_count(&args)
-            ));
+    fn call_object_init(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((receiver, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: descriptor '__init__' of 'object' object needs an argument".to_string(),
+            );
         };
-        if !value_matches_builtin_class(receiver, "object") {
-            return Err(format!(
-                "TypeError: descriptor '__init__' for 'object' objects doesn't apply to a '{}' object",
-                type_name(receiver)
-            ));
+        if is_exact_builtin_object_value(receiver) && (!rest.is_empty() || !keywords.is_empty()) {
+            return Err(
+                "TypeError: object.__init__() takes exactly one argument (the instance to initialize)"
+                    .to_string(),
+            );
         }
         Ok(Value::None)
     }
@@ -57681,6 +57673,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__getstate__".to_string());
         names.push("__gt__".to_string());
         names.push("__hash__".to_string());
+        names.push("__init__".to_string());
         names.push("__init_subclass__".to_string());
         names.push("__le__".to_string());
         names.push("__lt__".to_string());
@@ -58060,6 +58053,18 @@ fn instance_allows_attribute_dict(
 
 fn is_exact_builtin_object_instance(class_name: &str, attrs: &Scope, bases: &[Value]) -> bool {
     class_name == "object" && bases.is_empty() && attrs.borrow().is_empty()
+}
+
+fn is_exact_builtin_object_value(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::Instance {
+            class_name,
+            class_attrs,
+            class_bases,
+            ..
+        } if is_exact_builtin_object_instance(class_name, class_attrs, class_bases)
+    )
 }
 
 fn class_allows_instance_dict(attrs: &Scope, bases: &[Value]) -> Result<bool, String> {
@@ -68791,6 +68796,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__hash__" => {
             Ok(Value::Builtin("object.__hash__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__init__" => {
+            Ok(Value::Builtin("object.__init__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__sizeof__" => {
             Ok(Value::Builtin("object.__sizeof__".to_string()))

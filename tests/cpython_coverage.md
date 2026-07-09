@@ -10327,6 +10327,15 @@ without adding general custom encoder/decoder class support.
   `function.__get__.__text_signature__`, `dir(function.__get__)`,
   type-level descriptor lookup, descriptor binding results, and TypeError paths
   without changing bound function descriptor behavior.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_init_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__init__` wrapper_descriptor metadata:
+  `function.__init__.__qualname__`, `function.__init__ is object.__init__`,
+  `function.__init__.__text_signature__`, `dir(function.__init__)`,
+  type-level descriptor lookup, function-receiver no-op initialization, and
+  TypeError paths without changing exact object constructor behavior.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

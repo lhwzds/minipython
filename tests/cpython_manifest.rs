@@ -69922,6 +69922,97 @@ fn function_type_get_wrapper_descriptor_metadata_subset_has_focused_diff_evidenc
 }
 
 #[test]
+fn function_type_init_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_init_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_init_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__init__",
+        "d.__objclass__ is object",
+        "d is object.__init__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__init__' in dir(function)",
+        "dir(d)",
+        "d(f)",
+        "object.__init__(f)",
+        "d(f, 1)",
+        "d(f, x=1)",
+        "d()",
+        "d(1)",
+        "d.__module__",
+        "d.__self__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __init__ wrapper descriptor subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __init__ object.__init__ True True Initialize self.  See help(type(self)) for accurate signature. ($self, /, *args, **kwargs)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call None\"",
+        "\"object-call None\"",
+        "\"extra None\"",
+        "\"keyword None\"",
+        "\"missing-self TypeError descriptor '__init__' of 'object' object needs an argument",
+        "\"bad-self None\"",
+        "\"module AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"self AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __init__ wrapper descriptor subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__init__\"",
+        "\"object.__init__\".to_string()",
+        "names.push(\"__init__\".to_string())",
+        "self.call_object_init(args, keywords)",
+        "fn call_object_init(",
+        "is_exact_builtin_object_value(receiver)",
+        "descriptor '__init__' of 'object' object needs an argument",
+        "object.__init__() takes exactly one argument",
+        "name == \"__qualname__\" && function_name == \"object.__init__\"",
+        "name == \"__objclass__\" && function_name == \"object.__init__\"",
+        "($self, /, *args, **kwargs)",
+        "wrapper_descriptor_dir_names()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __init__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__init__` wrapper_descriptor metadata",
+            "`function.__init__.__qualname__`",
+            "`function.__init__ is object.__init__`",
+            "`function.__init__.__text_signature__`",
+            "`dir(function.__init__)`",
+            "type-level descriptor lookup",
+            "without changing exact object constructor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __init__ wrapper descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";
