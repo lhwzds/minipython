@@ -1,0 +1,64 @@
+[[case]]
+name = "stdlib-allowlist-core-modules"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
+print(builtins.len([1, 2]))
+print(isinstance(sys.modules, dict))
+print(types.SimpleNamespace(x=1).x)
+print(collections.Counter('aa')['a'], collections.abc.Sequence.__name__)
+print(math.sqrt(4))
+print(array.array('B', [65]).tobytes())
+print(copy.copy([1]) == [1])
+bio = io.BytesIO(b'ab')
+print(bio.read(1))
+print(operator.add(2, 3), functools.reduce(lambda a, b: a + b, [1, 2, 3]))
+print(next(itertools.count(4)))
+print(json.loads('{"a": 1}')['a'])
+'''
+
+[[case]]
+name = "stdlib-module-doc-packages"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
+for module in [builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json]:
+    print(module.__name__, type(module.__doc__).__name__, hasattr(module, '__package__'))
+'''
+
+[[case]]
+name = "stdlib-operator-functools-itertools"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import operator, functools, itertools
+print(operator.itemgetter(1)(['a', 'b', 'c']))
+print(operator.attrgetter('real')(3+4j))
+print(functools.partial(operator.add, 4)(5))
+print(list(itertools.islice(itertools.chain([1], [2, 3]), 3)))
+print(list(itertools.batched([1, 2, 3], 2)))
+'''
+
+[[case]]
+name = "stdlib-collections-copy-io-array"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import collections, collections.abc, copy, io, array
+counter = collections.Counter('ababa')
+print(counter['a'], counter.most_common(1))
+print(isinstance([], collections.abc.Sequence), isinstance({}, collections.abc.Mapping))
+data = {'items': [1]}
+clone = copy.copy(data)
+clone['items'].append(2)
+print(data['items'])
+bio = io.BytesIO()
+print(bio.write(b'xy'), bio.getvalue())
+print(array.array('B', bio.getvalue()).tolist())
+'''

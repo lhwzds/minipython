@@ -16,6 +16,7 @@ const GAP_SWEEP_TESTS: &str = include_str!("../tools/test_cpython_gap_sweep.py")
 const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
+const GAP_SWEEP_STDLIB_ALLOWLIST_CORPUS: &str = include_str!("gap_corpus/stdlib_allowlist.toml");
 const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
 const REPORTS_GITIGNORE: &str = include_str!("../reports/.gitignore");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
@@ -92459,6 +92460,40 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         assert!(
             GAP_SWEEP_JSON_CORPUS.contains(required),
             "gap sweep json corpus must keep `{required}`"
+        );
+    }
+
+    for required in [
+        "stdlib-allowlist-core-modules",
+        "stdlib-module-doc-packages",
+        "stdlib-operator-functools-itertools",
+        "stdlib-collections-copy-io-array",
+        "scope = \"stdlib-sandbox\"",
+        "category = \"runtime-semantic\"",
+        "priority = \"should_fix\"",
+        "import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json",
+        "builtins.len([1, 2])",
+        "isinstance(sys.modules, dict)",
+        "types.SimpleNamespace(x=1).x",
+        "collections.Counter('aa')['a']",
+        "collections.abc.Sequence.__name__",
+        "math.sqrt(4)",
+        "array.array('B', [65]).tobytes()",
+        "copy.copy([1]) == [1]",
+        "io.BytesIO(b'ab')",
+        "operator.add(2, 3)",
+        "functools.reduce",
+        "itertools.count(4)",
+        "operator.itemgetter",
+        "operator.attrgetter",
+        "functools.partial",
+        "itertools.batched",
+        "collections.abc.Mapping",
+        "bio.write(b'xy')",
+    ] {
+        assert!(
+            GAP_SWEEP_STDLIB_ALLOWLIST_CORPUS.contains(required),
+            "gap sweep stdlib allowlist corpus must keep `{required}`"
         );
     }
 
