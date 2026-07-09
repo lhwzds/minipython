@@ -72,7 +72,9 @@ sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 dif
 同时覆盖报告里受影响的所有 case。JSON report 也会写出
 `open_root_causes`，作为当前仍有 `needs_triage` case 的机器可读修复队列。
 runner 会启用 `--fail-on-open`，让未预期的 open root cause 直接使批量运行
-失败，同时把已接受的 sandbox/compatibility gap 留在报告里。
+失败，同时把已接受的 sandbox/compatibility gap 留在报告里。open root-cause
+report 也会写出对应的
+`tools/run_cpython_gap_sweep.sh --root-cause ...` 聚焦重跑命令。
 
 ## 架构
 

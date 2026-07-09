@@ -455,6 +455,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
 
 def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]) -> None:
     prefix.parent.mkdir(parents=True, exist_ok=True)
+    open_summaries = open_root_causes(results)
     json_payload = {
         "meta": meta,
         "summary": dict(Counter(result.status for result in results)),
@@ -462,7 +463,8 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
         "categories": dict(Counter(result.category for result in results)),
         "root_causes": dict(Counter(result.root_cause for result in results)),
         "root_cause_summary": summarize_root_causes(results),
-        "open_root_causes": open_root_causes(results),
+        "open_root_causes": open_summaries,
+        "open_root_cause_commands": open_root_cause_commands(open_summaries),
         "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
     }
@@ -514,6 +516,23 @@ def open_root_causes(results: list[SweepResult]) -> dict[str, dict[str, Any]]:
         for root_cause, summary in summarize_root_causes(results).items()
         if summary["triage"].get("needs_triage", 0)
     }
+
+
+def open_root_cause_commands(
+    open_summaries: dict[str, dict[str, Any]],
+) -> dict[str, list[str]]:
+    return {
+        root_cause: focused_root_cause_command(root_cause)
+        for root_cause in open_summaries
+    }
+
+
+def focused_root_cause_command(root_cause: str) -> list[str]:
+    return ["tools/run_cpython_gap_sweep.sh", "--root-cause", root_cause]
+
+
+def format_command(command: list[str]) -> str:
+    return " ".join(command)
 
 
 def format_open_root_causes(open_summaries: dict[str, dict[str, Any]]) -> str:
@@ -583,13 +602,14 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     if open_summaries:
         lines.extend(
             [
-                "| Root Cause | Open Cases | Triage | Statuses | Modules |",
-                "| --- | ---: | --- | --- | --- |",
+                "| Root Cause | Open Cases | Triage | Statuses | Modules | Focused Command |",
+                "| --- | ---: | --- | --- | --- | --- |",
             ]
         )
         for root_cause, data in open_summaries.items():
+            command = format_command(focused_root_cause_command(root_cause))
             lines.append(
-                f"| `{root_cause}` | {data['triage']['needs_triage']} | `{format_counts(data['triage'])}` | `{format_counts(data['statuses'])}` | `{', '.join(data['modules'])}` |"
+                f"| `{root_cause}` | {data['triage']['needs_triage']} | `{format_counts(data['triage'])}` | `{format_counts(data['statuses'])}` | `{', '.join(data['modules'])}` | `{command}` |"
             )
     else:
         lines.append("No open root causes.")

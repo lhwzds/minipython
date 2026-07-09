@@ -574,6 +574,26 @@ class RootCauseSummaryTests(unittest.TestCase):
             open_summary["json-dumps-format-options"]["cases"],
             ["open-case"],
         )
+        self.assertEqual(
+            gap.open_root_cause_commands(open_summary),
+            {
+                "json-dumps-format-options": [
+                    "tools/run_cpython_gap_sweep.sh",
+                    "--root-cause",
+                    "json-dumps-format-options",
+                ],
+            },
+        )
+        self.assertEqual(
+            gap.format_command(
+                [
+                    "tools/run_cpython_gap_sweep.sh",
+                    "--root-cause",
+                    "json-dumps-format-options",
+                ]
+            ),
+            "tools/run_cpython_gap_sweep.sh --root-cause json-dumps-format-options",
+        )
 
 
 class ReportTests(unittest.TestCase):
@@ -647,6 +667,10 @@ class ReportTests(unittest.TestCase):
             payload["open_root_causes"]["json-loads-core"],
             payload["root_cause_summary"]["json-loads-core"],
         )
+        self.assertEqual(
+            payload["open_root_cause_commands"]["json-loads-core"],
+            ["tools/run_cpython_gap_sweep.sh", "--root-cause", "json-loads-core"],
+        )
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
@@ -688,7 +712,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("| `needs_triage` | 1 |", markdown)
         self.assertIn("## Open Root Causes", markdown)
         self.assertIn(
-            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` |",
+            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` | `tools/run_cpython_gap_sweep.sh --root-cause json-loads-core` |",
             markdown,
         )
         self.assertIn("| `syntax` | 1 |", markdown)

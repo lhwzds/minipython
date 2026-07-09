@@ -95,7 +95,9 @@ one grouped cause while covering all affected cases in the report. JSON reports
 also include `open_root_causes`, the current machine-readable repair queue for
 root causes that still have `needs_triage` cases. The runner enables
 `--fail-on-open` so unexpected open root causes fail the batch while accepted
-sandbox/compatibility gaps stay visible in the report.
+sandbox/compatibility gaps stay visible in the report. Open root-cause reports
+also include the focused `tools/run_cpython_gap_sweep.sh --root-cause ...`
+command to rerun the grouped repair slice.
 
 ## Architecture
 

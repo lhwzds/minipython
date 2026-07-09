@@ -46,7 +46,9 @@ gap discovery to grouped repair. JSON reports include both a full
 machine-readable repair queue for root causes that still contain
 `needs_triage` cases. Use `--fail-on-open` when the batch should fail on that
 repair queue while continuing to accept explicitly classified sandbox,
-compatibility, and CPython-internal gaps.
+compatibility, and CPython-internal gaps. The open-root-cause report also
+includes the focused `tools/run_cpython_gap_sweep.sh --root-cause ...` command
+to rerun one grouped repair slice.
 
 Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is
