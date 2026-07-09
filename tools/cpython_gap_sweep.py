@@ -29,6 +29,8 @@ STATUSES = [
     "CPYTHON_REJECTS",
     "INTENTIONAL_SANDBOX_BLOCK",
     "UNSUPPORTED_OUT_OF_SCOPE",
+    "STDLIB_MISSING",
+    "CPYTHON_INTERNAL",
     "TIMEOUT",
     "CRASH",
 ]
@@ -36,6 +38,32 @@ STATUSES = [
 EXPECTED_STATUS_BY_MARKER = {
     "intentional_sandbox_block": "INTENTIONAL_SANDBOX_BLOCK",
     "unsupported_out_of_scope": "UNSUPPORTED_OUT_OF_SCOPE",
+    "stdlib_missing": "STDLIB_MISSING",
+    "cpython_internal": "CPYTHON_INTERNAL",
+}
+
+VALID_CATEGORIES = {
+    "syntax",
+    "runtime-semantic",
+    "exception-shape",
+    "stdlib-missing",
+    "sandbox-excluded",
+    "cpython-internal",
+}
+
+DEFAULT_CATEGORY_BY_SCOPE = {
+    "syntax": "syntax",
+    "core-runtime": "runtime-semantic",
+    "stdlib-sandbox": "runtime-semantic",
+    "intentional-sandbox": "sandbox-excluded",
+}
+
+NON_FAILING_STATUSES = {
+    "MATCH",
+    "INTENTIONAL_SANDBOX_BLOCK",
+    "UNSUPPORTED_OUT_OF_SCOPE",
+    "STDLIB_MISSING",
+    "CPYTHON_INTERNAL",
 }
 
 
@@ -52,6 +80,7 @@ class RunResult:
 class SweepResult:
     name: str
     scope: str
+    category: str
     priority: str
     status: str
     expected: str | None
@@ -87,6 +116,11 @@ def parse_args() -> argparse.Namespace:
         "--scope",
         default="syntax,core-runtime,stdlib-sandbox,intentional-sandbox",
         help="Comma-separated scopes to run.",
+    )
+    parser.add_argument(
+        "--category",
+        default=",".join(sorted(VALID_CATEGORIES)),
+        help="Comma-separated root-cause categories to run.",
     )
     parser.add_argument(
         "--out",
@@ -206,10 +240,19 @@ def load_cases(corpus: Path) -> list[dict[str, Any]]:
         for case in data.get("case", []):
             case = dict(case)
             case.setdefault("scope", "unspecified")
+            case.setdefault(
+                "category",
+                DEFAULT_CATEGORY_BY_SCOPE.get(case["scope"], "runtime-semantic"),
+            )
             case.setdefault("priority", "unspecified")
             case["_path"] = str(path)
             if "name" not in case or "source" not in case:
                 raise ValueError(f"{path}: every case needs name and source")
+            if case["category"] not in VALID_CATEGORIES:
+                raise ValueError(
+                    f"{path}: unknown category `{case['category']}`; "
+                    f"expected one of {sorted(VALID_CATEGORIES)}"
+                )
             if (
                 "expected" in case
                 and case["expected"] not in EXPECTED_STATUS_BY_MARKER
@@ -245,7 +288,17 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         raise SystemExit(f"MiniPython executable not found: {minipython}")
 
     scopes = {scope.strip() for scope in args.scope.split(",") if scope.strip()}
-    cases = [case for case in load_cases(Path(args.corpus)) if case["scope"] in scopes]
+    categories = {
+        category.strip() for category in args.category.split(",") if category.strip()
+    }
+    unknown_categories = sorted(categories - VALID_CATEGORIES)
+    if unknown_categories:
+        raise SystemExit(f"Unknown gap sweep categories: {', '.join(unknown_categories)}")
+    cases = [
+        case
+        for case in load_cases(Path(args.corpus))
+        if case["scope"] in scopes and case["category"] in categories
+    ]
     started = time.time()
     results: list[SweepResult] = []
     for case in cases:
@@ -257,6 +310,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
             SweepResult(
                 name=case["name"],
                 scope=case["scope"],
+                category=case["category"],
                 priority=case["priority"],
                 status=status,
                 expected=case.get("expected"),
@@ -277,6 +331,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         "minipython_executable": str(Path(minipython).resolve()),
         "corpus": str(Path(args.corpus)),
         "scope": sorted(scopes),
+        "category": sorted(categories),
     }
     return meta, results
 
@@ -286,6 +341,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
     json_payload = {
         "meta": meta,
         "summary": dict(Counter(result.status for result in results)),
+        "categories": dict(Counter(result.category for result in results)),
         "results": [asdict(result) for result in results],
     }
     (prefix.with_suffix(".json")).write_text(json.dumps(json_payload, indent=2) + "\n")
@@ -304,6 +360,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
         f"- MiniPython: `{meta['minipython_executable']}`",
         f"- Corpus: `{meta['corpus']}`",
         f"- Scopes: `{', '.join(meta['scope'])}`",
+        f"- Categories: `{', '.join(meta['category'])}`",
         f"- Duration: `{meta['duration_seconds']}s`",
         "",
         "## Summary",
@@ -314,10 +371,29 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     for status in STATUSES:
         if summary[status]:
             lines.append(f"| `{status}` | {summary[status]} |")
-    lines.extend(["", "## Cases", "", "| Case | Scope | Priority | Status |", "| --- | --- | --- | --- |"])
+    lines.extend(
+        [
+            "",
+            "## Categories",
+            "",
+            "| Category | Count |",
+            "| --- | ---: |",
+        ]
+    )
+    for category, count in sorted(Counter(result.category for result in results).items()):
+        lines.append(f"| `{category}` | {count} |")
+    lines.extend(
+        [
+            "",
+            "## Cases",
+            "",
+            "| Case | Scope | Category | Priority | Status |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
     for result in results:
         lines.append(
-            f"| `{result.name}` | `{result.scope}` | `{result.priority}` | `{result.status}` |"
+            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{result.priority}` | `{result.status}` |"
         )
     differing = [result for result in results if result.status != "MATCH"]
     if differing:
@@ -329,6 +405,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
                     "",
                     f"- Status: `{result.status}`",
                     f"- Scope: `{result.scope}`",
+                    f"- Category: `{result.category}`",
                     f"- Priority: `{result.priority}`",
                     "",
                     "```text",
@@ -357,11 +434,7 @@ def main() -> int:
         ", ".join(f"{status}={summary[status]}" for status in STATUSES if summary[status]),
     )
     if args.fail_on_diff:
-        bad = [
-            result
-            for result in results
-            if result.status not in {"MATCH", "INTENTIONAL_SANDBOX_BLOCK", "UNSUPPORTED_OUT_OF_SCOPE"}
-        ]
+        bad = [result for result in results if result.status not in NON_FAILING_STATUSES]
         if bad:
             return 1
     return 0

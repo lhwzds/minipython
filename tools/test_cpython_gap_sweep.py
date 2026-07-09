@@ -87,6 +87,19 @@ class ClassifyTests(unittest.TestCase):
             "UNSUPPORTED_OUT_OF_SCOPE",
         )
 
+    def test_stdlib_missing_expected_overrides_nonmatching_results(self):
+        cpython = run_result(stdout="imported\n")
+        mini = run_result(exit_code=1, stderr="ModuleNotFoundError: pdb\n")
+        self.assertEqual(gap.classify(cpython, mini, "stdlib_missing"), "STDLIB_MISSING")
+
+    def test_cpython_internal_expected_overrides_nonmatching_results(self):
+        cpython = run_result(stdout="imported\n")
+        mini = run_result(exit_code=1, stderr="ModuleNotFoundError: _testcapi\n")
+        self.assertEqual(
+            gap.classify(cpython, mini, "cpython_internal"),
+            "CPYTHON_INTERNAL",
+        )
+
     def test_exception_class_and_message_diffs_are_separate(self):
         cpython = run_result(
             exit_code=1,
@@ -153,6 +166,7 @@ source = "print(1)"
         self.assertEqual(len(cases), 1)
         self.assertEqual(cases[0]["name"], "basic")
         self.assertEqual(cases[0]["scope"], "unspecified")
+        self.assertEqual(cases[0]["category"], "runtime-semantic")
         self.assertEqual(cases[0]["priority"], "unspecified")
         self.assertTrue(cases[0]["_path"].endswith("cases.toml"))
 
@@ -182,6 +196,20 @@ expected = "typo"
             with self.assertRaisesRegex(ValueError, "unknown expected marker"):
                 gap.load_cases(corpus)
 
+    def test_load_cases_rejects_unknown_category(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp) / "cases.toml"
+            corpus.write_text(
+                """
+[[case]]
+name = "bad-category"
+category = "typo"
+source = "print(1)"
+""".lstrip()
+            )
+            with self.assertRaisesRegex(ValueError, "unknown category"):
+                gap.load_cases(corpus)
+
 
 class VersionGuardTests(unittest.TestCase):
     def test_run_sweep_rejects_wrong_oracle_version(self):
@@ -193,6 +221,7 @@ class VersionGuardTests(unittest.TestCase):
             minipython="/does/not/matter",
             corpus="tests/gap_corpus",
             scope="syntax",
+            category="syntax",
             out="reports/cpython-gap-sweep",
             timeout=0.1,
             fail_on_diff=False,
@@ -221,10 +250,12 @@ class ReportTests(unittest.TestCase):
             "minipython_executable": "/mnpy",
             "corpus": "tests/gap_corpus",
             "scope": ["syntax"],
+            "category": ["syntax"],
         }
         result = gap.SweepResult(
             name="case-one",
             scope="syntax",
+            category="syntax",
             priority="must_fix",
             status="OUTPUT_DIFF",
             expected=None,
@@ -239,12 +270,16 @@ class ReportTests(unittest.TestCase):
             markdown = prefix.with_suffix(".md").read_text()
 
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
+        self.assertEqual(payload["categories"], {"syntax": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
+        self.assertEqual(payload["results"][0]["category"], "syntax")
         self.assertIn("- Required CPython: `3.14.6`", markdown)
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
+        self.assertIn("- Categories: `syntax`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
-        self.assertIn("### `case-one`", markdown)
+        self.assertIn("| `syntax` | 1 |", markdown)
+        self.assertIn("| `case-one` | `syntax` | `syntax` | `must_fix` | `OUTPUT_DIFF` |", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)
 

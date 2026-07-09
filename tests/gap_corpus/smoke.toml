@@ -1,6 +1,7 @@
 [[case]]
 name = "syntax-function-closure"
 scope = "syntax"
+category = "syntax"
 priority = "must_fix"
 source = '''
 def make(offset):
@@ -13,6 +14,7 @@ print(make(4)(5))
 [[case]]
 name = "syntax-class-method"
 scope = "syntax"
+category = "syntax"
 priority = "must_fix"
 source = '''
 class Counter:
@@ -27,6 +29,7 @@ print(Counter(2).inc())
 [[case]]
 name = "syntax-match-basic"
 scope = "syntax"
+category = "syntax"
 priority = "must_fix"
 source = '''
 value = ("ok", 3)
@@ -40,6 +43,7 @@ match value:
 [[case]]
 name = "core-container-comprehension"
 scope = "core-runtime"
+category = "runtime-semantic"
 priority = "must_fix"
 source = '''
 values = [x * x for x in range(5) if x % 2 == 0]
@@ -50,6 +54,7 @@ print({x: x + 1 for x in values})
 [[case]]
 name = "core-exception-catch"
 scope = "core-runtime"
+category = "exception-shape"
 priority = "must_fix"
 source = '''
 try:
@@ -61,6 +66,7 @@ except IndexError as error:
 [[case]]
 name = "stdlib-json-basic"
 scope = "stdlib-sandbox"
+category = "runtime-semantic"
 priority = "should_fix"
 source = '''
 import json
@@ -72,6 +78,7 @@ print(json.dumps(value, sort_keys=True))
 [[case]]
 name = "stdlib-collections-abc-iterable-doc"
 scope = "stdlib-sandbox"
+category = "runtime-semantic"
 priority = "nice_to_have"
 source = '''
 from collections.abc import Iterable
@@ -79,8 +86,24 @@ print(object.__getattribute__(Iterable, "__doc__"))
 '''
 
 [[case]]
+name = "stdlib-pdb-module-out-of-scope"
+scope = "stdlib-sandbox"
+category = "stdlib-missing"
+priority = "wont_fix"
+expected = "stdlib_missing"
+source = '''
+try:
+    import pdb
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
 name = "sandbox-socket-import-block"
 scope = "intentional-sandbox"
+category = "sandbox-excluded"
 priority = "wont_fix"
 expected = "intentional_sandbox_block"
 source = '''
@@ -95,11 +118,27 @@ else:
 [[case]]
 name = "sandbox-subprocess-out-of-scope"
 scope = "intentional-sandbox"
+category = "sandbox-excluded"
 priority = "wont_fix"
 expected = "unsupported_out_of_scope"
 source = '''
 try:
     import subprocess
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "cpython-internal-testcapi-out-of-scope"
+scope = "intentional-sandbox"
+category = "cpython-internal"
+priority = "wont_fix"
+expected = "cpython_internal"
+source = '''
+try:
+    import _testcapi
 except Exception as error:
     print(type(error).__name__)
 else:
