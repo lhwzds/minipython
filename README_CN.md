@@ -54,6 +54,7 @@ echo "print(1)" | mnpy  # 管道输入
 /opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
 tools/run_cpython_gap_sweep.sh
 tools/run_cpython_gap_sweep.sh --module json
+tools/run_cpython_gap_sweep.sh --root-cause json-loads-core
 ```
 
 第一条命令会快速测试 gap-sweep driver 本身。gap sweep 会固定使用
@@ -67,6 +68,8 @@ gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver i
 `status` 和工作流用的 `triage_status` 分开：通过的 case、已接受的
 sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 diff 都会写入
 机器可读 JSON。
+从发现阶段进入修复阶段时使用 `--root-cause`，让一个 commit 聚焦一个分组原因，
+同时覆盖报告里受影响的所有 case。
 
 ## 架构
 

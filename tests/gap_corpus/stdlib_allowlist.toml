@@ -2,6 +2,7 @@
 name = "stdlib-allowlist-core-modules"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "stdlib-allowlist-runtime-smoke"
 modules = [
   "array",
   "builtins",
@@ -38,6 +39,7 @@ print(json.loads('{"a": 1}')['a'])
 name = "stdlib-module-doc-packages"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "stdlib-module-metadata-smoke"
 modules = [
   "array",
   "builtins",
@@ -64,6 +66,7 @@ for module in [builtins, sys, types, collections, collections.abc, math, array, 
 name = "stdlib-operator-functools-itertools"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "operator-functools-itertools-core"
 modules = ["operator", "functools", "itertools"]
 priority = "should_fix"
 source = '''
@@ -79,6 +82,7 @@ print(list(itertools.batched([1, 2, 3], 2)))
 name = "stdlib-collections-copy-io-array"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "collections-copy-io-array-core"
 modules = ["collections", "collections.abc", "copy", "io.BytesIO", "array"]
 priority = "should_fix"
 source = '''

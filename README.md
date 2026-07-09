@@ -75,6 +75,7 @@ echo "print(1)" | mnpy  # pipe input
 /opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
 tools/run_cpython_gap_sweep.sh
 tools/run_cpython_gap_sweep.sh --module json
+tools/run_cpython_gap_sweep.sh --root-cause json-loads-core
 ```
 
 The first command runs fast unit tests for the gap-sweep driver. The gap sweep
@@ -89,6 +90,8 @@ Use `--module` to focus a batch run on one affected surface, for example
 `status` separate from workflow `triage_status`: passing cases, accepted
 sandbox/compatibility gaps, and unexpected diffs that need root-cause work are
 machine-readable in the JSON output.
+Use `--root-cause` when moving from discovery to repair so a commit can address
+one grouped cause while covering all affected cases in the report.
 
 ## Architecture
 

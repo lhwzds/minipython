@@ -198,6 +198,7 @@ class ParseArgsTests(unittest.TestCase):
 
         self.assertEqual(args.cpython, "/opt/homebrew/bin/python3")
         self.assertEqual(args.require_version, "3.14.6")
+        self.assertEqual(args.root_cause, "*")
 
 
 class CorpusLoadingTests(unittest.TestCase):
@@ -219,6 +220,7 @@ source = "print(1)"
         self.assertEqual(cases[0]["scope"], "unspecified")
         self.assertEqual(cases[0]["category"], "runtime-semantic")
         self.assertEqual(cases[0]["modules"], ["unspecified"])
+        self.assertEqual(cases[0]["root_cause"], "runtime-semantic:unspecified")
         self.assertEqual(cases[0]["priority"], "unspecified")
         self.assertTrue(cases[0]["_path"].endswith("cases.toml"))
 
@@ -230,6 +232,7 @@ source = "print(1)"
 [[case]]
 name = "one"
 module = "json"
+root_cause = "json-loads-core"
 source = "print(1)"
 
 [[case]]
@@ -242,6 +245,7 @@ source = "print(2)"
             cases = gap.load_cases(corpus)
 
         self.assertEqual(cases[0]["modules"], ["json"])
+        self.assertEqual(cases[0]["root_cause"], "json-loads-core")
         self.assertEqual(cases[1]["modules"], ["builtins", "sys"])
 
     def test_load_cases_rejects_missing_required_fields(self):
@@ -298,6 +302,20 @@ source = "print(1)"
             with self.assertRaisesRegex(ValueError, "modules must be"):
                 gap.load_cases(corpus)
 
+    def test_load_cases_rejects_invalid_root_cause(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp) / "cases.toml"
+            corpus.write_text(
+                """
+[[case]]
+name = "bad-root-cause"
+root_cause = ""
+source = "print(1)"
+""".lstrip()
+            )
+            with self.assertRaisesRegex(ValueError, "root_cause must be"):
+                gap.load_cases(corpus)
+
 
 class VersionGuardTests(unittest.TestCase):
     def test_run_sweep_rejects_wrong_oracle_version(self):
@@ -311,6 +329,7 @@ class VersionGuardTests(unittest.TestCase):
             scope="syntax",
             category="syntax",
             module="syntax",
+            root_cause="syntax-frontend-functions",
             out="reports/cpython-gap-sweep",
             timeout=0.1,
             fail_on_diff=False,
@@ -341,11 +360,13 @@ class ReportTests(unittest.TestCase):
             "scope": ["syntax"],
             "category": ["syntax"],
             "module": ["json"],
+            "root_cause": ["json-loads-core"],
         }
         result = gap.SweepResult(
             name="case-one",
             scope="syntax",
             category="syntax",
+            root_cause="json-loads-core",
             modules=["json"],
             priority="must_fix",
             status="OUTPUT_DIFF",
@@ -365,10 +386,12 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
         self.assertEqual(payload["triage"], {"needs_triage": 1})
         self.assertEqual(payload["categories"], {"syntax": 1})
+        self.assertEqual(payload["root_causes"], {"json-loads-core": 1})
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
         self.assertEqual(payload["results"][0]["category"], "syntax")
+        self.assertEqual(payload["results"][0]["root_cause"], "json-loads-core")
         self.assertEqual(payload["results"][0]["modules"], ["json"])
         self.assertEqual(payload["results"][0]["triage_status"], "needs_triage")
         self.assertEqual(payload["results"][0]["diff"], "stdout differs")
@@ -376,14 +399,17 @@ class ReportTests(unittest.TestCase):
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("- Categories: `syntax`", markdown)
         self.assertIn("- Modules: `json`", markdown)
+        self.assertIn("- Root Causes: `json-loads-core`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("| `needs_triage` | 1 |", markdown)
         self.assertIn("| `syntax` | 1 |", markdown)
+        self.assertIn("| `json-loads-core` | 1 |", markdown)
         self.assertIn("| `json` | 1 |", markdown)
         self.assertIn(
-            "| `case-one` | `syntax` | `syntax` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
+            "| `case-one` | `syntax` | `syntax` | `json-loads-core` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
             markdown,
         )
+        self.assertIn("- Root Cause: `json-loads-core`", markdown)
         self.assertIn("- Triage: `needs_triage`", markdown)
         self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)

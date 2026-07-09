@@ -35,6 +35,14 @@ Run a focused slice with `tools/run_cpython_gap_sweep.sh --module json`, or use
 the `--module json` option directly when invoking the driver. Comma-separated
 values such as `--module json,collections.abc` can cover related surfaces.
 
+Each case must carry a concrete `root_cause` id. `category` is the broad failure
+class, `modules` describes affected surface area, and `root_cause` is the repair
+unit used for grouped work. Use
+`tools/run_cpython_gap_sweep.sh --root-cause json-loads-core` before
+implementing a fix so one commit can cover all cases that share the same root
+cause. The `--root-cause` filter is the preferred entry point when moving from
+gap discovery to grouped repair.
+
 Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is
 outside MiniPython's sandbox target. Use `expected = "stdlib_missing"` and

@@ -2,6 +2,7 @@
 name = "math-integer-compat-alias"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "math-integer-cpython-compat-gap"
 modules = ["math.integer"]
 priority = "should_fix"
 expected = "cpython_missing_compat"

@@ -2,6 +2,7 @@
 name = "syntax-function-closure"
 scope = "syntax"
 category = "syntax"
+root_cause = "syntax-frontend-functions"
 modules = ["syntax"]
 priority = "must_fix"
 source = '''
@@ -16,6 +17,7 @@ print(make(4)(5))
 name = "syntax-class-method"
 scope = "syntax"
 category = "syntax"
+root_cause = "syntax-frontend-classes"
 modules = ["syntax"]
 priority = "must_fix"
 source = '''
@@ -32,6 +34,7 @@ print(Counter(2).inc())
 name = "syntax-match-basic"
 scope = "syntax"
 category = "syntax"
+root_cause = "syntax-pattern-matching"
 modules = ["syntax"]
 priority = "must_fix"
 source = '''
@@ -47,6 +50,7 @@ match value:
 name = "core-container-comprehension"
 scope = "core-runtime"
 category = "runtime-semantic"
+root_cause = "core-comprehension-containers"
 modules = ["core-runtime"]
 priority = "must_fix"
 source = '''
@@ -59,6 +63,7 @@ print({x: x + 1 for x in values})
 name = "core-exception-catch"
 scope = "core-runtime"
 category = "exception-shape"
+root_cause = "exception-catch-shape"
 modules = ["exceptions"]
 priority = "must_fix"
 source = '''
@@ -72,6 +77,7 @@ except IndexError as error:
 name = "stdlib-json-basic"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "json-loads-core"
 modules = ["json"]
 priority = "should_fix"
 source = '''
@@ -85,6 +91,7 @@ print(json.dumps(value, sort_keys=True))
 name = "stdlib-collections-abc-iterable-doc"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+root_cause = "collections-abc-metadata"
 modules = ["collections.abc"]
 priority = "nice_to_have"
 source = '''
@@ -96,6 +103,7 @@ print(object.__getattribute__(Iterable, "__doc__"))
 name = "stdlib-pdb-module-out-of-scope"
 scope = "stdlib-sandbox"
 category = "stdlib-missing"
+root_cause = "stdlib-pdb-out-of-scope"
 modules = ["pdb"]
 priority = "wont_fix"
 expected = "stdlib_missing"
@@ -112,6 +120,7 @@ else:
 name = "sandbox-socket-import-block"
 scope = "intentional-sandbox"
 category = "sandbox-excluded"
+root_cause = "sandbox-network-block"
 modules = ["socket"]
 priority = "wont_fix"
 expected = "intentional_sandbox_block"
@@ -128,6 +137,7 @@ else:
 name = "sandbox-subprocess-out-of-scope"
 scope = "intentional-sandbox"
 category = "sandbox-excluded"
+root_cause = "sandbox-process-block"
 modules = ["subprocess"]
 priority = "wont_fix"
 expected = "unsupported_out_of_scope"
@@ -144,6 +154,7 @@ else:
 name = "cpython-internal-testcapi-out-of-scope"
 scope = "intentional-sandbox"
 category = "cpython-internal"
+root_cause = "cpython-capi-internal"
 modules = ["_testcapi"]
 priority = "wont_fix"
 expected = "cpython_internal"

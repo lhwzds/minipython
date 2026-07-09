@@ -93,6 +93,7 @@ class SweepResult:
     name: str
     scope: str
     category: str
+    root_cause: str
     modules: list[str]
     priority: str
     status: str
@@ -141,6 +142,11 @@ def parse_args() -> argparse.Namespace:
         "--module",
         default="*",
         help="Comma-separated module names to run, or * for all modules.",
+    )
+    parser.add_argument(
+        "--root-cause",
+        default="*",
+        help="Comma-separated root-cause ids to run, or * for all root causes.",
     )
     parser.add_argument(
         "--out",
@@ -310,6 +316,7 @@ def load_cases(corpus: Path) -> list[dict[str, Any]]:
             if "name" not in case or "source" not in case:
                 raise ValueError(f"{path}: every case needs name and source")
             case["modules"] = normalize_case_modules(path, case)
+            case["root_cause"] = normalize_case_root_cause(path, case)
             if case["category"] not in VALID_CATEGORIES:
                 raise ValueError(
                     f"{path}: unknown category `{case['category']}`; "
@@ -339,6 +346,16 @@ def normalize_case_modules(path: Path, case: dict[str, Any]) -> list[str]:
     if not normalized:
         raise ValueError(f"{path}: modules must contain at least one module name")
     return normalized
+
+
+def normalize_case_root_cause(path: Path, case: dict[str, Any]) -> str:
+    root_cause = case.get(
+        "root_cause",
+        f"{case['category']}:{','.join(case['modules'])}",
+    )
+    if not isinstance(root_cause, str) or not root_cause.strip():
+        raise ValueError(f"{path}: root_cause must be a non-empty string")
+    return root_cause.strip()
 
 
 def oracle_version(cpython: str) -> str:
@@ -373,12 +390,19 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         raise SystemExit(f"Unknown gap sweep categories: {', '.join(unknown_categories)}")
     modules = {module.strip() for module in args.module.split(",") if module.strip()}
     run_all_modules = not modules or "*" in modules
+    root_causes = {
+        root_cause.strip()
+        for root_cause in args.root_cause.split(",")
+        if root_cause.strip()
+    }
+    run_all_root_causes = not root_causes or "*" in root_causes
     cases = [
         case
         for case in load_cases(Path(args.corpus))
         if case["scope"] in scopes
         and case["category"] in categories
         and (run_all_modules or modules.intersection(case["modules"]))
+        and (run_all_root_causes or case["root_cause"] in root_causes)
     ]
     started = time.time()
     results: list[SweepResult] = []
@@ -393,6 +417,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
                 name=case["name"],
                 scope=case["scope"],
                 category=case["category"],
+                root_cause=case["root_cause"],
                 modules=case["modules"],
                 priority=case["priority"],
                 status=status,
@@ -418,6 +443,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         "scope": sorted(scopes),
         "category": sorted(categories),
         "module": ["*"] if run_all_modules else sorted(modules),
+        "root_cause": ["*"] if run_all_root_causes else sorted(root_causes),
     }
     return meta, results
 
@@ -429,6 +455,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
         "summary": dict(Counter(result.status for result in results)),
         "triage": dict(Counter(result.triage_status for result in results)),
         "categories": dict(Counter(result.category for result in results)),
+        "root_causes": dict(Counter(result.root_cause for result in results)),
         "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
     }
@@ -451,6 +478,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
         f"- Scopes: `{', '.join(meta['scope'])}`",
         f"- Categories: `{', '.join(meta['category'])}`",
         f"- Modules: `{', '.join(meta['module'])}`",
+        f"- Root Causes: `{', '.join(meta['root_cause'])}`",
         f"- Duration: `{meta['duration_seconds']}s`",
         "",
         "## Summary",
@@ -487,6 +515,19 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     lines.extend(
         [
             "",
+            "## Root Causes",
+            "",
+            "| Root Cause | Count |",
+            "| --- | ---: |",
+        ]
+    )
+    for root_cause, count in sorted(
+        Counter(result.root_cause for result in results).items()
+    ):
+        lines.append(f"| `{root_cause}` | {count} |")
+    lines.extend(
+        [
+            "",
             "## Modules",
             "",
             "| Module | Count |",
@@ -502,13 +543,13 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
             "",
             "## Cases",
             "",
-            "| Case | Scope | Category | Modules | Priority | Status | Triage |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| Case | Scope | Category | Root Cause | Modules | Priority | Status | Triage |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
     for result in results:
         lines.append(
-            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{', '.join(result.modules)}` | `{result.priority}` | `{result.status}` | `{result.triage_status}` |"
+            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{result.root_cause}` | `{', '.join(result.modules)}` | `{result.priority}` | `{result.status}` | `{result.triage_status}` |"
         )
     differing = [result for result in results if result.status != "MATCH"]
     if differing:
@@ -521,6 +562,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
                     f"- Status: `{result.status}`",
                     f"- Scope: `{result.scope}`",
                     f"- Category: `{result.category}`",
+                    f"- Root Cause: `{result.root_cause}`",
                     f"- Modules: `{', '.join(result.modules)}`",
                     f"- Triage: `{result.triage_status}`",
                     f"- Priority: `{result.priority}`",
