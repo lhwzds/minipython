@@ -10199,6 +10199,17 @@ without adding general custom encoder/decoder class support.
   `function.__dir__.__text_signature__`,
   `dir(function.__dir__)`, object.__dir__ list-shape forwarding, and TypeError
   paths without changing object.__dir__ list semantics and without adding custom descriptor behavior.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_setattr_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_setattr_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__setattr__` inherited wrapper_descriptor metadata:
+  `function.__setattr__ is object.__setattr__`,
+  `function.__setattr__.__qualname__`,
+  `function.__setattr__.__objclass__ is object`,
+  `function.__setattr__.__text_signature__`,
+  `dir(function.__setattr__)`, direct function attribute assignment, and
+  TypeError paths without changing custom setattr hooks.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

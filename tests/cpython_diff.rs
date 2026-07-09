@@ -16700,6 +16700,33 @@ for name in ['__module__', '__self__']:
 }
 
 #[test]
+fn cpython_function_type_setattr_wrapper_descriptor_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public inherited function.__setattr__ wrapper descriptor metadata",
+        name: "function-type-setattr-wrapper-descriptor-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+d = function.__setattr__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is object, d is object.__setattr__, d.__doc__, d.__text_signature__)
+print('dir-type', '__setattr__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+print('call', d(f, 'extra', 3), f.extra, f.__dict__['extra'])
+print('object-call', object.__setattr__(f, 'extra2', 4), f.extra2)
+for label, call in [('missing-value', lambda: d(f, 'x')), ('extra', lambda: d(f, 'x', 1, 2)), ('keyword', lambda: d(f, name='x', value=1))]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+for name in ['__module__', '__self__']:
+    try:
+        print(name, getattr(d, name))
+    except Exception as error:
+        print(name, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_call_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",
