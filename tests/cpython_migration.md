@@ -13247,6 +13247,11 @@ Completed in the repr builtin pass:
   `function.__type_params__.__get__(f, function)`,
   `function.__type_params__.__set__(f, tuple)`, and
   `function.__type_params__.__delete__(f)` without adding function type mappingproxy support.
+- Added `cpython_function_type_parameters_absent_metadata_subset`, backed by
+  `cpython_function_type_parameters_absent_metadata_diff_subset`, covering function type `__parameters__` absence metadata:
+  `function.__parameters__`,
+  `object.__getattribute__(function, '__parameters__')`, `f.__parameters__`,
+  and `__parameters__ not in dir(function)` without adding generic parameter metadata or function type mappingproxy support.
 - Added `cpython_function_type_dir_metadata_visibility_subset`, backed by
   `cpython_function_type_dir_metadata_visibility_diff_subset`, covering function type dir metadata visibility: `__module__ in dir(function)`,
   `__qualname__ in dir(function)`, `__base__ not in dir(function)`,

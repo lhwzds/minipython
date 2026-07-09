@@ -17223,6 +17223,28 @@ for label, call in [
 }
 
 #[test]
+fn cpython_function_type_parameters_absent_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __parameters__ absence metadata",
+        name: "function-type-parameters-absent-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+for label, call in [
+    ('direct', lambda: function.__parameters__),
+    ('object', lambda: object.__getattribute__(function, '__parameters__')),
+    ('instance', lambda: f.__parameters__),
+]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible-type', '__parameters__' in dir(function))
+print('visible-inst', '__parameters__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_dir_metadata_visibility_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function type dir metadata visibility",

@@ -70285,7 +70285,7 @@ fn function_type_text_signature_metadata_subset_has_focused_diff_evidence() {
         "function_name == \"function\" && name == \"__text_signature__\"",
         "(code, globals, name=None, argdefs=None, closure=None,\\n",
         "kwdefaults=None)",
-        "\"__base__\" | \"__bases__\" | \"__mro__\" | \"__text_signature__\" => Err(format!(",
+        "\"__base__\" | \"__bases__\" | \"__mro__\" | \"__parameters__\" | \"__text_signature__\" =>",
         "AttributeError: 'function' object has no attribute '{name}'",
     ] {
         assert!(
@@ -70406,6 +70406,72 @@ fn function_type_type_params_getset_descriptor_subset_has_focused_diff_evidence(
             assert!(
                 document.contains(required),
                 "focused function type __type_params__ getset descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_type_parameters_absent_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_parameters_absent_metadata_subset";
+    let diff_name = "cpython_function_type_parameters_absent_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "function.__parameters__",
+        "object.__getattribute__(function, '__parameters__')",
+        "f.__parameters__",
+        "'__parameters__' in dir(function)",
+        "'__parameters__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __parameters__ absence metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"direct AttributeError type object 'function' has no attribute '__parameters__'",
+        "\"object AttributeError 'type' object has no attribute '__parameters__'",
+        "\"instance AttributeError 'function' object has no attribute '__parameters__'",
+        "\"visible-type False\"",
+        "\"visible-inst False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __parameters__ absence metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__parameters__\"",
+        "type object 'function' has no attribute '__parameters__'",
+        "\"__parameters__\" | \"__text_signature__\"",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __parameters__ absence metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__parameters__` absence metadata",
+            "`function.__parameters__`",
+            "`object.__getattribute__(function, '__parameters__')`",
+            "`f.__parameters__`",
+            "`__parameters__ not in dir(function)`",
+            "without adding generic parameter metadata or function type mappingproxy support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __parameters__ absence metadata docs must contain `{required}`"
             );
         }
     }
