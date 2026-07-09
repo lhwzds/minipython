@@ -79,6 +79,8 @@ REQUIRED_JSON_ROOT_CAUSES = {
     "json-dumps-format-options",
     "json-dumps-default-skipkeys",
     "json-dumps-nonfinite-and-circular",
+    "json-file-api-out-of-scope",
+    "json-codec-classes-out-of-scope",
 }
 
 REQUIRED_SANDBOX_ROOT_CAUSES = {
