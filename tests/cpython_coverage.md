@@ -10287,6 +10287,16 @@ without adding general custom encoder/decoder class support.
   `function.__ge__.__text_signature__`,
   `dir(function.__ge__)`, object-order forwarding, and TypeError paths without
   changing function-object rich-compare wrappers.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_init_subclass_builtin_method_metadata_subset` with
+  direct CPython output parity in
+  `cpython_function_type_init_subclass_builtin_method_metadata_diff_subset`,
+  covering function type `__init_subclass__` builtin method metadata:
+  `function.__init_subclass__.__qualname__`,
+  `function.__init_subclass__.__self__ is function`,
+  `function.__init_subclass__.__text_signature__`,
+  `dir(function.__init_subclass__)`, type-level descriptor lookup, no-op calls,
+  and TypeError paths without changing subclass initialization behavior.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

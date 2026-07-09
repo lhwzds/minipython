@@ -16942,6 +16942,32 @@ for name in ['__module__', '__self__']:
 }
 
 #[test]
+fn cpython_function_type_init_subclass_builtin_method_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function.__init_subclass__ type-level builtin method metadata",
+        name: "function-type-init-subclass-builtin-method-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+d = function.__init_subclass__
+doc = d.__doc__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__self__ is function, doc.startswith('This method is called'), 'default implementation does nothing' in doc, d.__module__, d.__text_signature__)
+print('dir-type', '__init_subclass__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+for label, call in [('call', lambda: d()), ('type-call', lambda: function.__init_subclass__()), ('extra', lambda: d(1)), ('keyword', lambda: d(x=1))]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+for name in ['__objclass__']:
+    try:
+        print(name, getattr(d, name))
+    except Exception as error:
+        print(name, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_call_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",

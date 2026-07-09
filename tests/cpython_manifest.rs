@@ -69569,6 +69569,91 @@ fn function_type_ge_wrapper_descriptor_metadata_subset_has_focused_diff_evidence
 }
 
 #[test]
+fn function_type_init_subclass_builtin_method_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_init_subclass_builtin_method_metadata_subset";
+    let diff_name = "cpython_function_type_init_subclass_builtin_method_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__init_subclass__",
+        "doc = d.__doc__",
+        "d.__self__ is function",
+        "doc.startswith('This method is called')",
+        "'default implementation does nothing' in doc",
+        "d.__module__",
+        "d.__text_signature__",
+        "'__init_subclass__' in dir(function)",
+        "dir(d)",
+        "d()",
+        "function.__init_subclass__()",
+        "d(1)",
+        "d(x=1)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __init_subclass__ builtin method subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor builtin_function_or_method __init_subclass__ function.__init_subclass__ True True True None ($type, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__module__', '__name__', '__qualname__', '__self__', '__text_signature__']\"",
+        "\"call None\"",
+        "\"type-call None\"",
+        "\"extra TypeError function.__init_subclass__() takes no arguments (1 given)",
+        "\"keyword TypeError function.__init_subclass__() takes no keyword arguments",
+        "\"__objclass__ AttributeError 'builtin_function_or_method' object has no attribute '__objclass__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __init_subclass__ builtin method subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__init_subclass__\"",
+        "\"function.__init_subclass__\".to_string()",
+        "Value::Builtin(\"function\".to_string())",
+        "names.push(\"__init_subclass__\".to_string())",
+        "is_function_type_init_subclass_bound_method(function.as_ref(), receiver)",
+        "self.call_function_init_subclass(args, keywords)",
+        "fn call_function_init_subclass(",
+        "function_name == \"function.__init_subclass__\"",
+        "\"This method is called when a class is subclassed.",
+        "\"($type, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __init_subclass__ builtin method metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__init_subclass__` builtin method metadata",
+            "`function.__init_subclass__.__qualname__`",
+            "`function.__init_subclass__.__self__ is function`",
+            "`function.__init_subclass__.__text_signature__`",
+            "`dir(function.__init_subclass__)`",
+            "type-level descriptor lookup",
+            "without changing subclass initialization behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __init_subclass__ builtin method docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";

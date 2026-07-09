@@ -56472,6 +56472,18 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.retain(|name| name != "__get__");
                 names.extend(exception_bound_method_dir_names());
             }
+            if is_function_type_init_subclass_bound_method(function.as_ref(), receiver) {
+                names.extend(
+                    [
+                        "__module__",
+                        "__name__",
+                        "__qualname__",
+                        "__text_signature__",
+                    ]
+                    .into_iter()
+                    .map(str::to_string),
+                );
+            }
             if !bound_method_omits_func_attribute(function.as_ref(), receiver) {
                 names.push("__func__".to_string());
             }
@@ -57655,6 +57667,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__getstate__".to_string());
         names.push("__gt__".to_string());
         names.push("__hash__".to_string());
+        names.push("__init_subclass__".to_string());
         names.push("__le__".to_string());
         names.push("__lt__".to_string());
         names.push("__ne__".to_string());
@@ -68569,6 +68582,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ if is_exception_helper_bound_method(function.as_ref(), &receiver) => Err(format!(
                 "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
             )),
+            _ if is_function_type_init_subclass_bound_method(function.as_ref(), &receiver) => {
+                Err(format!(
+                    "AttributeError: 'builtin_function_or_method' object has no attribute '{name}'"
+                ))
+            }
             _ => Err(format!("AttributeError: method has no attribute '{name}'")),
         },
         Value::AsyncGenerator(state) => match name {
@@ -68780,6 +68798,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__ge__" => {
             Ok(Value::Builtin("object.__ge__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__init_subclass__" => {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("function.__init_subclass__".to_string())),
+                receiver: Box::new(Value::Builtin("function".to_string())),
+                identity: Rc::new(()),
+            })
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
@@ -72685,6 +72710,15 @@ fn exception_bound_method_dir_names() -> impl Iterator<Item = String> {
 fn bound_method_omits_func_attribute(function: &Value, receiver: &Value) -> bool {
     matches!(function, Value::Builtin(name) if is_numeric_from_number_classmethod(name))
         || is_exception_helper_bound_method(function, receiver)
+        || is_function_type_init_subclass_bound_method(function, receiver)
+}
+
+fn is_function_type_init_subclass_bound_method(function: &Value, receiver: &Value) -> bool {
+    matches!(
+        (function, receiver),
+        (Value::Builtin(function_name), Value::Builtin(receiver_name))
+            if function_name == "function.__init_subclass__" && receiver_name == "function"
+    )
 }
 
 fn is_exception_helper_bound_method(function: &Value, receiver: &Value) -> bool {
