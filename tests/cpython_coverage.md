@@ -3181,8 +3181,38 @@ Recent runtime migration notes:
   `cpython_json_loads_dumps_error_boundary_diff_subset`,
   `cpython_json_loads_invalid_utf8_error_detail_diff_subset`,
   `cpython_json_loads_invalid_utf16_error_detail_diff_subset`,
-  `cpython_json_loads_invalid_utf32_error_detail_diff_subset`, and
-  `cpython_json_loads_string_error_boundary_diff_subset`.
+  `cpython_json_loads_invalid_utf32_error_detail_diff_subset`,
+  `cpython_json_loads_string_error_boundary_diff_subset`,
+  `cpython_collections_userstring_inherited_dir_method_diff_subset`,
+  `cpython_format_conversion_repr_custom_dunder_diff_subset`,
+  `cpython_functools_genericalias_alias_diff_subset`,
+  `cpython_functools_get_cache_token_diff_subset`,
+  `cpython_functools_get_cache_token_metadata_diff_subset`,
+  `cpython_functools_itemgetter_alias_diff_subset`,
+  `cpython_functools_mappingproxytype_alias_diff_subset`,
+  `cpython_functools_namedtuple_alias_diff_subset`,
+  `cpython_functools_recursive_repr_diff_subset`,
+  `cpython_json_function_bound_method_parameters_missing_attr_diff_subset`,
+  `cpython_json_function_parameters_missing_attr_diff_subset`,
+  `cpython_json_function_text_signature_missing_attr_diff_subset`,
+  `cpython_operator_arithmetic_bitwise_builtin_metadata_diff_subset`,
+  `cpython_operator_builtin_metadata_diff_subset`,
+  `cpython_operator_comparison_builtin_metadata_diff_subset`,
+  `cpython_operator_factory_builtin_metadata_diff_subset`,
+  `cpython_operator_factory_helper_doc_metadata_diff_subset`,
+  `cpython_operator_helper_instance_text_signature_metadata_diff_subset`,
+  `cpython_operator_helper_type_classinfo_metadata_diff_subset`,
+  `cpython_operator_helper_type_dict_call_descriptor_diff_subset`,
+  `cpython_operator_helper_type_dict_getattribute_descriptor_diff_subset`,
+  `cpython_operator_helper_type_dict_metadata_diff_subset`,
+  `cpython_operator_helper_type_dict_new_descriptor_diff_subset`,
+  `cpython_operator_helper_type_dict_repr_descriptor_diff_subset`,
+  `cpython_operator_helper_type_dict_text_signature_descriptor_diff_subset`,
+  `cpython_operator_helper_type_display_metadata_diff_subset`,
+  `cpython_operator_helper_type_hierarchy_metadata_diff_subset`,
+  `cpython_operator_helper_type_metadata_diff_subset`,
+  `cpython_operator_inplace_builtin_metadata_diff_subset`, and
+  `cpython_operator_sequence_concat_builtin_metadata_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.

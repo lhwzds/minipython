@@ -14422,6 +14422,7 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         "cpython_collections_chainmap_copy_pickle_eval_identity",
         "cpython_collections_counter_symmetric_difference_absent",
         "cpython_collections_namedtuple_pickle",
+        "cpython_json_dumps_error_boundary",
         "cpython_operator_pickle_helper",
     ]
     .into_iter()
@@ -14437,10 +14438,11 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         "cpython_collections_chainmap_copy_pickle_eval_identity_subset",
         "cpython_collections_counter_symmetric_difference_absent_subset",
         "cpython_collections_namedtuple_pickle_subset",
+        "cpython_json_dumps_error_boundary_subset",
     ] {
         assert!(
             CPYTHON_COVERAGE.contains(subset) && CPYTHON_MIGRATION.contains(subset),
-            "pickle/eval identity subset `{subset}` must stay documented as subset-only support"
+            "shared-diff or subset-only support `{subset}` must stay documented"
         );
     }
 }
