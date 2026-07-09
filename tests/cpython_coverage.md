@@ -10166,6 +10166,17 @@ without adding general custom encoder/decoder class support.
   `function.__getattribute__.__objclass__ is object`,
   `function.__getattribute__.__text_signature__`,
   `dir(function.__getattribute__)`, and positive descriptor forwarding without changing function instance __getattribute__ wrappers and without changing object.__getattribute__ missing-attribute diagnostics.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_sizeof_method_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_sizeof_method_descriptor_metadata_diff_subset`,
+  covering function type `__sizeof__` inherited method_descriptor metadata:
+  `function.__sizeof__ is object.__sizeof__`,
+  `function.__sizeof__.__qualname__`,
+  `function.__sizeof__.__objclass__ is object`,
+  `function.__sizeof__.__text_signature__`,
+  `dir(function.__sizeof__)`, positive integer return shape, and TypeError
+  paths without depending on CPython allocation sizes and without changing object-layout internals.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
