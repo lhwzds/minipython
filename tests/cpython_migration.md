@@ -13074,6 +13074,15 @@ Completed in the repr builtin pass:
   `function.__hash__.__objclass__ is object`,
   `function.__hash__.__text_signature__`,
   `dir(function.__hash__)`, and descriptor call forwarding without changing function instance __hash__ wrappers and without depending on concrete hash values.
+- Added `cpython_function_type_getattribute_wrapper_descriptor_metadata_subset`,
+  backed by
+  `cpython_function_type_getattribute_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__getattribute__` inherited wrapper_descriptor metadata:
+  `function.__getattribute__ is object.__getattribute__`,
+  `function.__getattribute__.__qualname__`,
+  `function.__getattribute__.__objclass__ is object`,
+  `function.__getattribute__.__text_signature__`,
+  `dir(function.__getattribute__)`, and positive descriptor forwarding without changing function instance __getattribute__ wrappers and without changing object.__getattribute__ missing-attribute diagnostics.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing

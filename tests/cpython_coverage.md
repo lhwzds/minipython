@@ -10156,6 +10156,16 @@ without adding general custom encoder/decoder class support.
   `function.__hash__.__objclass__ is object`,
   `function.__hash__.__text_signature__`,
   `dir(function.__hash__)`, and descriptor call forwarding without changing function instance __hash__ wrappers and without depending on concrete hash values.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_getattribute_wrapper_descriptor_metadata_subset` with
+  direct CPython output parity in
+  `cpython_function_type_getattribute_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__getattribute__` inherited wrapper_descriptor metadata:
+  `function.__getattribute__ is object.__getattribute__`,
+  `function.__getattribute__.__qualname__`,
+  `function.__getattribute__.__objclass__ is object`,
+  `function.__getattribute__.__text_signature__`,
+  `dir(function.__getattribute__)`, and positive descriptor forwarding without changing function instance __getattribute__ wrappers and without changing object.__getattribute__ missing-attribute diagnostics.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

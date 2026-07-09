@@ -57648,6 +57648,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     }
     if name == "function" {
         names.push("__format__".to_string());
+        names.push("__getattribute__".to_string());
         names.push("__hash__".to_string());
         names.push("__repr__".to_string());
         names.push("__str__".to_string());
@@ -68728,6 +68729,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "function" && name == "__getattribute__" =>
+        {
+            Ok(Value::Builtin("object.__getattribute__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__hash__" => {
             Ok(Value::Builtin("object.__hash__".to_string()))

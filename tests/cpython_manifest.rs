@@ -68532,6 +68532,84 @@ fn function_type_hash_wrapper_descriptor_metadata_subset_has_focused_diff_eviden
 }
 
 #[test]
+fn function_type_getattribute_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_getattribute_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_getattribute_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__getattribute__",
+        "d is object.__getattribute__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__getattribute__' in dir(function)",
+        "dir(d)",
+        "d(f, '__name__')",
+        "d(1, '__class__')",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __getattribute__ wrapper descriptor metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __getattribute__ object.__getattribute__ True True Return getattr(self, name). ($self, name, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call-name f\"",
+        "\"call-class <class 'int'>\"",
+        "\"__module__ AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"__self__ AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __getattribute__ wrapper descriptor metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__getattribute__\"",
+        "\"object.__getattribute__\".to_string()",
+        "names.push(\"__getattribute__\".to_string())",
+        "function_name == \"object.__getattribute__\"",
+        "wrapper_descriptor_dir_names()",
+        "\"Return getattr(self, name).\"",
+        "\"($self, name, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __getattribute__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__getattribute__` inherited wrapper_descriptor metadata",
+            "`function.__getattribute__ is object.__getattribute__`",
+            "`function.__getattribute__.__qualname__`",
+            "`function.__getattribute__.__objclass__ is object`",
+            "`function.__getattribute__.__text_signature__`",
+            "`dir(function.__getattribute__)`",
+            "positive descriptor forwarding",
+            "without changing function instance __getattribute__ wrappers",
+            "without changing object.__getattribute__ missing-attribute diagnostics",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __getattribute__ wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";
