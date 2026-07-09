@@ -13230,6 +13230,10 @@ Completed in the repr builtin pass:
   `function.__bases__ == (object,)`,
   `object.__getattribute__(function, '__base__')`, `dir(function)` visibility,
   and function instance AttributeError paths without adding function type MRO or mappingproxy metadata.
+- Added `cpython_function_type_doc_metadata_subset`, backed by
+  `cpython_function_type_doc_metadata_diff_subset`, covering function type `__doc__` metadata: `function.__doc__`,
+  `object.__getattribute__(function, '__doc__')`, `dir(function)`, repeated
+  doc equality/content checks, and function instance `__doc__` behavior without adding function type mappingproxy or constructor execution support.
 - Added `cpython_function_type_init_wrapper_descriptor_metadata_subset`,
   backed by
   `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,

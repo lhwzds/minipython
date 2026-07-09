@@ -17121,6 +17121,27 @@ print('visible-inst', '__base__' in dir(f), '__bases__' in dir(f))"#,
 }
 
 #[test]
+fn cpython_function_type_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __doc__ metadata",
+        name: "function-type-doc-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+doc = function.__doc__
+direct_again = function.__doc__
+object_doc = object.__getattribute__(function, '__doc__')
+print('doc-type', type(doc).__name__, len(doc), bool(doc))
+print('doc-prefix', doc.startswith('Create a function object.'))
+print('doc-content', 'a code object' in doc, 'the globals dictionary' in doc, 'kwdefaults' in doc)
+print('object-doc', object_doc == doc)
+print('repeat-doc', direct_again == doc)
+print('dir-doc', '__doc__' in dir(function))
+print('instance-doc', f.__doc__)"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_init_wrapper_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function.__init__ type-level wrapper descriptor metadata",

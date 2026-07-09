@@ -70096,6 +70096,81 @@ fn function_type_base_bases_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn function_type_doc_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_doc_metadata_subset";
+    let diff_name = "cpython_function_type_doc_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "doc = function.__doc__",
+        "direct_again = function.__doc__",
+        "object.__getattribute__(function, '__doc__')",
+        "doc.startswith('Create a function object.')",
+        "'a code object' in doc",
+        "'the globals dictionary' in doc",
+        "'kwdefaults' in doc",
+        "'__doc__' in dir(function)",
+        "f.__doc__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __doc__ metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"doc-type str 367 True\"",
+        "\"doc-prefix True\"",
+        "\"doc-content True True True\"",
+        "\"object-doc True\"",
+        "\"repeat-doc True\"",
+        "\"dir-doc True\"",
+        "\"instance-doc None\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __doc__ metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"function\" => Some(concat!(",
+        "Create a function object.",
+        "a code object",
+        "the globals dictionary",
+        "kwdefaults",
+        "if name == \"__doc__\" && builtin_type_doc(&function_name).is_some()",
+        "builtin_type_doc(&function_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __doc__ metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__doc__` metadata",
+            "`function.__doc__`",
+            "`object.__getattribute__(function, '__doc__')`",
+            "`dir(function)`",
+            "function instance `__doc__` behavior",
+            "without adding function type mappingproxy or constructor execution support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __doc__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_init_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_init_wrapper_descriptor_metadata_subset";
     let diff_name = "cpython_function_type_init_wrapper_descriptor_metadata_diff_subset";

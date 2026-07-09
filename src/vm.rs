@@ -73840,6 +73840,22 @@ fn builtin_type_doc(name: &str) -> Option<&'static str> {
         "OrderedDict" => Some("Dictionary that remembers insertion order"),
         "UserList" => Some("A more or less complete user-defined wrapper around list objects."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
+        "function" => Some(concat!(
+            "Create a function object.\n",
+            "\n",
+            "  code\n",
+            "    a code object\n",
+            "  globals\n",
+            "    the globals dictionary\n",
+            "  name\n",
+            "    a string that overrides the name from the code object\n",
+            "  argdefs\n",
+            "    a tuple that specifies the default argument values\n",
+            "  closure\n",
+            "    a tuple that supplies the bindings for free variables\n",
+            "  kwdefaults\n",
+            "    a dictionary that specifies the default keyword argument values"
+        )),
         "mappingproxy" => Some("Read-only proxy of a mapping."),
         _ => None,
     }
