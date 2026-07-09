@@ -4879,6 +4879,12 @@ visibility aligned with CPython for the supported function metadata names and
 removes builtin-type-only `__base__` / `__bases__` visibility without adding
 function `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
 
+`cpython_json_function_text_signature_missing_attr_subset`, backed by
+`cpython_json_function_text_signature_missing_attr_diff_subset`, keeps json public function `__text_signature__` missing-attribute
+`AttributeError` text, `args`, `__getattribute__('__text_signature__')`, and
+`dir(function)` visibility aligned with CPython for `json.loads` and
+`json.dumps`, without adding function `__code__`, file APIs, module `__all__`, or encoder/decoder classes.
+
 `cpython_json_function_bound_method_name_dir_visibility_subset`, backed by
 `cpython_json_function_bound_method_name_dir_visibility_diff_subset`, keeps json
 public function bound method name metadata aligned with CPython by preserving
