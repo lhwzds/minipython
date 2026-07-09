@@ -134,6 +134,24 @@ else:
 '''
 
 [[case]]
+name = "sandbox-open-input-block"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-host-io-block"
+modules = ["builtins"]
+priority = "wont_fix"
+expected = "intentional_sandbox_block"
+source = '''
+for name in ["open", "input"]:
+    try:
+        value = eval(name)
+    except Exception as error:
+        print(name, type(error).__name__)
+    else:
+        print(name, type(value).__name__)
+'''
+
+[[case]]
 name = "sandbox-subprocess-out-of-scope"
 scope = "intentional-sandbox"
 category = "sandbox-excluded"

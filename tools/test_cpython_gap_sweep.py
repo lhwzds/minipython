@@ -81,6 +81,12 @@ REQUIRED_JSON_ROOT_CAUSES = {
     "json-dumps-nonfinite-and-circular",
 }
 
+REQUIRED_SANDBOX_ROOT_CAUSES = {
+    "sandbox-host-io-block",
+    "sandbox-network-block",
+    "sandbox-process-block",
+}
+
 
 def run_result(
     *,
@@ -406,6 +412,11 @@ class CorpusContractTests(unittest.TestCase):
             for case in cases
             if "json" in case["modules"]
         }
+        sandbox_root_causes = {
+            case["root_cause"]
+            for case in cases
+            if case["category"] == "sandbox-excluded"
+        }
         root_cause_counts = {
             root_cause: sum(1 for case in cases if case["root_cause"] == root_cause)
             for root_cause in json_root_causes
@@ -413,6 +424,7 @@ class CorpusContractTests(unittest.TestCase):
 
         self.assertEqual(REQUIRED_EXPECTED_MARKERS - expected_markers, set())
         self.assertEqual(REQUIRED_JSON_ROOT_CAUSES - json_root_causes, set())
+        self.assertEqual(REQUIRED_SANDBOX_ROOT_CAUSES - sandbox_root_causes, set())
         self.assertGreaterEqual(root_cause_counts["json-loads-core"], 2)
 
 
