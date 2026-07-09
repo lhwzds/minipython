@@ -57650,6 +57650,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__delattr__".to_string());
         names.push("__eq__".to_string());
         names.push("__format__".to_string());
+        names.push("__ge__".to_string());
         names.push("__getattribute__".to_string());
         names.push("__getstate__".to_string());
         names.push("__gt__".to_string());
@@ -68776,6 +68777,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__gt__" => {
             Ok(Value::Builtin("object.__gt__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "function" && name == "__ge__" => {
+            Ok(Value::Builtin("object.__ge__".to_string()))
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))

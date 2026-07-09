@@ -13173,6 +13173,15 @@ Completed in the repr builtin pass:
   `function.__gt__.__text_signature__`,
   `dir(function.__gt__)`, object-order forwarding, and TypeError paths without
   changing function-object rich-compare wrappers.
+- Added `cpython_function_type_ge_wrapper_descriptor_metadata_subset`, backed
+  by `cpython_function_type_ge_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__ge__` inherited wrapper_descriptor metadata:
+  `function.__ge__ is object.__ge__`,
+  `function.__ge__.__qualname__`,
+  `function.__ge__.__objclass__ is object`,
+  `function.__ge__.__text_signature__`,
+  `dir(function.__ge__)`, object-order forwarding, and TypeError paths without
+  changing function-object rich-compare wrappers.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing
