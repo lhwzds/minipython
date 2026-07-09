@@ -13252,6 +13252,11 @@ Completed in the repr builtin pass:
   `function.__parameters__`,
   `object.__getattribute__(function, '__parameters__')`, `f.__parameters__`,
   and `__parameters__ not in dir(function)` without adding generic parameter metadata or function type mappingproxy support.
+- Added `cpython_function_type_abstractmethods_absent_metadata_subset`, backed by
+  `cpython_function_type_abstractmethods_absent_metadata_diff_subset`, covering function type `__abstractmethods__` absence metadata:
+  `function.__abstractmethods__`,
+  `object.__getattribute__(function, '__abstractmethods__')`,
+  `f.__abstractmethods__`, and `__abstractmethods__ not in dir(function)` without adding abstract-method tracking or function type mappingproxy support.
 - Added `cpython_function_type_dir_metadata_visibility_subset`, backed by
   `cpython_function_type_dir_metadata_visibility_diff_subset`, covering function type dir metadata visibility: `__module__ in dir(function)`,
   `__qualname__ in dir(function)`, `__base__ not in dir(function)`,

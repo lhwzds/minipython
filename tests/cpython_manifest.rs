@@ -70449,7 +70449,7 @@ fn function_type_parameters_absent_metadata_subset_has_focused_diff_evidence() {
     for required in [
         "function_name == \"function\" && name == \"__parameters__\"",
         "type object 'function' has no attribute '__parameters__'",
-        "\"__parameters__\" | \"__text_signature__\"",
+        "| \"__parameters__\"",
         "AttributeError: 'function' object has no attribute '{name}'",
     ] {
         assert!(
@@ -70472,6 +70472,72 @@ fn function_type_parameters_absent_metadata_subset_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "focused function type __parameters__ absence metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn function_type_abstractmethods_absent_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_abstractmethods_absent_metadata_subset";
+    let diff_name = "cpython_function_type_abstractmethods_absent_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "function.__abstractmethods__",
+        "object.__getattribute__(function, '__abstractmethods__')",
+        "f.__abstractmethods__",
+        "'__abstractmethods__' in dir(function)",
+        "'__abstractmethods__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __abstractmethods__ absence metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"direct AttributeError __abstractmethods__",
+        "\"object AttributeError __abstractmethods__",
+        "\"instance AttributeError 'function' object has no attribute '__abstractmethods__'",
+        "\"visible-type False\"",
+        "\"visible-inst False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __abstractmethods__ absence metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__abstractmethods__\"",
+        "AttributeError: __abstractmethods__",
+        "\"__abstractmethods__\"",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __abstractmethods__ absence metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__abstractmethods__` absence metadata",
+            "`function.__abstractmethods__`",
+            "`object.__getattribute__(function, '__abstractmethods__')`",
+            "`f.__abstractmethods__`",
+            "`__abstractmethods__ not in dir(function)`",
+            "without adding abstract-method tracking or function type mappingproxy support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __abstractmethods__ absence metadata docs must contain `{required}`"
             );
         }
     }

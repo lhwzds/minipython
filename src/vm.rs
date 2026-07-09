@@ -63893,9 +63893,14 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
-        "__base__" | "__bases__" | "__mro__" | "__parameters__" | "__text_signature__" => Err(
-            format!("AttributeError: 'function' object has no attribute '{name}'"),
-        ),
+        "__abstractmethods__"
+        | "__base__"
+        | "__bases__"
+        | "__mro__"
+        | "__parameters__"
+        | "__text_signature__" => Err(format!(
+            "AttributeError: 'function' object has no attribute '{name}'"
+        )),
         _ if function_dict_entries(attrs).is_some() => Err(format!(
             "AttributeError: function has no attribute '{name}'"
         )),
@@ -68911,6 +68916,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Err("AttributeError: type object 'function' has no attribute '__parameters__'"
                 .to_string())
+        }
+        Value::Builtin(function_name)
+            if function_name == "function" && name == "__abstractmethods__" =>
+        {
+            Err("AttributeError: __abstractmethods__".to_string())
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__repr__" => {
             Ok(Value::Builtin("function.__repr__".to_string()))

@@ -17245,6 +17245,28 @@ print('visible-inst', '__parameters__' in dir(f))"#,
 }
 
 #[test]
+fn cpython_function_type_abstractmethods_absent_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __abstractmethods__ absence metadata",
+        name: "function-type-abstractmethods-absent-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+for label, call in [
+    ('direct', lambda: function.__abstractmethods__),
+    ('object', lambda: object.__getattribute__(function, '__abstractmethods__')),
+    ('instance', lambda: f.__abstractmethods__),
+]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+print('visible-type', '__abstractmethods__' in dir(function))
+print('visible-inst', '__abstractmethods__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_dir_metadata_visibility_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function type dir metadata visibility",
