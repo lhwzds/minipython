@@ -17016,6 +17016,46 @@ for label, call in [('missing-self', lambda: d()), ('bad-self', lambda: d(1)), (
 }
 
 #[test]
+fn cpython_function_type_get_wrapper_descriptor_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function.__get__ type-level wrapper descriptor metadata",
+        name: "function-type-get-wrapper-descriptor-metadata",
+        source: r#"def f(self=None, value='default'):
+    return (self, value)
+class C:
+    pass
+obj = C()
+function = type(f)
+d = function.__get__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is function, d.__doc__, d.__text_signature__)
+print('dir-type', '__get__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+for label, call in [
+    ('none-owner', lambda: d(f, None, C)),
+    ('bound', lambda: d(f, obj, C)),
+    ('missing-self', lambda: d()),
+    ('bad-self', lambda: d(1, obj, C)),
+    ('none-missing-owner', lambda: d(f, None)),
+    ('none-none', lambda: d(f, None, None)),
+    ('extra', lambda: d(f, obj, C, 1)),
+    ('keyword', lambda: d(f, obj=obj, type=C)),
+    ('module', lambda: d.__module__),
+    ('self', lambda: d.__self__),
+]:
+    try:
+        value = call()
+        if label == 'none-owner':
+            print(label, type(value).__name__, value is f)
+        elif label == 'bound':
+            print(label, type(value).__name__, value.__self__ is obj, value.__func__ is f, value()[0] is obj)
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_call_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",

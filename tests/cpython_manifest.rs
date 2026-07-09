@@ -69828,6 +69828,100 @@ fn function_type_call_wrapper_descriptor_metadata_subset_has_focused_diff_eviden
 }
 
 #[test]
+fn function_type_get_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_get_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_get_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f(self=None, value='default'):",
+        "function = type(f)",
+        "d = function.__get__",
+        "d.__objclass__ is function",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__get__' in dir(function)",
+        "dir(d)",
+        "d(f, None, C)",
+        "d(f, obj, C)",
+        "d()",
+        "d(1, obj, C)",
+        "d(f, None)",
+        "d(f, None, None)",
+        "d(f, obj, C, 1)",
+        "d(f, obj=obj, type=C)",
+        "d.__module__",
+        "d.__self__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __get__ wrapper descriptor subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __get__ function.__get__ True Return an attribute of instance, which is of type owner. ($self, instance, owner=None, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"none-owner function True\"",
+        "\"bound method True True True\"",
+        "\"missing-self TypeError descriptor '__get__' of 'function' object needs an argument",
+        "\"bad-self TypeError descriptor '__get__' requires a 'function' object but received a 'int'",
+        "\"none-missing-owner TypeError __get__(None, None) is invalid",
+        "\"none-none TypeError __get__(None, None) is invalid",
+        "\"extra TypeError __get__ expected at most 2 arguments, got 3",
+        "\"keyword TypeError wrapper __get__() takes no keyword arguments",
+        "\"module AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"self AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __get__ wrapper descriptor subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__get__\"",
+        "\"function.__get__\".to_string()",
+        "names.push(\"__get__\".to_string())",
+        "\"function\" => matches!(method, \"__call__\" | \"__get__\" | \"__repr__\")",
+        "self.call_function_get(args, keywords)",
+        "fn call_function_get(",
+        "descriptor '__get__' of 'function' object needs an argument",
+        "descriptor '__get__' requires a 'function' object but received a '{}'",
+        "function_name == \"function.__get__\"",
+        "Return an attribute of instance, which is of type owner.",
+        "($self, instance, owner=None, /)",
+        "wrapper_descriptor_dir_names()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __get__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__get__` wrapper_descriptor metadata",
+            "`function.__get__.__qualname__`",
+            "`function.__get__.__objclass__ is function`",
+            "`function.__get__.__text_signature__`",
+            "`dir(function.__get__)`",
+            "type-level descriptor lookup",
+            "without changing bound function descriptor behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __get__ wrapper descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";

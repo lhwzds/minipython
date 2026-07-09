@@ -13209,6 +13209,15 @@ Completed in the repr builtin pass:
   `function.__call__.__text_signature__`, `dir(function.__call__)`,
   type-level descriptor lookup, direct descriptor-call forwarding, and TypeError
   paths without changing bound function-call forwarding.
+- Added `cpython_function_type_get_wrapper_descriptor_metadata_subset`,
+  backed by
+  `cpython_function_type_get_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__get__` wrapper_descriptor metadata:
+  `function.__get__.__qualname__`,
+  `function.__get__.__objclass__ is function`,
+  `function.__get__.__text_signature__`, `dir(function.__get__)`,
+  type-level descriptor lookup, descriptor binding results, and TypeError paths
+  without changing bound function descriptor behavior.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing
