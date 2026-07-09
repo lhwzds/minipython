@@ -2317,7 +2317,11 @@ for name in ['loads', 'dumps']:
     function = getattr(json, name)
     bound = function.__get__('receiver', str)
     print(name, type(bound.__defaults__).__name__, bound.__defaults__, bound.__defaults__ is function.__defaults__)
-    print(name, bound.__getattribute__('__defaults__') is function.__defaults__, '__defaults__' in dir(bound))"#,
+    print(name, bound.__getattribute__('__defaults__') is function.__defaults__, '__defaults__' in dir(bound))
+    try:
+        object.__getattribute__(bound, '__defaults__')
+    except AttributeError as error:
+        print(name, 'object-getattribute', type(error).__name__, str(error), error.args, '__defaults__' in dir(bound))"#,
     });
 }
 

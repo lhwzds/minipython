@@ -18083,7 +18083,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "object.__getattribute__",
-        "matches!(name.as_str(), \"__parameters__\" | \"__text_signature__\")",
+        "name.as_str(),",
+        "\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"",
         "is_json_builtin(function_name)",
         "AttributeError: 'method' object has no attribute '{name}'",
         "AttributeError: 'function' object has no attribute '{name}'",
@@ -18124,7 +18125,8 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "object.__getattribute__",
-        "matches!(name.as_str(), \"__parameters__\" | \"__text_signature__\")",
+        "name.as_str(),",
+        "\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"",
         "is_json_builtin(function_name)",
         "load_attribute(*function, \"__parameters__\")",
         "AttributeError: 'method' object has no attribute '{name}'",
@@ -18229,6 +18231,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "bound.__defaults__",
         "bound.__defaults__ is function.__defaults__",
         "bound.__getattribute__('__defaults__') is function.__defaults__",
+        "object.__getattribute__(bound, '__defaults__')",
         "'__defaults__' in dir(bound)",
     ] {
         assert!(
@@ -18240,8 +18243,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "\"loads NoneType None True\"",
         "\"loads True False\"",
+        "\"loads object-getattribute AttributeError 'method' object has no attribute '__defaults__' (\\\"'method' object has no attribute '__defaults__'\\\",) False\"",
         "\"dumps NoneType None True\"",
         "\"dumps True False\"",
+        "\"dumps object-getattribute AttributeError 'method' object has no attribute '__defaults__' (\\\"'method' object has no attribute '__defaults__'\\\",) False\"",
     ] {
         assert!(
             json_function_bound_method_defaults_metadata_subset_body.contains(required),
@@ -18706,9 +18711,24 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
-            && VM_SOURCE.contains("load_attribute(*function, \"__defaults__\")"),
+            && VM_SOURCE.contains("load_attribute(*function, \"__defaults__\")")
+            && VM_SOURCE.contains("\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"")
+            && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __defaults__ metadata"
     );
+    for required in [
+        "cpython_json_function_bound_method_defaults_metadata_subset",
+        "cpython_json_function_bound_method_defaults_metadata_diff_subset",
+        "`object.__getattribute__(bound, '__defaults__')`",
+        "missing-attribute text",
+        "file APIs",
+        "encoder/decoder classes",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "json public function bound method __defaults__ metadata docs must contain `{required}`"
+        );
+    }
     assert!(
         VM_SOURCE.contains("\"__kwdefaults__\"")
             && VM_SOURCE.contains(

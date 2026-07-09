@@ -3466,8 +3466,10 @@ module `__all__`, or encoder/decoder classes.
 `cpython_json_function_bound_method_defaults_metadata_subset`, backed by
 `cpython_json_function_bound_method_defaults_metadata_diff_subset`, keeps json public function bound method `__defaults__` metadata
 and `__getattribute__('__defaults__')` lookup aligned with CPython for
-`loads.__get__(...)` and `dumps.__get__(...)`, including the fact that
-`__defaults__` stays out of `dir(bound)`, without adding file APIs, module `__all__`, or encoder/decoder classes.
+`loads.__get__(...)` and `dumps.__get__(...)`, including
+`object.__getattribute__(bound, '__defaults__')` missing-attribute text and
+the fact that `__defaults__` stays out of `dir(bound)`, without adding file
+APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_kwdefaults_metadata_subset`, backed by
 `cpython_json_function_bound_method_kwdefaults_metadata_diff_subset`, keeps json public function bound method `__kwdefaults__` metadata

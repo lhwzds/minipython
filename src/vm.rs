@@ -17161,13 +17161,14 @@ impl Vm {
         };
 
         let name = attribute_name_arg(name)?;
-        if matches!(name.as_str(), "__parameters__" | "__text_signature__")
-            && matches!(
-                object,
-                Value::BoundMethod { function, .. }
-                    if matches!(function.as_ref(), Value::Builtin(function_name) if is_json_builtin(function_name))
-            )
-        {
+        if matches!(
+            name.as_str(),
+            "__defaults__" | "__parameters__" | "__text_signature__"
+        ) && matches!(
+            object,
+            Value::BoundMethod { function, .. }
+                if matches!(function.as_ref(), Value::Builtin(function_name) if is_json_builtin(function_name))
+        ) {
             return Err(format!(
                 "AttributeError: 'method' object has no attribute '{name}'"
             ));
