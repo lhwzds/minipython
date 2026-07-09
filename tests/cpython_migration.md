@@ -13092,6 +13092,15 @@ Completed in the repr builtin pass:
   `function.__sizeof__.__text_signature__`,
   `dir(function.__sizeof__)`, positive integer return shape, and TypeError paths
   without depending on CPython allocation sizes and without changing object-layout internals.
+- Added `cpython_function_type_getstate_method_descriptor_metadata_subset`,
+  backed by `cpython_function_type_getstate_method_descriptor_metadata_diff_subset`,
+  covering function type `__getstate__` inherited method_descriptor metadata:
+  `function.__getstate__ is object.__getstate__`,
+  `function.__getstate__.__qualname__`,
+  `function.__getstate__.__objclass__ is object`,
+  `function.__getstate__.__text_signature__`,
+  `dir(function.__getstate__)`, no-state descriptor forwarding, and TypeError
+  paths without changing function instance __getstate__ wrappers and without changing custom-attribute state behavior.
 - Added `cpython_function_call_wrapper_subset`, backed by
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
   bound receiver identity, positive positional and keyword forwarding, missing
