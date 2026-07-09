@@ -10221,6 +10221,17 @@ without adding general custom encoder/decoder class support.
   `function.__delattr__.__text_signature__`,
   `dir(function.__delattr__)`, direct function attribute deletion, and
   TypeError paths without changing custom delattr hooks.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_eq_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_eq_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__eq__` inherited wrapper_descriptor metadata:
+  `function.__eq__ is object.__eq__`,
+  `function.__eq__.__qualname__`,
+  `function.__eq__.__objclass__ is object`,
+  `function.__eq__.__text_signature__`,
+  `dir(function.__eq__)`, identity compare forwarding, and TypeError paths
+  without changing function-object rich-compare wrappers.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

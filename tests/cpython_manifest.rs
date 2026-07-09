@@ -69029,6 +69029,96 @@ fn function_type_delattr_wrapper_descriptor_metadata_subset_has_focused_diff_evi
 }
 
 #[test]
+fn function_type_eq_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_eq_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_eq_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "def g():",
+        "function = type(f)",
+        "d = function.__eq__",
+        "d is object.__eq__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__eq__' in dir(function)",
+        "dir(d)",
+        "d(f, f)",
+        "d(f, g)",
+        "object.__eq__(f, f)",
+        "object.__eq__(f, g)",
+        "d(f)",
+        "d(f, g, 1)",
+        "d(f, other=g)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __eq__ wrapper descriptor metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __eq__ object.__eq__ True True Return self==value. ($self, value, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call-self True\"",
+        "\"call-other NotImplemented\"",
+        "\"object-call-self True\"",
+        "\"object-call-other NotImplemented\"",
+        "\"missing-other TypeError expected 1 argument, got 0",
+        "\"extra TypeError expected 1 argument, got 2",
+        "\"keyword TypeError wrapper __eq__() takes no keyword arguments",
+        "\"__module__ AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"__self__ AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __eq__ wrapper descriptor metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__eq__\"",
+        "\"object.__eq__\".to_string()",
+        "names.push(\"__eq__\".to_string())",
+        "self.call_object_rich_compare(&name, args)",
+        "fn call_object_rich_compare(",
+        "function_name == \"object.__eq__\"",
+        "wrapper_descriptor_dir_names()",
+        "\"Return self==value.\"",
+        "\"($self, value, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __eq__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__eq__` inherited wrapper_descriptor metadata",
+            "`function.__eq__ is object.__eq__`",
+            "`function.__eq__.__qualname__`",
+            "`function.__eq__.__objclass__ is object`",
+            "`function.__eq__.__text_signature__`",
+            "`dir(function.__eq__)`",
+            "identity compare forwarding",
+            "without changing function-object rich-compare wrappers",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __eq__ wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";
