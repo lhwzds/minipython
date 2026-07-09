@@ -31,7 +31,9 @@ Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is
 outside MiniPython's sandbox target. Use `expected = "stdlib_missing"` and
 `expected = "cpython_internal"` for known non-goal gaps that should stay visible
-without failing the smoke sweep.
+without failing the smoke sweep. Use `expected = "cpython_missing_compat"` for
+MiniPython compatibility surfaces such as `math.integer` that are in the
+sandbox allowlist but absent from the fixed CPython oracle.
 
 Once a difference is promoted for implementation, add focused `cpython_subset`,
 `cpython_diff`, manifest, coverage, and migration evidence before considering it

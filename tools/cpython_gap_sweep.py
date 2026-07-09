@@ -32,6 +32,7 @@ STATUSES = [
     "INTENTIONAL_SANDBOX_BLOCK",
     "UNSUPPORTED_OUT_OF_SCOPE",
     "STDLIB_MISSING",
+    "CPYTHON_MISSING_COMPAT",
     "CPYTHON_INTERNAL",
     "TIMEOUT",
     "CRASH",
@@ -41,6 +42,7 @@ EXPECTED_STATUS_BY_MARKER = {
     "intentional_sandbox_block": "INTENTIONAL_SANDBOX_BLOCK",
     "unsupported_out_of_scope": "UNSUPPORTED_OUT_OF_SCOPE",
     "stdlib_missing": "STDLIB_MISSING",
+    "cpython_missing_compat": "CPYTHON_MISSING_COMPAT",
     "cpython_internal": "CPYTHON_INTERNAL",
 }
 
@@ -65,6 +67,7 @@ NON_FAILING_STATUSES = {
     "INTENTIONAL_SANDBOX_BLOCK",
     "UNSUPPORTED_OUT_OF_SCOPE",
     "STDLIB_MISSING",
+    "CPYTHON_MISSING_COMPAT",
     "CPYTHON_INTERNAL",
 }
 

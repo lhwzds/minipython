@@ -16,6 +16,7 @@ const GAP_SWEEP_TESTS: &str = include_str!("../tools/test_cpython_gap_sweep.py")
 const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
+const GAP_SWEEP_MATH_INTEGER_CORPUS: &str = include_str!("gap_corpus/math_integer.toml");
 const GAP_SWEEP_STDLIB_ALLOWLIST_CORPUS: &str = include_str!("gap_corpus/stdlib_allowlist.toml");
 const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
 const REPORTS_GITIGNORE: &str = include_str!("../reports/.gitignore");
@@ -92318,6 +92319,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "INTENTIONAL_SANDBOX_BLOCK",
         "UNSUPPORTED_OUT_OF_SCOPE",
         "STDLIB_MISSING",
+        "CPYTHON_MISSING_COMPAT",
         "CPYTHON_INTERNAL",
         "VALID_CATEGORIES",
         "runtime-semantic",
@@ -92328,6 +92330,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "--category",
         "unsupported_out_of_scope",
         "stdlib_missing",
+        "cpython_missing_compat",
         "cpython_internal",
         "unknown expected marker",
         "unknown category",
@@ -92362,6 +92365,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "required_cpython_version",
         "test_unsupported_out_of_scope_expected_overrides_nonmatching_results",
         "test_stdlib_missing_expected_overrides_nonmatching_results",
+        "test_cpython_missing_compat_expected_overrides_nonmatching_results",
         "test_cpython_internal_expected_overrides_nonmatching_results",
         "test_default_cpython_oracle_is_homebrew_python",
         "test_run_result_records_exception_message_and_normalized_diff",
@@ -92464,6 +92468,26 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
     }
 
     for required in [
+        "math-integer-compat-alias",
+        "scope = \"stdlib-sandbox\"",
+        "category = \"runtime-semantic\"",
+        "priority = \"should_fix\"",
+        "expected = \"cpython_missing_compat\"",
+        "import math.integer as mi",
+        "mi.gcd(12, 18)",
+        "mi.lcm(4, 6)",
+        "mi.isqrt(17)",
+        "mi.comb(5, 2)",
+        "mi.perm(5, 2)",
+        "mi.factorial(5)",
+    ] {
+        assert!(
+            GAP_SWEEP_MATH_INTEGER_CORPUS.contains(required),
+            "gap sweep math.integer corpus must keep `{required}`"
+        );
+    }
+
+    for required in [
         "stdlib-allowlist-core-modules",
         "stdlib-module-doc-packages",
         "stdlib-operator-functools-itertools",
@@ -92508,7 +92532,9 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "/opt/homebrew/bin/python3",
         "expected = \"unsupported_out_of_scope\"",
         "expected = \"stdlib_missing\"",
+        "expected = \"cpython_missing_compat\"",
         "expected = \"cpython_internal\"",
+        "`math.integer`",
         "`syntax`",
         "`runtime-semantic`",
         "`exception-shape`",

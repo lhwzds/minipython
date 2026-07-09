@@ -95,6 +95,17 @@ class ClassifyTests(unittest.TestCase):
         mini = run_result(exit_code=1, stderr="ModuleNotFoundError: pdb\n")
         self.assertEqual(gap.classify(cpython, mini, "stdlib_missing"), "STDLIB_MISSING")
 
+    def test_cpython_missing_compat_expected_overrides_nonmatching_results(self):
+        cpython = run_result(
+            exit_code=1,
+            stderr="ModuleNotFoundError: No module named 'math.integer'\n",
+        )
+        mini = run_result(stdout="6\n")
+        self.assertEqual(
+            gap.classify(cpython, mini, "cpython_missing_compat"),
+            "CPYTHON_MISSING_COMPAT",
+        )
+
     def test_cpython_internal_expected_overrides_nonmatching_results(self):
         cpython = run_result(stdout="imported\n")
         mini = run_result(exit_code=1, stderr="ModuleNotFoundError: _testcapi\n")
