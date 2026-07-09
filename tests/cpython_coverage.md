@@ -10146,6 +10146,16 @@ without adding general custom encoder/decoder class support.
   `dir(function.__format__)`, empty-format descriptor forwarding, and
   non-empty format-spec rejection without changing function instance __format__ wrappers
   or depending on concrete addresses.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_hash_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_hash_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__hash__` inherited wrapper_descriptor metadata:
+  `function.__hash__ is object.__hash__`,
+  `function.__hash__.__qualname__`,
+  `function.__hash__.__objclass__ is object`,
+  `function.__hash__.__text_signature__`,
+  `dir(function.__hash__)`, and descriptor call forwarding without changing function instance __hash__ wrappers and without depending on concrete hash values.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

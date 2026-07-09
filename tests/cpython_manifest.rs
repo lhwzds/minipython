@@ -68454,6 +68454,84 @@ fn function_type_format_method_descriptor_metadata_subset_has_focused_diff_evide
 }
 
 #[test]
+fn function_type_hash_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_hash_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_hash_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__hash__",
+        "d is object.__hash__",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__hash__' in dir(function)",
+        "dir(d)",
+        "value = d(f)",
+        "value == hash(f)",
+        "getattr(d, name)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __hash__ wrapper descriptor metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __hash__ object.__hash__ True True Return hash(self). ($self, /)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call True True\"",
+        "\"__module__ AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"__self__ AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __hash__ wrapper descriptor metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__hash__\"",
+        "\"object.__hash__\".to_string()",
+        "names.push(\"__hash__\".to_string())",
+        "Value::Function { .. } | Value::TypesCoroutineFunction { .. }",
+        "return Ok(identity_hash_value(value));",
+        "function_name == \"object.__hash__\"",
+        "wrapper_descriptor_dir_names()",
+        "\"Return hash(self).\"",
+        "\"($self, /)\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __hash__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__hash__` inherited wrapper_descriptor metadata",
+            "`function.__hash__ is object.__hash__`",
+            "`function.__hash__.__qualname__`",
+            "`function.__hash__.__objclass__ is object`",
+            "`function.__hash__.__text_signature__`",
+            "`dir(function.__hash__)`",
+            "without changing function instance __hash__ wrappers",
+            "without depending on concrete hash values",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __hash__ wrapper descriptor metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";
