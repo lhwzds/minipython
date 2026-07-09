@@ -10254,6 +10254,17 @@ without adding general custom encoder/decoder class support.
   `function.__lt__.__text_signature__`,
   `dir(function.__lt__)`, object-order forwarding, and TypeError paths without
   changing function-object rich-compare wrappers.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_le_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_le_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__le__` inherited wrapper_descriptor metadata:
+  `function.__le__ is object.__le__`,
+  `function.__le__.__qualname__`,
+  `function.__le__.__objclass__ is object`,
+  `function.__le__.__text_signature__`,
+  `dir(function.__le__)`, object-order forwarding, and TypeError paths without
+  changing function-object rich-compare wrappers.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,
