@@ -13225,6 +13225,11 @@ Completed in the repr builtin pass:
   `function.__new__.__text_signature__`, `dir(function.__new__)`,
   type-level builtin method lookup, constructor-rejection TypeError paths, and
   missing `__func__` / `__objclass__` attributes without promoting full code/globals-based function construction.
+- Added `cpython_function_type_base_bases_metadata_subset`, backed by
+  `cpython_function_type_base_bases_metadata_diff_subset`, covering function type direct base metadata: `function.__base__ is object`,
+  `function.__bases__ == (object,)`,
+  `object.__getattribute__(function, '__base__')`, `dir(function)` visibility,
+  and function instance AttributeError paths without adding function type MRO or mappingproxy metadata.
 - Added `cpython_function_type_init_wrapper_descriptor_metadata_subset`,
   backed by
   `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,

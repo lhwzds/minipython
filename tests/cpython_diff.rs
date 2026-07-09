@@ -17078,6 +17078,49 @@ for label, call in [('call-function', lambda: d(function)), ('type-call-function
 }
 
 #[test]
+fn cpython_function_type_base_bases_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type direct base metadata",
+        name: "function-type-base-bases-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+try:
+    value = function.__base__
+    print('base', value is object, value.__module__, value.__qualname__)
+except Exception as error:
+    print('base', type(error).__name__, str(error), error.args)
+try:
+    value = function.__bases__
+    print('bases', type(value).__name__, len(value), value[0] is object, value[0].__module__, value[0].__qualname__)
+except Exception as error:
+    print('bases', type(error).__name__, str(error), error.args)
+try:
+    value = object.__getattribute__(function, '__base__')
+    print('object-base', value is object, value.__module__, value.__qualname__)
+except Exception as error:
+    print('object-base', type(error).__name__, str(error), error.args)
+try:
+    value = object.__getattribute__(function, '__bases__')
+    print('object-bases', type(value).__name__, len(value), value[0] is object, value[0].__module__, value[0].__qualname__)
+except Exception as error:
+    print('object-bases', type(error).__name__, str(error), error.args)
+try:
+    value = f.__base__
+    print('instance-base', value)
+except Exception as error:
+    print('instance-base', type(error).__name__, str(error), error.args)
+try:
+    value = f.__bases__
+    print('instance-bases', value)
+except Exception as error:
+    print('instance-bases', type(error).__name__, str(error), error.args)
+print('visible-type', '__base__' in dir(function), '__bases__' in dir(function))
+print('visible-inst', '__base__' in dir(f), '__bases__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_init_wrapper_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function.__init__ type-level wrapper descriptor metadata",

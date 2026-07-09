@@ -70018,6 +70018,84 @@ fn function_type_new_builtin_method_metadata_subset_has_focused_diff_evidence() 
 }
 
 #[test]
+fn function_type_base_bases_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_base_bases_metadata_subset";
+    let diff_name = "cpython_function_type_base_bases_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "function.__base__",
+        "function.__bases__",
+        "object.__getattribute__(function, '__base__')",
+        "object.__getattribute__(function, '__bases__')",
+        "f.__base__",
+        "f.__bases__",
+        "'__base__' in dir(function)",
+        "'__bases__' in dir(function)",
+        "'__base__' in dir(f)",
+        "'__bases__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type direct base metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"base True builtins object\"",
+        "\"bases tuple 1 True builtins object\"",
+        "\"object-base True builtins object\"",
+        "\"object-bases tuple 1 True builtins object\"",
+        "\"instance-base AttributeError 'function' object has no attribute '__base__'",
+        "\"instance-bases AttributeError 'function' object has no attribute '__bases__'",
+        "\"visible-type False False\"",
+        "\"visible-inst False False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type direct base metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__base__\"",
+        "function_name == \"function\" && name == \"__bases__\"",
+        "Value::Builtin(\"object\".to_string())",
+        "tuple_value(vec![Value::Builtin(\"object\".to_string())])",
+        r#"names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"))"#,
+        "\"__base__\" | \"__bases__\" => Err(format!(",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type direct base metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type direct base metadata",
+            "`function.__base__ is object`",
+            "`function.__bases__ == (object,)`",
+            "`object.__getattribute__(function, '__base__')`",
+            "`dir(function)`",
+            "function instance AttributeError paths",
+            "without adding function type MRO or mappingproxy metadata",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type direct base metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_init_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_init_wrapper_descriptor_metadata_subset";
     let diff_name = "cpython_function_type_init_wrapper_descriptor_metadata_diff_subset";
