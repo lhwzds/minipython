@@ -70244,6 +70244,76 @@ fn function_type_doc_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn function_type_text_signature_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_text_signature_metadata_subset";
+    let diff_name = "cpython_function_type_text_signature_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "text = function.__text_signature__",
+        "object.__getattribute__(function, '__text_signature__')",
+        "text.startswith('(code, globals')",
+        "'kwdefaults=None' in text",
+        "f.__text_signature__",
+        "'__text_signature__' in dir(function)",
+        "'__text_signature__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __text_signature__ metadata subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"text-type str 80 True\"",
+        "\"text-content True True\"",
+        "\"object-text True\"",
+        "\"instance-text AttributeError 'function' object has no attribute '__text_signature__'",
+        "\"visible-type False\"",
+        "\"visible-inst False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __text_signature__ metadata subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__text_signature__\"",
+        "(code, globals, name=None, argdefs=None, closure=None,\\n",
+        "kwdefaults=None)",
+        "\"__base__\" | \"__bases__\" | \"__mro__\" | \"__text_signature__\" => Err(format!(",
+        "AttributeError: 'function' object has no attribute '{name}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __text_signature__ metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__text_signature__` metadata",
+            "`function.__text_signature__`",
+            "`object.__getattribute__(function, '__text_signature__')`",
+            "`__text_signature__ not in dir(function)`",
+            "function instance AttributeError path",
+            "without adding function type mappingproxy metadata or constructor execution support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __text_signature__ metadata docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_dir_metadata_visibility_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_dir_metadata_visibility_subset";
     let diff_name = "cpython_function_type_dir_metadata_visibility_diff_subset";

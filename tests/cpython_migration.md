@@ -13238,6 +13238,10 @@ Completed in the repr builtin pass:
   `cpython_function_type_doc_metadata_diff_subset`, covering function type `__doc__` metadata: `function.__doc__`,
   `object.__getattribute__(function, '__doc__')`, `dir(function)`, repeated
   doc equality/content checks, and function instance `__doc__` behavior without adding function type mappingproxy or constructor execution support.
+- Added `cpython_function_type_text_signature_metadata_subset`, backed by
+  `cpython_function_type_text_signature_metadata_diff_subset`, covering function type `__text_signature__` metadata: `function.__text_signature__`,
+  `object.__getattribute__(function, '__text_signature__')`,
+  `__text_signature__ not in dir(function)`, and the function instance AttributeError path without adding function type mappingproxy metadata or constructor execution support.
 - Added `cpython_function_type_dir_metadata_visibility_subset`, backed by
   `cpython_function_type_dir_metadata_visibility_diff_subset`, covering function type dir metadata visibility: `__module__ in dir(function)`,
   `__qualname__ in dir(function)`, `__base__ not in dir(function)`,

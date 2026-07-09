@@ -63849,7 +63849,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             receiver: Box::new(function.clone()),
             identity: Rc::new(()),
         }),
-        "__base__" | "__bases__" | "__mro__" => Err(format!(
+        "__base__" | "__bases__" | "__mro__" | "__text_signature__" => Err(format!(
             "AttributeError: 'function' object has no attribute '{name}'"
         )),
         _ if function_dict_entries(attrs).is_some() => Err(format!(
@@ -68845,6 +68845,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__mro__" => {
             class_mro(&Value::Builtin(function_name)).map(tuple_value)
+        }
+        Value::Builtin(function_name)
+            if function_name == "function" && name == "__text_signature__" =>
+        {
+            Ok(Value::String(concat!(
+                "(code, globals, name=None, argdefs=None, closure=None,\n",
+                "         kwdefaults=None)"
+            )
+            .to_string()))
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__repr__" => {
             Ok(Value::Builtin("function.__repr__".to_string()))

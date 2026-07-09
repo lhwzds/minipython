@@ -10354,6 +10354,12 @@ without adding general custom encoder/decoder class support.
   `object.__getattribute__(function, '__doc__')`, `dir(function)`, repeated
   doc equality/content checks, and function instance `__doc__` behavior without adding function type mappingproxy or constructor execution support.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_text_signature_metadata_subset` with direct CPython
+  output parity in
+  `cpython_function_type_text_signature_metadata_diff_subset`, covering function type `__text_signature__` metadata: `function.__text_signature__`,
+  `object.__getattribute__(function, '__text_signature__')`,
+  `__text_signature__ not in dir(function)`, and the function instance AttributeError path without adding function type mappingproxy metadata or constructor execution support.
+- `RUNTIME_BUILTINS` also includes
   `cpython_function_type_dir_metadata_visibility_subset` with direct CPython
   output parity in `cpython_function_type_dir_metadata_visibility_diff_subset`,
   covering function type dir metadata visibility: `__module__ in dir(function)`,

@@ -17165,6 +17165,29 @@ print('instance-doc', f.__doc__)"#,
 }
 
 #[test]
+fn cpython_function_type_text_signature_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __text_signature__ metadata",
+        name: "function-type-text-signature-metadata",
+        source: r#"def f():
+    pass
+function = type(f)
+text = function.__text_signature__
+object_text = object.__getattribute__(function, '__text_signature__')
+print('text-type', type(text).__name__, len(text), bool(text))
+print('text-content', text.startswith('(code, globals'), 'kwdefaults=None' in text)
+print('object-text', object_text == text)
+try:
+    value = f.__text_signature__
+    print('instance-text', value)
+except Exception as error:
+    print('instance-text', type(error).__name__, str(error), error.args)
+print('visible-type', '__text_signature__' in dir(function))
+print('visible-inst', '__text_signature__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_dir_metadata_visibility_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function type dir metadata visibility",
