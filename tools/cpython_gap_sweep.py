@@ -164,6 +164,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Exit nonzero when non-intentional differences are found.",
     )
+    parser.add_argument(
+        "--fail-on-open",
+        action="store_true",
+        help="Exit nonzero when any root cause still has needs_triage cases.",
+    )
     return parser.parse_args()
 
 
@@ -511,6 +516,13 @@ def open_root_causes(results: list[SweepResult]) -> dict[str, dict[str, Any]]:
     }
 
 
+def format_open_root_causes(open_summaries: dict[str, dict[str, Any]]) -> str:
+    return ", ".join(
+        f"{root_cause}({summary['triage']['needs_triage']})"
+        for root_cause, summary in open_summaries.items()
+    )
+
+
 def sorted_counter(counter: Counter[str]) -> dict[str, int]:
     return {key: counter[key] for key in sorted(counter)}
 
@@ -673,6 +685,14 @@ def main() -> int:
         "gap sweep:",
         ", ".join(f"{status}={summary[status]}" for status in STATUSES if summary[status]),
     )
+    open_summaries = open_root_causes(results)
+    if args.fail_on_open and open_summaries:
+        print(
+            "open root causes:",
+            format_open_root_causes(open_summaries),
+            file=sys.stderr,
+        )
+        return 1
     if args.fail_on_diff:
         bad = [result for result in results if result.status not in NON_FAILING_STATUSES]
         if bad:

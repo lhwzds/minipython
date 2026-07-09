@@ -9,6 +9,7 @@ tool instead of becoming the only way to catch tool regressions.
 from __future__ import annotations
 
 import argparse
+import io
 import importlib.util
 import json
 import sys
@@ -245,6 +246,22 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.cpython, "/opt/homebrew/bin/python3")
         self.assertEqual(args.require_version, "3.14.6")
         self.assertEqual(args.root_cause, "*")
+        self.assertFalse(args.fail_on_open)
+
+    def test_fail_on_open_flag_is_available(self):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "cpython_gap_sweep.py",
+                "--require-version",
+                "3.14.6",
+                "--fail-on-open",
+            ],
+        ):
+            args = gap.parse_args()
+
+        self.assertTrue(args.fail_on_open)
 
 
 class CorpusLoadingTests(unittest.TestCase):
@@ -659,6 +676,90 @@ class ReportTests(unittest.TestCase):
         self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)
+
+
+class MainTests(unittest.TestCase):
+    def test_fail_on_open_reports_root_cause_queue(self):
+        args = argparse.Namespace(
+            out="reports/cpython-gap-sweep",
+            fail_on_diff=False,
+            fail_on_open=True,
+        )
+        result = gap.SweepResult(
+            name="open-case",
+            scope="stdlib-sandbox",
+            category="runtime-semantic",
+            root_cause="json-dumps-format-options",
+            modules=["json"],
+            priority="should_fix",
+            status="OUTPUT_DIFF",
+            triage_status="needs_triage",
+            expected=None,
+            diff="stdout differs",
+            cpython=run_result(stdout="1\n"),
+            minipython=run_result(stdout="2\n"),
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with patch.object(gap, "parse_args", return_value=args), patch.object(
+            gap, "run_sweep", return_value=({}, [result])
+        ), patch.object(gap, "write_reports") as write_reports, patch(
+            "sys.stdout", stdout
+        ), patch(
+            "sys.stderr", stderr
+        ):
+            exit_code = gap.main()
+
+        self.assertEqual(exit_code, 1)
+        write_reports.assert_called_once()
+        self.assertIn("open root causes:", stderr.getvalue())
+        self.assertIn("json-dumps-format-options(1)", stderr.getvalue())
+
+    def test_fail_on_open_allows_passing_and_accepted_gaps(self):
+        args = argparse.Namespace(
+            out="reports/cpython-gap-sweep",
+            fail_on_diff=False,
+            fail_on_open=True,
+        )
+        results = [
+            gap.SweepResult(
+                name="passing-case",
+                scope="stdlib-sandbox",
+                category="runtime-semantic",
+                root_cause="json-loads-core",
+                modules=["json"],
+                priority="should_fix",
+                status="MATCH",
+                triage_status="passing",
+                expected=None,
+                diff="",
+                cpython=run_result(stdout="ok\n"),
+                minipython=run_result(stdout="ok\n"),
+            ),
+            gap.SweepResult(
+                name="accepted-case",
+                scope="intentional-sandbox",
+                category="sandbox-excluded",
+                root_cause="sandbox-network-block",
+                modules=["socket"],
+                priority="wont_fix",
+                status="INTENTIONAL_SANDBOX_BLOCK",
+                triage_status="accepted_gap",
+                expected="intentional_sandbox_block",
+                diff="intentional sandbox block",
+                cpython=run_result(stdout="ok\n"),
+                minipython=run_result(exit_code=1, stderr="blocked\n"),
+            ),
+        ]
+
+        stdout = io.StringIO()
+        with patch.object(gap, "parse_args", return_value=args), patch.object(
+            gap, "run_sweep", return_value=({}, results)
+        ), patch.object(gap, "write_reports"), patch("sys.stdout", stdout):
+            exit_code = gap.main()
+
+        self.assertEqual(exit_code, 0)
 
 
 if __name__ == "__main__":

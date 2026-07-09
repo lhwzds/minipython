@@ -71,6 +71,8 @@ sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 dif
 从发现阶段进入修复阶段时使用 `--root-cause`，让一个 commit 聚焦一个分组原因，
 同时覆盖报告里受影响的所有 case。JSON report 也会写出
 `open_root_causes`，作为当前仍有 `needs_triage` case 的机器可读修复队列。
+runner 会启用 `--fail-on-open`，让未预期的 open root cause 直接使批量运行
+失败，同时把已接受的 sandbox/compatibility gap 留在报告里。
 
 ## 架构
 

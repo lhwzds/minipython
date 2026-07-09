@@ -30,4 +30,5 @@ exec "$cpython" tools/cpython_gap_sweep.py \
   --corpus tests/gap_corpus \
   --out reports/cpython-gap-sweep \
   --fail-on-diff \
+  --fail-on-open \
   "$@"

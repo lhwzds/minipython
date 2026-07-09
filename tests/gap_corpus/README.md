@@ -44,7 +44,9 @@ cause. The `--root-cause` filter is the preferred entry point when moving from
 gap discovery to grouped repair. JSON reports include both a full
 `root_cause_summary` and `open_root_causes`; use `open_root_causes` as the
 machine-readable repair queue for root causes that still contain
-`needs_triage` cases.
+`needs_triage` cases. Use `--fail-on-open` when the batch should fail on that
+repair queue while continuing to accept explicitly classified sandbox,
+compatibility, and CPython-internal gaps.
 
 Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is

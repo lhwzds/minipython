@@ -93,7 +93,9 @@ machine-readable in the JSON output.
 Use `--root-cause` when moving from discovery to repair so a commit can address
 one grouped cause while covering all affected cases in the report. JSON reports
 also include `open_root_causes`, the current machine-readable repair queue for
-root causes that still have `needs_triage` cases.
+root causes that still have `needs_triage` cases. The runner enables
+`--fail-on-open` so unexpected open root causes fail the batch while accepted
+sandbox/compatibility gaps stay visible in the report.
 
 ## Architecture
 
