@@ -42,6 +42,7 @@ def run_result(
     stderr="",
     timeout=False,
     exception_class=None,
+    exception_message=None,
 ):
     return gap.RunResult(
         exit_code=exit_code,
@@ -49,6 +50,7 @@ def run_result(
         stderr=stderr,
         timeout=timeout,
         exception_class=exception_class,
+        exception_message=exception_message,
     )
 
 
@@ -148,6 +150,25 @@ class ClassifyTests(unittest.TestCase):
             exception_class="ValueError",
         )
         self.assertEqual(gap.normalized_message(mini), "ValueError: bad")
+
+    def test_run_result_records_exception_message_and_normalized_diff(self):
+        cpython = run_result(
+            exit_code=1,
+            stderr="ValueError: bad\n",
+            exception_class="ValueError",
+            exception_message="ValueError: bad",
+        )
+        mini = run_result(
+            exit_code=1,
+            stderr="runtime error: TypeError: bad\n",
+            exception_class="TypeError",
+            exception_message="TypeError: bad",
+        )
+
+        diff = gap.normalized_diff(cpython, mini)
+
+        self.assertIn("exception_class 'ValueError' != 'TypeError'", diff)
+        self.assertIn("exception_message 'ValueError: bad' != 'TypeError: bad'", diff)
 
 
 class ParseArgsTests(unittest.TestCase):
@@ -269,6 +290,7 @@ class ReportTests(unittest.TestCase):
             priority="must_fix",
             status="OUTPUT_DIFF",
             expected=None,
+            diff="stdout differs",
             cpython=run_result(stdout="1\n"),
             minipython=run_result(stdout="2\n"),
         )
@@ -284,12 +306,14 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
         self.assertEqual(payload["results"][0]["category"], "syntax")
+        self.assertEqual(payload["results"][0]["diff"], "stdout differs")
         self.assertIn("- Required CPython: `3.14.6`", markdown)
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("- Categories: `syntax`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("| `syntax` | 1 |", markdown)
         self.assertIn("| `case-one` | `syntax` | `syntax` | `must_fix` | `OUTPUT_DIFF` |", markdown)
+        self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)
 

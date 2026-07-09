@@ -92331,11 +92331,14 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "unknown category",
         "write_reports",
         "render_markdown",
+        "exception_message",
+        "normalized_diff",
         "required_cpython_version",
         "driver_executable",
         "Required CPython",
         "Driver Python",
         "Categories",
+        "Diff:",
     ] {
         assert!(
             GAP_SWEEP_TOOL.contains(required),
@@ -92359,6 +92362,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "test_stdlib_missing_expected_overrides_nonmatching_results",
         "test_cpython_internal_expected_overrides_nonmatching_results",
         "test_default_cpython_oracle_is_homebrew_python",
+        "test_run_result_records_exception_message_and_normalized_diff",
         "test_load_cases_rejects_unknown_expected_marker",
         "test_load_cases_rejects_unknown_category",
         "if __name__ == \"__main__\"",

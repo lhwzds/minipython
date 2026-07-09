@@ -76,6 +76,7 @@ class RunResult:
     stderr: str
     timeout: bool
     exception_class: str | None
+    exception_message: str | None
 
 
 @dataclass
@@ -86,6 +87,7 @@ class SweepResult:
     priority: str
     status: str
     expected: str | None
+    diff: str
     cpython: RunResult
     minipython: RunResult
 
@@ -160,6 +162,7 @@ def run_command(command: list[str], source: str, timeout: float) -> RunResult:
             stderr=error.stderr or "",
             timeout=True,
             exception_class=None,
+            exception_message=None,
         )
     except OSError as error:
         return RunResult(
@@ -168,13 +171,16 @@ def run_command(command: list[str], source: str, timeout: float) -> RunResult:
             stderr=str(error),
             timeout=False,
             exception_class=error.__class__.__name__,
+            exception_message=str(error),
         )
+    exception_class = extract_exception_class(completed.stderr)
     return RunResult(
         exit_code=completed.returncode,
         stdout=completed.stdout,
         stderr=completed.stderr,
         timeout=False,
-        exception_class=extract_exception_class(completed.stderr),
+        exception_class=exception_class,
+        exception_message=extract_exception_message(completed.stderr, exception_class),
     )
 
 
@@ -193,13 +199,42 @@ def extract_exception_class(stderr: str) -> str | None:
 
 
 def normalized_message(result: RunResult) -> str:
+    if result.exception_message is not None:
+        return result.exception_message
     if result.exception_class is None:
         return result.stderr.strip()
-    lines = [line.strip() for line in result.stderr.splitlines() if line.strip()]
+    return extract_exception_message(result.stderr, result.exception_class) or result.stderr.strip()
+
+
+def extract_exception_message(stderr: str, exception_class: str | None) -> str | None:
+    if exception_class is None:
+        return None
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
     for line in reversed(lines):
-        if result.exception_class in line:
+        if exception_class in line:
             return line.replace("runtime error: ", "", 1)
-    return result.stderr.strip()
+    return None
+
+
+def normalized_diff(cpython: RunResult, minipython: RunResult) -> str:
+    parts: list[str] = []
+    if cpython.exit_code != minipython.exit_code:
+        parts.append(f"exit_code {cpython.exit_code!r} != {minipython.exit_code!r}")
+    if cpython.timeout != minipython.timeout:
+        parts.append(f"timeout {cpython.timeout!r} != {minipython.timeout!r}")
+    if cpython.exception_class != minipython.exception_class:
+        parts.append(
+            f"exception_class {cpython.exception_class!r} != {minipython.exception_class!r}"
+        )
+    if normalized_message(cpython) != normalized_message(minipython):
+        parts.append(
+            f"exception_message {normalized_message(cpython)!r} != {normalized_message(minipython)!r}"
+        )
+    if cpython.stdout != minipython.stdout:
+        parts.append("stdout differs")
+    elif cpython.stderr != minipython.stderr:
+        parts.append("stderr differs")
+    return "; ".join(parts)
 
 
 def classify(cpython: RunResult, minipython: RunResult, expected: str | None) -> str:
@@ -308,6 +343,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         cpython = run_command([args.cpython, "-I", "-B", "-"], source, args.timeout)
         mini = run_command([minipython], source, args.timeout)
         status = classify(cpython, mini, case.get("expected"))
+        diff = "" if status == "MATCH" else normalized_diff(cpython, mini)
         results.append(
             SweepResult(
                 name=case["name"],
@@ -316,6 +352,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
                 priority=case["priority"],
                 status=status,
                 expected=case.get("expected"),
+                diff=diff,
                 cpython=cpython,
                 minipython=mini,
             )
@@ -409,6 +446,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
                     f"- Scope: `{result.scope}`",
                     f"- Category: `{result.category}`",
                     f"- Priority: `{result.priority}`",
+                    f"- Diff: `{result.diff}`",
                     "",
                     "```text",
                     "CPython stdout:",
