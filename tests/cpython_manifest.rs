@@ -18084,7 +18084,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "object.__getattribute__",
         "name.as_str(),",
-        "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\"",
+        "\"__annotations__\"",
+        "\"__defaults__\"",
+        "\"__kwdefaults__\"",
+        "\"__parameters__\"",
+        "\"__text_signature__\"",
         "is_json_builtin(function_name)",
         "AttributeError: 'method' object has no attribute '{name}'",
         "AttributeError: 'function' object has no attribute '{name}'",
@@ -18126,7 +18130,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "object.__getattribute__",
         "name.as_str(),",
-        "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\"",
+        "\"__annotations__\"",
+        "\"__defaults__\"",
+        "\"__kwdefaults__\"",
+        "\"__parameters__\"",
+        "\"__text_signature__\"",
         "is_json_builtin(function_name)",
         "load_attribute(*function, \"__parameters__\")",
         "AttributeError: 'method' object has no attribute '{name}'",
@@ -18287,6 +18295,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "value == {}",
         "value is function.__annotations__",
         "bound.__getattribute__('__annotations__') is function.__annotations__",
+        "object.__getattribute__(bound, '__annotations__')",
         "'__annotations__' in dir(bound)",
     ] {
         assert!(
@@ -18298,8 +18307,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "\"loads dict 0 True True\"",
         "\"loads True False\"",
+        "\"loads object-getattribute AttributeError 'method' object has no attribute '__annotations__' (\\\"'method' object has no attribute '__annotations__'\\\",) False\"",
         "\"dumps dict 0 True True\"",
         "\"dumps True False\"",
+        "\"dumps object-getattribute AttributeError 'method' object has no attribute '__annotations__' (\\\"'method' object has no attribute '__annotations__'\\\",) False\"",
     ] {
         assert!(
             json_function_bound_method_annotations_metadata_subset_body.contains(required),
@@ -18715,9 +18726,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
             && VM_SOURCE.contains("load_attribute(*function, \"__defaults__\")")
-            && VM_SOURCE.contains(
-                "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\""
-            )
+            && VM_SOURCE.contains("\"__annotations__\"")
+            && VM_SOURCE.contains("\"__defaults__\"")
+            && VM_SOURCE.contains("\"__kwdefaults__\"")
+            && VM_SOURCE.contains("\"__parameters__\"")
+            && VM_SOURCE.contains("\"__text_signature__\"")
             && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __defaults__ metadata"
     );
@@ -18740,9 +18753,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
             && VM_SOURCE.contains("load_attribute(*function, \"__kwdefaults__\")")
-            && VM_SOURCE.contains(
-                "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\""
-            )
+            && VM_SOURCE.contains("\"__annotations__\"")
+            && VM_SOURCE.contains("\"__defaults__\"")
+            && VM_SOURCE.contains("\"__kwdefaults__\"")
+            && VM_SOURCE.contains("\"__parameters__\"")
+            && VM_SOURCE.contains("\"__text_signature__\"")
             && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __kwdefaults__ metadata"
     );
@@ -18764,9 +18779,23 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
-            && VM_SOURCE.contains("load_attribute(*function, \"__annotations__\")"),
+            && VM_SOURCE.contains("load_attribute(*function, \"__annotations__\")")
+            && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __annotations__ metadata"
     );
+    for required in [
+        "cpython_json_function_bound_method_annotations_metadata_subset",
+        "cpython_json_function_bound_method_annotations_metadata_diff_subset",
+        "`object.__getattribute__(bound, '__annotations__')`",
+        "missing-attribute text",
+        "file APIs",
+        "encoder/decoder classes",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "json public function bound method __annotations__ metadata docs must contain `{required}`"
+        );
+    }
     assert!(
         VM_SOURCE.contains("\"__dict__\"")
             && VM_SOURCE.contains(

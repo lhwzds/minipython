@@ -2355,7 +2355,11 @@ for name in ['loads', 'dumps']:
     bound = function.__get__('receiver', str)
     value = bound.__annotations__
     print(name, type(value).__name__, len(value), value == {}, value is function.__annotations__)
-    print(name, bound.__getattribute__('__annotations__') is function.__annotations__, '__annotations__' in dir(bound))"#,
+    print(name, bound.__getattribute__('__annotations__') is function.__annotations__, '__annotations__' in dir(bound))
+    try:
+        object.__getattribute__(bound, '__annotations__')
+    except AttributeError as error:
+        print(name, 'object-getattribute', type(error).__name__, str(error), error.args, '__annotations__' in dir(bound))"#,
     });
 }
 

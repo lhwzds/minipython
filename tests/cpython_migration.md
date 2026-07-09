@@ -3484,8 +3484,10 @@ APIs, module `__all__`, or encoder/decoder classes.
 `cpython_json_function_bound_method_annotations_metadata_diff_subset`, keeps json public function bound method `__annotations__` metadata
 and `__getattribute__('__annotations__')` lookup aligned with CPython for
 `loads.__get__(...)` and `dumps.__get__(...)`, including shared identity with
-the underlying function `__annotations__` dict and the fact that
-`__annotations__` stays out of `dir(bound)`, without adding file APIs, module `__all__`, or encoder/decoder classes.
+the underlying function `__annotations__` dict,
+`object.__getattribute__(bound, '__annotations__')` missing-attribute text, and
+the fact that `__annotations__` stays out of `dir(bound)`, without adding file
+APIs, module `__all__`, or encoder/decoder classes.
 
 `cpython_json_function_bound_method_dict_metadata_subset`, backed by
 `cpython_json_function_bound_method_dict_metadata_diff_subset`, keeps json public function bound method `__dict__` metadata
