@@ -2,6 +2,7 @@
 name = "syntax-function-closure"
 scope = "syntax"
 category = "syntax"
+modules = ["syntax"]
 priority = "must_fix"
 source = '''
 def make(offset):
@@ -15,6 +16,7 @@ print(make(4)(5))
 name = "syntax-class-method"
 scope = "syntax"
 category = "syntax"
+modules = ["syntax"]
 priority = "must_fix"
 source = '''
 class Counter:
@@ -30,6 +32,7 @@ print(Counter(2).inc())
 name = "syntax-match-basic"
 scope = "syntax"
 category = "syntax"
+modules = ["syntax"]
 priority = "must_fix"
 source = '''
 value = ("ok", 3)
@@ -44,6 +47,7 @@ match value:
 name = "core-container-comprehension"
 scope = "core-runtime"
 category = "runtime-semantic"
+modules = ["core-runtime"]
 priority = "must_fix"
 source = '''
 values = [x * x for x in range(5) if x % 2 == 0]
@@ -55,6 +59,7 @@ print({x: x + 1 for x in values})
 name = "core-exception-catch"
 scope = "core-runtime"
 category = "exception-shape"
+modules = ["exceptions"]
 priority = "must_fix"
 source = '''
 try:
@@ -67,6 +72,7 @@ except IndexError as error:
 name = "stdlib-json-basic"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = ["json"]
 priority = "should_fix"
 source = '''
 import json
@@ -79,6 +85,7 @@ print(json.dumps(value, sort_keys=True))
 name = "stdlib-collections-abc-iterable-doc"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = ["collections.abc"]
 priority = "nice_to_have"
 source = '''
 from collections.abc import Iterable
@@ -89,6 +96,7 @@ print(object.__getattribute__(Iterable, "__doc__"))
 name = "stdlib-pdb-module-out-of-scope"
 scope = "stdlib-sandbox"
 category = "stdlib-missing"
+modules = ["pdb"]
 priority = "wont_fix"
 expected = "stdlib_missing"
 source = '''
@@ -104,6 +112,7 @@ else:
 name = "sandbox-socket-import-block"
 scope = "intentional-sandbox"
 category = "sandbox-excluded"
+modules = ["socket"]
 priority = "wont_fix"
 expected = "intentional_sandbox_block"
 source = '''
@@ -119,6 +128,7 @@ else:
 name = "sandbox-subprocess-out-of-scope"
 scope = "intentional-sandbox"
 category = "sandbox-excluded"
+modules = ["subprocess"]
 priority = "wont_fix"
 expected = "unsupported_out_of_scope"
 source = '''
@@ -134,6 +144,7 @@ else:
 name = "cpython-internal-testcapi-out-of-scope"
 scope = "intentional-sandbox"
 category = "cpython-internal"
+modules = ["_testcapi"]
 priority = "wont_fix"
 expected = "cpython_internal"
 source = '''

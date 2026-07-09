@@ -209,8 +209,31 @@ source = "print(1)"
         self.assertEqual(cases[0]["name"], "basic")
         self.assertEqual(cases[0]["scope"], "unspecified")
         self.assertEqual(cases[0]["category"], "runtime-semantic")
+        self.assertEqual(cases[0]["modules"], ["unspecified"])
         self.assertEqual(cases[0]["priority"], "unspecified")
         self.assertTrue(cases[0]["_path"].endswith("cases.toml"))
+
+    def test_load_cases_accepts_module_string_and_modules_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp) / "cases.toml"
+            corpus.write_text(
+                """
+[[case]]
+name = "one"
+module = "json"
+source = "print(1)"
+
+[[case]]
+name = "two"
+modules = ["sys", "builtins", "sys"]
+source = "print(2)"
+""".lstrip()
+            )
+
+            cases = gap.load_cases(corpus)
+
+        self.assertEqual(cases[0]["modules"], ["json"])
+        self.assertEqual(cases[1]["modules"], ["builtins", "sys"])
 
     def test_load_cases_rejects_missing_required_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -252,6 +275,20 @@ source = "print(1)"
             with self.assertRaisesRegex(ValueError, "unknown category"):
                 gap.load_cases(corpus)
 
+    def test_load_cases_rejects_invalid_modules(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp) / "cases.toml"
+            corpus.write_text(
+                """
+[[case]]
+name = "bad-modules"
+modules = [1]
+source = "print(1)"
+""".lstrip()
+            )
+            with self.assertRaisesRegex(ValueError, "modules must be"):
+                gap.load_cases(corpus)
+
 
 class VersionGuardTests(unittest.TestCase):
     def test_run_sweep_rejects_wrong_oracle_version(self):
@@ -264,6 +301,7 @@ class VersionGuardTests(unittest.TestCase):
             corpus="tests/gap_corpus",
             scope="syntax",
             category="syntax",
+            module="syntax",
             out="reports/cpython-gap-sweep",
             timeout=0.1,
             fail_on_diff=False,
@@ -293,11 +331,13 @@ class ReportTests(unittest.TestCase):
             "corpus": "tests/gap_corpus",
             "scope": ["syntax"],
             "category": ["syntax"],
+            "module": ["json"],
         }
         result = gap.SweepResult(
             name="case-one",
             scope="syntax",
             category="syntax",
+            modules=["json"],
             priority="must_fix",
             status="OUTPUT_DIFF",
             expected=None,
@@ -314,16 +354,23 @@ class ReportTests(unittest.TestCase):
 
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
         self.assertEqual(payload["categories"], {"syntax": 1})
+        self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
         self.assertEqual(payload["results"][0]["category"], "syntax")
+        self.assertEqual(payload["results"][0]["modules"], ["json"])
         self.assertEqual(payload["results"][0]["diff"], "stdout differs")
         self.assertIn("- Required CPython: `3.14.6`", markdown)
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("- Categories: `syntax`", markdown)
+        self.assertIn("- Modules: `json`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("| `syntax` | 1 |", markdown)
-        self.assertIn("| `case-one` | `syntax` | `syntax` | `must_fix` | `OUTPUT_DIFF` |", markdown)
+        self.assertIn("| `json` | 1 |", markdown)
+        self.assertIn(
+            "| `case-one` | `syntax` | `syntax` | `json` | `must_fix` | `OUTPUT_DIFF` |",
+            markdown,
+        )
         self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)

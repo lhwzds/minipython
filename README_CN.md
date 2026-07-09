@@ -53,6 +53,7 @@ echo "print(1)" | mnpy  # 管道输入
 ```bash
 /opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
 tools/run_cpython_gap_sweep.sh
+tools/run_cpython_gap_sweep.sh --module json
 ```
 
 第一条命令会快速测试 gap-sweep driver 本身。gap sweep 会固定使用
@@ -61,7 +62,8 @@ tools/run_cpython_gap_sweep.sh
 面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、coverage
 和 migration 证据。
 gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver interpreter
-路径，避免过期 oracle 混进结果里。
+路径，避免过期 oracle 混进结果里。使用 `--module` 可以聚焦一次批量运行，
+例如只跑 `json`、`collections.abc` 或 `math.integer`。
 
 ## 架构
 

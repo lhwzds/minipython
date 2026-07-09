@@ -87,6 +87,7 @@ class SweepResult:
     name: str
     scope: str
     category: str
+    modules: list[str]
     priority: str
     status: str
     expected: str | None
@@ -128,6 +129,11 @@ def parse_args() -> argparse.Namespace:
         "--category",
         default=",".join(sorted(VALID_CATEGORIES)),
         help="Comma-separated root-cause categories to run.",
+    )
+    parser.add_argument(
+        "--module",
+        default="*",
+        help="Comma-separated module names to run, or * for all modules.",
     )
     parser.add_argument(
         "--out",
@@ -288,6 +294,7 @@ def load_cases(corpus: Path) -> list[dict[str, Any]]:
             case["_path"] = str(path)
             if "name" not in case or "source" not in case:
                 raise ValueError(f"{path}: every case needs name and source")
+            case["modules"] = normalize_case_modules(path, case)
             if case["category"] not in VALID_CATEGORIES:
                 raise ValueError(
                     f"{path}: unknown category `{case['category']}`; "
@@ -302,6 +309,21 @@ def load_cases(corpus: Path) -> list[dict[str, Any]]:
                 )
             cases.append(case)
     return cases
+
+
+def normalize_case_modules(path: Path, case: dict[str, Any]) -> list[str]:
+    modules = case.get("modules", case.get("module", case["scope"]))
+    if isinstance(modules, str):
+        normalized = [modules]
+    elif isinstance(modules, list) and all(isinstance(module, str) for module in modules):
+        normalized = modules
+    else:
+        raise ValueError(f"{path}: modules must be a string or list of strings")
+
+    normalized = sorted({module.strip() for module in normalized if module.strip()})
+    if not normalized:
+        raise ValueError(f"{path}: modules must contain at least one module name")
+    return normalized
 
 
 def oracle_version(cpython: str) -> str:
@@ -334,10 +356,14 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
     unknown_categories = sorted(categories - VALID_CATEGORIES)
     if unknown_categories:
         raise SystemExit(f"Unknown gap sweep categories: {', '.join(unknown_categories)}")
+    modules = {module.strip() for module in args.module.split(",") if module.strip()}
+    run_all_modules = not modules or "*" in modules
     cases = [
         case
         for case in load_cases(Path(args.corpus))
-        if case["scope"] in scopes and case["category"] in categories
+        if case["scope"] in scopes
+        and case["category"] in categories
+        and (run_all_modules or modules.intersection(case["modules"]))
     ]
     started = time.time()
     results: list[SweepResult] = []
@@ -352,6 +378,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
                 name=case["name"],
                 scope=case["scope"],
                 category=case["category"],
+                modules=case["modules"],
                 priority=case["priority"],
                 status=status,
                 expected=case.get("expected"),
@@ -374,6 +401,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
         "corpus": str(Path(args.corpus)),
         "scope": sorted(scopes),
         "category": sorted(categories),
+        "module": ["*"] if run_all_modules else sorted(modules),
     }
     return meta, results
 
@@ -384,6 +412,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
         "meta": meta,
         "summary": dict(Counter(result.status for result in results)),
         "categories": dict(Counter(result.category for result in results)),
+        "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
     }
     (prefix.with_suffix(".json")).write_text(json.dumps(json_payload, indent=2) + "\n")
@@ -403,6 +432,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
         f"- Corpus: `{meta['corpus']}`",
         f"- Scopes: `{', '.join(meta['scope'])}`",
         f"- Categories: `{', '.join(meta['category'])}`",
+        f"- Modules: `{', '.join(meta['module'])}`",
         f"- Duration: `{meta['duration_seconds']}s`",
         "",
         "## Summary",
@@ -427,15 +457,28 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     lines.extend(
         [
             "",
+            "## Modules",
+            "",
+            "| Module | Count |",
+            "| --- | ---: |",
+        ]
+    )
+    for module, count in sorted(
+        Counter(module for result in results for module in result.modules).items()
+    ):
+        lines.append(f"| `{module}` | {count} |")
+    lines.extend(
+        [
+            "",
             "## Cases",
             "",
-            "| Case | Scope | Category | Priority | Status |",
-            "| --- | --- | --- | --- | --- |",
+            "| Case | Scope | Category | Modules | Priority | Status |",
+            "| --- | --- | --- | --- | --- | --- |",
         ]
     )
     for result in results:
         lines.append(
-            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{result.priority}` | `{result.status}` |"
+            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{', '.join(result.modules)}` | `{result.priority}` | `{result.status}` |"
         )
     differing = [result for result in results if result.status != "MATCH"]
     if differing:
@@ -448,6 +491,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
                     f"- Status: `{result.status}`",
                     f"- Scope: `{result.scope}`",
                     f"- Category: `{result.category}`",
+                    f"- Modules: `{', '.join(result.modules)}`",
                     f"- Priority: `{result.priority}`",
                     f"- Diff: `{result.diff}`",
                     "",

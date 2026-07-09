@@ -2,6 +2,21 @@
 name = "stdlib-allowlist-core-modules"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = [
+  "array",
+  "builtins",
+  "collections",
+  "collections.abc",
+  "copy",
+  "functools",
+  "io.BytesIO",
+  "itertools",
+  "json",
+  "math",
+  "operator",
+  "sys",
+  "types",
+]
 priority = "should_fix"
 source = '''
 import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
@@ -23,6 +38,21 @@ print(json.loads('{"a": 1}')['a'])
 name = "stdlib-module-doc-packages"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = [
+  "array",
+  "builtins",
+  "collections",
+  "collections.abc",
+  "copy",
+  "functools",
+  "io.BytesIO",
+  "itertools",
+  "json",
+  "math",
+  "operator",
+  "sys",
+  "types",
+]
 priority = "should_fix"
 source = '''
 import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
@@ -34,6 +64,7 @@ for module in [builtins, sys, types, collections, collections.abc, math, array, 
 name = "stdlib-operator-functools-itertools"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = ["operator", "functools", "itertools"]
 priority = "should_fix"
 source = '''
 import operator, functools, itertools
@@ -48,6 +79,7 @@ print(list(itertools.batched([1, 2, 3], 2)))
 name = "stdlib-collections-copy-io-array"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
+modules = ["collections", "collections.abc", "copy", "io.BytesIO", "array"]
 priority = "should_fix"
 source = '''
 import collections, collections.abc, copy, io, array

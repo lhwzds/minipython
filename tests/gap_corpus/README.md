@@ -27,6 +27,14 @@ before implementation:
   lines.
 - `cpython-internal`: CPython implementation-only modules or contracts.
 
+Each case must also carry `modules`, or the singular `module`, so the same
+corpus can be filtered by affected surface. Use concrete stdlib names such as
+`json`, `collections.abc`, or `math.integer` for stdlib cases, and component
+names such as `syntax`, `core-runtime`, or `exceptions` for non-stdlib cases.
+Run a focused slice with `tools/run_cpython_gap_sweep.sh --module json`, or use
+the `--module json` option directly when invoking the driver. Comma-separated
+values such as `--module json,collections.abc` can cover related surfaces.
+
 Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is
 outside MiniPython's sandbox target. Use `expected = "stdlib_missing"` and
