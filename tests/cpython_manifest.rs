@@ -14597,6 +14597,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_object_hook_subset",
             "cpython_json_loads_object_pairs_hook_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
+            "cpython_json_dumps_error_boundary_subset",
             "cpython_json_loads_invalid_utf8_error_detail_subset",
             "cpython_json_loads_invalid_utf16_error_detail_subset",
             "cpython_json_loads_invalid_utf32_error_detail_subset",
@@ -19896,6 +19897,10 @@ fn json_error_boundary_diff_covers_subset_surface() {
             "cpython_json_loads_dumps_error_boundary_subset",
         ),
         (
+            "cpython_json_loads_dumps_error_boundary_diff_subset",
+            "cpython_json_dumps_error_boundary_subset",
+        ),
+        (
             "cpython_json_loads_string_error_boundary_diff_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ),
@@ -20087,6 +20092,10 @@ fn json_error_boundary_docs_cover_subset_limits() {
         (
             "cpython_json_loads_dumps_error_boundary_diff_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
+        ),
+        (
+            "cpython_json_loads_dumps_error_boundary_diff_subset",
+            "cpython_json_dumps_error_boundary_subset",
         ),
         (
             "cpython_json_loads_string_error_boundary_diff_subset",
@@ -92470,6 +92479,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "REQUIRED_CATEGORIES - categories",
         "REQUIRED_EXPECTED_MARKERS - expected_markers",
         "REQUIRED_JSON_ROOT_CAUSES - json_root_causes",
+        "\"json-loads-error-boundaries\"",
         "self.assertGreaterEqual(root_cause_counts[\"json-loads-core\"], 2)",
         "summary[\"json-loads-core\"][\"count\"]",
         "summary[\"json-loads-core\"][\"modules\"]",
@@ -92609,6 +92619,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "json-loads-object-hooks",
         "json-loads-string-escapes",
         "json-loads-top-level-scalars",
+        "json-loads-error-boundaries",
         "json-dumps-format-options",
         "json-dumps-default-and-skipkeys",
         "json-dumps-nonfinite-and-circular",
@@ -92622,6 +92633,7 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "root_cause = \"json-loads-object-hooks\"",
         "root_cause = \"json-loads-string-escapes\"",
         "root_cause = \"json-loads-top-level-scalars\"",
+        "root_cause = \"json-loads-error-boundaries\"",
         "root_cause = \"json-dumps-format-options\"",
         "root_cause = \"json-dumps-default-skipkeys\"",
         "root_cause = \"json-dumps-nonfinite-and-circular\"",
@@ -92636,6 +92648,9 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         "parse_constant=pconst",
         "object_hook=hook",
         "object_pairs_hook=pairs",
+        "Expecting ':' delimiter: line 1 column 6 (char 5)",
+        "Illegal trailing comma before end of array: line 1 column 3 (char 2)",
+        "Invalid \\\\escape: line 1 column 2 (char 1)",
         "ensure_ascii=False",
         "ensure_ascii=True",
         "separators=(',', ':')",

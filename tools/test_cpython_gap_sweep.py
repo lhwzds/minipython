@@ -76,6 +76,7 @@ REQUIRED_JSON_ROOT_CAUSES = {
     "json-loads-object-hooks",
     "json-loads-string-escapes",
     "json-loads-top-level-scalars",
+    "json-loads-error-boundaries",
     "json-dumps-format-options",
     "json-dumps-default-skipkeys",
     "json-dumps-nonfinite-and-circular",

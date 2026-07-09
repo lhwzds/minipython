@@ -1656,10 +1656,12 @@ Recent runtime migration notes:
   clear, append, delete-before-visit, and true-match-while-clear cases use
   CPython's dynamic list search semantics, while explicit `stop` bounds remain fixed
   to the call-time normalized boundary.
-- `cpython_json_loads_dumps_error_boundary_subset`, backed by
-  `cpython_json_loads_dumps_error_boundary_diff_subset`, now pins CPython
+- `cpython_json_loads_dumps_error_boundary_subset` and
+  `cpython_json_dumps_error_boundary_subset`, backed by
+  `cpython_json_loads_dumps_error_boundary_diff_subset`, now pin CPython
   public delimiter-message substrings for `json.loads()` missing colon and
-  missing comma errors while keeping full `JSONDecodeError` compatibility out
+  missing comma errors plus representative `json.dumps()` argument/type/circular
+  error classification while keeping full `JSONDecodeError` compatibility out
   of the sandbox `json` scope.
 - `cpython_json_loads_invalid_utf8_error_detail_subset`, backed by
   `cpython_json_loads_invalid_utf8_error_detail_diff_subset`, now keeps
@@ -3906,7 +3908,8 @@ Recent runtime migration notes:
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /
-  `cpython_json_loads_dumps_error_boundary_subset`, plus
+  `cpython_json_loads_dumps_error_boundary_subset` /
+  `cpython_json_dumps_error_boundary_subset`, plus
   `cpython_json_loads_invalid_utf8_error_detail_diff_subset` /
   `cpython_json_loads_invalid_utf8_error_detail_subset`,
   `cpython_json_loads_invalid_utf16_error_detail_diff_subset` /
@@ -4442,8 +4445,9 @@ without adding custom decoder classes or host-backed containers.
 `dumps()` / `loads()` round trips and CPython float sign and classification behavior,
 without adding `parse_constant` customization beyond the documented hook subset.
 
-`cpython_json_loads_dumps_error_boundary_subset`, backed by
-`cpython_json_loads_dumps_error_boundary_diff_subset`, keeps the `loads()` / `dumps()` first-pass error boundary for
+`cpython_json_loads_dumps_error_boundary_subset` and
+`cpython_json_dumps_error_boundary_subset`, backed by
+`cpython_json_loads_dumps_error_boundary_diff_subset`, keep the `loads()` / `dumps()` first-pass error boundary for
 argument count and unknown keyword `TypeError` classification, unsupported `loads()` input types such as `memoryview`,
 invalid UTF-8 byte input and string-input UTF-8 BOM rejection, structural JSON parse failures including trailing data and trailing commas,
 odd-length NUL-containing byte input falls through to JSON parser errors,

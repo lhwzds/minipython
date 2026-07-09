@@ -79,6 +79,30 @@ for text in ['0', '-0', '1.25', 'true', 'false', 'null', ' [] ', ' {} ']:
 '''
 
 [[case]]
+name = "json-loads-error-boundaries"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-error-boundaries"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+show('missing-colon', '{"a" 1}', "Expecting ':' delimiter: line 1 column 6 (char 5)")
+show('array-trailing-comma', '[1,]', 'Illegal trailing comma before end of array: line 1 column 3 (char 2)')
+show('object-trailing-comma', '{"a": 1,}', 'Illegal trailing comma before end of object: line 1 column 8 (char 7)')
+show('extra-data', '{} []', 'Extra data: line 1 column 4 (char 3)')
+show('bad-escape', '"\\q"', 'Invalid \\escape: line 1 column 2 (char 1)')
+show('raw-newline', '"line\nbreak"', 'Invalid control character at: line 1 column 6 (char 5)')
+'''
+
+[[case]]
 name = "json-dumps-format-options"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
