@@ -70314,6 +70314,104 @@ fn function_type_text_signature_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn function_type_type_params_getset_descriptor_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_type_params_getset_descriptor_subset";
+    let diff_name = "cpython_function_type_type_params_getset_descriptor_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "d = function.__type_params__",
+        "d.__name__",
+        "d.__qualname__",
+        "d.__objclass__ is function",
+        "d.__doc__",
+        "'__type_params__' in dir(function)",
+        "dir(d)",
+        "d.__get__(f, function)",
+        "d.__get__(None, function)",
+        "d.__set__(f, replacement)",
+        "f.__type_params__",
+        "d.__set__(f, [])",
+        "d.__set__(1, ())",
+        "d.__delete__(f)",
+        "d.__delete__(1)",
+        "d.__get__(1, function)",
+        "d.__module__",
+        "d.__text_signature__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __type_params__ getset descriptor subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor getset_descriptor __type_params__ function.__type_params__ True Get the declared type parameters for a function.\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__']\"",
+        "\"get-f tuple ()\"",
+        "\"get-none True getset_descriptor\"",
+        "\"set-tuple NoneType None\"",
+        "\"after-set tuple (1,)\"",
+        "\"set-list TypeError __type_params__ must be set to a tuple",
+        "\"set-bad-self TypeError descriptor '__type_params__' for 'function' objects doesn't apply to a 'int' object",
+        "\"delete TypeError __type_params__ must be set to a tuple",
+        "\"after-delete tuple (1,)\"",
+        "\"delete-bad-self TypeError descriptor '__type_params__' for 'function' objects doesn't apply to a 'int' object",
+        "\"get-bad TypeError descriptor '__type_params__' for 'function' objects doesn't apply to a 'int' object",
+        "\"module AttributeError 'getset_descriptor' object has no attribute '__module__'",
+        "\"textsig AttributeError 'getset_descriptor' object has no attribute '__text_signature__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __type_params__ getset descriptor subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "const FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR",
+        "function_name == \"function\" && name == \"__type_params__\"",
+        "FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR.to_string()",
+        "names.push(\"__type_params__\".to_string())",
+        "FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => \"__type_params__\".to_string()",
+        "FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => \"function.__type_params__\".to_string()",
+        "FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => \"function\".to_string()",
+        "Get the declared type parameters for a function.",
+        "FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => {",
+        "function_type_params_metadata_value(",
+        "set_function_type_params_metadata(attrs, value.clone())",
+        "__type_params__ must be set to a tuple",
+        "descriptor '__type_params__' for 'function' objects doesn't apply",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __type_params__ getset descriptor implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__type_params__` getset_descriptor metadata",
+            "`function.__type_params__`",
+            "`function.__type_params__.__get__(f, function)`",
+            "`function.__type_params__.__set__(f, tuple)`",
+            "`function.__type_params__.__delete__(f)`",
+            "without adding function type mappingproxy support",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __type_params__ getset descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_dir_metadata_visibility_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_dir_metadata_visibility_subset";
     let diff_name = "cpython_function_type_dir_metadata_visibility_diff_subset";

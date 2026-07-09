@@ -17188,6 +17188,41 @@ print('visible-inst', '__text_signature__' in dir(f))"#,
 }
 
 #[test]
+fn cpython_function_type_type_params_getset_descriptor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type __type_params__ getset descriptor metadata",
+        name: "function-type-type-params-getset-descriptor",
+        source: r#"def f():
+    pass
+function = type(f)
+d = function.__type_params__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is function, d.__doc__)
+print('dir-type', '__type_params__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__', '__module__'}])
+print('get-f', type(d.__get__(f, function)).__name__, d.__get__(f, function))
+print('get-none', d.__get__(None, function) is d, type(d.__get__(None, function)).__name__)
+replacement = (1,)
+for label, call in [
+    ('set-tuple', lambda: d.__set__(f, replacement)),
+    ('after-set', lambda: f.__type_params__),
+    ('set-list', lambda: d.__set__(f, [])),
+    ('set-bad-self', lambda: d.__set__(1, ())),
+    ('delete', lambda: d.__delete__(f)),
+    ('after-delete', lambda: f.__type_params__),
+    ('delete-bad-self', lambda: d.__delete__(1)),
+    ('get-bad', lambda: d.__get__(1, function)),
+    ('module', lambda: d.__module__),
+    ('textsig', lambda: d.__text_signature__),
+]:
+    try:
+        value = call()
+        print(label, type(value).__name__, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_dir_metadata_visibility_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function type dir metadata visibility",

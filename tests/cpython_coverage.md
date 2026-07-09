@@ -10360,6 +10360,13 @@ without adding general custom encoder/decoder class support.
   `object.__getattribute__(function, '__text_signature__')`,
   `__text_signature__ not in dir(function)`, and the function instance AttributeError path without adding function type mappingproxy metadata or constructor execution support.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_type_params_getset_descriptor_subset` with direct
+  CPython output parity in
+  `cpython_function_type_type_params_getset_descriptor_diff_subset`, covering function type `__type_params__` getset_descriptor metadata: `function.__type_params__`,
+  `function.__type_params__.__get__(f, function)`,
+  `function.__type_params__.__set__(f, tuple)`, and
+  `function.__type_params__.__delete__(f)` without adding function type mappingproxy support.
+- `RUNTIME_BUILTINS` also includes
   `cpython_function_type_dir_metadata_visibility_subset` with direct CPython
   output parity in `cpython_function_type_dir_metadata_visibility_diff_subset`,
   covering function type dir metadata visibility: `__module__ in dir(function)`,

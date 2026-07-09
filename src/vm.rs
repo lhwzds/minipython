@@ -17704,6 +17704,21 @@ impl Vm {
                     .unwrap_or(Value::None))
             }
             CELL_CONTENTS_GETSET_DESCRIPTOR => cell_contents_getset_descriptor_get(object),
+            FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => {
+                let Value::Function {
+                    attrs, type_params, ..
+                } = object
+                else {
+                    return Err(format!(
+                        "TypeError: descriptor '__type_params__' for 'function' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                };
+                Ok(function_type_params_metadata_value(
+                    attrs,
+                    type_params.clone(),
+                ))
+            }
             _ if operator_helper_text_signature_getset_descriptor_operator_name(
                 descriptor_name,
             )
@@ -17777,6 +17792,16 @@ impl Vm {
                 cell_contents_getset_descriptor_set(object, value.clone())?;
                 Ok(Value::None)
             }
+            FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => {
+                let Value::Function { attrs, .. } = object else {
+                    return Err(format!(
+                        "TypeError: descriptor '__type_params__' for 'function' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                };
+                set_function_type_params_metadata(attrs, value.clone())?;
+                Ok(Value::None)
+            }
             _ if operator_helper_text_signature_getset_descriptor_operator_name(
                 descriptor_name,
             )
@@ -17829,6 +17854,15 @@ impl Vm {
             CELL_CONTENTS_GETSET_DESCRIPTOR => {
                 cell_contents_getset_descriptor_delete(object)?;
                 Ok(Value::None)
+            }
+            FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => {
+                let Value::Function { .. } = object else {
+                    return Err(format!(
+                        "TypeError: descriptor '__type_params__' for 'function' objects doesn't apply to a '{}' object",
+                        type_name(object)
+                    ));
+                };
+                Err("TypeError: __type_params__ must be set to a tuple".to_string())
             }
             _ if operator_helper_text_signature_getset_descriptor_operator_name(
                 descriptor_name,
@@ -57733,6 +57767,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__sizeof__".to_string());
         names.push("__str__".to_string());
         names.push("__subclasshook__".to_string());
+        names.push("__type_params__".to_string());
     }
     if name == "UserString" {
         names.push("__abstractmethods__".to_string());
@@ -59437,6 +59472,7 @@ fn is_data_descriptor(value: &Value) -> bool {
 }
 
 const CELL_CONTENTS_GETSET_DESCRIPTOR: &str = "CellType.cell_contents.getset_descriptor";
+const FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR: &str = "function.__type_params__.getset_descriptor";
 
 fn dict_view_mapping_getset_descriptor_owner(name: &str) -> Option<&str> {
     let owner = name.strip_suffix(".mapping.getset_descriptor")?;
@@ -59477,7 +59513,9 @@ fn operator_helper_text_signature_descriptor_applies(operator_name: &str, object
 fn is_builtin_getset_descriptor_name(name: &str) -> bool {
     matches!(
         name,
-        "deque.maxlen.getset_descriptor" | CELL_CONTENTS_GETSET_DESCRIPTOR
+        "deque.maxlen.getset_descriptor"
+            | CELL_CONTENTS_GETSET_DESCRIPTOR
+            | FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR
     ) || dict_view_mapping_getset_descriptor_owner(name).is_some()
         || operator_helper_text_signature_getset_descriptor_operator_name(name).is_some()
 }
@@ -59492,6 +59530,7 @@ fn getset_descriptor_public_name(name: &str) -> String {
     match name {
         "deque.maxlen.getset_descriptor" => "maxlen".to_string(),
         CELL_CONTENTS_GETSET_DESCRIPTOR => "cell_contents".to_string(),
+        FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => "__type_params__".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
@@ -59506,6 +59545,7 @@ fn getset_descriptor_qualname(name: &str) -> String {
     match name {
         "deque.maxlen.getset_descriptor" => "deque.maxlen".to_string(),
         CELL_CONTENTS_GETSET_DESCRIPTOR => "cell.cell_contents".to_string(),
+        FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => "function.__type_params__".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
@@ -59520,6 +59560,7 @@ fn getset_descriptor_owner_name(name: &str) -> String {
     match name {
         "deque.maxlen.getset_descriptor" => "deque".to_string(),
         CELL_CONTENTS_GETSET_DESCRIPTOR => "CellType".to_string(),
+        FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => "function".to_string(),
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
@@ -59536,6 +59577,9 @@ fn getset_descriptor_doc_value(name: &str) -> Value {
             Value::String("maximum size of a deque or None if unbounded".to_string())
         }
         CELL_CONTENTS_GETSET_DESCRIPTOR => Value::None,
+        FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR => {
+            Value::String("Get the declared type parameters for a function.".to_string())
+        }
         _ => unreachable!("builtin getset descriptor guard checked the descriptor name"),
     }
 }
@@ -68854,6 +68898,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "         kwdefaults=None)"
             )
             .to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "function" && name == "__type_params__" =>
+        {
+            Ok(Value::Builtin(
+                FUNCTION_TYPE_PARAMS_GETSET_DESCRIPTOR.to_string(),
+            ))
         }
         Value::Builtin(function_name) if function_name == "function" && name == "__repr__" => {
             Ok(Value::Builtin("function.__repr__".to_string()))
