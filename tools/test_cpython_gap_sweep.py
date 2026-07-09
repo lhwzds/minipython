@@ -455,8 +455,20 @@ class ReportTests(unittest.TestCase):
             triage_status="needs_triage",
             expected=None,
             diff="stdout differs",
-            cpython=run_result(stdout="1\n"),
-            minipython=run_result(stdout="2\n"),
+            cpython=run_result(
+                exit_code=1,
+                stdout="1\n",
+                stderr="ValueError: bad\n",
+                exception_class="ValueError",
+                exception_message="ValueError: bad",
+            ),
+            minipython=run_result(
+                exit_code=1,
+                stdout="2\n",
+                stderr="runtime error: TypeError: bad\n",
+                exception_class="TypeError",
+                exception_message="TypeError: bad",
+            ),
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -477,6 +489,30 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["results"][0]["modules"], ["json"])
         self.assertEqual(payload["results"][0]["triage_status"], "needs_triage")
         self.assertEqual(payload["results"][0]["diff"], "stdout differs")
+        self.assertEqual(payload["results"][0]["cpython"]["exit_code"], 1)
+        self.assertEqual(payload["results"][0]["cpython"]["stdout"], "1\n")
+        self.assertEqual(payload["results"][0]["cpython"]["stderr"], "ValueError: bad\n")
+        self.assertEqual(payload["results"][0]["cpython"]["timeout"], False)
+        self.assertEqual(payload["results"][0]["cpython"]["exception_class"], "ValueError")
+        self.assertEqual(
+            payload["results"][0]["cpython"]["exception_message"],
+            "ValueError: bad",
+        )
+        self.assertEqual(payload["results"][0]["minipython"]["exit_code"], 1)
+        self.assertEqual(payload["results"][0]["minipython"]["stdout"], "2\n")
+        self.assertEqual(
+            payload["results"][0]["minipython"]["stderr"],
+            "runtime error: TypeError: bad\n",
+        )
+        self.assertEqual(payload["results"][0]["minipython"]["timeout"], False)
+        self.assertEqual(
+            payload["results"][0]["minipython"]["exception_class"],
+            "TypeError",
+        )
+        self.assertEqual(
+            payload["results"][0]["minipython"]["exception_message"],
+            "TypeError: bad",
+        )
         self.assertIn("- Required CPython: `3.14.6`", markdown)
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("- Categories: `syntax`", markdown)
