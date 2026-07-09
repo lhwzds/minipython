@@ -82,9 +82,11 @@ REQUIRED_JSON_ROOT_CAUSES = {
 }
 
 REQUIRED_SANDBOX_ROOT_CAUSES = {
+    "sandbox-cabi-block",
     "sandbox-host-io-block",
     "sandbox-network-block",
     "sandbox-process-block",
+    "sandbox-signal-block",
 }
 
 

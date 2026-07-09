@@ -169,6 +169,41 @@ else:
 '''
 
 [[case]]
+name = "sandbox-signal-out-of-scope"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-signal-block"
+modules = ["signal"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+try:
+    import signal
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "sandbox-cabi-extension-out-of-scope"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-cabi-block"
+modules = ["_ssl", "_socket", "_ctypes"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+for name in ["_ssl", "_socket", "_ctypes"]:
+    try:
+        __import__(name)
+    except Exception as error:
+        print(name, type(error).__name__)
+    else:
+        print(name, "imported")
+'''
+
+[[case]]
 name = "cpython-internal-testcapi-out-of-scope"
 scope = "intentional-sandbox"
 category = "cpython-internal"
