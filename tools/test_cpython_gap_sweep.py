@@ -35,6 +35,52 @@ def load_sweep_module():
 gap = load_sweep_module()
 
 
+REQUIRED_STDLIB_MODULES = {
+    "array",
+    "builtins",
+    "collections",
+    "collections.abc",
+    "copy",
+    "functools",
+    "io.BytesIO",
+    "itertools",
+    "json",
+    "math",
+    "math.integer",
+    "operator",
+    "sys",
+    "types",
+}
+
+REQUIRED_CATEGORIES = {
+    "syntax",
+    "runtime-semantic",
+    "exception-shape",
+    "stdlib-missing",
+    "sandbox-excluded",
+    "cpython-internal",
+}
+
+REQUIRED_EXPECTED_MARKERS = {
+    "intentional_sandbox_block",
+    "unsupported_out_of_scope",
+    "stdlib_missing",
+    "cpython_missing_compat",
+    "cpython_internal",
+}
+
+REQUIRED_JSON_ROOT_CAUSES = {
+    "json-loads-core",
+    "json-loads-number-hooks",
+    "json-loads-object-hooks",
+    "json-loads-string-escapes",
+    "json-loads-top-level-scalars",
+    "json-dumps-format-options",
+    "json-dumps-default-skipkeys",
+    "json-dumps-nonfinite-and-circular",
+}
+
+
 def run_result(
     *,
     exit_code=0,
@@ -315,6 +361,42 @@ source = "print(1)"
             )
             with self.assertRaisesRegex(ValueError, "root_cause must be"):
                 gap.load_cases(corpus)
+
+
+class CorpusContractTests(unittest.TestCase):
+    def test_repo_corpus_covers_required_stdlib_modules_and_categories(self):
+        cases = gap.load_cases(REPO_ROOT / "tests" / "gap_corpus")
+        stdlib_modules = {
+            module
+            for case in cases
+            if case["scope"] == "stdlib-sandbox"
+            for module in case["modules"]
+        }
+        categories = {case["category"] for case in cases}
+
+        self.assertEqual(REQUIRED_STDLIB_MODULES - stdlib_modules, set())
+        self.assertEqual(REQUIRED_CATEGORIES - categories, set())
+
+    def test_repo_corpus_keeps_expected_gap_markers_and_json_root_causes(self):
+        cases = gap.load_cases(REPO_ROOT / "tests" / "gap_corpus")
+        expected_markers = {
+            case["expected"]
+            for case in cases
+            if "expected" in case
+        }
+        json_root_causes = {
+            case["root_cause"]
+            for case in cases
+            if "json" in case["modules"]
+        }
+        root_cause_counts = {
+            root_cause: sum(1 for case in cases if case["root_cause"] == root_cause)
+            for root_cause in json_root_causes
+        }
+
+        self.assertEqual(REQUIRED_EXPECTED_MARKERS - expected_markers, set())
+        self.assertEqual(REQUIRED_JSON_ROOT_CAUSES - json_root_causes, set())
+        self.assertGreaterEqual(root_cause_counts["json-loads-core"], 2)
 
 
 class VersionGuardTests(unittest.TestCase):
