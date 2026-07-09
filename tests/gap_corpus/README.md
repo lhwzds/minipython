@@ -41,7 +41,10 @@ unit used for grouped work. Use
 `tools/run_cpython_gap_sweep.sh --root-cause json-loads-core` before
 implementing a fix so one commit can cover all cases that share the same root
 cause. The `--root-cause` filter is the preferred entry point when moving from
-gap discovery to grouped repair.
+gap discovery to grouped repair. JSON reports include both a full
+`root_cause_summary` and `open_root_causes`; use `open_root_causes` as the
+machine-readable repair queue for root causes that still contain
+`needs_triage` cases.
 
 Use `expected = "intentional_sandbox_block"` for deliberate sandbox rejections
 and `expected = "unsupported_out_of_scope"` for public CPython behavior that is

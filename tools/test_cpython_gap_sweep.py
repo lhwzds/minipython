@@ -469,6 +469,65 @@ class RootCauseSummaryTests(unittest.TestCase):
         self.assertEqual(summary["json-loads-core"]["priorities"], {"must_fix": 1, "should_fix": 1})
         self.assertEqual(summary["json-loads-core"]["cases"], ["case-one", "case-two"])
 
+    def test_open_root_causes_keeps_only_needs_triage_groups(self):
+        results = [
+            gap.SweepResult(
+                name="passing-case",
+                scope="stdlib-sandbox",
+                category="runtime-semantic",
+                root_cause="json-loads-core",
+                modules=["json"],
+                priority="should_fix",
+                status="MATCH",
+                triage_status="passing",
+                expected=None,
+                diff="",
+                cpython=run_result(stdout="ok\n"),
+                minipython=run_result(stdout="ok\n"),
+            ),
+            gap.SweepResult(
+                name="accepted-case",
+                scope="sandbox",
+                category="sandbox-excluded",
+                root_cause="sandbox-network-block",
+                modules=["socket"],
+                priority="wont_fix",
+                status="INTENTIONAL_SANDBOX_BLOCK",
+                triage_status="accepted_gap",
+                expected="intentional_sandbox_block",
+                diff="intentional sandbox block",
+                cpython=run_result(stdout="ok\n"),
+                minipython=run_result(exit_code=1, stderr="blocked\n"),
+            ),
+            gap.SweepResult(
+                name="open-case",
+                scope="stdlib-sandbox",
+                category="runtime-semantic",
+                root_cause="json-dumps-format-options",
+                modules=["json"],
+                priority="should_fix",
+                status="OUTPUT_DIFF",
+                triage_status="needs_triage",
+                expected=None,
+                diff="stdout differs",
+                cpython=run_result(stdout="1\n"),
+                minipython=run_result(stdout="2\n"),
+            ),
+        ]
+
+        open_summary = gap.open_root_causes(results)
+
+        self.assertEqual(list(open_summary), ["json-dumps-format-options"])
+        self.assertEqual(open_summary["json-dumps-format-options"]["count"], 1)
+        self.assertEqual(
+            open_summary["json-dumps-format-options"]["triage"],
+            {"needs_triage": 1},
+        )
+        self.assertEqual(
+            open_summary["json-dumps-format-options"]["cases"],
+            ["open-case"],
+        )
+
 
 class ReportTests(unittest.TestCase):
     def test_write_reports_emits_json_summary_and_markdown_details(self):
@@ -537,6 +596,10 @@ class ReportTests(unittest.TestCase):
                 "cases": ["case-one"],
             },
         )
+        self.assertEqual(
+            payload["open_root_causes"]["json-loads-core"],
+            payload["root_cause_summary"]["json-loads-core"],
+        )
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
@@ -576,6 +639,11 @@ class ReportTests(unittest.TestCase):
         self.assertIn("- Root Causes: `json-loads-core`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
         self.assertIn("| `needs_triage` | 1 |", markdown)
+        self.assertIn("## Open Root Causes", markdown)
+        self.assertIn(
+            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` |",
+            markdown,
+        )
         self.assertIn("| `syntax` | 1 |", markdown)
         self.assertIn(
             "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` |",

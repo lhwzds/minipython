@@ -457,6 +457,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
         "categories": dict(Counter(result.category for result in results)),
         "root_causes": dict(Counter(result.root_cause for result in results)),
         "root_cause_summary": summarize_root_causes(results),
+        "open_root_causes": open_root_causes(results),
         "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
     }
@@ -502,6 +503,14 @@ def summarize_root_causes(results: list[SweepResult]) -> dict[str, dict[str, Any
     return normalized
 
 
+def open_root_causes(results: list[SweepResult]) -> dict[str, dict[str, Any]]:
+    return {
+        root_cause: summary
+        for root_cause, summary in summarize_root_causes(results).items()
+        if summary["triage"].get("needs_triage", 0)
+    }
+
+
 def sorted_counter(counter: Counter[str]) -> dict[str, int]:
     return {key: counter[key] for key in sorted(counter)}
 
@@ -516,6 +525,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     summary = Counter(result.status for result in results)
     triage_summary = Counter(result.triage_status for result in results)
     root_cause_summary = summarize_root_causes(results)
+    open_summaries = open_root_causes(results)
     lines = [
         "# CPython Gap Sweep",
         "",
@@ -551,6 +561,26 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     for status in TRIAGE_STATUSES:
         if triage_summary[status]:
             lines.append(f"| `{status}` | {triage_summary[status]} |")
+    lines.extend(
+        [
+            "",
+            "## Open Root Causes",
+            "",
+        ]
+    )
+    if open_summaries:
+        lines.extend(
+            [
+                "| Root Cause | Open Cases | Triage | Statuses | Modules |",
+                "| --- | ---: | --- | --- | --- |",
+            ]
+        )
+        for root_cause, data in open_summaries.items():
+            lines.append(
+                f"| `{root_cause}` | {data['triage']['needs_triage']} | `{format_counts(data['triage'])}` | `{format_counts(data['statuses'])}` | `{', '.join(data['modules'])}` |"
+            )
+    else:
+        lines.append("No open root causes.")
     lines.extend(
         [
             "",

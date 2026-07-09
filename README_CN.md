@@ -69,7 +69,8 @@ gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver i
 sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 diff 都会写入
 机器可读 JSON。
 从发现阶段进入修复阶段时使用 `--root-cause`，让一个 commit 聚焦一个分组原因，
-同时覆盖报告里受影响的所有 case。
+同时覆盖报告里受影响的所有 case。JSON report 也会写出
+`open_root_causes`，作为当前仍有 `needs_triage` case 的机器可读修复队列。
 
 ## 架构
 

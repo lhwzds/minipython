@@ -91,7 +91,9 @@ Use `--module` to focus a batch run on one affected surface, for example
 sandbox/compatibility gaps, and unexpected diffs that need root-cause work are
 machine-readable in the JSON output.
 Use `--root-cause` when moving from discovery to repair so a commit can address
-one grouped cause while covering all affected cases in the report.
+one grouped cause while covering all affected cases in the report. JSON reports
+also include `open_root_causes`, the current machine-readable repair queue for
+root causes that still have `needs_triage` cases.
 
 ## Architecture
 
