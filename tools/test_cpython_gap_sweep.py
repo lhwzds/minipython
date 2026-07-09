@@ -89,6 +89,14 @@ REQUIRED_SANDBOX_ROOT_CAUSES = {
     "sandbox-signal-block",
 }
 
+REQUIRED_STDLIB_ROOT_CAUSES = {
+    "builtins-sys-breakpoint-hook",
+    "collections-copy-io-array-core",
+    "operator-functools-itertools-core",
+    "stdlib-allowlist-runtime-smoke",
+    "stdlib-module-metadata-smoke",
+}
+
 
 def run_result(
     *,
@@ -419,6 +427,11 @@ class CorpusContractTests(unittest.TestCase):
             for case in cases
             if case["category"] == "sandbox-excluded"
         }
+        stdlib_root_causes = {
+            case["root_cause"]
+            for case in cases
+            if case["scope"] == "stdlib-sandbox"
+        }
         root_cause_counts = {
             root_cause: sum(1 for case in cases if case["root_cause"] == root_cause)
             for root_cause in json_root_causes
@@ -427,6 +440,7 @@ class CorpusContractTests(unittest.TestCase):
         self.assertEqual(REQUIRED_EXPECTED_MARKERS - expected_markers, set())
         self.assertEqual(REQUIRED_JSON_ROOT_CAUSES - json_root_causes, set())
         self.assertEqual(REQUIRED_SANDBOX_ROOT_CAUSES - sandbox_root_causes, set())
+        self.assertEqual(REQUIRED_STDLIB_ROOT_CAUSES - stdlib_root_causes, set())
         self.assertGreaterEqual(root_cause_counts["json-loads-core"], 2)
 
 

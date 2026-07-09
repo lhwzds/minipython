@@ -79,6 +79,27 @@ print(list(itertools.batched([1, 2, 3], 2)))
 '''
 
 [[case]]
+name = "stdlib-builtins-sys-breakpoint-hook"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "builtins-sys-breakpoint-hook"
+modules = ["builtins", "sys"]
+priority = "should_fix"
+source = '''
+import builtins, sys
+def hook(*args, **kwargs):
+    print("hook", args, sorted(kwargs.items()))
+    return "ret"
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+try:
+    print(hasattr(builtins, "breakpoint"), hasattr(sys, "__breakpointhook__"), sys.breakpointhook is hook)
+    print(breakpoint(1, "x", key=3))
+finally:
+    sys.breakpointhook = saved
+'''
+
+[[case]]
 name = "stdlib-collections-copy-io-array"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
