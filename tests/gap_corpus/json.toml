@@ -52,6 +52,33 @@ print(json.loads('{"a": 1, "a": 2}', object_pairs_hook=pairs))
 '''
 
 [[case]]
+name = "json-loads-string-escapes"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-string-escapes"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for text in ['"\\\""', '"\\\\"', '"\\b\\f\\n\\r\\t"', '"\\u00e9"', '"\\ud834\\udd20"']:
+    value = json.loads(text)
+    print(len(value), json.dumps(value, ensure_ascii=True))
+'''
+
+[[case]]
+name = "json-loads-top-level-scalars"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-top-level-scalars"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for text in ['0', '-0', '1.25', 'true', 'false', 'null', ' [] ', ' {} ']:
+    print(text.strip(), repr(json.loads(text)))
+'''
+
+[[case]]
 name = "json-dumps-format-options"
 scope = "stdlib-sandbox"
 category = "runtime-semantic"
@@ -78,4 +105,27 @@ class Box:
     pass
 print(json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=True))
 print(json.dumps(Box(), default=lambda obj: {'box': True}, sort_keys=True))
+'''
+
+[[case]]
+name = "json-dumps-nonfinite-and-circular"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-nonfinite-and-circular"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for value in [float('nan'), float('inf'), float('-inf')]:
+    print(json.dumps(value))
+    try:
+        print(json.dumps(value, allow_nan=False))
+    except Exception as error:
+        print(type(error).__name__, str(error))
+value = []
+value.append(value)
+try:
+    print(json.dumps(value, check_circular=True))
+except Exception as error:
+    print(type(error).__name__, str(error))
 '''
