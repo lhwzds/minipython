@@ -70171,6 +70171,80 @@ fn function_type_doc_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn function_type_dir_metadata_visibility_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_dir_metadata_visibility_subset";
+    let diff_name = "cpython_function_type_dir_metadata_visibility_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f():",
+        "function = type(f)",
+        "function.__module__",
+        "function.__qualname__",
+        "function.__name__",
+        "object.__getattribute__(function, '__module__')",
+        "object.__getattribute__(function, '__qualname__')",
+        "'__module__' in dir(function)",
+        "'__qualname__' in dir(function)",
+        "'__base__' in dir(function)",
+        "'__bases__' in dir(function)",
+        "'__mro__' in dir(function)",
+        "'__module__' in dir(f)",
+        "'__qualname__' in dir(f)",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type dir metadata visibility subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"values builtins function function\"",
+        "\"object-values builtins function\"",
+        "\"dir-visible True True True True\"",
+        "\"dir-hidden False False False\"",
+        "\"inst-dir-visible True True True True\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type dir metadata visibility subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "if name == \"function\" {",
+        "names.push(\"__module__\".to_string())",
+        "names.push(\"__qualname__\".to_string())",
+        r#"names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"))"#,
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type dir metadata visibility implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type dir metadata visibility",
+            "`__module__ in dir(function)`",
+            "`__qualname__ in dir(function)`",
+            "`__base__ not in dir(function)`",
+            "`__bases__ not in dir(function)`",
+            "`__mro__ not in dir(function)`",
+            "without adding function type MRO or mappingproxy metadata",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type dir metadata visibility docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_type_init_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_type_init_wrapper_descriptor_metadata_subset";
     let diff_name = "cpython_function_type_init_wrapper_descriptor_metadata_diff_subset";

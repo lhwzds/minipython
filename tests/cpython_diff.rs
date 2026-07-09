@@ -17142,6 +17142,22 @@ print('instance-doc', f.__doc__)"#,
 }
 
 #[test]
+fn cpython_function_type_dir_metadata_visibility_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function type dir metadata visibility",
+        name: "function-type-dir-metadata-visibility",
+        source: r#"def f():
+    pass
+function = type(f)
+print('values', function.__module__, function.__qualname__, function.__name__)
+print('object-values', object.__getattribute__(function, '__module__'), object.__getattribute__(function, '__qualname__'))
+print('dir-visible', '__module__' in dir(function), '__qualname__' in dir(function), '__name__' in dir(function), '__doc__' in dir(function))
+print('dir-hidden', '__base__' in dir(function), '__bases__' in dir(function), '__mro__' in dir(function))
+print('inst-dir-visible', '__module__' in dir(f), '__qualname__' in dir(f), '__name__' in dir(f), '__doc__' in dir(f))"#,
+    });
+}
+
+#[test]
 fn cpython_function_type_init_wrapper_descriptor_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public function.__init__ type-level wrapper descriptor metadata",

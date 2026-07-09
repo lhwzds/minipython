@@ -13234,6 +13234,10 @@ Completed in the repr builtin pass:
   `cpython_function_type_doc_metadata_diff_subset`, covering function type `__doc__` metadata: `function.__doc__`,
   `object.__getattribute__(function, '__doc__')`, `dir(function)`, repeated
   doc equality/content checks, and function instance `__doc__` behavior without adding function type mappingproxy or constructor execution support.
+- Added `cpython_function_type_dir_metadata_visibility_subset`, backed by
+  `cpython_function_type_dir_metadata_visibility_diff_subset`, covering function type dir metadata visibility: `__module__ in dir(function)`,
+  `__qualname__ in dir(function)`, `__base__ not in dir(function)`,
+  `__bases__ not in dir(function)`, and `__mro__ not in dir(function)` without adding function type MRO or mappingproxy metadata.
 - Added `cpython_function_type_init_wrapper_descriptor_metadata_subset`,
   backed by
   `cpython_function_type_init_wrapper_descriptor_metadata_diff_subset`,
