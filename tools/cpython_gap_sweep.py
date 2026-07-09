@@ -38,6 +38,12 @@ STATUSES = [
     "CRASH",
 ]
 
+TRIAGE_STATUSES = [
+    "passing",
+    "accepted_gap",
+    "needs_triage",
+]
+
 EXPECTED_STATUS_BY_MARKER = {
     "intentional_sandbox_block": "INTENTIONAL_SANDBOX_BLOCK",
     "unsupported_out_of_scope": "UNSUPPORTED_OUT_OF_SCOPE",
@@ -90,6 +96,7 @@ class SweepResult:
     modules: list[str]
     priority: str
     status: str
+    triage_status: str
     expected: str | None
     diff: str
     cpython: RunResult
@@ -273,6 +280,14 @@ def classify(cpython: RunResult, minipython: RunResult, expected: str | None) ->
     return "OUTPUT_DIFF"
 
 
+def triage_status(status: str) -> str:
+    if status == "MATCH":
+        return "passing"
+    if status in NON_FAILING_STATUSES:
+        return "accepted_gap"
+    return "needs_triage"
+
+
 def corpus_paths(corpus: Path) -> list[Path]:
     if corpus.is_file():
         return [corpus]
@@ -381,6 +396,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
                 modules=case["modules"],
                 priority=case["priority"],
                 status=status,
+                triage_status=triage_status(status),
                 expected=case.get("expected"),
                 diff=diff,
                 cpython=cpython,
@@ -411,6 +427,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
     json_payload = {
         "meta": meta,
         "summary": dict(Counter(result.status for result in results)),
+        "triage": dict(Counter(result.triage_status for result in results)),
         "categories": dict(Counter(result.category for result in results)),
         "modules": dict(Counter(module for result in results for module in result.modules)),
         "results": [asdict(result) for result in results],
@@ -421,6 +438,7 @@ def write_reports(prefix: Path, meta: dict[str, Any], results: list[SweepResult]
 
 def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     summary = Counter(result.status for result in results)
+    triage_summary = Counter(result.triage_status for result in results)
     lines = [
         "# CPython Gap Sweep",
         "",
@@ -443,6 +461,18 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
     for status in STATUSES:
         if summary[status]:
             lines.append(f"| `{status}` | {summary[status]} |")
+    lines.extend(
+        [
+            "",
+            "## Triage",
+            "",
+            "| Triage Status | Count |",
+            "| --- | ---: |",
+        ]
+    )
+    for status in TRIAGE_STATUSES:
+        if triage_summary[status]:
+            lines.append(f"| `{status}` | {triage_summary[status]} |")
     lines.extend(
         [
             "",
@@ -472,13 +502,13 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
             "",
             "## Cases",
             "",
-            "| Case | Scope | Category | Modules | Priority | Status |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| Case | Scope | Category | Modules | Priority | Status | Triage |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
     for result in results:
         lines.append(
-            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{', '.join(result.modules)}` | `{result.priority}` | `{result.status}` |"
+            f"| `{result.name}` | `{result.scope}` | `{result.category}` | `{', '.join(result.modules)}` | `{result.priority}` | `{result.status}` | `{result.triage_status}` |"
         )
     differing = [result for result in results if result.status != "MATCH"]
     if differing:
@@ -492,6 +522,7 @@ def render_markdown(meta: dict[str, Any], results: list[SweepResult]) -> str:
                     f"- Scope: `{result.scope}`",
                     f"- Category: `{result.category}`",
                     f"- Modules: `{', '.join(result.modules)}`",
+                    f"- Triage: `{result.triage_status}`",
                     f"- Priority: `{result.priority}`",
                     f"- Diff: `{result.diff}`",
                     "",

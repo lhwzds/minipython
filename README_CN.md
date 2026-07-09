@@ -63,7 +63,10 @@ tools/run_cpython_gap_sweep.sh --module json
 和 migration 证据。
 gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver interpreter
 路径，避免过期 oracle 混进结果里。使用 `--module` 可以聚焦一次批量运行，
-例如只跑 `json`、`collections.abc` 或 `math.integer`。
+例如只跑 `json`、`collections.abc` 或 `math.integer`。报告会把解释器输出的
+`status` 和工作流用的 `triage_status` 分开：通过的 case、已接受的
+sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 diff 都会写入
+机器可读 JSON。
 
 ## 架构
 

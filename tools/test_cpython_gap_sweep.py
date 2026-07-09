@@ -182,6 +182,15 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn("exception_message 'ValueError: bad' != 'TypeError: bad'", diff)
 
 
+class TriageTests(unittest.TestCase):
+    def test_triage_status_marks_passing_accepted_and_open_diffs(self):
+        self.assertEqual(gap.triage_status("MATCH"), "passing")
+        self.assertEqual(gap.triage_status("STDLIB_MISSING"), "accepted_gap")
+        self.assertEqual(gap.triage_status("CPYTHON_INTERNAL"), "accepted_gap")
+        self.assertEqual(gap.triage_status("OUTPUT_DIFF"), "needs_triage")
+        self.assertEqual(gap.triage_status("TIMEOUT"), "needs_triage")
+
+
 class ParseArgsTests(unittest.TestCase):
     def test_default_cpython_oracle_is_homebrew_python(self):
         with patch.object(sys, "argv", ["cpython_gap_sweep.py", "--require-version", "3.14.6"]):
@@ -340,6 +349,7 @@ class ReportTests(unittest.TestCase):
             modules=["json"],
             priority="must_fix",
             status="OUTPUT_DIFF",
+            triage_status="needs_triage",
             expected=None,
             diff="stdout differs",
             cpython=run_result(stdout="1\n"),
@@ -353,24 +363,28 @@ class ReportTests(unittest.TestCase):
             markdown = prefix.with_suffix(".md").read_text()
 
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
+        self.assertEqual(payload["triage"], {"needs_triage": 1})
         self.assertEqual(payload["categories"], {"syntax": 1})
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
         self.assertEqual(payload["results"][0]["name"], "case-one")
         self.assertEqual(payload["results"][0]["category"], "syntax")
         self.assertEqual(payload["results"][0]["modules"], ["json"])
+        self.assertEqual(payload["results"][0]["triage_status"], "needs_triage")
         self.assertEqual(payload["results"][0]["diff"], "stdout differs")
         self.assertIn("- Required CPython: `3.14.6`", markdown)
         self.assertIn("- Driver Python: `3.14.6` at `/python`", markdown)
         self.assertIn("- Categories: `syntax`", markdown)
         self.assertIn("- Modules: `json`", markdown)
         self.assertIn("| `OUTPUT_DIFF` | 1 |", markdown)
+        self.assertIn("| `needs_triage` | 1 |", markdown)
         self.assertIn("| `syntax` | 1 |", markdown)
         self.assertIn("| `json` | 1 |", markdown)
         self.assertIn(
-            "| `case-one` | `syntax` | `syntax` | `json` | `must_fix` | `OUTPUT_DIFF` |",
+            "| `case-one` | `syntax` | `syntax` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
             markdown,
         )
+        self.assertIn("- Triage: `needs_triage`", markdown)
         self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)

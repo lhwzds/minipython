@@ -85,7 +85,10 @@ corpus. It is a discovery loop; promoted behavior still needs focused
 Gap reports record both the required pinned CPython version and the actual
 oracle/driver interpreter paths so a stale oracle cannot hide in the results.
 Use `--module` to focus a batch run on one affected surface, for example
-`json`, `collections.abc`, or `math.integer`.
+`json`, `collections.abc`, or `math.integer`. The report keeps interpreter
+`status` separate from workflow `triage_status`: passing cases, accepted
+sandbox/compatibility gaps, and unexpected diffs that need root-cause work are
+machine-readable in the JSON output.
 
 ## Architecture
 
