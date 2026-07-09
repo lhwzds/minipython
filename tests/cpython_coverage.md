@@ -10307,6 +10307,16 @@ without adding general custom encoder/decoder class support.
   `function.__subclasshook__.__text_signature__`,
   `dir(function.__subclasshook__)`, type-level descriptor lookup,
   NotImplemented fallback, and TypeError paths without changing subclass-check behavior.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_function_type_call_wrapper_descriptor_metadata_subset` with direct
+  CPython output parity in
+  `cpython_function_type_call_wrapper_descriptor_metadata_diff_subset`,
+  covering function type `__call__` wrapper_descriptor metadata:
+  `function.__call__.__qualname__`,
+  `function.__call__.__objclass__ is function`,
+  `function.__call__.__text_signature__`, `dir(function.__call__)`,
+  type-level descriptor lookup, direct descriptor-call forwarding, and TypeError
+  paths without changing bound function-call forwarding.
 - `RUNTIME_BUILTINS` also includes `cpython_function_call_wrapper_subset`
   with direct CPython output parity in
   `cpython_function_call_wrapper_diff_subset`, covering function __call__ method-wrapper metadata,

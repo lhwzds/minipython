@@ -18791,13 +18791,15 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((receiver, rest)) = args.split_first() else {
             return Err(
-                "TypeError: descriptor method wrapper requires a function object".to_string(),
+                "TypeError: descriptor '__call__' of 'function' object needs an argument"
+                    .to_string(),
             );
         };
         if !matches!(receiver, Value::Function { .. }) {
-            return Err(
-                "TypeError: descriptor method wrapper requires a function object".to_string(),
-            );
+            return Err(format!(
+                "TypeError: descriptor '__call__' requires a 'function' object but received a '{}'",
+                type_name(receiver)
+            ));
         }
         self.call_value_with_keywords(receiver.clone(), rest.to_vec(), keywords)
     }
@@ -56079,6 +56081,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                     | "object.__repr__"
                     | "object.__setattr__"
                     | "object.__str__"
+                    | "function.__call__"
                     | "function.__repr__"
             ) =>
         {
@@ -57661,6 +57664,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         names.push("__subclasshook__".to_string());
     }
     if name == "function" {
+        names.push("__call__".to_string());
         names.push("__delattr__".to_string());
         names.push("__eq__".to_string());
         names.push("__format__".to_string());
@@ -68807,6 +68811,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "function" && name == "__ge__" => {
             Ok(Value::Builtin("object.__ge__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "function" && name == "__call__" => {
+            Ok(Value::Builtin("function.__call__".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "function" && name == "__init_subclass__" => {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("function.__init_subclass__".to_string())),
@@ -71167,14 +71174,38 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Builtin(function_name)
-            if name == "__qualname__" && function_name == "function.__call__" =>
+            if function_name == "function.__call__"
+                && matches!(
+                    name,
+                    "__class__"
+                        | "__name__"
+                        | "__qualname__"
+                        | "__objclass__"
+                        | "__doc__"
+                        | "__text_signature__"
+                        | "__module__"
+                        | "__self__"
+                ) =>
         {
-            Ok(Value::String("function.__call__".to_string()))
-        }
-        Value::Builtin(function_name)
-            if name == "__doc__" && function_name == "function.__call__" =>
-        {
-            Ok(Value::String("Call self as a function.".to_string()))
+            match name {
+                "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
+                "__name__" => Ok(Value::String("__call__".to_string())),
+                "__qualname__" => Ok(Value::String("function.__call__".to_string())),
+                "__objclass__" => Ok(Value::Builtin("function".to_string())),
+                "__doc__" => Ok(Value::String("Call self as a function.".to_string())),
+                "__text_signature__" => Ok(Value::String(
+                    "($self, /, *args, **kwargs)".to_string(),
+                )),
+                "__module__" => Err(
+                    "AttributeError: 'wrapper_descriptor' object has no attribute '__module__'"
+                        .to_string(),
+                ),
+                "__self__" => Err(
+                    "AttributeError: 'wrapper_descriptor' object has no attribute '__self__'"
+                        .to_string(),
+                ),
+                _ => unreachable!("guard checked function __call__ wrapper descriptor metadata"),
+            }
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "function.__get__" =>
@@ -75361,7 +75392,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
         ),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
-        "function" => matches!(method, "__repr__"),
+        "function" => matches!(method, "__call__" | "__repr__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
         _ => false,

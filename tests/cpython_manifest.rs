@@ -69741,6 +69741,93 @@ fn function_type_subclasshook_builtin_method_metadata_subset_has_focused_diff_ev
 }
 
 #[test]
+fn function_type_call_wrapper_descriptor_metadata_subset_has_focused_diff_evidence() {
+    let subset_name = "cpython_function_type_call_wrapper_descriptor_metadata_subset";
+    let diff_name = "cpython_function_type_call_wrapper_descriptor_metadata_diff_subset";
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+
+    for required in [
+        "def f(a, b=2, *rest, **kw):",
+        "function = type(f)",
+        "d = function.__call__",
+        "d.__objclass__ is function",
+        "d.__doc__",
+        "d.__text_signature__",
+        "'__call__' in dir(function)",
+        "dir(d)",
+        "d(f, 1)",
+        "function.__call__(f, 1, 3, 4, z=5)",
+        "d(f, a=7)",
+        "d()",
+        "d(1)",
+        "d.__module__",
+        "d.__self__",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "focused function type __call__ wrapper descriptor subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"descriptor wrapper_descriptor __call__ function.__call__ True Call self as a function. ($self, /, *args, **kwargs)\"",
+        "\"dir-type True\"",
+        "\"dir-meta ['__doc__', '__name__', '__objclass__', '__qualname__', '__text_signature__']\"",
+        "\"call-pos (1, 2, (), []) (1, 3, (4,), [('z', 5)])\"",
+        "\"call-kw (7, 2, (), [])\"",
+        "\"missing-self TypeError descriptor '__call__' of 'function' object needs an argument",
+        "\"bad-self TypeError descriptor '__call__' requires a 'function' object but received a 'int'",
+        "\"module AttributeError 'wrapper_descriptor' object has no attribute '__module__'",
+        "\"self AttributeError 'wrapper_descriptor' object has no attribute '__self__'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused function type __call__ wrapper descriptor subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "function_name == \"function\" && name == \"__call__\"",
+        "\"function.__call__\".to_string()",
+        "names.push(\"__call__\".to_string())",
+        "\"function\" => matches!(method, \"__call__\" | \"__repr__\")",
+        "self.call_function_call(args, keywords)",
+        "fn call_function_call(",
+        "descriptor '__call__' of 'function' object needs an argument",
+        "descriptor '__call__' requires a 'function' object but received a '{}'",
+        "function_name == \"function.__call__\"",
+        "Call self as a function.",
+        "($self, /, *args, **kwargs)",
+        "wrapper_descriptor_dir_names()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "function type __call__ wrapper descriptor metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            diff_name,
+            "function type `__call__` wrapper_descriptor metadata",
+            "`function.__call__.__qualname__`",
+            "`function.__call__.__objclass__ is function`",
+            "`function.__call__.__text_signature__`",
+            "`dir(function.__call__)`",
+            "type-level descriptor lookup",
+            "without changing bound function-call forwarding",
+        ] {
+            assert!(
+                document.contains(required),
+                "focused function type __call__ wrapper descriptor docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn function_call_wrapper_subset_has_focused_diff_evidence() {
     let subset_name = "cpython_function_call_wrapper_subset";
     let diff_name = "cpython_function_call_wrapper_diff_subset";

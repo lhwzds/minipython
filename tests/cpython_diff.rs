@@ -16994,6 +16994,28 @@ for name in ['__objclass__']:
 }
 
 #[test]
+fn cpython_function_type_call_wrapper_descriptor_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public function.__call__ type-level wrapper descriptor metadata",
+        name: "function-type-call-wrapper-descriptor-metadata",
+        source: r#"def f(a, b=2, *rest, **kw):
+    return (a, b, rest, sorted(kw.items()))
+function = type(f)
+d = function.__call__
+print('descriptor', type(d).__name__, d.__name__, d.__qualname__, d.__objclass__ is function, d.__doc__, d.__text_signature__)
+print('dir-type', '__call__' in dir(function))
+print('dir-meta', [name for name in dir(d) if name in {'__doc__', '__module__', '__name__', '__objclass__', '__qualname__', '__self__', '__text_signature__'}])
+print('call-pos', d(f, 1), function.__call__(f, 1, 3, 4, z=5))
+print('call-kw', d(f, a=7))
+for label, call in [('missing-self', lambda: d()), ('bad-self', lambda: d(1)), ('module', lambda: d.__module__), ('self', lambda: d.__self__)]:
+    try:
+        print(label, call())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_function_call_wrapper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py public function __call__ method-wrapper metadata subset",
