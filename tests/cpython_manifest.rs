@@ -15,6 +15,7 @@ const GAP_SWEEP_TOOL: &str = include_str!("../tools/cpython_gap_sweep.py");
 const GAP_SWEEP_TESTS: &str = include_str!("../tools/test_cpython_gap_sweep.py");
 const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
+const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
 const GAP_SWEEP_CORPUS_README: &str = include_str!("gap_corpus/README.md");
 const REPORTS_GITIGNORE: &str = include_str!("../reports/.gitignore");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
@@ -92433,6 +92434,31 @@ fn cpython_gap_sweep_infrastructure_is_pinned_and_scoped() {
         assert!(
             GAP_SWEEP_SMOKE_CORPUS.contains(required),
             "gap sweep smoke corpus must keep `{required}`"
+        );
+    }
+
+    for required in [
+        "json-loads-core-values",
+        "json-loads-number-hooks",
+        "json-loads-object-hooks",
+        "json-dumps-format-options",
+        "json-dumps-default-and-skipkeys",
+        "scope = \"stdlib-sandbox\"",
+        "category = \"runtime-semantic\"",
+        "priority = \"should_fix\"",
+        "parse_int=pint",
+        "parse_float=pfloat",
+        "parse_constant=pconst",
+        "object_hook=hook",
+        "object_pairs_hook=pairs",
+        "ensure_ascii=False",
+        "separators=(',', ':')",
+        "skipkeys=True",
+        "default=lambda obj",
+    ] {
+        assert!(
+            GAP_SWEEP_JSON_CORPUS.contains(required),
+            "gap sweep json corpus must keep `{required}`"
         );
     }
 

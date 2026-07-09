@@ -1,0 +1,71 @@
+[[case]]
+name = "json-loads-core-values"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import json
+for text in ['null', 'true', 'false', '""', '[]', '{}', '{"a":[1,true,null],"b":"x"}']:
+    print(text, json.dumps(json.loads(text), sort_keys=True))
+'''
+
+[[case]]
+name = "json-loads-number-hooks"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import json
+calls = []
+def pint(text):
+    calls.append(('int', text))
+    return ['int', text]
+def pfloat(text):
+    calls.append(('float', text))
+    return ['float', text]
+def pconst(text):
+    calls.append(('const', text))
+    return ['const', text]
+print(json.loads('[1, -2, 3.5, NaN]', parse_int=pint, parse_float=pfloat, parse_constant=pconst))
+print(calls)
+'''
+
+[[case]]
+name = "json-loads-object-hooks"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import json
+def hook(value):
+    return {'keys': sorted(value)}
+def pairs(value):
+    return [('pairs', value)]
+print(json.loads('{"b": 1, "a": {"c": 2}}', object_hook=hook))
+print(json.loads('{"a": 1, "a": 2}', object_pairs_hook=pairs))
+'''
+
+[[case]]
+name = "json-dumps-format-options"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import json
+value = {'z': [1, 'é'], 'a': None}
+print(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':')))
+print(json.dumps(value, sort_keys=True, indent=2))
+'''
+
+[[case]]
+name = "json-dumps-default-and-skipkeys"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+priority = "should_fix"
+source = '''
+import json
+class Box:
+    pass
+print(json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=True))
+print(json.dumps(Box(), default=lambda obj: {'box': True}, sort_keys=True))
+'''
