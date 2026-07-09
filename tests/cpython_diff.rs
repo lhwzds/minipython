@@ -2336,7 +2336,11 @@ for name in ['loads', 'dumps']:
     bound = function.__get__('receiver', str)
     value = bound.__kwdefaults__
     print(name, type(value).__name__, len(value), sorted(value), value is function.__kwdefaults__)
-    print(name, bound.__getattribute__('__kwdefaults__') is function.__kwdefaults__, '__kwdefaults__' in dir(bound))"#,
+    print(name, bound.__getattribute__('__kwdefaults__') is function.__kwdefaults__, '__kwdefaults__' in dir(bound))
+    try:
+        object.__getattribute__(bound, '__kwdefaults__')
+    except AttributeError as error:
+        print(name, 'object-getattribute', type(error).__name__, str(error), error.args, '__kwdefaults__' in dir(bound))"#,
     });
 }
 

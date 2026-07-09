@@ -18084,7 +18084,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "object.__getattribute__",
         "name.as_str(),",
-        "\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"",
+        "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\"",
         "is_json_builtin(function_name)",
         "AttributeError: 'method' object has no attribute '{name}'",
         "AttributeError: 'function' object has no attribute '{name}'",
@@ -18126,7 +18126,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "object.__getattribute__",
         "name.as_str(),",
-        "\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"",
+        "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\"",
         "is_json_builtin(function_name)",
         "load_attribute(*function, \"__parameters__\")",
         "AttributeError: 'method' object has no attribute '{name}'",
@@ -18259,6 +18259,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "sorted(value)",
         "value is function.__kwdefaults__",
         "bound.__getattribute__('__kwdefaults__') is function.__kwdefaults__",
+        "object.__getattribute__(bound, '__kwdefaults__')",
         "'__kwdefaults__' in dir(bound)",
     ] {
         assert!(
@@ -18270,8 +18271,10 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "\"loads dict 6 ['cls', 'object_hook', 'object_pairs_hook', 'parse_constant', 'parse_float', 'parse_int'] True\"",
         "\"loads True False\"",
+        "\"loads object-getattribute AttributeError 'method' object has no attribute '__kwdefaults__' (\\\"'method' object has no attribute '__kwdefaults__'\\\",) False\"",
         "\"dumps dict 9 ['allow_nan', 'check_circular', 'cls', 'default', 'ensure_ascii', 'indent', 'separators', 'skipkeys', 'sort_keys'] True\"",
         "\"dumps True False\"",
+        "\"dumps object-getattribute AttributeError 'method' object has no attribute '__kwdefaults__' (\\\"'method' object has no attribute '__kwdefaults__'\\\",) False\"",
     ] {
         assert!(
             json_function_bound_method_kwdefaults_metadata_subset_body.contains(required),
@@ -18712,7 +18715,9 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
             && VM_SOURCE.contains("load_attribute(*function, \"__defaults__\")")
-            && VM_SOURCE.contains("\"__defaults__\" | \"__parameters__\" | \"__text_signature__\"")
+            && VM_SOURCE.contains(
+                "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\""
+            )
             && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __defaults__ metadata"
     );
@@ -18734,9 +18739,26 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             && VM_SOURCE.contains(
                 "matches!(function.as_ref(), Value::Builtin(name) if is_json_builtin(name))"
             )
-            && VM_SOURCE.contains("load_attribute(*function, \"__kwdefaults__\")"),
+            && VM_SOURCE.contains("load_attribute(*function, \"__kwdefaults__\")")
+            && VM_SOURCE.contains(
+                "\"__defaults__\" | \"__kwdefaults__\" | \"__parameters__\" | \"__text_signature__\""
+            )
+            && VM_SOURCE.contains("AttributeError: 'method' object has no attribute '{name}'"),
         "VM must delegate json public function bound method __kwdefaults__ metadata"
     );
+    for required in [
+        "cpython_json_function_bound_method_kwdefaults_metadata_subset",
+        "cpython_json_function_bound_method_kwdefaults_metadata_diff_subset",
+        "`object.__getattribute__(bound, '__kwdefaults__')`",
+        "missing-attribute text",
+        "file APIs",
+        "encoder/decoder classes",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "json public function bound method __kwdefaults__ metadata docs must contain `{required}`"
+        );
+    }
     assert!(
         VM_SOURCE.contains("\"__annotations__\"")
             && VM_SOURCE.contains(

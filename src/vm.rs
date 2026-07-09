@@ -17163,7 +17163,7 @@ impl Vm {
         let name = attribute_name_arg(name)?;
         if matches!(
             name.as_str(),
-            "__defaults__" | "__parameters__" | "__text_signature__"
+            "__defaults__" | "__kwdefaults__" | "__parameters__" | "__text_signature__"
         ) && matches!(
             object,
             Value::BoundMethod { function, .. }
