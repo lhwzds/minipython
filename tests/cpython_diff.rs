@@ -47258,6 +47258,8 @@ def show_class(label, expr):
         print(label, error.__class__.__name__)
 legacy = 'bBuhHiIlLqQfd'
 print('module', isinstance(array.typecodes, str), all(tc in array.typecodes for tc in legacy))
+print('ArrayType', array.ArrayType is array.array, array.ArrayType.__name__, array.ArrayType.__module__, 'ArrayType' in dir(array), array.__dict__['ArrayType'] is array.array)
+print('ArrayType-construct', array.ArrayType('B', [1, 2]).tolist(), type(array.ArrayType('B')).__name__)
 print('constructors', array.array('B').typecode, array.array(S('b')).typecode)
 print('roundtrip-legacy', ''.join(array.array(tc).typecode for tc in legacy))
 show_class('bad-x', lambda: array.array('x'))

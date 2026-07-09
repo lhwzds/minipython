@@ -70195,6 +70195,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "io.BytesIO" => {
             Ok(Value::String("_io".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "array.array" => {
+            Ok(Value::String("array".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__new__" && function_name == "SimpleNamespace" =>
         {
@@ -70326,6 +70329,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__qualname__" && function_name == "io.BytesIO" =>
         {
             Ok(Value::String("BytesIO".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "array.array" =>
+        {
+            Ok(Value::String("array".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && is_weakref_builtin_type_name(&function_name) =>

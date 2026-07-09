@@ -30585,9 +30585,11 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert!(
         LANGUAGE_TESTS.contains("array_sandbox_subset_excludes_pickle_module_internals")
             && LANGUAGE_TESTS.contains("array.__doc__.splitlines()[0]")
-            && LANGUAGE_TESTS.contains("'ArrayType', '_array_reconstructor', '__all__'")
+            && LANGUAGE_TESTS.contains("'array', 'ArrayType', 'typecodes'")
+            && LANGUAGE_TESTS.contains("array.ArrayType is array.array")
+            && LANGUAGE_TESTS.contains("'_array_reconstructor', '__all__'")
             && LANGUAGE_TESTS.contains("dir(array)"),
-        "array sandbox export test must guard module __doc__, pickle module internals, and module __all__"
+        "array sandbox export test must guard ArrayType, module __doc__, pickle module internals, and module __all__"
     );
 
     let package_diff = extract_rust_test_body(
@@ -30657,6 +30659,10 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
                 .contains("This module defines an object type which can efficiently represent"),
         "array stdlib module registry must set CPython-compatible __doc__ metadata"
     );
+    assert!(
+        array_registry.contains("(\"ArrayType\", Value::Builtin(\"array.array\".to_string()))"),
+        "array stdlib module registry must expose CPython-compatible ArrayType alias"
+    );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_array_module_package_metadata_subset",
@@ -30715,6 +30721,12 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array.array('B').tobytes(1)",
         "array.array('B').tolist(1)",
         "array.array('H', [1]).byteswap(1)",
+        "array.ArrayType is array.array",
+        "array.ArrayType.__name__",
+        "array.ArrayType.__module__",
+        "'ArrayType' in dir(array)",
+        "array.__dict__['ArrayType'] is array.array",
+        "array.ArrayType('B', [1, 2])",
         "array.array('')",
         "array.array('ii')",
         "array.array(S(''))",
@@ -30728,6 +30740,15 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             constructor_subset.contains(required),
             "array runtime subset evidence must cover exact keyword diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "ArrayType True array array True True",
+        "ArrayType-construct [1, 2] array",
+    ] {
+        assert!(
+            constructor_subset.contains(required),
+            "array runtime subset evidence must assert ArrayType output `{required}`"
         );
     }
     for required in [
@@ -50374,6 +50395,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         LANGUAGE_TESTS.contains("builtins_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'abs', 'aiter', 'all', 'anext'")
             && LANGUAGE_TESTS.contains("'BaseException', 'Exception', 'TypeError'")
+            && LANGUAGE_TESTS.contains("'NameError', 'UnboundLocalError'")
             && LANGUAGE_TESTS.contains("'open', 'input', 'help', 'license'")
             && LANGUAGE_TESTS.contains("print('__import__', hasattr(builtins, '__import__'))")
             && LANGUAGE_TESTS.contains("print('__package__', hasattr(builtins, '__package__'))")
@@ -50381,6 +50403,10 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("builtins.__doc__.splitlines()[0]")
             && LANGUAGE_TESTS.contains("print(dir(builtins))"),
         "builtins sandbox export test must guard public builtins, exceptions, and host IO stop lines"
+    );
+    assert!(
+        STDLIB_SOURCE.contains("\"UnboundLocalError\""),
+        "builtins registry must expose UnboundLocalError for CPython-compatible NameError subclasses"
     );
 
     let package_diff = extract_rust_test_body(

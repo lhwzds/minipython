@@ -10950,11 +10950,12 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_module_and_constructor_public_surface_subset`, covering the
   CPython public `array` module constructor surface: `array.typecodes`,
-  legacy typecode construction, str-subclass typecode arguments, invalid
-  typecode `ValueError`, non-string and wrong-arity constructor `TypeError`s,
-  string-length typecode diagnostics, keyword rejection, `extend()` positional
-  argument diagnostics, and zero-length array self-slice / concat / repeat
-  behavior without constructing half-initialized arrays.
+  `array.ArrayType` as the `array.array` alias, legacy typecode construction,
+  str-subclass typecode arguments, invalid typecode `ValueError`, non-string
+  and wrong-arity constructor `TypeError`s, string-length typecode diagnostics,
+  keyword rejection, `extend()` positional argument diagnostics, and
+  zero-length array self-slice / concat / repeat behavior without constructing
+  half-initialized arrays.
   Real file descriptors and C buffer/allocator internals remain outside the
   sandbox `array` surface; file-oriented behavior is limited to pure in-memory
   `io.BytesIO` evidence.

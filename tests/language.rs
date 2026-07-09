@@ -1181,16 +1181,17 @@ fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
 fn array_sandbox_subset_excludes_pickle_module_internals() {
     assert_eq!(
         run_source(
-            "import array\nfor name in ['array', 'typecodes']:\n    print(name, hasattr(array, name))\nprint(type(array.__doc__).__name__, bool(array.__doc__), array.__doc__.splitlines()[0])\nfor name in ['ArrayType', '_array_reconstructor', '__all__']:\n    print(name, hasattr(array, name))\nprint(dir(array))"
+            "import array\nfor name in ['array', 'ArrayType', 'typecodes']:\n    print(name, hasattr(array, name))\nprint(array.ArrayType is array.array, array.ArrayType('B', [1]).tolist())\nprint(type(array.__doc__).__name__, bool(array.__doc__), array.__doc__.splitlines()[0])\nfor name in ['_array_reconstructor', '__all__']:\n    print(name, hasattr(array, name))\nprint(dir(array))"
         ),
         Ok(output_lines(&[
             "array True",
+            "ArrayType True",
             "typecodes True",
+            "True [1]",
             "str True This module defines an object type which can efficiently represent",
-            "ArrayType False",
             "_array_reconstructor False",
             "__all__ False",
-            "['__doc__', '__name__', '__package__', 'array', 'typecodes']",
+            "['ArrayType', '__doc__', '__name__', '__package__', 'array', 'typecodes']",
         ]))
     );
 }
@@ -1683,7 +1684,7 @@ fn types_sandbox_subset_keeps_export_surface_explicit() {
 fn builtins_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import builtins\nfor name in ['abs', 'aiter', 'all', 'anext', 'any', 'ascii', 'bin', 'bool', 'breakpoint', 'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex', 'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter', 'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash', 'hex', 'id', 'int', 'isinstance', 'issubclass', 'iter', 'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type', 'vars', 'zip']:\n    print(name, hasattr(builtins, name))\nfor name in ['BaseException', 'Exception', 'TypeError', 'ValueError', 'OSError', 'SyntaxError', 'StopIteration', 'StopAsyncIteration', 'ImportError', 'ModuleNotFoundError', 'ExceptionGroup', 'BaseExceptionGroup']:\n    print(name, hasattr(builtins, name))\nfor name in ['open', 'input', 'help', 'license', 'credits', 'exit', 'quit', '__all__', '__file__']:\n    print(name, hasattr(builtins, name))\nprint('__import__', hasattr(builtins, '__import__'))\nprint('__build_class__', hasattr(builtins, '__build_class__'))\nprint('__debug__', hasattr(builtins, '__debug__'))\nprint('__package__', hasattr(builtins, '__package__'))\nprint('__doc__', hasattr(builtins, '__doc__'))\nprint(type(builtins.__doc__).__name__, bool(builtins.__doc__), len(builtins.__doc__), builtins.__doc__.splitlines()[0])\nprint(dir(builtins))"
+            "import builtins\nfor name in ['abs', 'aiter', 'all', 'anext', 'any', 'ascii', 'bin', 'bool', 'breakpoint', 'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex', 'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter', 'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash', 'hex', 'id', 'int', 'isinstance', 'issubclass', 'iter', 'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type', 'vars', 'zip']:\n    print(name, hasattr(builtins, name))\nfor name in ['BaseException', 'Exception', 'TypeError', 'ValueError', 'OSError', 'SyntaxError', 'StopIteration', 'StopAsyncIteration', 'ImportError', 'ModuleNotFoundError', 'NameError', 'UnboundLocalError', 'ExceptionGroup', 'BaseExceptionGroup']:\n    print(name, hasattr(builtins, name))\nfor name in ['open', 'input', 'help', 'license', 'credits', 'exit', 'quit', '__all__', '__file__']:\n    print(name, hasattr(builtins, name))\nprint('__import__', hasattr(builtins, '__import__'))\nprint('__build_class__', hasattr(builtins, '__build_class__'))\nprint('__debug__', hasattr(builtins, '__debug__'))\nprint('__package__', hasattr(builtins, '__package__'))\nprint('__doc__', hasattr(builtins, '__doc__'))\nprint(type(builtins.__doc__).__name__, bool(builtins.__doc__), len(builtins.__doc__), builtins.__doc__.splitlines()[0])\nprint(dir(builtins))"
         ),
         Ok(output_lines(&[
             "abs True",
@@ -1763,6 +1764,8 @@ fn builtins_sandbox_subset_keeps_export_surface_explicit() {
             "StopAsyncIteration True",
             "ImportError True",
             "ModuleNotFoundError True",
+            "NameError True",
+            "UnboundLocalError True",
             "ExceptionGroup True",
             "BaseExceptionGroup True",
             "open False",
@@ -1780,7 +1783,7 @@ fn builtins_sandbox_subset_keeps_export_surface_explicit() {
             "__package__ True",
             "__doc__ True",
             "str True 426 Built-in functions, types, exceptions, and other objects.",
-            "['ArithmeticError', 'AssertionError', 'AttributeError', 'BaseException', 'BaseExceptionGroup', 'BlockingIOError', 'BytesWarning', 'DeprecationWarning', 'EOFError', 'Ellipsis', 'EncodingWarning', 'Exception', 'ExceptionGroup', 'FileExistsError', 'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 'GeneratorExit', 'ImportError', 'ImportWarning', 'IndentationError', 'IndexError', 'InterruptedError', 'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 'MemoryError', 'ModuleNotFoundError', 'NameError', 'NotADirectoryError', 'NotImplemented', 'NotImplementedError', 'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 'ProcessLookupError', 'RecursionError', 'ReferenceError', 'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 'UnicodeDecodeError', 'UnicodeEncodeError', 'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 'ValueError', 'Warning', 'ZeroDivisionError', '__build_class__', '__debug__', '__doc__', '__import__', '__name__', '__package__', 'abs', 'aiter', 'all', 'anext', 'any', 'ascii', 'bin', 'bool', 'breakpoint', 'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex', 'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter', 'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash', 'hex', 'id', 'int', 'isinstance', 'issubclass', 'iter', 'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type', 'vars', 'zip']",
+            "['ArithmeticError', 'AssertionError', 'AttributeError', 'BaseException', 'BaseExceptionGroup', 'BlockingIOError', 'BytesWarning', 'DeprecationWarning', 'EOFError', 'Ellipsis', 'EncodingWarning', 'Exception', 'ExceptionGroup', 'FileExistsError', 'FileNotFoundError', 'FloatingPointError', 'FutureWarning', 'GeneratorExit', 'ImportError', 'ImportWarning', 'IndentationError', 'IndexError', 'InterruptedError', 'IsADirectoryError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 'MemoryError', 'ModuleNotFoundError', 'NameError', 'NotADirectoryError', 'NotImplemented', 'NotImplementedError', 'OSError', 'OverflowError', 'PendingDeprecationWarning', 'PermissionError', 'ProcessLookupError', 'RecursionError', 'ReferenceError', 'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopAsyncIteration', 'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 'SystemExit', 'TabError', 'TimeoutError', 'TypeError', 'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 'ValueError', 'Warning', 'ZeroDivisionError', '__build_class__', '__debug__', '__doc__', '__import__', '__name__', '__package__', 'abs', 'aiter', 'all', 'anext', 'any', 'ascii', 'bin', 'bool', 'breakpoint', 'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex', 'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter', 'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash', 'hex', 'id', 'int', 'isinstance', 'issubclass', 'iter', 'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type', 'vars', 'zip']",
         ]))
     );
 }
