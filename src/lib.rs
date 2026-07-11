@@ -28,6 +28,27 @@ use vm::Vm;
 
 pub use vm::RuntimeOptions;
 
+pub const DEFAULT_SANDBOX_MAX_INSTRUCTIONS: u64 = 1_000_000;
+pub const DEFAULT_SANDBOX_MAX_CALL_DEPTH: usize = 3;
+pub const DEFAULT_SANDBOX_MAX_OUTPUT_BYTES: usize = 1_048_576;
+pub const DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES: usize = 8 * 1_048_576;
+pub const SANDBOX_STDLIB_ALLOWLIST: &[&str] = &[
+    "builtins",
+    "sys",
+    "types",
+    "collections",
+    "collections.abc",
+    "math",
+    "math.integer",
+    "array",
+    "copy",
+    "io",
+    "operator",
+    "functools",
+    "itertools",
+    "json",
+];
+
 use crate::ast::{
     CallArg, CallKeyword, ComparisonOp, DictItem, Expr, FStringPart, FunctionParams, Pattern,
     Program, Stmt, Target, TemplateStringPart, TypeParam,
@@ -78,18 +99,33 @@ impl VirtualModule {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SandboxPolicy {
     allowed_stdlib_modules: Option<HashSet<String>>,
+    bytes_warning: i64,
+    max_instructions: Option<u64>,
+    max_call_depth: Option<usize>,
+    max_output_bytes: Option<usize>,
+    max_allocated_bytes: Option<usize>,
 }
 
 impl SandboxPolicy {
     pub fn allow_all_stdlib() -> Self {
         Self {
             allowed_stdlib_modules: None,
+            bytes_warning: 0,
+            max_instructions: Some(DEFAULT_SANDBOX_MAX_INSTRUCTIONS),
+            max_call_depth: Some(DEFAULT_SANDBOX_MAX_CALL_DEPTH),
+            max_output_bytes: Some(DEFAULT_SANDBOX_MAX_OUTPUT_BYTES),
+            max_allocated_bytes: Some(DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES),
         }
     }
 
     pub fn deny_stdlib() -> Self {
         Self {
             allowed_stdlib_modules: Some(HashSet::new()),
+            bytes_warning: 0,
+            max_instructions: Some(DEFAULT_SANDBOX_MAX_INSTRUCTIONS),
+            max_call_depth: Some(DEFAULT_SANDBOX_MAX_CALL_DEPTH),
+            max_output_bytes: Some(DEFAULT_SANDBOX_MAX_OUTPUT_BYTES),
+            max_allocated_bytes: Some(DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES),
         }
     }
 
@@ -110,7 +146,57 @@ impl SandboxPolicy {
         }
         Ok(Self {
             allowed_stdlib_modules: Some(allowed),
+            bytes_warning: 0,
+            max_instructions: Some(DEFAULT_SANDBOX_MAX_INSTRUCTIONS),
+            max_call_depth: Some(DEFAULT_SANDBOX_MAX_CALL_DEPTH),
+            max_output_bytes: Some(DEFAULT_SANDBOX_MAX_OUTPUT_BYTES),
+            max_allocated_bytes: Some(DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES),
         })
+    }
+
+    pub fn with_bytes_warning(mut self, level: i64) -> Self {
+        self.bytes_warning = level.clamp(0, 2);
+        self
+    }
+
+    pub fn with_max_instructions(mut self, limit: u64) -> Self {
+        self.max_instructions = Some(limit);
+        self
+    }
+
+    pub fn without_instruction_limit(mut self) -> Self {
+        self.max_instructions = None;
+        self
+    }
+
+    pub fn with_max_call_depth(mut self, limit: usize) -> Self {
+        self.max_call_depth = Some(limit);
+        self
+    }
+
+    pub fn without_call_depth_limit(mut self) -> Self {
+        self.max_call_depth = None;
+        self
+    }
+
+    pub fn with_max_output_bytes(mut self, limit: usize) -> Self {
+        self.max_output_bytes = Some(limit);
+        self
+    }
+
+    pub fn without_output_limit(mut self) -> Self {
+        self.max_output_bytes = None;
+        self
+    }
+
+    pub fn with_max_allocated_bytes(mut self, limit: usize) -> Self {
+        self.max_allocated_bytes = Some(limit);
+        self
+    }
+
+    pub fn without_allocation_limit(mut self) -> Self {
+        self.max_allocated_bytes = None;
+        self
     }
 }
 
@@ -180,12 +266,35 @@ pub fn run_source_with_virtual_modules_and_policy(
             )
         })
         .collect::<HashMap<_, _>>();
+    let runtime_options = runtime_options_for_sandbox_policy(&policy);
     let mut vm = Vm::new(instructions)
         .with_source_modules(Rc::new(module_sources))
+        .with_runtime_options(runtime_options)
         .with_stdlib_import_policy(vm_stdlib_import_policy(policy));
 
     vm.run()
         .map_err(|message| format!("runtime error: {message}"))
+}
+
+fn runtime_options_for_sandbox_policy(policy: &SandboxPolicy) -> RuntimeOptions {
+    let runtime_options = RuntimeOptions::default().with_bytes_warning(policy.bytes_warning);
+    let runtime_options = match policy.max_instructions {
+        Some(limit) => runtime_options.with_max_instructions(limit),
+        None => runtime_options,
+    };
+    let runtime_options = match policy.max_call_depth {
+        Some(limit) => runtime_options.with_max_call_depth(limit),
+        None => runtime_options,
+    };
+    let runtime_options = match policy.max_output_bytes {
+        Some(limit) => runtime_options.with_max_output_bytes(limit),
+        None => runtime_options,
+    };
+    let runtime_options = match policy.max_allocated_bytes {
+        Some(limit) => runtime_options.with_max_allocated_bytes(limit),
+        None => runtime_options,
+    };
+    runtime_options
 }
 
 pub fn run_source_with_sandbox_dir(
@@ -266,6 +375,48 @@ pub fn eval_source_with_runtime_options(
     vm.run_eval()
         .map(|value| value.to_string())
         .map_err(|message| format!("runtime error: {message}"))
+}
+
+pub fn eval_source_with_virtual_modules_and_policy(
+    source: &str,
+    modules: impl IntoIterator<Item = VirtualModule>,
+    policy: SandboxPolicy,
+) -> Result<String, String> {
+    reject_too_complex_source(source)?;
+    let tokens = lex_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
+    let expr = parse_eval(&tokens).map_err(|message| format!("parse error: {message}"))?;
+    let instructions =
+        compile_eval(&expr).map_err(|message| format!("compile error: {message}"))?;
+    let module_sources = modules
+        .into_iter()
+        .map(|module| {
+            (
+                module.name,
+                vm::SourceModule {
+                    source: module.source,
+                    is_package: module.is_package,
+                },
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let runtime_options = runtime_options_for_sandbox_policy(&policy);
+    let mut vm = Vm::new(instructions)
+        .with_source_modules(Rc::new(module_sources))
+        .with_runtime_options(runtime_options)
+        .with_stdlib_import_policy(vm_stdlib_import_policy(policy));
+
+    vm.run_eval()
+        .map(|value| value.to_string())
+        .map_err(|message| format!("runtime error: {message}"))
+}
+
+pub fn eval_source_with_sandbox_dir_and_policy(
+    source: &str,
+    root: impl AsRef<Path>,
+    policy: SandboxPolicy,
+) -> Result<String, String> {
+    let modules = virtual_modules_from_sandbox_dir(root)?;
+    eval_source_with_virtual_modules_and_policy(source, modules, policy)
 }
 
 pub fn parse_source(source: &str) -> Result<(), String> {

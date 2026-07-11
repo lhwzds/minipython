@@ -7,13 +7,21 @@ const CPYTHON_MIGRATION: &str = include_str!("cpython_migration.md");
 const CPYTHON_DIFF: &str = include_str!("cpython_diff.rs");
 const CPYTHON_SUBSET: &str = include_str!("cpython_subset.rs");
 const LANGUAGE_TESTS: &str = include_str!("language.rs");
+const SANDBOX_MVP: &str = include_str!("sandbox_mvp.md");
+const SANDBOX_RUNTIME_MVP: &str = include_str!("sandbox_runtime_mvp.md");
 const AGENTS: &str = include_str!("../AGENTS.md");
 const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
+const CARGO_TOML: &str = include_str!("../Cargo.toml");
 const PYTHON_VERSION_FILE: &str = include_str!("../.python-version");
 const GAP_SWEEP_TOOL: &str = include_str!("../tools/cpython_gap_sweep.py");
 const GAP_SWEEP_TESTS: &str = include_str!("../tools/test_cpython_gap_sweep.py");
 const GAP_SWEEP_RUNNER: &str = include_str!("../tools/run_cpython_gap_sweep.sh");
+const SANDBOX_MVP_RUNNER: &str = include_str!("../tools/run_sandbox_mvp_checks.sh");
+const SANDBOX_PROCESS_SOURCE: &str = include_str!("../src/sandbox.rs");
+const SANDBOX_PROCESS_TESTS: &str = include_str!("sandbox_process.rs");
+const SANDBOX_BOUNDARY_TESTS: &str = include_str!("sandbox_boundary.rs");
+const SANDBOX_TEST_STRATEGY: &str = include_str!("sandbox_test_strategy.md");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
 const GAP_SWEEP_MATH_INTEGER_CORPUS: &str = include_str!("gap_corpus/math_integer.toml");
@@ -42,6 +50,247 @@ const CPYTHON_TEST_TYPE_COMMENTS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_comments.py";
 const CPYTHON_TEST_TYPE_PARAMS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_params.py";
+
+#[test]
+fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
+    for required in [
+        "Syntax frontend",
+        "Core runtime",
+        "Safe stdlib allowlist",
+        "Import isolation",
+        "Host capability stop-line",
+        "Instruction budget",
+        "Call-depth guard",
+        "Heap/allocation guard",
+        "Captured-output guard",
+        "Batch CPython parity",
+        "Security regression suite",
+        "Support and stop-line docs",
+        "Until all required rows are `proven`",
+    ] {
+        assert!(
+            SANDBOX_MVP.contains(required),
+            "sandbox MVP checklist must retain `{required}`"
+        );
+    }
+    for line in SANDBOX_MVP.lines() {
+        if line.contains("| yes |") {
+            assert!(
+                line.contains("| `proven` |"),
+                "required sandbox MVP row is not proven: {line}"
+            );
+        }
+    }
+
+    for evidence in [
+        "instruction_budget_stops_infinite_top_level_loop",
+        "instruction_budget_is_shared_with_function_calls",
+        "instruction_budget_is_shared_with_generators_and_exec",
+        "sandbox_policy_instruction_budget_is_shared_with_imported_modules",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox MVP instruction-budget evidence `{evidence}` must exist"
+        );
+        assert!(
+            SANDBOX_MVP.contains("`instruction_budget_*`"),
+            "sandbox MVP checklist must cite the instruction-budget evidence family"
+        );
+    }
+
+    for evidence in [
+        "call_depth_guard_stops_recursive_functions_before_host_stack_overflow",
+        "sandbox_policy_call_depth_guard_applies_inside_imported_modules",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox MVP call-depth evidence `{evidence}` must exist"
+        );
+        assert!(
+            SANDBOX_MVP.contains("Call-depth guard | yes | `proven`"),
+            "sandbox MVP checklist must mark the tested call-depth guard proven"
+        );
+    }
+
+    for evidence in [
+        "output_budget_bounds_lines_and_partial_prints",
+        "sandbox_policy_output_budget_is_shared_with_imported_modules",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox MVP output-budget evidence `{evidence}` must exist"
+        );
+        assert!(
+            SANDBOX_MVP.contains("Captured-output guard | yes | `proven`"),
+            "sandbox MVP checklist must mark the tested output guard proven"
+        );
+    }
+
+    for evidence in [
+        "allocation_budget_bounds_core_value_materialization",
+        "allocation_budget_charges_incremental_container_growth",
+        "allocation_budget_charges_stdlib_iterator_and_cache_buffers",
+        "sandbox_policy_allocation_budget_is_shared_with_imported_modules",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox MVP allocation-budget evidence `{evidence}` must exist"
+        );
+    }
+    assert!(
+        LANGUAGE_TESTS.contains("fn sandbox_policy_blocks_dynamic_import_and_cache_injection("),
+        "sandbox MVP must retain dynamic import/cache policy evidence"
+    );
+    for required in [
+        "Heap/allocation guard | yes | `proven`",
+        "shared monotonic VM materialization budget",
+        "64 MiB single-allocation guard",
+        "single public `mnpy` entrypoint",
+        "compiler/AST containment",
+        "in-process APIs do not claim a complete host-memory boundary",
+    ] {
+        assert!(
+            SANDBOX_MVP.contains(required),
+            "sandbox MVP allocation boundary must retain `{required}`"
+        );
+    }
+    for evidence in [
+        "sandbox_process_runs_safe_source",
+        "sandbox_process_single_entrypoint_keeps_eval_and_check_isolated",
+        "sandbox_process_rejects_direct_worker_invocation",
+        "sandbox_process_blocks_modules_outside_the_allowlist",
+        "sandbox_process_rejects_oversized_source_before_execution",
+        "sandbox_process_contains_compiler_memory_pressure",
+    ] {
+        assert!(
+            SANDBOX_PROCESS_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox process evidence `{evidence}` must exist"
+        );
+    }
+    for evidence in [
+        "sandbox_boundary_enforces_each_vm_budget_through_process_entrypoint",
+        "sandbox_boundary_exposes_the_complete_required_stdlib_allowlist",
+        "sandbox_boundary_blocks_capabilities_and_compatibility_shims",
+        "sandbox_boundary_rechecks_policy_after_sys_modules_injection",
+        "sandbox_boundary_applies_policy_inside_root_modules",
+        "sandbox_boundary_loads_safe_modules_from_the_canonical_root",
+        "sandbox_boundary_rejects_root_symlink_escape",
+        "sandbox_boundary_applies_source_limits_to_command_and_file_inputs",
+        "sandbox_boundary_rejects_non_utf8_source_files",
+    ] {
+        assert!(
+            SANDBOX_BOUNDARY_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox boundary evidence `{evidence}` must exist"
+        );
+    }
+    for required in [
+        "Grammar inventory",
+        "Differential parity",
+        "In-process sandbox policy",
+        "Process containment",
+        "Adversarial boundary",
+        "every exposed resource control",
+        "every input channel",
+        "sys.modules",
+        "wall-clock timeout",
+    ] {
+        assert!(
+            SANDBOX_TEST_STRATEGY.contains(required),
+            "sandbox test strategy must retain `{required}`"
+        );
+    }
+    for required in [
+        "SANDBOX_STDLIB_ALLOWLIST",
+        "apply_process_memory_limit",
+        "process_memory_bytes",
+        "wait_for_worker",
+        "with_max_instructions",
+        "with_max_call_depth",
+        "with_max_output_bytes",
+        "with_max_allocated_bytes",
+    ] {
+        assert!(
+            SANDBOX_PROCESS_SOURCE.contains(required),
+            "sandbox process entrypoint must retain `{required}`"
+        );
+    }
+    assert!(
+        SANDBOX_MVP.contains("Security regression suite | yes | `proven`"),
+        "sandbox MVP checklist must mark the complete security suite proven"
+    );
+    assert!(
+        CARGO_TOML.contains("name = \"mnpy\"") && !CARGO_TOML.contains("mnpy-sandbox"),
+        "Cargo must expose exactly one sandbox-default mnpy CLI"
+    );
+    for forbidden in ["--trusted", "--unsafe", "--no-sandbox"] {
+        assert!(
+            !SANDBOX_PROCESS_SOURCE.contains(forbidden),
+            "the public mnpy CLI must not expose sandbox bypass `{forbidden}`"
+        );
+    }
+    for docs in [README, README_CN, SANDBOX_MVP, SANDBOX_RUNTIME_MVP] {
+        assert!(
+            !docs.contains("mnpy-sandbox"),
+            "public docs must not retain the removed mnpy-sandbox entrypoint"
+        );
+    }
+
+    for required in [
+        "MINIPYTHON_CPYTHON=\"$cpython\" cargo test",
+        "tools/test_cpython_gap_sweep.py",
+        "tools/run_cpython_gap_sweep.sh",
+        "cargo fmt --check",
+        "git diff --check",
+        "allocation_budget",
+        "cargo test --test sandbox_process",
+        "cargo test --test sandbox_boundary",
+        "--focused",
+    ] {
+        assert!(
+            SANDBOX_MVP_RUNNER.contains(required),
+            "sandbox MVP runner must retain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn sandbox_runtime_mvp_bounds_every_partial_coverage_row() {
+    let partial_rows = CPYTHON_COVERAGE
+        .lines()
+        .filter_map(|line| {
+            let cells = table_cells(line);
+            (cells.len() >= 3 && cells[1] == "partial")
+                .then(|| cells[0].trim_matches('`').to_string())
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        partial_rows.len(),
+        13,
+        "partial runtime coverage row count drifted; update the sandbox MVP boundary"
+    );
+    for row in partial_rows {
+        assert!(
+            SANDBOX_RUNTIME_MVP.contains(&format!("| `{row}` | `accepted_mvp` |")),
+            "partial coverage row `{row}` needs an explicit sandbox MVP disposition"
+        );
+    }
+
+    for required in [
+        "Required Runtime Surface",
+        "CPython Partial Group Disposition",
+        "test_builtin.py::BuiltinTest",
+        "test_builtin.py::TestType",
+        "test_memoryview.py",
+        "test_bytes.py::BaseBytesTest",
+        "complete language/runtime suite",
+        "host capability stop-line",
+    ] {
+        assert!(
+            SANDBOX_RUNTIME_MVP.contains(required),
+            "sandbox runtime MVP boundary must retain `{required}`"
+        );
+    }
+}
 
 #[test]
 fn user_class_new_staticmethod_docs_cover_core_runtime() {
@@ -915,7 +1164,7 @@ fn tuple_inherited_getattribute_direct_docs_cover_core_runtime() {
         "fn object_getattribute_bound_method(",
         "Value::Builtin(\"object.__getattribute__\".to_string())",
         "Value::Builtin(name) if name == \"object.__getattribute__\"",
-        "self.call_object_getattribute(args)",
+        "self.call_object_getattribute(args, keywords)",
         "if name == \"__getattribute__\"",
         "return Ok(object_getattribute_bound_method(instance));",
         "attribute_name_arg(name)?",
@@ -1574,10 +1823,10 @@ fn tuple_inherited_dir_direct_docs_cover_core_runtime() {
     for required in [
         "function_name == \"tuple\" && name == \"__dir__\"",
         "Ok(Value::Builtin(\"object.__dir__\".to_string()))",
-        "matches!(object, Value::Builtin(name) if name == \"tuple\")",
+        "matches!(name.as_str(), \"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\")",
         "Value::Builtin(name) if name == \"object.__dir__\"",
         "self.call_object_dir(args)",
-        "matches!(builtin.as_str(), \"object\" | \"tuple\")",
+        "matches!(builtin.as_str(), \"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\")",
         "object_dir_bound_method(object)",
         "\"object\" => matches!(method, \"__format__\" | \"__getstate__\")",
         "| \"__sizeof__\"",
@@ -1677,7 +1926,7 @@ fn tuple_inherited_init_direct_docs_cover_core_runtime() {
         "function_name == \"tuple\" && name == \"__init__\"",
         "Ok(Value::Builtin(\"object.__init__\".to_string()))",
         "Value::Builtin(name) if name == \"object.__init__\"",
-        "self.call_object_init(args)",
+        "self.call_object_init(args, keywords)",
         "\"object\" => matches!(",
         "| \"__init__\"",
     ] {
@@ -3092,7 +3341,7 @@ fn object_type_metadata_dir_surface_docs_cover_core_runtime() {
     }
 
     for required in [
-        "\"object\" | \"tuple\" | \"UserString\"",
+        "\"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\"",
         "fn remove_type_metadata_dir_names(",
         "\"bool\"\n            | \"bytearray\"\n            | \"bytes\"\n            | \"complex\"",
         "| \"dict\"\n            | \"float\"\n            | \"frozenset\"\n            | \"int\"\n            | \"list\"\n            | \"memoryview\"\n            | \"object\"\n            | \"range\"",
@@ -27477,7 +27726,7 @@ fn operator_sequence_concat_builtin_metadata_subset_has_focused_diff_evidence() 
         "\"operator.concat\" => \"Same as a + b, for a and b sequences.\"",
         "\"operator.iconcat\" => \"Same as a += b, for a and b sequences.\"",
         "| \"operator.concat\"",
-        "| \"operator.iconcat\" => Some(\"($module, a, b, /)\")",
+        "| \"operator.concat\" | \"operator.iconcat\" | \"operator.iadd\" | \"operator.isub\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -28444,7 +28693,7 @@ fn operator_arithmetic_bitwise_builtin_metadata_subset_has_focused_diff_evidence
         "| \"operator.inv\"",
         "| \"operator.add\"",
         "| \"operator.matmul\"",
-        "| \"operator.rshift\" => Some(\"($module, a, b, /)\")",
+        "| \"operator.or_\" | \"operator.xor\" | \"operator.lshift\" | \"operator.rshift\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -36970,8 +37219,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "\"object\" | \"tuple\" | \"UserString\"",
-        "matches!(name.as_str(), \"tuple\" | \"UserString\")",
+        "\"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\"",
+        "matches!(name.as_str(), \"function\" | \"object\" | \"tuple\" | \"str\" | \"UserString\")",
         "function_name == \"UserString\" && name == \"__dir__\"",
         "Ok(Value::Builtin(\"object.__dir__\".to_string()))",
         "Value::Builtin(name) if name == \"object.__dir__\"",
@@ -51787,7 +52036,7 @@ fn staticmethod_type_metadata_dir_surface_docs_cover_core_runtime() {
     }
 
     for required in [
-        "| \"slice\"\n            | \"staticmethod\"\n            | \"str\"",
+        "matches!(name, \"classmethod\" | \"staticmethod\")",
         "remove_type_metadata_dir_names(&mut names);",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
     ] {
@@ -59177,11 +59426,11 @@ fn enumerate_class_getitem_generic_alias_docs_cover_core_runtime() {
         "TypeError: {name}.__class_getitem__() takes exactly one argument",
         "Value::GenericAlias {",
         "generic_alias_args(item.clone())",
-        "\"enumerate\" => &[\"__class_getitem__\"]",
+        "\"enumerate\" => &[\"__class_getitem__\", \"__iter__\", \"__next__\", \"__reduce__\"]",
         "Value::Iterator(state) if matches!(&*state.borrow(), Value::EnumerateIterator { .. })",
         "Value::EnumerateIterator { .. } => names.extend(builtin_type_dir_names(\"enumerate\"))",
         "Value::EnumerateIterator { .. } if name == \"__class_getitem__\"",
-        "let (is_enumerate, has_length_hint, reduce_type_name)",
+        "let is_enumerate = matches!(&*iterator, Value::EnumerateIterator { .. });",
         "if name == \"__class_getitem__\" && is_enumerate",
         "\"enumerate\".to_string()",
         "function_name == \"enumerate\" && name == \"__class_getitem__\"",
@@ -59851,7 +60100,7 @@ fn filter_type_metadata_dir_surface_docs_cover_core_runtime() {
         "\"filter\" => vec![builtin_type_value(\"object\")]",
         "name == \"filter\"",
         "remove_type_metadata_dir_names(&mut names);",
-        "| \"filter\"\n            | \"property\"",
+        "} else if name == \"filter\" {",
         "Value::Builtin(name) => names.extend(builtin_type_dir_names(name))",
         "name == \"__base__\" && is_builtins_module_type_object_name(&function_name)",
         "name == \"__bases__\" && is_builtins_module_type_object_name(&function_name)",
@@ -65714,7 +65963,7 @@ fn base_exception_add_note_subset_has_focused_diff_evidence() {
         "fn set_exception_notes_value(",
         "fn delete_exception_notes_value(",
         "add_note() argument must be str, not {}",
-        "BaseException.add_note() takes exactly one argument",
+        "{owner}.add_note() takes exactly one argument",
         "Cannot add note: __notes__ is not a list",
     ] {
         assert!(
@@ -67310,7 +67559,7 @@ fn base_exception_bound_method_init_wrapper_subset_has_focused_diff_evidence() {
         "object.__init__",
         "Initialize self.  See help(type(self)) for accurate signature.",
         "\"($self, /, *args, **kwargs)\"",
-        "matches!(name, \"function.__hash__\" | \"method.__init__\")",
+        "function_method_wrapper_missing_module_name(name)",
         "| \"method.__init__\"",
     ] {
         assert!(
@@ -68593,7 +68842,7 @@ fn function_type_repr_wrapper_descriptor_metadata_subset_has_focused_diff_eviden
         "\"Return repr(self).\"",
         "\"($self, /)\"",
         "names.push(\"__repr__\".to_string())",
-        "\"function\" => matches!(method, \"__repr__\")",
+        "\"function\" => matches!(method, \"__call__\" | \"__get__\" | \"__repr__\")",
         "wrapper_descriptor_dir_names()",
     ] {
         assert!(
@@ -70117,7 +70366,7 @@ fn function_type_call_wrapper_descriptor_metadata_subset_has_focused_diff_eviden
         "function_name == \"function\" && name == \"__call__\"",
         "\"function.__call__\".to_string()",
         "names.push(\"__call__\".to_string())",
-        "\"function\" => matches!(method, \"__call__\" | \"__repr__\")",
+        "\"function\" => matches!(method, \"__call__\" | \"__get__\" | \"__repr__\")",
         "self.call_function_call(args, keywords)",
         "fn call_function_call(",
         "descriptor '__call__' of 'function' object needs an argument",
@@ -70392,7 +70641,7 @@ fn function_type_base_bases_metadata_subset_has_focused_diff_evidence() {
         "Value::Builtin(\"object\".to_string())",
         "tuple_value(vec![Value::Builtin(\"object\".to_string())])",
         r#"names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"))"#,
-        "\"__base__\" | \"__bases__\" => Err(format!(",
+        "| \"__base__\"\n        | \"__bases__\"",
         "AttributeError: 'function' object has no attribute '{name}'",
     ] {
         assert!(
@@ -70466,7 +70715,7 @@ fn function_type_mro_metadata_subset_has_focused_diff_evidence() {
     for required in [
         "function_name == \"function\" && name == \"__mro__\"",
         "class_mro(&Value::Builtin(function_name)).map(tuple_value)",
-        "\"__base__\" | \"__bases__\" | \"__mro__\" => Err(format!(",
+        "| \"__bases__\"\n        | \"__mro__\"",
         "AttributeError: 'function' object has no attribute '{name}'",
     ] {
         assert!(
@@ -70611,7 +70860,7 @@ fn function_type_text_signature_metadata_subset_has_focused_diff_evidence() {
         "function_name == \"function\" && name == \"__text_signature__\"",
         "(code, globals, name=None, argdefs=None, closure=None,\\n",
         "kwdefaults=None)",
-        "\"__base__\" | \"__bases__\" | \"__mro__\" | \"__parameters__\" | \"__text_signature__\" =>",
+        "| \"__parameters__\"\n        | \"__text_signature__\" => Err(format!(",
         "AttributeError: 'function' object has no attribute '{name}'",
     ] {
         assert!(
@@ -71357,7 +71606,7 @@ fn function_hash_wrapper_subset_has_focused_diff_evidence() {
         "self.hash_key_value(receiver)",
         "($self, /)",
         "function_method_wrapper_missing_module_name(name)",
-        "matches!(name, \"function.__hash__\")",
+        "\"function.__hash__\"\n            | \"method.__call__\"",
         "json_function_method_wrapper_missing_module_name(name)",
         "| \"function.__hash__\"",
     ] {
@@ -82569,7 +82818,7 @@ fn types_mappingproxy_instance_doc_attribute_subset_has_focused_diff_evidence() 
         "\"__doc__\" => Ok(Value::String(",
         "builtin_type_doc(\"mappingproxy\")",
         "expect(\"mappingproxy builtin type doc exists\")",
-        "names.extend(builtin_type_dir_names(\"mappingproxy\"))",
+        "let mut instance_names = builtin_type_dir_names(\"mappingproxy\");",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -84632,22 +84881,10 @@ fn enumerate_reversed_pickle_stays_subset_only_compatibility_evidence() {
         "test_enumerate.py::EnumerateTestCase::test_pickle",
         "TestEmpty/TestStart/TestLongStart inherited pickle coverage",
         "TestReversed::test_pickle",
-        "internal payload",
-        "binary pickle byte stream",
-        "def check_pickle(iterator, expected):",
-        "for proto in range(pickle.HIGHEST_PROTOCOL + 1):",
-        "payload = pickle.dumps(iterator, proto)",
-        "restored = pickle.loads(payload)",
-        "advanced = pickle.loads(pickle.dumps(restored, proto))",
-        "base = sys.maxsize + 1",
-        "check_pickle(enumerate('abc'), [(0, 'a'), (1, 'b'), (2, 'c')])",
-        "check_pickle(enumerate(''), [])",
-        "check_pickle(enumerate('abc', start=11), [(11, 'a'), (12, 'b'), (13, 'c')])",
-        "check_pickle(enumerate('abc', start=base), [(base, 'a'), (base + 1, 'b'), (base + 2, 'c')])",
-        "for data in ['abc', range(5), tuple(enumerate('abc')), range(1, 17, 5)]:",
-        "check_pickle(reversed(data), list(data)[::-1])",
-        "enumerate [6, 6] [6, 6] [6, 6] [6, 6]",
-        "reversed [[6, 6], [6, 6], [6, 6], [6, 6]]",
+        "compatibility-only round-trip",
+        "full protocol and repeated-consumption matrix",
+        "pickle.loads(pickle.dumps(enumerate('abc')))",
+        "compatibility-only [(0, 'a'), (1, 'b'), (2, 'c')]",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -84663,8 +84900,8 @@ fn enumerate_reversed_pickle_stays_subset_only_compatibility_evidence() {
     assert!(
         CPYTHON_COVERAGE.contains("cpython_enumerate_reversed_pickle_subset")
             && CPYTHON_COVERAGE.contains("test_enumerate.py")
-            && CPYTHON_COVERAGE.contains("resumed already-advanced iterator pickles")
-            && CPYTHON_COVERAGE.contains("ordinary plus large `start` values")
+            && CPYTHON_COVERAGE.contains("one default-start enumerate iterator")
+            && CPYTHON_COVERAGE.contains("wider protocol/reversed/advanced-iterator matrix")
             && CPYTHON_COVERAGE.contains("internal pickle payload"),
         "coverage notes must classify enumerate/reversed pickle as internal-payload subset evidence"
     );
@@ -84673,8 +84910,9 @@ fn enumerate_reversed_pickle_stays_subset_only_compatibility_evidence() {
             && CPYTHON_MIGRATION.contains("test_enumerate.py::EnumerateTestCase::test_pickle")
             && CPYTHON_MIGRATION.contains("TestReversed::test_pickle")
             && CPYTHON_MIGRATION.contains("same internal pickle payload API")
-            && CPYTHON_MIGRATION.contains("already-advanced iterator pickles")
-            && CPYTHON_MIGRATION.contains("sys.maxsize + 1")
+            && CPYTHON_MIGRATION.contains("one default-start enumerate round trip")
+            && CPYTHON_MIGRATION
+                .contains("repeated-consumption and reversed matrices remain excluded")
             && CPYTHON_MIGRATION.contains("CPython's binary pickle")
             && CPYTHON_MIGRATION.contains("byte-stream format")
             && CPYTHON_MIGRATION.contains("subset-only compatibility"),

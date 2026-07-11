@@ -48,6 +48,39 @@ mnpy -e "1 + 2 * 3"     # 求值表达式
 echo "print(1)" | mnpy  # 管道输入
 ```
 
+`mnpy` 是唯一公开入口，并且始终在 sandbox 中运行代码：
+
+```bash
+mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
+```
+
+`mnpy` 固定使用安全 stdlib allowlist，并同时限制源代码大小、指令数、调用深度、
+捕获输出、VM 分配和 worker 进程内存。它始终启动内部 worker，不提供关闭 sandbox
+的公开参数。macOS 上由父进程监控 worker 的 physical footprint，其他 Unix 平台
+使用内核进程限制。执行文件时，脚本目录默认作为 sandbox module root；`-c` 和
+stdin 默认不暴露宿主模块目录，除非显式传入 `--root`。库 API 仍可用于 focused
+runtime 和 parity 测试，但 in-process 调用不是运行不可信代码的正式安全边界。
+
+CLI 默认最多执行 1,000,000 条 VM 指令。可以用 `--max-steps N` 调整预算；
+库调用方可以使用 `RuntimeOptions::with_max_instructions`，虚拟模块和 sandbox
+目录模块的 `SandboxPolicy` 也使用相同的有限默认值。函数、generator、
+coroutine、动态执行和模块导入共享同一份预算，不能通过嵌套执行重置。
+嵌套 VM frame 默认也限制为 3 层，可以通过 `--max-depth N` 或
+`RuntimeOptions::with_max_call_depth` 调整。
+捕获输出默认限制为 1 MiB，嵌套执行共享同一份字节预算；可以通过
+`--max-output-bytes N` 或 `RuntimeOptions::with_max_output_bytes` 调整。
+核心 VM value materialization 默认共享一份单调递减的 8 MiB 预算，可以用
+`--max-allocated-bytes N` 或 `RuntimeOptions::with_max_allocated_bytes` 调整。
+它与现有 64 MiB 单次分配上限共同工作；`mnpy` 的子进程边界负责限制
+compiler 和其他不在 VM value accounting 内的宿主分配。
+
+整个 sandbox MVP 的完成状态以 `tests/sandbox_mvp.md` 为准；仅仅 gap corpus
+全绿不代表整个目标完成。
+核心 runtime 的准确停手线以及所有仍为 partial 的 CPython coverage row 处理
+方式记录在 `tests/sandbox_runtime_mvp.md`。
+开发 sandbox 控制时运行 `tools/run_sandbox_mvp_checks.sh --focused`，完整发布
+验收必须运行不带参数的 `tools/run_sandbox_mvp_checks.sh`。
+
 ## 测试
 
 ```bash

@@ -69,6 +69,45 @@ mnpy -e "1 + 2 * 3"     # evaluate an expression
 echo "print(1)" | mnpy  # pipe input
 ```
 
+`mnpy` is the single public entrypoint and always runs code in the sandbox:
+
+```bash
+mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
+```
+
+`mnpy` applies the fixed safe-stdlib allowlist, source-size, instruction,
+call-depth, captured-output, VM-allocation, and child-process memory limits. It
+always launches an internal worker; there is no public flag that disables the
+sandbox. On macOS the parent monitors the worker's physical footprint; on other
+Unix hosts it uses kernel process limits. File execution uses the script's
+directory as the default sandbox module root; `-c` and stdin expose no host
+module root unless `--root` is passed. Library APIs remain useful for focused
+runtime and parity tests, but in-process calls are not the supported untrusted-
+code boundary.
+
+CLI execution is bounded to 1,000,000 VM instructions by default. Use
+`--max-steps N` to select a smaller or larger budget. Library callers can use
+`RuntimeOptions::with_max_instructions`; `SandboxPolicy` also applies the same
+finite default to virtual and sandbox-directory modules. The budget is shared
+across functions, generators, coroutines, dynamic execution, and imports.
+Nested VM frames are also bounded to 3 by default; use `--max-depth N` or
+`RuntimeOptions::with_max_call_depth` to configure that guard.
+Captured output is bounded to 1 MiB by default and shares one byte budget across
+nested execution; use `--max-output-bytes N` or
+`RuntimeOptions::with_max_output_bytes` to configure it.
+Core VM value materialization has a shared monotonic 8 MiB default budget,
+configurable with `--max-allocated-bytes N` or
+`RuntimeOptions::with_max_allocated_bytes`. This complements the existing
+64 MiB single-allocation guard. The `mnpy` child-process boundary covers
+compiler and host allocations outside VM value accounting.
+
+The current whole-project sandbox completion state is tracked in
+`tests/sandbox_mvp.md`. A green parity corpus alone is not a completion signal.
+The exact core runtime stopping point, including the disposition of every
+CPython coverage row that remains partial, is in `tests/sandbox_runtime_mvp.md`.
+Run `tools/run_sandbox_mvp_checks.sh --focused` while developing sandbox
+controls and `tools/run_sandbox_mvp_checks.sh` for the complete release gate.
+
 ## Testing
 
 ```bash

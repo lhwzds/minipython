@@ -5123,10 +5123,9 @@ Completed in the differential parity harness pass:
   from CPython `test_enumerate.py::EnumerateTestCase::test_pickle`, inherited
   empty/start/long-start enumerate pickle coverage, and
   `TestReversed::test_pickle` over the same internal pickle payload API. The
-  slice covers type-preserving enumerate/reversed round trips, resumed
-  already-advanced iterator pickles, empty enumerate, and ordinary plus
-  `sys.maxsize + 1` start values without claiming CPython's binary pickle
-  byte-stream format.
+  sandbox-MVP slice intentionally keeps only one default-start enumerate round trip;
+  the full protocol, large-start, repeated-consumption and reversed matrices remain excluded.
+  It does not claim CPython's binary pickle byte-stream format.
 - Added `cpython_operator_length_hint_subset`, migrating the public behavior
   from CPython `test_operator.py::OperatorTestCase::test_length_hint` and
   `test_enumerate.py::TestReversed::test_len`. MiniPython now exposes the
@@ -5213,8 +5212,9 @@ Completed in the differential parity harness pass:
   VM's in-place special-method path, ordinary numeric operands fall back to the
   corresponding binary operation, list operands preserve in-place identity for
   `iadd`/`iconcat`, and `iconcat` rejects non-concat operands without claiming
-  the full CPython operator edge-case surface. Direct CPython diff evidence is
-  in `cpython_operator_inplace_helper_diff_subset`.
+  the full CPython operator edge-case surface or CPython's dunder-alias or signature metadata.
+  Direct CPython diff evidence is in
+  `cpython_operator_inplace_helper_diff_subset`.
 - Added `cpython_operator_inplace_builtin_metadata_subset`, backed by
   `cpython_operator_inplace_builtin_metadata_diff_subset`, migrating in-place
   arithmetic and bitwise `_operator` builtin metadata exposed through
@@ -13552,9 +13552,9 @@ Completed in the container constructor/reversed pass:
   reverse-iterator coverage. The subset now also covers CPython's
   `__reversed__ = None` blocking over objects that would otherwise have
   sequence-protocol fallback plus exact `reversed` arity `TypeError` text.
-  `cpython_enumerate_reversed_pickle_subset` adds the adjacent
-  enumerate/reversed iterator pickle round-trip surface over
-  MiniPython's internal pickle payload API, and
+  `cpython_enumerate_reversed_pickle_subset` adds one adjacent enumerate
+  iterator round trip over MiniPython's internal pickle payload API, while the
+  reversed and repeated-consumption matrices remain compatibility-only, and
   `cpython_operator_length_hint_subset` adds the adjacent `operator.length_hint`
   and reversed length-hint behavior from `TestReversed::test_len`.
 - Covered list/tuple/set constructors over builtins, strings, generator

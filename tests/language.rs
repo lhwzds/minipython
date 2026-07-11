@@ -1,6 +1,7 @@
 use minipython::{
-    SandboxPolicy, VirtualModule, eval_source, parse_func_type_source, run_interactive_source,
-    run_source, run_source_with_sandbox_dir, run_source_with_sandbox_dir_and_policy,
+    RuntimeOptions, SANDBOX_STDLIB_ALLOWLIST, SandboxPolicy, VirtualModule, eval_source,
+    parse_func_type_source, run_interactive_source, run_source, run_source_with_runtime_options,
+    run_source_with_sandbox_dir, run_source_with_sandbox_dir_and_policy,
     run_source_with_virtual_modules, run_source_with_virtual_modules_and_policy,
 };
 use std::{
@@ -25,6 +26,11 @@ const REQUIRED_SANDBOX_STDLIB_MODULES: &[&str] = &[
     "itertools",
     "json",
 ];
+
+#[test]
+fn sandbox_runtime_allowlist_matches_the_process_entrypoint() {
+    assert_eq!(REQUIRED_SANDBOX_STDLIB_MODULES, SANDBOX_STDLIB_ALLOWLIST);
+}
 
 const COMPATIBILITY_STDLIB_MODULES: &[&str] = &[
     "_types",
@@ -107,6 +113,188 @@ fn output_lines(lines: &[&str]) -> Vec<String> {
 #[test]
 fn prints_number() {
     assert_eq!(run_source("print(123)"), Ok(vec!["123".to_string()]));
+}
+
+#[test]
+fn instruction_budget_stops_infinite_top_level_loop() {
+    assert_eq!(
+        run_source_with_runtime_options(
+            "while True:\n    pass",
+            RuntimeOptions::default().with_max_instructions(100),
+        ),
+        Err("runtime error: sandbox error: instruction limit exceeded".to_string())
+    );
+}
+
+#[test]
+fn instruction_budget_is_shared_with_function_calls() {
+    let source = "def spin():\n    while True:\n        pass\nspin()";
+    assert_eq!(
+        run_source_with_runtime_options(
+            source,
+            RuntimeOptions::default().with_max_instructions(100),
+        ),
+        Err("runtime error: sandbox error: instruction limit exceeded".to_string())
+    );
+}
+
+#[test]
+fn instruction_budget_is_shared_with_generators_and_exec() {
+    for source in [
+        "def values():\n    while True:\n        yield 1\nfor value in values():\n    pass",
+        "exec('while True:\\n    pass')",
+    ] {
+        assert_eq!(
+            run_source_with_runtime_options(
+                source,
+                RuntimeOptions::default().with_max_instructions(100),
+            ),
+            Err("runtime error: sandbox error: instruction limit exceeded".to_string())
+        );
+    }
+}
+
+#[test]
+fn sandbox_policy_instruction_budget_is_shared_with_imported_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import worker",
+            [VirtualModule::module("worker", "while True:\n    pass")],
+            SandboxPolicy::deny_stdlib().with_max_instructions(100),
+        ),
+        Err("runtime error: sandbox error: instruction limit exceeded".to_string())
+    );
+}
+
+#[test]
+fn call_depth_guard_stops_recursive_functions_before_host_stack_overflow() {
+    let source = "def recurse():\n    recurse()\nrecurse()";
+    assert_eq!(
+        run_source_with_runtime_options(source, RuntimeOptions::default().with_max_call_depth(3),),
+        Err("runtime error: sandbox error: maximum call depth exceeded".to_string())
+    );
+}
+
+#[test]
+fn sandbox_policy_call_depth_guard_applies_inside_imported_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import worker",
+            [VirtualModule::module(
+                "worker",
+                "def recurse():\n    recurse()\nrecurse()",
+            )],
+            SandboxPolicy::deny_stdlib()
+                .with_max_instructions(10_000)
+                .with_max_call_depth(3),
+        ),
+        Err("runtime error: sandbox error: maximum call depth exceeded".to_string())
+    );
+}
+
+#[test]
+fn output_budget_bounds_lines_and_partial_prints() {
+    for source in [
+        "print('x' * 64)",
+        "for value in range(20):\n    print('abcd', end='')",
+        "exec(\"print('y' * 64)\")",
+    ] {
+        assert_eq!(
+            run_source_with_runtime_options(
+                source,
+                RuntimeOptions::default().with_max_output_bytes(32),
+            ),
+            Err("runtime error: sandbox error: output limit exceeded".to_string())
+        );
+    }
+}
+
+#[test]
+fn sandbox_policy_output_budget_is_shared_with_imported_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import worker",
+            [VirtualModule::module("worker", "print('z' * 64)")],
+            SandboxPolicy::deny_stdlib().with_max_output_bytes(32),
+        ),
+        Err("runtime error: sandbox error: output limit exceeded".to_string())
+    );
+}
+
+#[test]
+fn allocation_budget_bounds_core_value_materialization() {
+    for source in [
+        "payload = 'x' * 1024",
+        "payload = [0] * 1024",
+        "payload = bytes(1024)",
+        "payload = bytearray(1024)",
+        "import json\npayload = json.loads('{\"a\": [1, 2, 3, 4]}')",
+        "def build():\n    return 'x' * 1024\npayload = build()",
+        "exec(\"payload = 'x' * 1024\")",
+    ] {
+        assert_eq!(
+            run_source_with_runtime_options(
+                source,
+                RuntimeOptions::default().with_max_allocated_bytes(256),
+            ),
+            Err("runtime error: sandbox error: allocation limit exceeded".to_string()),
+            "source should exhaust the allocation budget: {source}"
+        );
+    }
+}
+
+#[test]
+fn allocation_budget_charges_incremental_container_growth() {
+    for source in [
+        "values = []\nfor value in range(100):\n    values.append(value)",
+        "data = bytearray()\nfor value in range(1000):\n    data.append(0)",
+        "import array\ndata = array.array('B')\nfor value in range(1000):\n    data.append(0)",
+        "import io\nbuffer = io.BytesIO()\nfor value in range(1000):\n    buffer.write(b'x')",
+    ] {
+        assert_eq!(
+            run_source_with_runtime_options(
+                source,
+                RuntimeOptions::default()
+                    .with_max_instructions(20_000)
+                    .with_max_allocated_bytes(256),
+            ),
+            Err("runtime error: sandbox error: allocation limit exceeded".to_string()),
+            "incremental mutation should exhaust the allocation budget: {source}"
+        );
+    }
+}
+
+#[test]
+fn sandbox_policy_allocation_budget_is_shared_with_imported_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import worker",
+            [VirtualModule::module("worker", "payload = 'z' * 1024")],
+            SandboxPolicy::deny_stdlib().with_max_allocated_bytes(256),
+        ),
+        Err("runtime error: sandbox error: allocation limit exceeded".to_string())
+    );
+}
+
+#[test]
+fn allocation_budget_charges_stdlib_iterator_and_cache_buffers() {
+    for source in [
+        "import itertools\nfirst, second = itertools.tee(range(1000))\nfor value in first:\n    pass",
+        "import itertools\nvalues = itertools.cycle(range(1000))\nfor index in range(1000):\n    next(values)",
+        "import itertools\nvalues = itertools.product(range(100), range(100))",
+        "import functools\n@functools.cache\ndef identity(value):\n    return value\nfor value in range(100):\n    identity(value)",
+    ] {
+        assert_eq!(
+            run_source_with_runtime_options(
+                source,
+                RuntimeOptions::default()
+                    .with_max_instructions(30_000)
+                    .with_max_allocated_bytes(512),
+            ),
+            Err("runtime error: sandbox error: allocation limit exceeded".to_string()),
+            "stdlib buffering should exhaust the allocation budget: {source}"
+        );
+    }
 }
 
 #[test]
@@ -1295,7 +1483,7 @@ fn functools_sandbox_subset_keeps_export_surface_explicit() {
             "_make_key False",
             "_unwrap_partial False",
             "str True functools.py - Tools for working with functions and callable objects",
-            "['Placeholder', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', '__all__', '__doc__', '__name__', '__package__', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']",
+            "['GenericAlias', 'MappingProxyType', 'Placeholder', 'WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', '__all__', '__doc__', '__name__', '__package__', 'cache', 'cached_property', 'cmp_to_key', 'get_cache_token', 'itemgetter', 'lru_cache', 'namedtuple', 'partial', 'partialmethod', 'recursive_repr', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']",
         ]))
     );
 }
@@ -1432,13 +1620,13 @@ fn operator_sandbox_subset_keeps_export_surface_explicit() {
             "_operator False",
             "['abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']",
             "['__abs__', '__add__', '__all__', '__and__', '__call__', '__concat__', '__contains__', '__delitem__', '__doc__', '__eq__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__iadd__', '__iand__', '__iconcat__', '__ifloordiv__', '__ilshift__', '__imatmul__', '__imod__', '__imul__', '__index__', '__inv__', '__invert__', '__ior__', '__ipow__', '__irshift__', '__isub__', '__itruediv__', '__ixor__', '__le__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__name__', '__ne__', '__neg__', '__not__', '__or__', '__package__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']",
-            "add add add operator",
-            "not_ not_ not_ operator",
-            "iconcat iconcat iconcat operator",
+            "add add add _operator",
+            "not_ not_ not_ _operator",
+            "iconcat iconcat iconcat _operator",
             "attrgetter attrgetter attrgetter operator",
             "itemgetter itemgetter itemgetter operator",
             "methodcaller methodcaller methodcaller operator",
-            "length_hint length_hint length_hint operator",
+            "length_hint length_hint length_hint _operator",
             "attrgetter False False operator",
             "itemgetter False False operator",
             "methodcaller False False operator",
@@ -1993,6 +2181,35 @@ fn sandbox_policy_checks_sys_modules_cache() {
         ),
         Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
     );
+}
+
+#[test]
+fn sandbox_policy_blocks_dynamic_import_and_cache_injection() {
+    let sandbox = TestSandboxDir::new("dynamic-import-policy");
+    let policy = SandboxPolicy::allow_stdlib_modules(["sys"]).unwrap();
+
+    for (source, module) in [
+        (
+            "import sys\nsys.modules['socket'] = 'fake'\n__import__('socket')",
+            "socket",
+        ),
+        (
+            "import sys\nsys.modules['math'] = 'fake'\nfrom math import sqrt",
+            "math",
+        ),
+        (
+            "import sys\nsys.modules['collections.abc'] = 'fake'\n__import__('collections.abc', fromlist=['Iterable'])",
+            "collections.abc",
+        ),
+    ] {
+        assert_eq!(
+            run_source_with_sandbox_dir_and_policy(source, sandbox.path(), policy.clone()),
+            Err(format!(
+                "runtime error: ModuleNotFoundError: No module named '{module}'"
+            )),
+            "dynamic import must not bypass policy for {module}"
+        );
+    }
 }
 
 #[test]
@@ -4677,7 +4894,10 @@ fn rejects_invalid_sorted_builtin_calls() {
     assert!(run_source("sorted(iterable=[])").is_err());
     assert!(run_source("sorted([], None)").is_err());
     assert!(run_source("sorted([1], bad=2)").is_err());
-    assert!(run_source("sorted([1], reverse=[])").is_err());
+    assert_eq!(
+        run_source("print(sorted([1], reverse=[]))"),
+        Ok(vec!["[1]".to_string()])
+    );
     assert!(run_source("sorted([1, 'a'])").is_err());
 }
 
@@ -4726,7 +4946,10 @@ fn rejects_invalid_list_reverse_and_sort_calls() {
     assert!(run_source("u = [1, 0]\nu.sort(42)").is_err());
     assert!(run_source("u = [1, 0]\nu.sort([], [])").is_err());
     assert!(run_source("u = [1, 0]\nu.sort(bad=2)").is_err());
-    assert!(run_source("u = [1, 0]\nu.sort(reverse=[])").is_err());
+    assert_eq!(
+        run_source("u = [1, 0]\nu.sort(reverse=[])\nprint(u)"),
+        Ok(vec!["[0, 1]".to_string()])
+    );
     assert!(run_source("u = [1, 'a']\nu.sort()").is_err());
 }
 
@@ -5333,7 +5556,7 @@ fn reports_unknown_name() {
 fn reports_non_callable_value() {
     assert_eq!(
         run_source("1(2)"),
-        Err("runtime error: TypeError: 1 is not callable".to_string())
+        Err("runtime error: TypeError: 'int' object is not callable".to_string())
     );
 }
 
@@ -5793,7 +6016,7 @@ fn runs_continue_inside_for_loop() {
 fn reports_non_iterable_for_source() {
     assert_eq!(
         run_source("for x in 1:\n    print(x)"),
-        Err("runtime error: TypeError: 1 is not iterable".to_string())
+        Err("runtime error: TypeError: 'int' object is not iterable".to_string())
     );
 }
 
@@ -5821,7 +6044,10 @@ fn reports_subscript_errors() {
     );
     assert_eq!(
         run_source("print([1][\"0\"])"),
-        Err("runtime error: TypeError: list indices must be integers, got 0".to_string())
+        Err(
+            "runtime error: TypeError: list indices must be integers or slices, not str"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source("print([1][::0])"),
@@ -5964,7 +6190,7 @@ for expr in [
             "call stack is not deep enough",
             "call stack is not deep enough",
             "'str' object cannot be interpreted as an integer",
-            "_getframe() does not accept keyword arguments",
+            "sys._getframe() takes no keyword arguments",
             "_getframe() expected at most 1 argument, got 2",
         ]))
     );
@@ -6207,15 +6433,15 @@ fn reports_positional_only_argument_errors() {
 fn rejects_invalid_star_parameter_forms() {
     assert_eq!(
         run_source("def f(*):\n    pass"),
-        Err("parse error: named parameters must follow bare *".to_string())
+        Err("parse error: named arguments must follow bare *".to_string())
     );
     assert_eq!(
         run_source("def f(**kwargs, a):\n    pass"),
-        Err("parse error: parameters cannot follow var-keyword parameter".to_string())
+        Err("parse error: arguments cannot follow var-keyword argument".to_string())
     );
     assert_eq!(
         run_source("def f(*, **kwargs):\n    pass"),
-        Err("parse error: named parameters must follow bare *".to_string())
+        Err("parse error: named arguments must follow bare *".to_string())
     );
 }
 
@@ -6223,7 +6449,7 @@ fn rejects_invalid_star_parameter_forms() {
 fn rejects_invalid_positional_only_parameter_forms() {
     assert_eq!(
         run_source("def f(/):\n    pass"),
-        Err("parse error: at least one parameter must precede /".to_string())
+        Err("parse error: at least one argument must precede /".to_string())
     );
     assert_eq!(
         run_source("def f(a, /, b, /):\n    pass"),
@@ -6600,7 +6826,10 @@ fn reports_attribute_errors() {
     );
     assert_eq!(
         run_source("x = 1\nx.value = 2"),
-        Err("runtime error: AttributeError: cannot set attribute 'value' on 1".to_string())
+        Err(
+            "runtime error: AttributeError: 'int' object has no attribute 'value' and no __dict__ for setting new attributes"
+                .to_string()
+        )
     );
 }
 

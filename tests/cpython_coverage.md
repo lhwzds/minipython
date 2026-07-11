@@ -6347,9 +6347,9 @@ without adding general custom encoder/decoder class support.
   complex signed-zero preservation, while classifying CPython's compensated
   `sum_accuracy` algorithm test as implementation-internal.
 - `RUNTIME_BUILTINS` also includes `cpython_enumerate_reversed_pickle_subset`,
-  covering CPython `test_enumerate.py` enumerate and reversed iterator pickle
-  round trips, resumed already-advanced iterator pickles, empty enumerate, and
-  ordinary plus large `start` values over MiniPython's internal pickle payload.
+  covering one default-start enumerate iterator round trip over MiniPython's
+  internal pickle payload. The wider protocol/reversed/advanced-iterator matrix
+  remains compatibility-only and outside the sandbox MVP.
 - The bundled `operator` module includes
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_operator_index_normalization_diff_subset`, and

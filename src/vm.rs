@@ -287,6 +287,10 @@ pub struct Vm {
     source_modules: SourceModuleTable,
     stdlib_import_policy: StdlibImportPolicy,
     runtime_options: RuntimeOptions,
+    instruction_budget: Rc<Cell<Option<u64>>>,
+    output_budget: Rc<Cell<Option<usize>>>,
+    allocation_budget: Rc<RefCell<AllocationBudgetState>>,
+    pending_resource_error: Option<String>,
     frame_stack: FrameStack,
     frame_line_spans: Vec<CodeLineSpan>,
 }
@@ -294,6 +298,10 @@ pub struct Vm {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RuntimeOptions {
     pub bytes_warning: i64,
+    pub max_instructions: Option<u64>,
+    pub max_call_depth: Option<usize>,
+    pub max_output_bytes: Option<usize>,
+    pub max_allocated_bytes: Option<usize>,
 }
 
 impl RuntimeOptions {
@@ -301,6 +309,325 @@ impl RuntimeOptions {
         self.bytes_warning = level.clamp(0, 2);
         self
     }
+
+    pub fn with_max_instructions(mut self, limit: u64) -> Self {
+        self.max_instructions = Some(limit);
+        self
+    }
+
+    pub fn without_instruction_limit(mut self) -> Self {
+        self.max_instructions = None;
+        self
+    }
+
+    pub fn with_max_call_depth(mut self, limit: usize) -> Self {
+        self.max_call_depth = Some(limit);
+        self
+    }
+
+    pub fn without_call_depth_limit(mut self) -> Self {
+        self.max_call_depth = None;
+        self
+    }
+
+    pub fn with_max_output_bytes(mut self, limit: usize) -> Self {
+        self.max_output_bytes = Some(limit);
+        self
+    }
+
+    pub fn without_output_limit(mut self) -> Self {
+        self.max_output_bytes = None;
+        self
+    }
+
+    pub fn with_max_allocated_bytes(mut self, limit: usize) -> Self {
+        self.max_allocated_bytes = Some(limit);
+        self
+    }
+
+    pub fn without_allocation_limit(mut self) -> Self {
+        self.max_allocated_bytes = None;
+        self
+    }
+}
+
+#[derive(Debug, Default)]
+struct AllocationBudgetState {
+    remaining: Option<usize>,
+    seen_allocations: HashSet<(usize, u8)>,
+}
+
+fn mark_allocation<T>(value: &Rc<T>, tag: u8, seen: &mut HashSet<(usize, u8)>) -> bool {
+    seen.insert((Rc::as_ptr(value) as usize, tag))
+}
+
+fn estimated_dict_allocation(entries: &DictRef, seen: &mut HashSet<(usize, u8)>) -> usize {
+    if !mark_allocation(entries, 8, seen) {
+        return 0;
+    }
+    let Ok(entries) = entries.try_borrow() else {
+        return std::mem::size_of::<Value>() * 2;
+    };
+    entries
+        .len()
+        .saturating_mul(std::mem::size_of::<Value>() * 2)
+        .saturating_add(entries.iter().fold(0usize, |total, (key, value)| {
+            total
+                .saturating_add(estimated_value_allocation(key, seen))
+                .saturating_add(estimated_value_allocation(value, seen))
+        }))
+}
+
+fn estimated_bytearray_allocation(bytes: &ByteArrayRef, seen: &mut HashSet<(usize, u8)>) -> usize {
+    if !mark_allocation(bytes, 3, seen) {
+        return 0;
+    }
+    bytes.try_borrow().map_or(1, |bytes| bytes.len())
+}
+
+fn estimated_list_allocation(items: &ListRef, seen: &mut HashSet<(usize, u8)>) -> usize {
+    if !mark_allocation(items, 4, seen) {
+        return 0;
+    }
+    let Ok(items) = items.try_borrow() else {
+        return std::mem::size_of::<Value>();
+    };
+    items
+        .len()
+        .saturating_mul(std::mem::size_of::<Value>())
+        .saturating_add(items.iter().fold(0usize, |total, value| {
+            total.saturating_add(estimated_value_allocation(value, seen))
+        }))
+}
+
+fn estimated_value_allocation(value: &Value, seen: &mut HashSet<(usize, u8)>) -> usize {
+    match value {
+        Value::BigInt(value) => (value.bits() as usize).div_ceil(8),
+        Value::String(value) | Value::IdentityString { value, .. } => value.len(),
+        Value::Bytes(bytes) => {
+            if mark_allocation(bytes, 2, seen) {
+                bytes.len()
+            } else {
+                0
+            }
+        }
+        Value::ByteArray(bytes) => estimated_bytearray_allocation(bytes, seen),
+        Value::MemoryView(view) => {
+            if !mark_allocation(view, 10, seen) {
+                return 0;
+            }
+            view.try_borrow().map_or(1, |view| {
+                view.format
+                    .len()
+                    .saturating_add(estimated_bytearray_allocation(&view.bytes, seen))
+            })
+        }
+        Value::BytesIO(state) => {
+            if !mark_allocation(state, 11, seen) {
+                return 0;
+            }
+            state.try_borrow().map_or(1, |state| {
+                estimated_bytearray_allocation(&state.buffer, seen)
+                    .saturating_add(estimated_scope_allocation(&state.attrs, seen))
+            })
+        }
+        Value::List(items) | Value::Deque { data: items, .. } => {
+            estimated_list_allocation(items, seen)
+        }
+        Value::Tuple(items) => {
+            if !mark_allocation(items, 5, seen) {
+                return 0;
+            }
+            items
+                .len()
+                .saturating_mul(std::mem::size_of::<Value>())
+                .saturating_add(items.iter().fold(0usize, |total, value| {
+                    total.saturating_add(estimated_value_allocation(value, seen))
+                }))
+        }
+        Value::Set(items) => {
+            if !mark_allocation(items, 6, seen) {
+                return 0;
+            }
+            let Ok(items) = items.try_borrow() else {
+                return std::mem::size_of::<Value>();
+            };
+            items
+                .len()
+                .saturating_mul(std::mem::size_of::<Value>())
+                .saturating_add(items.iter().fold(0usize, |total, value| {
+                    total.saturating_add(estimated_value_allocation(value, seen))
+                }))
+        }
+        Value::FrozenSet(items) => {
+            if !mark_allocation(items, 7, seen) {
+                return 0;
+            }
+            items
+                .len()
+                .saturating_mul(std::mem::size_of::<Value>())
+                .saturating_add(items.iter().fold(0usize, |total, value| {
+                    total.saturating_add(estimated_value_allocation(value, seen))
+                }))
+        }
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::Counter { entries }
+        | Value::UserDict { data: entries, .. }
+        | Value::SimpleNamespace { fields: entries }
+        | Value::Frame { fields: entries } => estimated_dict_allocation(entries, seen),
+        Value::DefaultDict { entries, .. } => estimated_dict_allocation(entries, seen),
+        Value::ScopeDict(scope) => estimated_scope_allocation(scope, seen),
+        Value::UserList { data, attrs } => estimated_list_allocation(data, seen)
+            .saturating_add(estimated_dict_allocation(attrs, seen)),
+        Value::UserString { data, attrs } => {
+            let text = if mark_allocation(data, 12, seen) {
+                data.try_borrow().map_or(1, |value| value.len())
+            } else {
+                0
+            };
+            text.saturating_add(estimated_dict_allocation(attrs, seen))
+        }
+        Value::ChainMap { maps } => maps
+            .len()
+            .saturating_mul(std::mem::size_of::<Value>())
+            .saturating_add(maps.iter().fold(0usize, |total, value| {
+                total.saturating_add(estimated_value_allocation(value, seen))
+            })),
+        Value::NamedTuple { values, .. } => {
+            if !mark_allocation(values, 13, seen) {
+                return 0;
+            }
+            values
+                .len()
+                .saturating_mul(std::mem::size_of::<Value>())
+                .saturating_add(values.iter().fold(0usize, |total, value| {
+                    total.saturating_add(estimated_value_allocation(value, seen))
+                }))
+        }
+        Value::Instance {
+            class_name,
+            fields,
+            class_attrs,
+            class_bases,
+        } => class_name
+            .len()
+            .saturating_add(estimated_scope_allocation(fields, seen))
+            .saturating_add(estimated_scope_allocation(class_attrs, seen))
+            .saturating_add(
+                class_bases
+                    .len()
+                    .saturating_mul(std::mem::size_of::<Value>()),
+            )
+            .saturating_add(class_bases.iter().fold(0usize, |total, value| {
+                total.saturating_add(estimated_value_allocation(value, seen))
+            })),
+        Value::Class {
+            name,
+            type_params,
+            bases,
+            attrs,
+            ..
+        } => name
+            .len()
+            .saturating_add(estimated_scope_allocation(attrs, seen))
+            .saturating_add(
+                type_params
+                    .len()
+                    .saturating_add(bases.len())
+                    .saturating_mul(std::mem::size_of::<Value>()),
+            ),
+        Value::GenericAlias { origin, args, .. } => estimated_value_allocation(origin, seen)
+            .saturating_add(args.len().saturating_mul(std::mem::size_of::<Value>()))
+            .saturating_add(args.iter().fold(0usize, |total, value| {
+                total.saturating_add(estimated_value_allocation(value, seen))
+            })),
+        Value::Template {
+            strings,
+            interpolations,
+        } => strings
+            .iter()
+            .fold(0usize, |total, value| total.saturating_add(value.len()))
+            .saturating_add(
+                interpolations
+                    .len()
+                    .saturating_mul(std::mem::size_of::<TemplateInterpolation>()),
+            ),
+        Value::Iterator(state) => {
+            if !mark_allocation(state, 14, seen) {
+                return 0;
+            }
+            state
+                .try_borrow()
+                .map_or(std::mem::size_of::<Value>(), |state| {
+                    estimated_value_allocation(&state, seen)
+                })
+        }
+        Value::ItertoolsCycle {
+            iterator, saved, ..
+        } => estimated_value_allocation(iterator, seen)
+            .saturating_add(saved.len().saturating_mul(std::mem::size_of::<Value>()))
+            .saturating_add(saved.iter().fold(0usize, |total, value| {
+                total.saturating_add(estimated_value_allocation(value, seen))
+            })),
+        Value::ItertoolsProduct { pools, indices, .. } => pools.iter().fold(
+            indices.len().saturating_mul(std::mem::size_of::<usize>()),
+            |total, pool| {
+                total.saturating_add(pool.len().saturating_mul(std::mem::size_of::<Value>()))
+            },
+        ),
+        Value::ItertoolsCombinations { pool, indices, .. }
+        | Value::ItertoolsCombinationsWithReplacement { pool, indices, .. } => pool
+            .len()
+            .saturating_mul(std::mem::size_of::<Value>())
+            .saturating_add(indices.len().saturating_mul(std::mem::size_of::<usize>())),
+        Value::ItertoolsPermutations {
+            pool,
+            indices,
+            cycles,
+            ..
+        } => pool
+            .len()
+            .saturating_mul(std::mem::size_of::<Value>())
+            .saturating_add(
+                indices
+                    .len()
+                    .saturating_add(cycles.len())
+                    .saturating_mul(std::mem::size_of::<usize>()),
+            ),
+        Value::ItertoolsTee { state, .. } => {
+            if !mark_allocation(state, 15, seen) {
+                return 0;
+            }
+            state
+                .try_borrow()
+                .map_or(std::mem::size_of::<Value>(), |state| {
+                    state
+                        .buffer
+                        .len()
+                        .saturating_mul(std::mem::size_of::<Value>())
+                        .saturating_add(estimated_value_allocation(&state.iterator, seen))
+                })
+        }
+        _ => 0,
+    }
+}
+
+fn estimated_scope_allocation(scope: &Scope, seen: &mut HashSet<(usize, u8)>) -> usize {
+    if !mark_allocation(scope, 9, seen) {
+        return 0;
+    }
+    let Ok(scope) = scope.try_borrow() else {
+        return std::mem::size_of::<Value>();
+    };
+    scope
+        .len()
+        .saturating_mul(std::mem::size_of::<Value>())
+        .saturating_add(scope.iter().fold(0usize, |total, (name, value)| {
+            total
+                .saturating_add(name.len())
+                .saturating_add(estimated_value_allocation(value, seen))
+        }))
 }
 
 #[derive(Debug, Default)]
@@ -4975,6 +5302,10 @@ impl Vm {
             source_modules: Rc::new(HashMap::new()),
             stdlib_import_policy: StdlibImportPolicy::allow_all(),
             runtime_options: RuntimeOptions::default(),
+            instruction_budget: Rc::new(Cell::new(None)),
+            output_budget: Rc::new(Cell::new(None)),
+            allocation_budget: Rc::new(RefCell::new(AllocationBudgetState::default())),
+            pending_resource_error: None,
             frame_stack: Rc::new(RefCell::new(Vec::new())),
             frame_line_spans: default_code_line_spans(),
         }
@@ -4982,6 +5313,12 @@ impl Vm {
 
     pub fn with_runtime_options(mut self, options: RuntimeOptions) -> Self {
         self.runtime_options = options;
+        self.instruction_budget.set(options.max_instructions);
+        self.output_budget.set(options.max_output_bytes);
+        self.allocation_budget = Rc::new(RefCell::new(AllocationBudgetState {
+            remaining: options.max_allocated_bytes,
+            seen_allocations: HashSet::new(),
+        }));
         if options.bytes_warning >= 2 {
             self.add_warning_filter(
                 "error".to_string(),
@@ -5043,6 +5380,13 @@ impl Vm {
             source_modules,
             stdlib_import_policy,
             runtime_options,
+            instruction_budget: Rc::new(Cell::new(runtime_options.max_instructions)),
+            output_budget: Rc::new(Cell::new(runtime_options.max_output_bytes)),
+            allocation_budget: Rc::new(RefCell::new(AllocationBudgetState {
+                remaining: runtime_options.max_allocated_bytes,
+                seen_allocations: HashSet::new(),
+            })),
+            pending_resource_error: None,
             frame_stack,
             frame_line_spans: line_spans,
         }
@@ -5085,6 +5429,13 @@ impl Vm {
             source_modules,
             stdlib_import_policy,
             runtime_options,
+            instruction_budget: Rc::new(Cell::new(runtime_options.max_instructions)),
+            output_budget: Rc::new(Cell::new(runtime_options.max_output_bytes)),
+            allocation_budget: Rc::new(RefCell::new(AllocationBudgetState {
+                remaining: runtime_options.max_allocated_bytes,
+                seen_allocations: HashSet::new(),
+            })),
+            pending_resource_error: None,
             frame_stack,
             frame_line_spans: default_code_line_spans(),
         }
@@ -5129,6 +5480,13 @@ impl Vm {
             source_modules,
             stdlib_import_policy,
             runtime_options,
+            instruction_budget: Rc::new(Cell::new(runtime_options.max_instructions)),
+            output_budget: Rc::new(Cell::new(runtime_options.max_output_bytes)),
+            allocation_budget: Rc::new(RefCell::new(AllocationBudgetState {
+                remaining: runtime_options.max_allocated_bytes,
+                seen_allocations: HashSet::new(),
+            })),
+            pending_resource_error: None,
             frame_stack,
             frame_line_spans: default_code_line_spans(),
         }
@@ -5149,7 +5507,7 @@ impl Vm {
         std::mem::take(&mut self.output)
     }
 
-    fn push_output_line(&mut self, line: String) {
+    fn push_output_line_unchecked(&mut self, line: String) {
         if self.output_pending.is_empty() {
             self.output.push(line);
         } else {
@@ -5159,22 +5517,24 @@ impl Vm {
         }
     }
 
-    fn emit_print_output(&mut self, text: &str, end: &str) {
+    fn emit_print_output(&mut self, text: &str, end: &str) -> Result<(), String> {
+        self.consume_output_budget(text.len().saturating_add(end.len()))?;
         let mut combined = String::with_capacity(text.len() + end.len());
         combined.push_str(text);
         combined.push_str(end);
         if combined.ends_with('\n') {
             combined.pop();
-            self.push_output_line(combined);
+            self.push_output_line_unchecked(combined);
         } else {
             self.output_pending.push_str(&combined);
         }
+        Ok(())
     }
 
     fn absorb_output_from(&mut self, other: &mut Vm) {
         let lines = std::mem::take(&mut other.output);
         for line in lines {
-            self.push_output_line(line);
+            self.push_output_line_unchecked(line);
         }
         if !other.output_pending.is_empty() {
             self.output_pending
@@ -5191,6 +5551,13 @@ impl Vm {
     }
 
     fn push_runtime_frame(&mut self) -> Result<(), String> {
+        if self
+            .runtime_options
+            .max_call_depth
+            .is_some_and(|limit| self.frame_stack.borrow().len() >= limit)
+        {
+            return Err("sandbox error: maximum call depth exceeded".to_string());
+        }
         let line = self.frame_line_for_ip(self.ip);
         let f_back = self
             .frame_stack
@@ -5275,6 +5642,10 @@ impl Vm {
 
     fn run_inner_loop(&mut self) -> Result<ExecutionExit, String> {
         loop {
+            if let Some(error) = self.pending_resource_error.take() {
+                return Err(error);
+            }
+            self.consume_instruction_budget()?;
             let instruction = self
                 .instructions
                 .get(self.ip)
@@ -6257,6 +6628,9 @@ impl Vm {
                         self.runtime_options,
                         self.frame_stack.clone(),
                     );
+                    class_vm.instruction_budget = self.instruction_budget.clone();
+                    class_vm.output_budget = self.output_budget.clone();
+                    class_vm.allocation_budget = self.allocation_budget.clone();
                     class_vm.locals = class_locals;
                     class_vm.qualname_prefix = Some(class_qualname.clone());
                     class_vm.store_class_namespace_value(
@@ -6455,6 +6829,7 @@ impl Vm {
                 }
                 Instruction::ListAppend { list, item } => {
                     let item = self.read_register(item)?.clone();
+                    self.consume_allocation_budget(std::mem::size_of::<Value>())?;
                     match self.read_register_mut(list)? {
                         Value::List(items) => items.borrow_mut().push(item),
                         value => return Err(format!("{value} is not a list")),
@@ -6463,6 +6838,9 @@ impl Vm {
                 Instruction::ListExtend { list, iterable } => {
                     let iterable = self.read_register(iterable)?.clone();
                     let values = sequence_values(iterable)?;
+                    self.consume_allocation_budget(
+                        values.len().saturating_mul(std::mem::size_of::<Value>()),
+                    )?;
                     match self.read_register_mut(list)? {
                         Value::List(items) => items.borrow_mut().extend(values),
                         value => return Err(format!("{value} is not a list")),
@@ -6552,6 +6930,7 @@ impl Vm {
                 Instruction::DictSetItem { dict, key, value } => {
                     let key = self.read_register(key)?.clone();
                     let value = self.read_register(value)?.clone();
+                    self.consume_allocation_budget(std::mem::size_of::<Value>() * 2)?;
                     match self.read_register_mut(dict)? {
                         Value::Dict(entries) => {
                             insert_live_dict_entry(&mut entries.borrow_mut(), key, value)?;
@@ -6562,6 +6941,11 @@ impl Vm {
                 Instruction::DictUpdate { dict, src } => {
                     let src = self.read_register(src)?.clone();
                     let updates = dict_entries_from_mapping(src)?;
+                    self.consume_allocation_budget(
+                        updates
+                            .len()
+                            .saturating_mul(std::mem::size_of::<Value>() * 2),
+                    )?;
                     match self.read_register_mut(dict)? {
                         Value::Dict(entries) => {
                             let mut entries = entries.borrow_mut();
@@ -6736,7 +7120,9 @@ impl Vm {
                 Instruction::Display { src } => {
                     let value = self.read_register(src)?;
                     if !matches!(value, Value::None) {
-                        self.push_output_line(value.to_string());
+                        let value = value.to_string();
+                        self.consume_output_budget(value.len().saturating_add(1))?;
+                        self.push_output_line_unchecked(value);
                     }
                 }
                 Instruction::Halt => return Ok(ExecutionExit::Halt),
@@ -6744,7 +7130,61 @@ impl Vm {
         }
     }
 
+    fn consume_instruction_budget(&self) -> Result<(), String> {
+        let Some(remaining) = self.instruction_budget.get() else {
+            return Ok(());
+        };
+        if remaining == 0 {
+            return Err("sandbox error: instruction limit exceeded".to_string());
+        }
+        self.instruction_budget.set(Some(remaining - 1));
+        Ok(())
+    }
+
+    fn consume_output_budget(&self, bytes: usize) -> Result<(), String> {
+        let Some(remaining) = self.output_budget.get() else {
+            return Ok(());
+        };
+        if bytes > remaining {
+            return Err("sandbox error: output limit exceeded".to_string());
+        }
+        self.output_budget.set(Some(remaining - bytes));
+        Ok(())
+    }
+
+    fn consume_allocation_budget(&self, bytes: usize) -> Result<(), String> {
+        let mut budget = self.allocation_budget.borrow_mut();
+        let Some(remaining) = budget.remaining else {
+            return Ok(());
+        };
+        if bytes > remaining {
+            return Err("sandbox error: allocation limit exceeded".to_string());
+        }
+        budget.remaining = Some(remaining - bytes);
+        Ok(())
+    }
+
+    fn charge_value_allocation(&self, value: &Value) -> Result<(), String> {
+        let mut budget = self.allocation_budget.borrow_mut();
+        let Some(remaining) = budget.remaining else {
+            return Ok(());
+        };
+        let bytes = estimated_value_allocation(value, &mut budget.seen_allocations);
+        if bytes > remaining {
+            return Err("sandbox error: allocation limit exceeded".to_string());
+        }
+        budget.remaining = Some(remaining - bytes);
+        Ok(())
+    }
+
     fn write_register(&mut self, register: Register, value: Value) {
+        if self.pending_resource_error.is_some() {
+            return;
+        }
+        if let Err(error) = self.charge_value_allocation(&value) {
+            self.pending_resource_error = Some(error);
+            return;
+        }
         if register >= self.registers.len() {
             self.registers.resize(register + 1, None);
         }
@@ -7215,11 +7655,14 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        module_vm.instruction_budget = self.instruction_budget.clone();
+        module_vm.output_budget = self.output_budget.clone();
+        module_vm.allocation_budget = self.allocation_budget.clone();
 
         match module_vm.run() {
             Ok(output) => {
                 for line in output {
-                    self.push_output_line(line);
+                    self.push_output_line_unchecked(line);
                 }
                 Ok(())
             }
@@ -7810,6 +8253,23 @@ impl Vm {
             Ok(value) => value,
             Err(exception) => return self.raise_runtime_exception_value(exception),
         };
+        let cache_will_grow = {
+            let state = state.borrow();
+            let missing = !state
+                .entries
+                .iter()
+                .any(|(cached_key, _)| dict_keys_equal(cached_key, &key));
+            missing
+                && match state.maxsize {
+                    Some(limit) => limit > state.entries.len(),
+                    None => true,
+                }
+        };
+        if cache_will_grow {
+            self.consume_allocation_budget(std::mem::size_of::<Value>() * 2)?;
+            self.charge_value_allocation(&key)?;
+            self.charge_value_allocation(&result)?;
+        }
         let mut state = state.borrow_mut();
         match state.maxsize {
             Some(0) => {}
@@ -9368,7 +9828,7 @@ impl Vm {
                 };
                 let end = resolve_print_separator_or_end(self, end)?;
                 let text = parts.join(&sep);
-                self.emit_print_output(&text, &end);
+                self.emit_print_output(&text, &end)?;
                 Ok(Value::None)
             }
             Value::Builtin(name) if name == "object" => {
@@ -12316,6 +12776,9 @@ impl Vm {
             first_line,
             line_sequence.clone(),
         );
+        function_vm.instruction_budget = self.instruction_budget.clone();
+        function_vm.output_budget = self.output_budget.clone();
+        function_vm.allocation_budget = self.allocation_budget.clone();
         if locals_are_globals {
             function_vm.locals = function_vm.globals.clone();
             function_vm.captures_locals = false;
@@ -16073,6 +16536,9 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        eval_vm.instruction_budget = self.instruction_budget.clone();
+        eval_vm.output_budget = self.output_budget.clone();
+        eval_vm.allocation_budget = self.allocation_budget.clone();
         let result = eval_vm.run_eval();
         self.absorb_output_from(&mut eval_vm);
         result
@@ -16441,6 +16907,7 @@ impl Vm {
 
         let mut items = items.borrow_mut();
         if !items.iter().any(|existing| is_identical(existing, &item)) {
+            self.consume_allocation_budget(std::mem::size_of::<Value>())?;
             items.push(item);
         }
         Ok(())
@@ -21953,6 +22420,9 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        code_vm.instruction_budget = self.instruction_budget.clone();
+        code_vm.output_budget = self.output_budget.clone();
+        code_vm.allocation_budget = self.allocation_budget.clone();
         code_vm.current_class = self.current_class.clone();
         code_vm.first_arg_name = self.first_arg_name.clone();
         code_vm.qualname_prefix = self.qualname_prefix.clone();
@@ -23110,6 +23580,16 @@ impl Vm {
                 type_name(data)
             ));
         };
+        let additional = {
+            let state = bytes_io.borrow();
+            let current_len = state.buffer.borrow().len();
+            state
+                .position
+                .checked_add(bytes.len())
+                .ok_or_else(|| "MemoryError".to_string())?
+                .saturating_sub(current_len)
+        };
+        self.consume_allocation_budget(additional)?;
         i64::try_from(bytes_io_write_chunk(bytes_io, &bytes)?)
             .map(Value::Number)
             .map_err(|_| "write() result is too large".to_string())
@@ -23156,6 +23636,16 @@ impl Vm {
                     type_name(&line)
                 ));
             };
+            let additional = {
+                let state = bytes_io.borrow();
+                let current_len = state.buffer.borrow().len();
+                state
+                    .position
+                    .checked_add(bytes.len())
+                    .ok_or_else(|| "MemoryError".to_string())?
+                    .saturating_sub(current_len)
+            };
+            self.consume_allocation_budget(additional)?;
             bytes_io_write_chunk(&bytes_io, &bytes)?;
         }
         Ok(Value::None)
@@ -24822,6 +25312,7 @@ impl Vm {
                 let bytes = bytearray_receiver_storage(receiver, name)?;
                 let byte = self.bytearray_assignment_byte_value(item.clone())?;
                 ensure_bytearray_resizable(&bytes)?;
+                self.consume_allocation_budget(1)?;
                 bytes.borrow_mut().push(byte);
                 Ok(Value::None)
             }
@@ -24837,6 +25328,7 @@ impl Vm {
                 if !extension.is_empty() {
                     ensure_bytearray_resizable(&bytes)?;
                 }
+                self.consume_allocation_budget(extension.len())?;
                 bytes.borrow_mut().extend(extension);
                 Ok(Value::None)
             }
@@ -24851,6 +25343,7 @@ impl Vm {
                 let byte = self.bytearray_assignment_byte_value(item.clone())?;
                 let index = normalized_insert_index(index, bytes.borrow().len())?;
                 ensure_bytearray_resizable(&bytes)?;
+                self.consume_allocation_budget(1)?;
                 bytes.borrow_mut().insert(index, byte);
                 Ok(Value::None)
             }
@@ -28269,7 +28762,27 @@ impl Vm {
         }
         reject_array_method_keywords(name, &keywords)?;
 
-        match name {
+        let tracked_storage = if matches!(
+            name,
+            "array.array.__iadd__"
+                | "array.array.__imul__"
+                | "array.array.append"
+                | "array.array.extend"
+                | "array.array.insert"
+                | "array.array.fromlist"
+                | "array.array.frombytes"
+                | "array.array.fromfile"
+                | "array.array.fromunicode"
+        ) {
+            args.first().and_then(array_array_storage).map(|storage| {
+                let len = storage.borrow().len();
+                (storage, len)
+            })
+        } else {
+            None
+        };
+
+        let result = match name {
             "array.array.tobytes" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
@@ -28802,7 +29315,14 @@ impl Vm {
                 reversed_value(receiver.clone())
             }
             _ => Err(format!("unknown builtin: {name}")),
+        };
+        if result.is_ok()
+            && let Some((storage, previous_len)) = tracked_storage
+        {
+            let added = storage.borrow().len().saturating_sub(previous_len);
+            self.consume_allocation_budget(added)?;
         }
+        result
     }
 
     fn call_simple_namespace_constructor(
@@ -37259,7 +37779,20 @@ impl Vm {
             return self.call_list_search_method(name, args);
         }
 
-        call_list_method(name, args)
+        let tracked_list = if matches!(name, "list.append" | "list.extend" | "list.insert") {
+            args.first().and_then(|value| match value {
+                Value::List(items) => Some((items.clone(), items.borrow().len())),
+                _ => None,
+            })
+        } else {
+            None
+        };
+        let result = call_list_method(name, args)?;
+        if let Some((items, previous_len)) = tracked_list {
+            let added = items.borrow().len().saturating_sub(previous_len);
+            self.consume_allocation_budget(added.saturating_mul(std::mem::size_of::<Value>()))?;
+        }
+        Ok(result)
     }
 
     fn list_item_matches(&mut self, item: Value, needle: &Value) -> Result<bool, String> {
@@ -39958,6 +40491,8 @@ impl Vm {
                 if !*exhausted {
                     match self.advance_owned_iterator(iterator.as_mut())? {
                         IteratorAdvance::Yield(value) => {
+                            self.consume_allocation_budget(std::mem::size_of::<Value>())?;
+                            self.charge_value_allocation(&value)?;
                             saved.push(value.clone());
                             return Ok(IteratorAdvance::Yield(value));
                         }
@@ -40329,6 +40864,8 @@ impl Vm {
                 }
                 match self.advance_owned_iterator(&mut borrowed.iterator)? {
                     IteratorAdvance::Yield(value) => {
+                        self.consume_allocation_budget(std::mem::size_of::<Value>())?;
+                        self.charge_value_allocation(&value)?;
                         borrowed.buffer.push(value.clone());
                         *index += 1;
                         return Ok(IteratorAdvance::Yield(value));
@@ -42382,6 +42919,10 @@ impl Vm {
                 source_modules: self.source_modules.clone(),
                 stdlib_import_policy: self.stdlib_import_policy.clone(),
                 runtime_options: self.runtime_options,
+                instruction_budget: self.instruction_budget.clone(),
+                output_budget: self.output_budget.clone(),
+                allocation_budget: self.allocation_budget.clone(),
+                pending_resource_error: None,
                 frame_stack: self.frame_stack.clone(),
                 frame_line_spans: function_code_line_spans(
                     &state.instructions,
@@ -42582,6 +43123,10 @@ impl Vm {
                     source_modules: self.source_modules.clone(),
                     stdlib_import_policy: self.stdlib_import_policy.clone(),
                     runtime_options: self.runtime_options,
+                    instruction_budget: self.instruction_budget.clone(),
+                    output_budget: self.output_budget.clone(),
+                    allocation_budget: self.allocation_budget.clone(),
+                    pending_resource_error: None,
                     frame_stack: self.frame_stack.clone(),
                     frame_line_spans: function_code_line_spans(
                         &state.instructions,
@@ -56350,7 +56895,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names(dict_view_type_name(*kind)))
         }
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
-            names.extend(builtin_type_dir_names("mappingproxy"))
+            let mut instance_names = builtin_type_dir_names("mappingproxy");
+            instance_names
+                .retain(|name| !matches!(name.as_str(), "__base__" | "__bases__" | "__name__"));
+            names.extend(instance_names)
         }
         Value::Counter { .. } => names.extend(builtin_type_dir_names("Counter")),
         Value::UserDict { attrs, .. } => {
@@ -56871,12 +57419,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     if name == "CellType" {
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__" | "__name__"));
         names.push("cell_contents".to_string());
+    } else if matches!(name, "classmethod" | "staticmethod") {
+        remove_type_metadata_dir_names(&mut names);
     } else if matches!(
         name,
         "bool"
             | "bytearray"
             | "bytes"
-            | "classmethod"
             | "complex"
             | "dict"
             | "float"
@@ -56888,7 +57437,6 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             | "range"
             | "set"
             | "slice"
-            | "staticmethod"
             | "str"
             | "tuple"
     ) {
@@ -56956,6 +57504,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     } else if name == "UserString" {
         names.retain(|attr| attr != "__name__");
         names.retain(|attr| !matches!(attr.as_str(), "__base__" | "__bases__"));
+        names.push("__init_subclass__".to_string());
+        names.push("__new__".to_string());
+        names.push("__subclasshook__".to_string());
     } else if is_dict_view_type_object_name(name) {
         remove_type_metadata_dir_names(&mut names);
     }
@@ -106523,7 +107074,10 @@ mod tests {
         ];
         let mut vm = Vm::new(instructions);
 
-        assert_eq!(vm.run(), Err("TypeError: 1 is not callable".to_string()));
+        assert_eq!(
+            vm.run(),
+            Err("TypeError: 'int' object is not callable".to_string())
+        );
     }
 
     #[test]

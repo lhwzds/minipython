@@ -5999,6 +5999,78 @@ show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
 }
 
 #[test]
+fn cpython_json_dumps_additional_error_boundary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public additional dumps error boundary subset",
+        name: "json-dumps-additional-error-boundaries",
+        source: r#"import json
+from collections import namedtuple
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print(label, isinstance(error, TypeError), isinstance(error, ValueError))
+
+show('dumps-bytearray', lambda: json.dumps(bytearray(b'abc')))
+show('dumps-memoryview', lambda: json.dumps(memoryview(b'abc')))
+inner = []
+cycle_tuple = (inner,)
+inner.append(cycle_tuple)
+show('dumps-tuple-cycle', lambda: json.dumps(cycle_tuple))
+items = []
+Cycle = namedtuple('Cycle', 'items')
+cycle_namedtuple = Cycle(items)
+items.append(cycle_namedtuple)
+show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_delimiter_and_leading_zero_boundary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public delimiter and leading-zero error boundary subset",
+        name: "json-loads-delimiter-leading-zero-boundaries",
+        source: r#"import json
+
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, expected in str(error))
+
+try:
+    json.loads(b'\xff')
+except Exception as error:
+    print('loads-invalid-utf8', isinstance(error, TypeError), isinstance(error, ValueError))
+
+try:
+    json.loads(bytes([255]))
+except Exception as error:
+    print('loads-invalid-utf8-unicode', isinstance(error, UnicodeDecodeError))
+
+try:
+    json.loads(chr(65279) + '{}')
+except Exception as error:
+    print('loads-string-bom', isinstance(error, ValueError), 'Unexpected UTF-8 BOM' in str(error))
+
+for label, data, text in [
+    ('loads-odd-leading-nul', bytes([0, ord('1'), 0]), 'Expecting value'),
+    ('loads-odd-trailing-nul', bytes([ord('1'), 0, 0]), 'Extra data'),
+]:
+    try:
+        json.loads(data)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), isinstance(error, UnicodeDecodeError), text in str(error))
+
+show('loads-leading-zero-extra', '01', 'Extra data')
+show('loads-missing-colon-text', '{"a" 1}', "Expecting ':' delimiter")
+show('loads-array-missing-comma-text', '[1 2]', "Expecting ',' delimiter")
+show('loads-object-missing-comma-text', '{"a":1 "b":2}', "Expecting ',' delimiter")"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_invalid_utf8_error_detail_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads invalid UTF-8 decode error detail subset",
