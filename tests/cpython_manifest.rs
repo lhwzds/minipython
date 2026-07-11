@@ -117,6 +117,10 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "call_depth_budget.py",
         "output_budget.py",
         "allocation_budget.py",
+        "import_root/main.py",
+        "blocked_import_root/main.py",
+        "cache_injection.py",
+        "symlink_escape_main.py",
     ] {
         assert!(
             SANDBOX_EXAMPLES_README.contains(required),
@@ -132,6 +136,17 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         assert!(
             SANDBOX_EXAMPLE_TESTS.contains(&format!("fn {evidence}(")),
             "sandbox resource example E2E `{evidence}` must exist"
+        );
+    }
+    for evidence in [
+        "real_cpython_and_mnpy_match_for_safe_script_directory_imports",
+        "real_mnpy_propagates_policy_into_script_directory_imports",
+        "real_cpython_accepts_cache_injection_while_mnpy_rechecks_policy",
+        "real_cpython_follows_module_symlink_while_mnpy_rejects_root_escape",
+    ] {
+        assert!(
+            SANDBOX_EXAMPLE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox import example E2E `{evidence}` must exist"
         );
     }
 
