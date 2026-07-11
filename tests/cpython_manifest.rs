@@ -24,6 +24,7 @@ const SANDBOX_BOUNDARY_TESTS: &str = include_str!("sandbox_boundary.rs");
 const SANDBOX_EXAMPLE_TESTS: &str = include_str!("sandbox_examples.rs");
 const HOST_CAPABILITIES_EXAMPLE: &str =
     include_str!("../examples/sandbox/blocked_host_capabilities.py");
+const SANDBOX_EXAMPLES_README: &str = include_str!("../examples/sandbox/README.md");
 const SANDBOX_TEST_STRATEGY: &str = include_str!("sandbox_test_strategy.md");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
@@ -109,6 +110,28 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         assert!(
             HOST_CAPABILITIES_EXAMPLE.contains(required),
             "sandbox host-capability example must retain `{required}`"
+        );
+    }
+    for required in [
+        "instruction_budget.py",
+        "call_depth_budget.py",
+        "output_budget.py",
+        "allocation_budget.py",
+    ] {
+        assert!(
+            SANDBOX_EXAMPLES_README.contains(required),
+            "sandbox examples README must retain `{required}`"
+        );
+    }
+    for evidence in [
+        "real_cpython_completes_while_mnpy_enforces_instruction_budget",
+        "real_cpython_completes_while_mnpy_enforces_call_depth_budget",
+        "real_cpython_completes_while_mnpy_enforces_output_budget",
+        "real_cpython_completes_while_mnpy_enforces_allocation_budget",
+    ] {
+        assert!(
+            SANDBOX_EXAMPLE_TESTS.contains(&format!("fn {evidence}(")),
+            "sandbox resource example E2E `{evidence}` must exist"
         );
     }
 
