@@ -26,6 +26,7 @@ const HOST_CAPABILITIES_EXAMPLE: &str =
     include_str!("../examples/sandbox/blocked_host_capabilities.py");
 const SANDBOX_EXAMPLES_README: &str = include_str!("../examples/sandbox/README.md");
 const SANDBOX_TEST_STRATEGY: &str = include_str!("sandbox_test_strategy.md");
+const SANDBOX_E2E_MATRIX: &str = include_str!("sandbox_e2e_matrix.md");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
 const GAP_SWEEP_MATH_INTEGER_CORPUS: &str = include_str!("gap_corpus/math_integer.toml");
@@ -76,6 +77,23 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         assert!(
             SANDBOX_MVP.contains(required),
             "sandbox MVP checklist must retain `{required}`"
+        );
+    }
+    for required in [
+        "example_e2e",
+        "harness_only",
+        "real_cpython_and_mnpy_classify_the_complete_safe_stdlib_example",
+        "real_cpython_and_mnpy_diverge_only_at_host_capability_boundary",
+        "real_cpython_completes_while_mnpy_enforces_source_size_budget",
+        "real_cpython_completes_while_mnpy_enforces_wall_clock_budget",
+        "real_cpython_completes_while_mnpy_contains_compiler_memory_pressure",
+        "real_cpython_allows_dynamic_imports_while_mnpy_reuses_the_sandbox_policy",
+        "sandbox_boundary_rejects_non_utf8_source_files",
+        "sandbox_process_rejects_direct_worker_invocation",
+    ] {
+        assert!(
+            SANDBOX_E2E_MATRIX.contains(required),
+            "sandbox E2E matrix must retain `{required}`"
         );
     }
     for line in SANDBOX_MVP.lines() {

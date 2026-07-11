@@ -4,6 +4,9 @@ This document separates CPython conformance evidence from sandbox security
 evidence. A passing conformance corpus does not prove containment, and a passing
 containment suite does not imply complete CPython behavior.
 
+The requirement-to-example mapping is maintained in
+`tests/sandbox_e2e_matrix.md`.
+
 ## Test Sets
 
 | Test set | Purpose | Authoritative entrypoint | Failure found means |
