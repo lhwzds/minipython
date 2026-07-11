@@ -14,6 +14,7 @@ const WALL_CLOCK_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/wall_c
 const COMPILER_MEMORY_PRESSURE_GENERATOR: &str =
     include_str!("../examples/sandbox/compiler_memory_pressure_generator.py");
 const CACHE_INJECTION_EXAMPLE: &str = include_str!("../examples/sandbox/cache_injection.py");
+const DYNAMIC_IMPORTS_EXAMPLE: &str = include_str!("../examples/sandbox/dynamic_imports.py");
 const SYMLINK_ESCAPE_MAIN: &str = include_str!("../examples/sandbox/symlink_escape_main.py");
 const SYMLINK_ESCAPE_TARGET: &str = include_str!("../examples/sandbox/symlink_escape_target.py");
 static NEXT_TEMP_DIR: AtomicU64 = AtomicU64::new(0);
@@ -275,6 +276,34 @@ fn real_cpython_accepts_cache_injection_while_mnpy_rechecks_policy() {
     assert!(mnpy.status.success());
     assert_eq!(cpython.stdout, b"socket available\n");
     assert_eq!(mnpy.stdout, b"socket blocked\n");
+}
+
+#[test]
+fn real_cpython_allows_dynamic_imports_while_mnpy_reuses_the_sandbox_policy() {
+    let cpython = run_source(
+        "/opt/homebrew/bin/python3",
+        &["-I", "-B", "-"],
+        DYNAMIC_IMPORTS_EXAMPLE,
+    );
+    let mnpy = run_source(env!("CARGO_BIN_EXE_mnpy"), &[], DYNAMIC_IMPORTS_EXAMPLE);
+    assert!(
+        cpython.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cpython.stderr)
+    );
+    assert!(
+        mnpy.status.success(),
+        "{}",
+        String::from_utf8_lossy(&mnpy.stderr)
+    );
+    assert_eq!(
+        cpython.stdout,
+        b"eval-import available\nexec-import available\ncompiled-import available\n"
+    );
+    assert_eq!(
+        mnpy.stdout,
+        b"eval-import blocked\nexec-import blocked\ncompiled-import blocked\n"
+    );
 }
 
 #[test]

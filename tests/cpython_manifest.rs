@@ -123,6 +123,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "import_root/main.py",
         "blocked_import_root/main.py",
         "cache_injection.py",
+        "dynamic_imports.py",
         "symlink_escape_main.py",
     ] {
         assert!(
@@ -147,6 +148,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "real_cpython_and_mnpy_match_for_safe_script_directory_imports",
         "real_mnpy_propagates_policy_into_script_directory_imports",
         "real_cpython_accepts_cache_injection_while_mnpy_rechecks_policy",
+        "real_cpython_allows_dynamic_imports_while_mnpy_reuses_the_sandbox_policy",
         "real_cpython_follows_module_symlink_while_mnpy_rejects_root_escape",
     ] {
         assert!(

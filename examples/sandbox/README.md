@@ -15,6 +15,7 @@ python3 examples/sandbox/compiler_memory_pressure_generator.py | \
 mnpy examples/sandbox/import_root/main.py
 mnpy examples/sandbox/blocked_import_root/main.py
 mnpy examples/sandbox/cache_injection.py
+mnpy examples/sandbox/dynamic_imports.py
 ```
 
 The host-capability example completes and reports intentional blocks. Each
@@ -31,3 +32,5 @@ target.
 The compiler-memory generator keeps the checked-in example readable while
 producing the same finite 120,000-element literal used by the process-memory
 containment E2E.
+`dynamic_imports.py` proves that `eval`, `exec`, and compiled code reuse the
+same import policy instead of creating an unrestricted nested VM.
