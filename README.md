@@ -101,6 +101,10 @@ configurable with `--max-allocated-bytes N` or
 64 MiB single-allocation guard. The `mnpy` child-process boundary covers
 compiler and host allocations outside VM value accounting.
 
+Runnable boundary examples live under `examples/sandbox/`. For example,
+`mnpy examples/sandbox/blocked_host_capabilities.py` shows the host I/O,
+network, process, and C-ABI capabilities that the sandbox intentionally blocks.
+
 The current whole-project sandbox completion state is tracked in
 `tests/sandbox_mvp.md`. A green parity corpus alone is not a completion signal.
 The exact core runtime stopping point, including the disposition of every

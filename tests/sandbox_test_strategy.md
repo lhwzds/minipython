@@ -16,6 +16,7 @@ containment suite does not imply complete CPython behavior.
 | In-process sandbox policy | Test shared budgets, import policy, cache checks, and virtual/root modules | `cargo test --test language sandbox_policy` plus budget filters | A VM or embedding-policy invariant regressed |
 | Process containment | Test source-size and process-memory failure containment | `cargo test --test sandbox_process` | The official untrusted-code entrypoint is not contained |
 | Adversarial boundary | Exercise every CLI budget and common policy bypass through the sandbox-default `mnpy` CLI | `cargo test --test sandbox_boundary` | The public process boundary differs from the in-process policy |
+| Executable sandbox examples | Run one checked-in Python program in real CPython and real `mnpy`, asserting either exact parity or an intentional sandbox difference | `cargo test --test sandbox_examples` | A documented user-visible boundary no longer matches the real executables |
 
 ## Boundary Dimensions
 
@@ -51,4 +52,6 @@ current sandbox MVP boundary:
 New exploratory cases belong in a focused set first. Promote a discovered
 supported behavior into `cpython_subset` and `cpython_diff`; promote a security
 failure into `sandbox_boundary` or `sandbox_process` and keep it in the release
-gate permanently.
+gate permanently. Every process-level sandbox requirement should also have a
+readable program under `examples/sandbox/`; the E2E test must execute that exact
+file through `include_str!` rather than maintain a second hidden copy.

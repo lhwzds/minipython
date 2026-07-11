@@ -21,6 +21,7 @@ fi
 if [[ "$mode" == "--focused" ]]; then
   cargo test --test sandbox_process
   cargo test --test sandbox_boundary
+  cargo test --test sandbox_examples
   cargo test --test language sandbox_policy
   cargo test --test language instruction_budget
   cargo test --test language call_depth_guard

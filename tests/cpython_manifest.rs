@@ -21,6 +21,9 @@ const SANDBOX_MVP_RUNNER: &str = include_str!("../tools/run_sandbox_mvp_checks.s
 const SANDBOX_PROCESS_SOURCE: &str = include_str!("../src/sandbox.rs");
 const SANDBOX_PROCESS_TESTS: &str = include_str!("sandbox_process.rs");
 const SANDBOX_BOUNDARY_TESTS: &str = include_str!("sandbox_boundary.rs");
+const SANDBOX_EXAMPLE_TESTS: &str = include_str!("sandbox_examples.rs");
+const HOST_CAPABILITIES_EXAMPLE: &str =
+    include_str!("../examples/sandbox/blocked_host_capabilities.py");
 const SANDBOX_TEST_STRATEGY: &str = include_str!("sandbox_test_strategy.md");
 const GAP_SWEEP_SMOKE_CORPUS: &str = include_str!("gap_corpus/smoke.toml");
 const GAP_SWEEP_JSON_CORPUS: &str = include_str!("gap_corpus/json.toml");
@@ -95,6 +98,17 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         assert!(
             SANDBOX_MVP.contains("`instruction_budget_*`"),
             "sandbox MVP checklist must cite the instruction-budget evidence family"
+        );
+    }
+    assert!(
+        SANDBOX_EXAMPLE_TESTS
+            .contains("fn real_cpython_and_mnpy_diverge_only_at_host_capability_boundary("),
+        "sandbox host-capability example needs a real-process E2E test"
+    );
+    for required in ["open", "input", "os", "socket", "subprocess", "_ctypes"] {
+        assert!(
+            HOST_CAPABILITIES_EXAMPLE.contains(required),
+            "sandbox host-capability example must retain `{required}`"
         );
     }
 
@@ -244,6 +258,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "allocation_budget",
         "cargo test --test sandbox_process",
         "cargo test --test sandbox_boundary",
+        "cargo test --test sandbox_examples",
         "--focused",
     ] {
         assert!(
