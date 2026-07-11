@@ -10,6 +10,8 @@ mnpy --max-depth 3 examples/sandbox/call_depth_budget.py
 mnpy --max-output-bytes 16 examples/sandbox/output_budget.py
 mnpy --max-allocated-bytes 256 examples/sandbox/allocation_budget.py
 mnpy --max-time-ms 1 --max-steps 100000000 examples/sandbox/wall_clock_budget.py
+python3 examples/sandbox/compiler_memory_pressure_generator.py | \
+  mnpy --max-memory-bytes 67108864 --max-source-bytes 524288
 mnpy examples/sandbox/import_root/main.py
 mnpy examples/sandbox/blocked_import_root/main.py
 mnpy examples/sandbox/cache_injection.py
@@ -26,3 +28,6 @@ before accepting cached modules. `symlink_escape_main.py` and
 `symlink_escape_target.py` are setup sources for the Unix E2E that places the
 main file inside a temporary root and symlinks `escape.py` to the external
 target.
+The compiler-memory generator keeps the checked-in example readable while
+producing the same finite 120,000-element literal used by the process-memory
+containment E2E.

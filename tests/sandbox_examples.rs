@@ -11,6 +11,8 @@ const CALL_DEPTH_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/call_d
 const OUTPUT_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/output_budget.py");
 const ALLOCATION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/allocation_budget.py");
 const WALL_CLOCK_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/wall_clock_budget.py");
+const COMPILER_MEMORY_PRESSURE_GENERATOR: &str =
+    include_str!("../examples/sandbox/compiler_memory_pressure_generator.py");
 const CACHE_INJECTION_EXAMPLE: &str = include_str!("../examples/sandbox/cache_injection.py");
 const SYMLINK_ESCAPE_MAIN: &str = include_str!("../examples/sandbox/symlink_escape_main.py");
 const SYMLINK_ESCAPE_TARGET: &str = include_str!("../examples/sandbox/symlink_escape_target.py");
@@ -174,6 +176,51 @@ fn real_cpython_completes_while_mnpy_enforces_wall_clock_budget() {
         "499999500000\n",
         &["--max-time-ms", "1", "--max-steps", "100000000"],
         "sandbox error: worker wall-clock limit exceeded",
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn real_cpython_completes_while_mnpy_contains_compiler_memory_pressure() {
+    let generated = run_source(
+        "/opt/homebrew/bin/python3",
+        &["-I", "-B", "-"],
+        COMPILER_MEMORY_PRESSURE_GENERATOR,
+    );
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let attack_source = String::from_utf8(generated.stdout).expect("generator emitted UTF-8");
+    assert!(attack_source.len() > 240_000 && attack_source.len() < 524_288);
+
+    let cpython = run_source(
+        "/opt/homebrew/bin/python3",
+        &["-I", "-B", "-"],
+        &attack_source,
+    );
+    assert!(
+        cpython.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cpython.stderr)
+    );
+    assert_eq!(cpython.stdout, b"120000\n");
+
+    let mnpy = run_source(
+        env!("CARGO_BIN_EXE_mnpy"),
+        &[
+            "--max-memory-bytes",
+            "67108864",
+            "--max-source-bytes",
+            "524288",
+        ],
+        &attack_source,
+    );
+    assert!(!mnpy.status.success());
+    assert!(
+        String::from_utf8_lossy(&mnpy.stderr)
+            .contains("sandbox error: worker exceeded process limits or crashed")
     );
 }
 
