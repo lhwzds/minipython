@@ -90,6 +90,8 @@ CLI execution is bounded to 1,000,000 VM instructions by default. Use
 `RuntimeOptions::with_max_instructions`; `SandboxPolicy` also applies the same
 finite default to virtual and sandbox-directory modules. The budget is shared
 across functions, generators, coroutines, dynamic execution, and imports.
+The worker also has a 5-second wall-clock deadline by default, covering parsing,
+compilation, VM execution, and shutdown. Use `--max-time-ms N` to configure it.
 Nested VM frames are also bounded to 3 by default; use `--max-depth N` or
 `RuntimeOptions::with_max_call_depth` to configure that guard.
 Captured output is bounded to 1 MiB by default and shares one byte budget across

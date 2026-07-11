@@ -4,8 +4,7 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::{self, Command, ExitStatus, Stdio};
 use std::thread;
-#[cfg(target_os = "macos")]
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use minipython::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
@@ -17,11 +16,13 @@ use minipython::{
 
 const DEFAULT_MAX_PROCESS_MEMORY_BYTES: u64 = 256 * 1_048_576;
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
+const DEFAULT_MAX_TIME_MS: u64 = 5_000;
 const INTERNAL_WORKER_ENV: &str = "MINIPYTHON_INTERNAL_WORKER";
 
 #[derive(Clone)]
 struct Config {
     max_memory_bytes: u64,
+    max_time_ms: u64,
     max_source_bytes: usize,
     max_steps: u64,
     max_depth: usize,
@@ -43,6 +44,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             max_memory_bytes: DEFAULT_MAX_PROCESS_MEMORY_BYTES,
+            max_time_ms: DEFAULT_MAX_TIME_MS,
             max_source_bytes: DEFAULT_MAX_SOURCE_BYTES,
             max_steps: DEFAULT_SANDBOX_MAX_INSTRUCTIONS,
             max_depth: DEFAULT_SANDBOX_MAX_CALL_DEPTH,
@@ -94,6 +96,10 @@ fn parse_args(args: &[String]) -> (Config, SourceInput) {
             }
             "--max-source-bytes" => {
                 config.max_source_bytes = parse_number(args.get(index + 1), "--max-source-bytes");
+                index += 2;
+            }
+            "--max-time-ms" => {
+                config.max_time_ms = parse_number(args.get(index + 1), "--max-time-ms");
                 index += 2;
             }
             "--max-steps" => {
@@ -180,6 +186,7 @@ fn print_help() -> ! {
         "  --max-memory-bytes n     process address/data limit (default: {DEFAULT_MAX_PROCESS_MEMORY_BYTES})"
     );
     println!("  --max-source-bytes n     source input limit (default: {DEFAULT_MAX_SOURCE_BYTES})");
+    println!("  --max-time-ms n          worker wall-clock limit (default: {DEFAULT_MAX_TIME_MS})");
     println!(
         "  --max-steps n            VM instruction limit (default: {DEFAULT_SANDBOX_MAX_INSTRUCTIONS})"
     );
@@ -277,19 +284,37 @@ fn process_memory_bytes(child: &process::Child) -> io::Result<u64> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WorkerTermination {
+    Completed,
+    MemoryLimit,
+    TimeLimit,
+}
+
 #[cfg(target_os = "macos")]
 fn wait_for_worker(
     child: &mut process::Child,
     max_memory_bytes: u64,
-) -> io::Result<(ExitStatus, bool)> {
+    max_time_ms: u64,
+) -> io::Result<(ExitStatus, WorkerTermination)> {
+    let started = Instant::now();
+    let time_limit = Duration::from_millis(max_time_ms);
     loop {
         if let Some(status) = child.try_wait()? {
-            return Ok((status, false));
+            return Ok((status, WorkerTermination::Completed));
+        }
+        if started.elapsed() >= time_limit {
+            child.kill()?;
+            return child
+                .wait()
+                .map(|status| (status, WorkerTermination::TimeLimit));
         }
         match process_memory_bytes(child) {
             Ok(bytes) if bytes > max_memory_bytes => {
                 child.kill()?;
-                return child.wait().map(|status| (status, true));
+                return child
+                    .wait()
+                    .map(|status| (status, WorkerTermination::MemoryLimit));
             }
             Ok(_) => {}
             Err(error) if error.raw_os_error() == Some(libc::ESRCH) => {}
@@ -303,8 +328,22 @@ fn wait_for_worker(
 fn wait_for_worker(
     child: &mut process::Child,
     _max_memory_bytes: u64,
-) -> io::Result<(ExitStatus, bool)> {
-    child.wait().map(|status| (status, false))
+    max_time_ms: u64,
+) -> io::Result<(ExitStatus, WorkerTermination)> {
+    let started = Instant::now();
+    let time_limit = Duration::from_millis(max_time_ms);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok((status, WorkerTermination::Completed));
+        }
+        if started.elapsed() >= time_limit {
+            child.kill()?;
+            return child
+                .wait()
+                .map(|status| (status, WorkerTermination::TimeLimit));
+        }
+        thread::sleep(Duration::from_millis(2));
+    }
 }
 
 fn worker_args(config: &Config) -> Vec<String> {
@@ -377,11 +416,13 @@ fn run_parent(config: Config, source: String) -> ! {
         let mut bytes = Vec::new();
         stderr.read_to_end(&mut bytes).map(|_| bytes)
     });
-    let (status, memory_limit_exceeded) = wait_for_worker(&mut child, config.max_memory_bytes)
-        .unwrap_or_else(|error| {
-            eprintln!("sandbox error: failed to wait for worker: {error}");
-            process::exit(1);
-        });
+    let (status, termination) =
+        wait_for_worker(&mut child, config.max_memory_bytes, config.max_time_ms).unwrap_or_else(
+            |error| {
+                eprintln!("sandbox error: failed to wait for worker: {error}");
+                process::exit(1);
+            },
+        );
     let stdout = stdout_reader
         .join()
         .expect("worker stdout reader panicked")
@@ -401,7 +442,9 @@ fn run_parent(config: Config, source: String) -> ! {
     if status.success() {
         process::exit(0);
     }
-    if memory_limit_exceeded
+    if termination == WorkerTermination::TimeLimit {
+        eprintln!("sandbox error: worker wall-clock limit exceeded");
+    } else if termination == WorkerTermination::MemoryLimit
         || status.code().is_none()
         || status.code().is_some_and(|code| code >= 125)
     {

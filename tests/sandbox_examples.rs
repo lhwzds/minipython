@@ -10,6 +10,7 @@ const INSTRUCTION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/instr
 const CALL_DEPTH_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/call_depth_budget.py");
 const OUTPUT_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/output_budget.py");
 const ALLOCATION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/allocation_budget.py");
+const WALL_CLOCK_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/wall_clock_budget.py");
 const CACHE_INJECTION_EXAMPLE: &str = include_str!("../examples/sandbox/cache_injection.py");
 const SYMLINK_ESCAPE_MAIN: &str = include_str!("../examples/sandbox/symlink_escape_main.py");
 const SYMLINK_ESCAPE_TARGET: &str = include_str!("../examples/sandbox/symlink_escape_target.py");
@@ -163,6 +164,16 @@ fn real_cpython_completes_while_mnpy_enforces_allocation_budget() {
         "1024\n",
         &["--max-allocated-bytes", "256"],
         "sandbox error: allocation limit exceeded",
+    );
+}
+
+#[test]
+fn real_cpython_completes_while_mnpy_enforces_wall_clock_budget() {
+    assert_cpython_completes_and_mnpy_blocks(
+        WALL_CLOCK_BUDGET_EXAMPLE,
+        "499999500000\n",
+        &["--max-time-ms", "1", "--max-steps", "100000000"],
+        "sandbox error: worker wall-clock limit exceeded",
     );
 }
 

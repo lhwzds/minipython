@@ -64,6 +64,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "Import isolation",
         "Host capability stop-line",
         "Instruction budget",
+        "Wall-clock deadline",
         "Call-depth guard",
         "Heap/allocation guard",
         "Captured-output guard",
@@ -117,6 +118,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "call_depth_budget.py",
         "output_budget.py",
         "allocation_budget.py",
+        "wall_clock_budget.py",
         "import_root/main.py",
         "blocked_import_root/main.py",
         "cache_injection.py",
@@ -132,6 +134,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "real_cpython_completes_while_mnpy_enforces_call_depth_budget",
         "real_cpython_completes_while_mnpy_enforces_output_budget",
         "real_cpython_completes_while_mnpy_enforces_allocation_budget",
+        "real_cpython_completes_while_mnpy_enforces_wall_clock_budget",
     ] {
         assert!(
             SANDBOX_EXAMPLE_TESTS.contains(&format!("fn {evidence}(")),
@@ -260,6 +263,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "with_max_call_depth",
         "with_max_output_bytes",
         "with_max_allocated_bytes",
+        "worker wall-clock limit exceeded",
     ] {
         assert!(
             SANDBOX_PROCESS_SOURCE.contains(required),
