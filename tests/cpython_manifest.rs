@@ -115,6 +115,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
     }
     for required in [
         "instruction_budget.py",
+        "source_size_budget.py",
         "call_depth_budget.py",
         "output_budget.py",
         "allocation_budget.py",
@@ -134,6 +135,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
     }
     for evidence in [
         "real_cpython_completes_while_mnpy_enforces_instruction_budget",
+        "real_cpython_completes_while_mnpy_enforces_source_size_budget",
         "real_cpython_completes_while_mnpy_enforces_call_depth_budget",
         "real_cpython_completes_while_mnpy_enforces_output_budget",
         "real_cpython_completes_while_mnpy_enforces_allocation_budget",

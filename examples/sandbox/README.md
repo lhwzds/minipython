@@ -7,6 +7,7 @@ exact source consumed by `tests/sandbox_examples.rs`.
 mnpy examples/sandbox/blocked_host_capabilities.py
 mnpy examples/sandbox/safe_stdlib.py
 mnpy --max-steps 100 examples/sandbox/instruction_budget.py
+mnpy --max-source-bytes 8 examples/sandbox/source_size_budget.py
 mnpy --max-depth 3 examples/sandbox/call_depth_budget.py
 mnpy --max-output-bytes 16 examples/sandbox/output_budget.py
 mnpy --max-allocated-bytes 256 examples/sandbox/allocation_budget.py

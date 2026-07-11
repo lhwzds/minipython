@@ -8,6 +8,7 @@ const HOST_CAPABILITIES_EXAMPLE: &str =
     include_str!("../examples/sandbox/blocked_host_capabilities.py");
 const SAFE_STDLIB_EXAMPLE: &str = include_str!("../examples/sandbox/safe_stdlib.py");
 const INSTRUCTION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/instruction_budget.py");
+const SOURCE_SIZE_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/source_size_budget.py");
 const CALL_DEPTH_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/call_depth_budget.py");
 const OUTPUT_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/output_budget.py");
 const ALLOCATION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/allocation_budget.py");
@@ -166,6 +167,16 @@ fn real_cpython_completes_while_mnpy_enforces_instruction_budget() {
         "499500\n",
         &["--max-steps", "100"],
         "sandbox error: instruction limit exceeded",
+    );
+}
+
+#[test]
+fn real_cpython_completes_while_mnpy_enforces_source_size_budget() {
+    assert_cpython_completes_and_mnpy_blocks(
+        SOURCE_SIZE_BUDGET_EXAMPLE,
+        "source accepted\n",
+        &["--max-source-bytes", "8"],
+        "sandbox error: source exceeds 8 byte limit",
     );
 }
 
