@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 const HOST_CAPABILITIES_EXAMPLE: &str =
     include_str!("../examples/sandbox/blocked_host_capabilities.py");
+const SAFE_STDLIB_EXAMPLE: &str = include_str!("../examples/sandbox/safe_stdlib.py");
 const INSTRUCTION_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/instruction_budget.py");
 const CALL_DEPTH_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/call_depth_budget.py");
 const OUTPUT_BUDGET_EXAMPLE: &str = include_str!("../examples/sandbox/output_budget.py");
@@ -104,6 +105,34 @@ fn real_cpython_and_mnpy_diverge_only_at_host_capability_boundary() {
          module socket blocked\n\
          module subprocess blocked\n\
          module _ctypes blocked\n"
+    );
+}
+
+#[test]
+fn real_cpython_and_mnpy_classify_the_complete_safe_stdlib_example() {
+    let cpython = run_source(
+        "/opt/homebrew/bin/python3",
+        &["-I", "-B", "-"],
+        SAFE_STDLIB_EXAMPLE,
+    );
+    let mnpy = run_source(env!("CARGO_BIN_EXE_mnpy"), &[], SAFE_STDLIB_EXAMPLE);
+    assert!(
+        cpython.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cpython.stderr)
+    );
+    assert!(
+        mnpy.status.success(),
+        "{}",
+        String::from_utf8_lossy(&mnpy.stderr)
+    );
+    assert_eq!(
+        cpython.stdout,
+        b"2\nTrue\n1\n2 Sequence\n2.0\nmath.integer unavailable\nb'A'\nTrue\nb'a'\n5 6\n4\n1\n"
+    );
+    assert_eq!(
+        mnpy.stdout,
+        b"2\nTrue\n1\n2 Sequence\n2.0\nmath.integer 6\nb'A'\nTrue\nb'a'\n5 6\n4\n1\n"
     );
 }
 

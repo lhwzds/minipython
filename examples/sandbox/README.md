@@ -5,6 +5,7 @@ exact source consumed by `tests/sandbox_examples.rs`.
 
 ```bash
 mnpy examples/sandbox/blocked_host_capabilities.py
+mnpy examples/sandbox/safe_stdlib.py
 mnpy --max-steps 100 examples/sandbox/instruction_budget.py
 mnpy --max-depth 3 examples/sandbox/call_depth_budget.py
 mnpy --max-output-bytes 16 examples/sandbox/output_budget.py
@@ -18,7 +19,11 @@ mnpy examples/sandbox/cache_injection.py
 mnpy examples/sandbox/dynamic_imports.py
 ```
 
-The host-capability example completes and reports intentional blocks. Each
+The host-capability example completes and reports intentional blocks.
+`safe_stdlib.py` exercises every module in the positive allowlist. Thirteen
+modules produce byte-for-byte identical output; the example makes the one
+versioned difference explicit because CPython 3.14.6 does not provide
+`math.integer` while MiniPython does. Each
 resource example completes under CPython and normal MiniPython defaults, but
 the deliberately low limit shown above terminates it with a sandbox error. The
 wall-clock example demonstrates the parent-process deadline, which also covers

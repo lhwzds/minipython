@@ -120,6 +120,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "allocation_budget.py",
         "wall_clock_budget.py",
         "compiler_memory_pressure_generator.py",
+        "safe_stdlib.py",
         "import_root/main.py",
         "blocked_import_root/main.py",
         "cache_injection.py",
@@ -138,6 +139,7 @@ fn sandbox_mvp_checklist_keeps_completion_requirements_explicit() {
         "real_cpython_completes_while_mnpy_enforces_allocation_budget",
         "real_cpython_completes_while_mnpy_enforces_wall_clock_budget",
         "real_cpython_completes_while_mnpy_contains_compiler_memory_pressure",
+        "real_cpython_and_mnpy_classify_the_complete_safe_stdlib_example",
     ] {
         assert!(
             SANDBOX_EXAMPLE_TESTS.contains(&format!("fn {evidence}(")),
