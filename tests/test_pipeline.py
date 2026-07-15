@@ -976,6 +976,17 @@ class GenerationTests(unittest.TestCase):
         self.assertTrue(all(case["origin"] == "generated" for case in cases))
         self.assertTrue(all(case["seed"] == 20260710 for case in cases))
 
+    def test_runtime_expression_model_combines_multiple_catchable_probes(self):
+        case = generate_cases(20260715, 5, ["runtime"])[4]
+
+        self.assertEqual(case["root_cause"], "generated-runtime-expression-model")
+        self.assertEqual(case["priority"], "must_fix")
+        self.assertEqual(case["modules"], ["core-runtime", "exceptions"])
+        self.assertEqual(case["source"].count("lambda:"), 12)
+        self.assertIn("except BaseException as error:", case["source"])
+        self.assertNotIn(" is ", case["source"])
+        self.assertNotIn(" is not ", case["source"])
+
     def test_security_generation_is_explicitly_classified(self):
         cases = generate_cases(9, 12, ["security"])
 

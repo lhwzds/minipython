@@ -247,6 +247,130 @@ print(values, list(iterator))
     )
 
 
+def _runtime_expression_model(rng: random.Random, index: int) -> dict[str, Any]:
+    atoms = (
+        "None",
+        "False",
+        "True",
+        "0",
+        "1",
+        "-1",
+        "7",
+        "255",
+        "10**20",
+        "0.0",
+        "-0.0",
+        "1.5",
+        "-2.25",
+        "float('inf')",
+        "float('-inf')",
+        "float('nan')",
+        "''",
+        "'abc'",
+        "'é'",
+        "b''",
+        "b'abc'",
+        "[]",
+        "[1, 2, 3]",
+        "()",
+        "(1, 2)",
+        "{}",
+        "{'a': 1}",
+        "range(0)",
+        "range(5)",
+        "range(-2, 5, 2)",
+    )
+    numeric_atoms = (
+        "False",
+        "True",
+        "0",
+        "1",
+        "-1",
+        "7",
+        "255",
+        "10**20",
+        "0.0",
+        "-0.0",
+        "1.5",
+        "-2.25",
+        "float('inf')",
+        "float('-inf')",
+        "float('nan')",
+    )
+    integer_atoms = ("-5", "-1", "0", "1", "2", "255", "10**20")
+    containers = ("''", "'abc'", "b''", "b'abc'", "[]", "[1, 2, 3]", "()", "(1, 2)", "{}", "{'a': 1}", "range(5)")
+    operators = (
+        "+",
+        "-",
+        "*",
+        "/",
+        "//",
+        "%",
+        "**",
+        "==",
+        "!=",
+        "<",
+        "<=",
+        ">",
+        ">=",
+        "and",
+        "or",
+        "in",
+        "not in",
+        "|",
+        "&",
+        "^",
+        "<<",
+        ">>",
+    )
+
+    expressions: list[str] = []
+    for _ in range(12):
+        operator = rng.choice(operators)
+        if operator in {"in", "not in"}:
+            left = rng.choice(atoms)
+            right = rng.choice(containers)
+        elif operator in {"<<", ">>"}:
+            left = rng.choice(integer_atoms)
+            right = rng.choice(("-2", "-1", "0", "1", "2", "8", "65"))
+        elif operator == "**":
+            left = rng.choice(("-3", "-1", "0", "1", "2", "3", "1.5"))
+            right = rng.choice(("-3", "-1", "0", "1", "2", "3", "4"))
+        elif operator == "*":
+            left = rng.choice(("-3", "-1", "0", "1", "2", "3", "'ab'", "b'ab'", "[1, 2]", "(1, 2)"))
+            right = rng.choice(("-3", "-1", "0", "1", "2", "3"))
+        elif operator in {"/", "//"}:
+            left = rng.choice(numeric_atoms)
+            right = rng.choice(numeric_atoms)
+        else:
+            left = rng.choice(atoms)
+            right = rng.choice(atoms)
+        expressions.append(f"({left}) {operator} ({right})")
+
+    probes = "\n".join(
+        f"probe({probe_index}, lambda: ({expression}))"
+        for probe_index, expression in enumerate(expressions)
+    )
+    source = f"""
+def probe(label, thunk):
+    try:
+        value = thunk()
+        print(label, "OK", type(value).__name__, repr(value))
+    except BaseException as error:
+        print(label, "ERR", type(error).__name__)
+
+{probes}
+"""
+    return _case(
+        name=f"generated-runtime-expression-model-{index}",
+        layer="runtime",
+        root_cause="generated-runtime-expression-model",
+        modules=["core-runtime", "exceptions"],
+        source=source,
+        priority="must_fix",
+    )
+
+
 def _stdlib_json(rng: random.Random, index: int) -> dict[str, Any]:
     values = [rng.randint(-100, 100) for _ in range(rng.randint(0, 7))]
     label = rng.choice(["alpha", "beta", "unicode-é", "line\nbreak"])
@@ -420,6 +544,7 @@ GENERATORS: dict[str, tuple[Callable[[random.Random, int], dict[str, Any]], ...]
         _runtime_class_protocol,
         _runtime_exceptions,
         _runtime_generator,
+        _runtime_expression_model,
     ),
     "stdlib": (
         _stdlib_json,
