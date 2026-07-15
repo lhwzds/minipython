@@ -108,25 +108,35 @@ Runnable boundary examples live under `examples/sandbox/`. For example,
 network, process, and C-ABI capabilities that the sandbox intentionally blocks.
 
 The current whole-project sandbox completion state is tracked in
-`tests/sandbox_mvp.md`. A green parity corpus alone is not a completion signal.
+`tests/README.md`. A green parity corpus alone is not a completion signal.
 The exact core runtime stopping point, including the disposition of every
-CPython coverage row that remains partial, is in `tests/sandbox_runtime_mvp.md`.
-Run `tools/run_sandbox_mvp_checks.sh --focused` while developing sandbox
-controls and `tools/run_sandbox_mvp_checks.sh` for the complete release gate.
+CPython coverage row that remains partial, is in `tests/README.md`.
+Run `tests/run.sh --focused` while developing sandbox controls,
+`tests/run.sh --discovery` for differential discovery only, and
+`tests/run.sh` for the complete release gate. This is now the only test
+entrypoint; the old sandbox and gap-sweep runners were removed.
 
 ## Testing
 
 ```bash
-/opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
-tools/run_cpython_gap_sweep.sh
-tools/run_cpython_gap_sweep.sh --module json
-tools/run_cpython_gap_sweep.sh --root-cause json-loads-core
+tests/run.sh --focused
+tests/run.sh --discovery
+tests/run.sh --discovery --seed 20260710 --generated-cases 1024
+tests/run.sh
+tests/run.sh --module json
+tests/run.sh --root-cause json-loads-core
 ```
 
-The first command runs fast unit tests for the gap-sweep driver. The gap sweep
-then uses `/opt/homebrew/bin/python3` as the fixed CPython oracle, checks it
-against the pinned `.python-version`, builds `mnpy`, and compares the bounded
-corpus. It is a discovery loop; promoted behavior still needs focused
+The unified pipeline runs driver unit tests, the checked-in corpus, and
+deterministic generated programs through real CPython and the sandbox-default
+`mnpy`. The fixed seed is balanced across syntax, runtime, stdlib, and security
+layers. Unexpected generated differences are minimized and written under
+`reports/differential-repros/`; reports preserve original and minimized source,
+classification, root cause, seed, interpreter output, and shrink attempts.
+The release and discovery modes fail while a generated `must_fix` or
+`should_fix` root cause remains open. The pipeline uses
+`/opt/homebrew/bin/python3` as the fixed CPython oracle, checks it against the
+pinned `.python-version`, and builds `mnpy`. Promoted behavior still needs focused
 `cpython_subset`, `cpython_diff`, manifest, coverage, and migration evidence.
 Gap reports record both the required pinned CPython version and the actual
 oracle/driver interpreter paths so a stale oracle cannot hide in the results.
@@ -141,7 +151,7 @@ also include `open_root_causes`, the current machine-readable repair queue for
 root causes that still have `needs_triage` cases. The runner enables
 `--fail-on-open` so unexpected open root causes fail the batch while accepted
 sandbox/compatibility gaps stay visible in the report. Open root-cause reports
-also include the focused `tools/run_cpython_gap_sweep.sh --root-cause ...`
+also include the focused `tests/run.sh --root-cause ...`
 command to rerun the grouped repair slice.
 
 ## Architecture

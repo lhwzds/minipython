@@ -80,27 +80,34 @@ compiler 和其他不在 VM value accounting 内的宿主分配。
 `mnpy examples/sandbox/blocked_host_capabilities.py`，可以看到 sandbox 明确
 阻止的宿主 IO、网络、进程和 C ABI 能力。
 
-整个 sandbox MVP 的完成状态以 `tests/sandbox_mvp.md` 为准；仅仅 gap corpus
+整个 sandbox MVP 的完成状态以 `tests/README.md` 为准；仅仅 gap corpus
 全绿不代表整个目标完成。
 核心 runtime 的准确停手线以及所有仍为 partial 的 CPython coverage row 处理
-方式记录在 `tests/sandbox_runtime_mvp.md`。
-开发 sandbox 控制时运行 `tools/run_sandbox_mvp_checks.sh --focused`，完整发布
-验收必须运行不带参数的 `tools/run_sandbox_mvp_checks.sh`。
+方式记录在 `tests/README.md`。
+开发 sandbox 控制时运行 `tests/run.sh --focused`；只运行持续差分
+发现时使用 `tests/run.sh --discovery`；完整发布验收运行不带参数的
+`tests/run.sh`。这是现在唯一的测试入口；旧 sandbox 和 gap-sweep runner 已删除。
 
 ## 测试
 
 ```bash
-/opt/homebrew/bin/python3 tools/test_cpython_gap_sweep.py
-tools/run_cpython_gap_sweep.sh
-tools/run_cpython_gap_sweep.sh --module json
-tools/run_cpython_gap_sweep.sh --root-cause json-loads-core
+tests/run.sh --focused
+tests/run.sh --discovery
+tests/run.sh --discovery --seed 20260710 --generated-cases 1024
+tests/run.sh
+tests/run.sh --module json
+tests/run.sh --root-cause json-loads-core
 ```
 
-第一条命令会快速测试 gap-sweep driver 本身。gap sweep 会固定使用
-`/opt/homebrew/bin/python3` 作为 CPython oracle，并用 `.python-version` 校验
-版本，先构建 `mnpy`，再比较有边界的 corpus。它是发现差异的循环；提升为支持
-面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、coverage
-和 migration 证据。
+统一流水线会运行 driver 单测、仓库 corpus，以及固定种子生成的 Python 程序；
+每个程序都会交给真实 CPython 和默认启用 sandbox 的真实 `mnpy`。生成 case 在
+语法、运行时、stdlib、安全四层之间均衡分配。非预期差异会被自动缩减，最小复现
+写入 `reports/differential-repros/`；报告会保留原始/缩减源码、分类、root cause、
+seed、两侧输出和缩减次数。只要生成结果中仍有开放的 `must_fix` 或 `should_fix`
+根因，discovery 和 release 流水线就会失败。流水线固定使用
+`/opt/homebrew/bin/python3` 作为 CPython oracle，并用 `.python-version` 校验版本。
+提升为支持面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、
+coverage 和 migration 证据。
 gap 报告会同时记录要求的固定 CPython 版本和实际 oracle/driver interpreter
 路径，避免过期 oracle 混进结果里。使用 `--module` 可以聚焦一次批量运行，
 例如只跑 `json`、`collections.abc` 或 `math.integer`。报告会把解释器输出的
@@ -113,7 +120,7 @@ sandbox/compatibility gap、以及需要按 root cause 继续修的非预期 dif
 runner 会启用 `--fail-on-open`，让未预期的 open root cause 直接使批量运行
 失败，同时把已接受的 sandbox/compatibility gap 留在报告里。open root-cause
 report 也会写出对应的
-`tools/run_cpython_gap_sweep.sh --root-cause ...` 聚焦重跑命令。
+`tests/run.sh --root-cause ...` 聚焦重跑命令。
 
 ## 架构
 

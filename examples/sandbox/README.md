@@ -1,7 +1,7 @@
 # Sandbox Examples
 
 Every Python file in this directory is both runnable documentation and the
-exact source consumed by `tests/sandbox_examples.rs`.
+exact source consumed by `tests/sandbox.rs`.
 
 ```bash
 mnpy examples/sandbox/blocked_host_capabilities.py
