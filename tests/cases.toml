@@ -1,0 +1,604 @@
+# Curated CPython/MiniPython differential cases.
+# Generated cases are produced by tests/pipeline.py.
+
+# --- json.toml ---
+
+[[case]]
+name = "json-loads-core-values"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-core"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for text in ['null', 'true', 'false', '""', '[]', '{}', '{"a":[1,true,null],"b":"x"}']:
+    print(text, json.dumps(json.loads(text), sort_keys=True))
+'''
+
+[[case]]
+name = "json-loads-number-hooks"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-number-hooks"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+calls = []
+def pint(text):
+    calls.append(('int', text))
+    return ['int', text]
+def pfloat(text):
+    calls.append(('float', text))
+    return ['float', text]
+def pconst(text):
+    calls.append(('const', text))
+    return ['const', text]
+print(json.loads('[1, -2, 3.5, NaN]', parse_int=pint, parse_float=pfloat, parse_constant=pconst))
+print(calls)
+'''
+
+[[case]]
+name = "json-loads-object-hooks"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-object-hooks"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+def hook(value):
+    return {'keys': sorted(value)}
+def pairs(value):
+    return [('pairs', value)]
+print(json.loads('{"b": 1, "a": {"c": 2}}', object_hook=hook))
+print(json.loads('{"a": 1, "a": 2}', object_pairs_hook=pairs))
+'''
+
+[[case]]
+name = "json-loads-string-escapes"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-string-escapes"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for text in ['"\\\""', '"\\\\"', '"\\b\\f\\n\\r\\t"', '"\\u00e9"', '"\\ud834\\udd20"']:
+    value = json.loads(text)
+    print(len(value), json.dumps(value, ensure_ascii=True))
+'''
+
+[[case]]
+name = "json-loads-top-level-scalars"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-top-level-scalars"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for text in ['0', '-0', '1.25', 'true', 'false', 'null', ' [] ', ' {} ']:
+    print(text.strip(), repr(json.loads(text)))
+'''
+
+[[case]]
+name = "json-loads-error-boundaries"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-error-boundaries"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+def show(label, source, expected):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), str(error) == expected, error.args == (expected,))
+    else:
+        print(label, 'OK')
+show('missing-colon', '{"a" 1}', "Expecting ':' delimiter: line 1 column 6 (char 5)")
+show('array-trailing-comma', '[1,]', 'Illegal trailing comma before end of array: line 1 column 3 (char 2)')
+show('object-trailing-comma', '{"a": 1,}', 'Illegal trailing comma before end of object: line 1 column 8 (char 7)')
+show('extra-data', '{} []', 'Extra data: line 1 column 4 (char 3)')
+show('bad-escape', '"\\q"', 'Invalid \\escape: line 1 column 2 (char 1)')
+show('raw-newline', '"line\nbreak"', 'Invalid control character at: line 1 column 6 (char 5)')
+'''
+
+[[case]]
+name = "json-dumps-format-options"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-format-options"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+value = {'z': [1, 'é'], 'a': None}
+print(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':')))
+print(json.dumps(value, sort_keys=True, indent=2))
+'''
+
+[[case]]
+name = "json-dumps-default-and-skipkeys"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-default-skipkeys"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+class Box:
+    pass
+print(json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=True))
+print(json.dumps(Box(), default=lambda obj: {'box': True}, sort_keys=True))
+'''
+
+[[case]]
+name = "json-dumps-nonfinite-and-circular"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-nonfinite-and-circular"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+for value in [float('nan'), float('inf'), float('-inf')]:
+    print(json.dumps(value))
+    try:
+        print(json.dumps(value, allow_nan=False))
+    except Exception as error:
+        print(type(error).__name__, str(error))
+value = []
+value.append(value)
+try:
+    print(json.dumps(value, check_circular=True))
+except Exception as error:
+    print(type(error).__name__, str(error))
+'''
+
+[[case]]
+name = "json-dumps-error-boundaries"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-dumps-error-boundaries"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+try:
+    json.dumps()
+except Exception as error:
+    print('no-args', isinstance(error, TypeError), isinstance(error, ValueError))
+try:
+    json.dumps({}, 1)
+except Exception as error:
+    print('extra-arg', isinstance(error, TypeError), isinstance(error, ValueError))
+try:
+    json.dumps({}, unknown=1)
+except Exception as error:
+    print('unknown-keyword', isinstance(error, TypeError), isinstance(error, ValueError))
+for label, value in [('object', object()), ('bytes', b'abc'), ('bad-key', {(1, 2): 3})]:
+    try:
+        json.dumps(value)
+    except Exception as error:
+        print(label, isinstance(error, TypeError), isinstance(error, ValueError))
+cycle_list = []
+cycle_list.append(cycle_list)
+try:
+    json.dumps(cycle_list)
+except Exception as error:
+    print('list-cycle', isinstance(error, TypeError), isinstance(error, ValueError))
+cycle_dict = {}
+cycle_dict['self'] = cycle_dict
+try:
+    json.dumps(cycle_dict)
+except Exception as error:
+    print('dict-cycle', isinstance(error, TypeError), isinstance(error, ValueError))
+'''
+
+[[case]]
+name = "json-file-api-out-of-scope"
+scope = "stdlib-sandbox"
+category = "stdlib-missing"
+root_cause = "json-file-api-out-of-scope"
+modules = ["json"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+import json
+class Sink:
+    def __init__(self):
+        self.parts = []
+    def write(self, text):
+        self.parts.append(text)
+        return len(text)
+class Source:
+    def read(self):
+        return '{"a": 1}'
+sink = Sink()
+json.dump({'a': 1}, sink, sort_keys=True)
+print('dumped', ''.join(sink.parts))
+print('loaded', json.load(Source()))
+'''
+
+[[case]]
+name = "json-encoder-decoder-classes-out-of-scope"
+scope = "stdlib-sandbox"
+category = "stdlib-missing"
+root_cause = "json-codec-classes-out-of-scope"
+modules = ["json"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+import json
+print(json.dumps({'a': 1}, cls=json.JSONEncoder, sort_keys=True))
+print(json.loads('{"a": 1}', cls=json.JSONDecoder))
+'''
+
+# --- math_integer.toml ---
+
+[[case]]
+name = "math-integer-compat-alias"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "math-integer-cpython-compat-gap"
+modules = ["math.integer"]
+priority = "should_fix"
+expected = "cpython_missing_compat"
+source = '''
+import math.integer as mi
+print(mi.gcd(12, 18), mi.lcm(4, 6), mi.isqrt(17))
+print(mi.comb(5, 2), mi.perm(5, 2), mi.factorial(5))
+'''
+
+# --- smoke.toml ---
+
+[[case]]
+name = "syntax-function-closure"
+scope = "syntax"
+category = "syntax"
+root_cause = "syntax-frontend-functions"
+modules = ["syntax"]
+priority = "must_fix"
+source = '''
+def make(offset):
+    def inner(value):
+        return value + offset
+    return inner
+print(make(4)(5))
+'''
+
+[[case]]
+name = "syntax-class-method"
+scope = "syntax"
+category = "syntax"
+root_cause = "syntax-frontend-classes"
+modules = ["syntax"]
+priority = "must_fix"
+source = '''
+class Counter:
+    def __init__(self, value):
+        self.value = value
+    def inc(self):
+        self.value += 1
+        return self.value
+print(Counter(2).inc())
+'''
+
+[[case]]
+name = "syntax-match-basic"
+scope = "syntax"
+category = "syntax"
+root_cause = "syntax-pattern-matching"
+modules = ["syntax"]
+priority = "must_fix"
+source = '''
+value = ("ok", 3)
+match value:
+    case ("ok", n):
+        print(n)
+    case _:
+        print("fallback")
+'''
+
+[[case]]
+name = "core-container-comprehension"
+scope = "core-runtime"
+category = "runtime-semantic"
+root_cause = "core-comprehension-containers"
+modules = ["core-runtime"]
+priority = "must_fix"
+source = '''
+values = [x * x for x in range(5) if x % 2 == 0]
+print(values)
+print({x: x + 1 for x in values})
+'''
+
+[[case]]
+name = "core-exception-catch"
+scope = "core-runtime"
+category = "exception-shape"
+root_cause = "exception-catch-shape"
+modules = ["exceptions"]
+priority = "must_fix"
+source = '''
+try:
+    [][0]
+except IndexError as error:
+    print(type(error).__name__)
+'''
+
+[[case]]
+name = "stdlib-json-basic"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "json-loads-core"
+modules = ["json"]
+priority = "should_fix"
+source = '''
+import json
+value = json.loads('{"a": [1, true, null]}')
+print(value)
+print(json.dumps(value, sort_keys=True))
+'''
+
+[[case]]
+name = "stdlib-collections-abc-iterable-doc"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "collections-abc-metadata"
+modules = ["collections.abc"]
+priority = "nice_to_have"
+source = '''
+from collections.abc import Iterable
+print(object.__getattribute__(Iterable, "__doc__"))
+'''
+
+[[case]]
+name = "stdlib-pdb-module-out-of-scope"
+scope = "stdlib-sandbox"
+category = "stdlib-missing"
+root_cause = "stdlib-pdb-out-of-scope"
+modules = ["pdb"]
+priority = "wont_fix"
+expected = "stdlib_missing"
+source = '''
+try:
+    import pdb
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "sandbox-socket-import-block"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-network-block"
+modules = ["socket"]
+priority = "wont_fix"
+expected = "intentional_sandbox_block"
+source = '''
+try:
+    import socket
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "sandbox-open-input-block"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-host-io-block"
+modules = ["builtins"]
+priority = "wont_fix"
+expected = "intentional_sandbox_block"
+source = '''
+for name in ["open", "input"]:
+    try:
+        value = eval(name)
+    except Exception as error:
+        print(name, type(error).__name__)
+    else:
+        print(name, type(value).__name__)
+'''
+
+[[case]]
+name = "sandbox-subprocess-out-of-scope"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-process-block"
+modules = ["subprocess"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+try:
+    import subprocess
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "sandbox-signal-out-of-scope"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-signal-block"
+modules = ["signal"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+try:
+    import signal
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+[[case]]
+name = "sandbox-cabi-extension-out-of-scope"
+scope = "intentional-sandbox"
+category = "sandbox-excluded"
+root_cause = "sandbox-cabi-block"
+modules = ["_ssl", "_socket", "_ctypes"]
+priority = "wont_fix"
+expected = "unsupported_out_of_scope"
+source = '''
+for name in ["_ssl", "_socket", "_ctypes"]:
+    try:
+        __import__(name)
+    except Exception as error:
+        print(name, type(error).__name__)
+    else:
+        print(name, "imported")
+'''
+
+[[case]]
+name = "cpython-internal-testcapi-out-of-scope"
+scope = "intentional-sandbox"
+category = "cpython-internal"
+root_cause = "cpython-capi-internal"
+modules = ["_testcapi"]
+priority = "wont_fix"
+expected = "cpython_internal"
+source = '''
+try:
+    import _testcapi
+except Exception as error:
+    print(type(error).__name__)
+else:
+    print("imported")
+'''
+
+# --- stdlib_allowlist.toml ---
+
+[[case]]
+name = "stdlib-allowlist-core-modules"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "stdlib-allowlist-runtime-smoke"
+modules = [
+  "array",
+  "builtins",
+  "collections",
+  "collections.abc",
+  "copy",
+  "functools",
+  "io.BytesIO",
+  "itertools",
+  "json",
+  "math",
+  "operator",
+  "sys",
+  "types",
+]
+priority = "should_fix"
+source = '''
+import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
+print(builtins.len([1, 2]))
+print(isinstance(sys.modules, dict))
+print(types.SimpleNamespace(x=1).x)
+print(collections.Counter('aa')['a'], collections.abc.Sequence.__name__)
+print(math.sqrt(4))
+print(array.array('B', [65]).tobytes())
+print(array.ArrayType is array.array, array.ArrayType('B', [66]).tobytes())
+print(copy.copy([1]) == [1])
+bio = io.BytesIO(b'ab')
+print(bio.read(1))
+print(operator.add(2, 3), functools.reduce(lambda a, b: a + b, [1, 2, 3]))
+print(next(itertools.count(4)))
+print(json.loads('{"a": 1}')['a'])
+'''
+
+[[case]]
+name = "stdlib-module-doc-packages"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "stdlib-module-metadata-smoke"
+modules = [
+  "array",
+  "builtins",
+  "collections",
+  "collections.abc",
+  "copy",
+  "functools",
+  "io.BytesIO",
+  "itertools",
+  "json",
+  "math",
+  "operator",
+  "sys",
+  "types",
+]
+priority = "should_fix"
+source = '''
+import builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json
+for module in [builtins, sys, types, collections, collections.abc, math, array, copy, io, operator, functools, itertools, json]:
+    print(module.__name__, type(module.__doc__).__name__, hasattr(module, '__package__'))
+'''
+
+[[case]]
+name = "stdlib-operator-functools-itertools"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "operator-functools-itertools-core"
+modules = ["operator", "functools", "itertools"]
+priority = "should_fix"
+source = '''
+import operator, functools, itertools
+print(operator.itemgetter(1)(['a', 'b', 'c']))
+print(operator.attrgetter('real')(3+4j))
+print(functools.partial(operator.add, 4)(5))
+print(list(itertools.islice(itertools.chain([1], [2, 3]), 3)))
+print(list(itertools.batched([1, 2, 3], 2)))
+'''
+
+[[case]]
+name = "stdlib-builtins-sys-breakpoint-hook"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "builtins-sys-breakpoint-hook"
+modules = ["builtins", "sys"]
+priority = "should_fix"
+source = '''
+import builtins, sys
+def hook(*args, **kwargs):
+    print("hook", args, sorted(kwargs.items()))
+    return "ret"
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+try:
+    print(hasattr(builtins, "breakpoint"), hasattr(sys, "__breakpointhook__"), sys.breakpointhook is hook)
+    print(breakpoint(1, "x", key=3))
+finally:
+    sys.breakpointhook = saved
+'''
+
+[[case]]
+name = "stdlib-collections-copy-io-array"
+scope = "stdlib-sandbox"
+category = "runtime-semantic"
+root_cause = "collections-copy-io-array-core"
+modules = ["collections", "collections.abc", "copy", "io.BytesIO", "array"]
+priority = "should_fix"
+source = '''
+import collections, collections.abc, copy, io, array
+counter = collections.Counter('ababa')
+print(counter['a'], counter.most_common(1))
+print(isinstance([], collections.abc.Sequence), isinstance({}, collections.abc.Mapping))
+data = {'items': [1]}
+clone = copy.copy(data)
+clone['items'].append(2)
+print(data['items'])
+bio = io.BytesIO()
+print(bio.write(b'xy'), bio.getvalue())
+print(array.array('B', bio.getvalue()).tolist())
+'''

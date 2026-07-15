@@ -15,12 +15,13 @@ import json
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SWEEP_PATH = REPO_ROOT / "tools" / "cpython_gap_sweep.py"
+SWEEP_PATH = REPO_ROOT / "tests" / "pipeline.py"
 
 
 def load_sweep_module():
@@ -229,6 +230,24 @@ class ClassifyTests(unittest.TestCase):
         )
         self.assertEqual(gap.normalized_message(mini), "ValueError: bad")
 
+    def test_expected_security_contract_rejects_a_matching_bypass(self):
+        case = {
+            "expected": "intentional_sandbox_block",
+            "expected_cpython_stdout": "imported\n",
+            "expected_minipython_stdout": "ModuleNotFoundError\n",
+        }
+        cpython = run_result(stdout="imported\n")
+        blocked = run_result(stdout="ModuleNotFoundError\n")
+        bypass = run_result(stdout="imported\n")
+
+        self.assertEqual(
+            gap.classify_case(cpython, blocked, case),
+            ("INTENTIONAL_SANDBOX_BLOCK", "stdout differs"),
+        )
+        status, diff = gap.classify_case(cpython, bypass, case)
+        self.assertEqual(status, "EXPECTED_CONTRACT_DIFF")
+        self.assertIn("expected_minipython_stdout", diff)
+
     def test_run_result_records_exception_message_and_normalized_diff(self):
         cpython = run_result(
             exit_code=1,
@@ -266,6 +285,10 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.cpython, "/opt/homebrew/bin/python3")
         self.assertEqual(args.require_version, "3.14.6")
         self.assertEqual(args.root_cause, "*")
+        self.assertEqual(args.generated_cases, 0)
+        self.assertEqual(args.seed, 20260710)
+        self.assertEqual(args.layer, "syntax,runtime,stdlib,security")
+        self.assertFalse(args.shrink)
         self.assertFalse(args.fail_on_open)
 
     def test_fail_on_open_flag_is_available(self):
@@ -402,7 +425,7 @@ source = "print(1)"
 
 class CorpusContractTests(unittest.TestCase):
     def test_repo_corpus_covers_required_stdlib_modules_and_categories(self):
-        cases = gap.load_cases(REPO_ROOT / "tests" / "gap_corpus")
+        cases = gap.load_cases(REPO_ROOT / "tests" / "cases.toml")
         stdlib_modules = {
             module
             for case in cases
@@ -415,7 +438,7 @@ class CorpusContractTests(unittest.TestCase):
         self.assertEqual(REQUIRED_CATEGORIES - categories, set())
 
     def test_repo_corpus_keeps_expected_gap_markers_and_json_root_causes(self):
-        cases = gap.load_cases(REPO_ROOT / "tests" / "gap_corpus")
+        cases = gap.load_cases(REPO_ROOT / "tests" / "cases.toml")
         expected_markers = {
             case["expected"]
             for case in cases
@@ -456,7 +479,7 @@ class VersionGuardTests(unittest.TestCase):
             cpython="/does/not/matter",
             require_version="3.14.6",
             minipython="/does/not/matter",
-            corpus="tests/gap_corpus",
+            corpus="tests/cases.toml",
             scope="syntax",
             category="syntax",
             module="syntax",
@@ -580,7 +603,7 @@ class RootCauseSummaryTests(unittest.TestCase):
             gap.open_root_cause_commands(open_summary),
             {
                 "json-dumps-format-options": [
-                    "tools/run_cpython_gap_sweep.sh",
+                    "tests/run.sh",
                     "--root-cause",
                     "json-dumps-format-options",
                 ],
@@ -589,12 +612,12 @@ class RootCauseSummaryTests(unittest.TestCase):
         self.assertEqual(
             gap.format_command(
                 [
-                    "tools/run_cpython_gap_sweep.sh",
+                    "tests/run.sh",
                     "--root-cause",
                     "json-dumps-format-options",
                 ]
             ),
-            "tools/run_cpython_gap_sweep.sh --root-cause json-dumps-format-options",
+            "tests/run.sh --root-cause json-dumps-format-options",
         )
 
 
@@ -610,11 +633,16 @@ class ReportTests(unittest.TestCase):
             "driver_executable": "/python",
             "driver_python": "3.14.6",
             "minipython_executable": "/mnpy",
-            "corpus": "tests/gap_corpus",
+            "corpus": "tests/cases.toml",
             "scope": ["syntax"],
             "category": ["syntax"],
             "module": ["json"],
             "root_cause": ["json-loads-core"],
+            "layer": ["syntax"],
+            "seed": 20260710,
+            "generated_cases_selected": 0,
+            "corpus_cases_selected": 1,
+            "shrink": False,
         }
         result = gap.SweepResult(
             name="case-one",
@@ -641,6 +669,7 @@ class ReportTests(unittest.TestCase):
                 exception_class="TypeError",
                 exception_message="TypeError: bad",
             ),
+            layer="syntax",
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -652,6 +681,8 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["summary"], {"OUTPUT_DIFF": 1})
         self.assertEqual(payload["triage"], {"needs_triage": 1})
         self.assertEqual(payload["categories"], {"syntax": 1})
+        self.assertEqual(payload["layers"], {"syntax": 1})
+        self.assertEqual(payload["origins"], {"corpus": 1})
         self.assertEqual(payload["root_causes"], {"json-loads-core": 1})
         self.assertEqual(
             payload["root_cause_summary"]["json-loads-core"],
@@ -671,7 +702,7 @@ class ReportTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["open_root_cause_commands"]["json-loads-core"],
-            ["tools/run_cpython_gap_sweep.sh", "--root-cause", "json-loads-core"],
+            ["tests/run.sh", "--root-cause", "json-loads-core"],
         )
         self.assertEqual(payload["modules"], {"json": 1})
         self.assertEqual(payload["meta"]["required_cpython_version"], "3.14.6")
@@ -680,6 +711,8 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(payload["results"][0]["root_cause"], "json-loads-core")
         self.assertEqual(payload["results"][0]["modules"], ["json"])
         self.assertEqual(payload["results"][0]["triage_status"], "needs_triage")
+        self.assertEqual(payload["results"][0]["layer"], "syntax")
+        self.assertEqual(payload["results"][0]["origin"], "corpus")
         self.assertEqual(payload["results"][0]["diff"], "stdout differs")
         self.assertEqual(payload["results"][0]["cpython"]["exit_code"], 1)
         self.assertEqual(payload["results"][0]["cpython"]["stdout"], "1\n")
@@ -714,7 +747,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("| `needs_triage` | 1 |", markdown)
         self.assertIn("## Open Root Causes", markdown)
         self.assertIn(
-            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` | `tools/run_cpython_gap_sweep.sh --root-cause json-loads-core` |",
+            "| `json-loads-core` | 1 | `needs_triage=1` | `OUTPUT_DIFF=1` | `json` | `tests/run.sh --root-cause json-loads-core` |",
             markdown,
         )
         self.assertIn("| `syntax` | 1 |", markdown)
@@ -724,7 +757,7 @@ class ReportTests(unittest.TestCase):
         )
         self.assertIn("| `json` | 1 |", markdown)
         self.assertIn(
-            "| `case-one` | `syntax` | `syntax` | `json-loads-core` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
+            "| `case-one` | `corpus` | `syntax` | `syntax` | `syntax` | `json-loads-core` | `json` | `must_fix` | `OUTPUT_DIFF` | `needs_triage` |",
             markdown,
         )
         self.assertIn("- Root Cause: `json-loads-core`", markdown)
@@ -732,6 +765,107 @@ class ReportTests(unittest.TestCase):
         self.assertIn("- Diff: `stdout differs`", markdown)
         self.assertIn("CPython stdout:", markdown)
         self.assertIn("MiniPython stdout:", markdown)
+
+
+class DiscoveryIntegrationTests(unittest.TestCase):
+    def test_generated_difference_is_compared_minimized_and_persisted(self):
+        generated_case = {
+            "name": "generated-integration-case",
+            "scope": "core-runtime",
+            "category": "runtime-semantic",
+            "root_cause": "generated-integration-root",
+            "modules": ["core-runtime"],
+            "priority": "must_fix",
+            "source": "unused = 99\nvalue = 42\nprint(value)\n",
+            "layer": "runtime",
+            "origin": "generated",
+            "seed": 7,
+        }
+
+        def fake_run(command, source, timeout):
+            del timeout
+            prefix = "cpython" if command[0] == "/cpython" else "minipython"
+            return run_result(stdout=f"{prefix}:{len(source)}\n")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            minipython = root / "mnpy"
+            minipython.touch()
+            corpus = root / "corpus"
+            corpus.mkdir()
+            repro_dir = root / "repros"
+            args = argparse.Namespace(
+                cpython="/cpython",
+                require_version="3.14.6",
+                minipython=str(minipython),
+                corpus=str(corpus),
+                scope="syntax,core-runtime,stdlib-sandbox,intentional-sandbox",
+                category=",".join(sorted(gap.VALID_CATEGORIES)),
+                module="*",
+                root_cause="*",
+                layer="syntax,runtime,stdlib,security",
+                generated_cases=1,
+                seed=7,
+                shrink=True,
+                shrink_max_attempts=32,
+                repro_dir=str(repro_dir),
+                timeout=1.0,
+            )
+            with patch.object(
+                gap, "oracle_version", return_value="3.14.6"
+            ), patch.object(
+                gap, "generate_cases", return_value=[generated_case]
+            ), patch.object(
+                gap, "run_command", side_effect=fake_run
+            ):
+                meta, results = gap.run_sweep(args)
+
+            result = results[0]
+            repro = repro_dir / "generated-integration-case.py"
+            self.assertEqual(result.status, "OUTPUT_DIFF")
+            self.assertEqual(result.triage_status, "needs_triage")
+            self.assertLess(len(result.minimized_source), len(result.source))
+            self.assertGreater(result.shrink_attempts, 0)
+            self.assertTrue(repro.exists())
+            self.assertIn(result.minimized_source, repro.read_text())
+            self.assertEqual(meta["generated_cases_selected"], 1)
+            self.assertEqual(meta["corpus_cases_selected"], 0)
+            self.assertEqual(meta["seed"], 7)
+
+    def test_priority_filter_keeps_only_requested_open_roots(self):
+        must_fix = gap.SweepResult(
+            name="must-fix",
+            scope="core-runtime",
+            category="runtime-semantic",
+            root_cause="must-root",
+            modules=["core-runtime"],
+            priority="must_fix",
+            status="OUTPUT_DIFF",
+            triage_status="needs_triage",
+            expected=None,
+            diff="stdout differs",
+            cpython=run_result(stdout="1\n"),
+            minipython=run_result(stdout="2\n"),
+        )
+        nice_to_have = gap.SweepResult(
+            name="nice",
+            scope="core-runtime",
+            category="exception-shape",
+            root_cause="nice-root",
+            modules=["core-runtime"],
+            priority="nice_to_have",
+            status="EXCEPTION_MESSAGE_DIFF",
+            triage_status="needs_triage",
+            expected=None,
+            diff="message differs",
+            cpython=run_result(exit_code=1, exception_class="ValueError"),
+            minipython=run_result(exit_code=1, exception_class="ValueError"),
+        )
+
+        self.assertEqual(
+            set(gap.open_root_causes([must_fix, nice_to_have], {"must_fix"})),
+            {"must-root"},
+        )
 
 
 class MainTests(unittest.TestCase):
@@ -816,6 +950,81 @@ class MainTests(unittest.TestCase):
             exit_code = gap.main()
 
         self.assertEqual(exit_code, 0)
+
+LAYERS = gap.LAYERS
+generate_cases = gap.generate_cases
+literal_reduction_candidates = gap.literal_reduction_candidates
+minimize_source = gap.minimize_source
+top_level_reduction_candidates = gap.top_level_reduction_candidates
+
+class GenerationTests(unittest.TestCase):
+    def test_fixed_seed_is_deterministic_and_names_are_unique(self):
+        first = generate_cases(1234, 80, LAYERS)
+        second = generate_cases(1234, 80, LAYERS)
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 80)
+        self.assertEqual(len({case["name"] for case in first}), 80)
+
+    def test_large_shape_is_balanced_across_all_four_layers(self):
+        cases = generate_cases(20260710, 1024, LAYERS)
+
+        self.assertEqual(
+            Counter(case["layer"] for case in cases),
+            {"syntax": 256, "runtime": 256, "stdlib": 256, "security": 256},
+        )
+        self.assertTrue(all(case["origin"] == "generated" for case in cases))
+        self.assertTrue(all(case["seed"] == 20260710 for case in cases))
+
+    def test_security_generation_is_explicitly_classified(self):
+        cases = generate_cases(9, 12, ["security"])
+
+        self.assertTrue(
+            all(case["expected"] == "intentional_sandbox_block" for case in cases)
+        )
+        self.assertTrue(all(case["priority"] == "wont_fix" for case in cases))
+        self.assertTrue(all(case["category"] == "sandbox-excluded" for case in cases))
+        self.assertTrue(all("expected_cpython_stdout" in case for case in cases))
+        self.assertTrue(all("expected_minipython_stdout" in case for case in cases))
+
+    def test_invalid_generation_requests_fail_clearly(self):
+        with self.assertRaisesRegex(ValueError, "non-negative"):
+            generate_cases(1, -1, LAYERS)
+        with self.assertRaisesRegex(ValueError, "unknown discovery layers"):
+            generate_cases(1, 1, ["unknown"])
+        with self.assertRaisesRegex(ValueError, "at least one"):
+            generate_cases(1, 1, [])
+
+
+class ReductionTests(unittest.TestCase):
+    def test_top_level_candidates_preserve_complete_statement_blocks(self):
+        source = "value = 1\nif value:\n    print(value)\nprint('done')\n"
+        candidates = top_level_reduction_candidates(source)
+
+        self.assertIn("if value:\n    print(value)\nprint('done')\n", candidates)
+        self.assertIn("value = 1\nprint('done')\n", candidates)
+        self.assertIn("value = 1\nif value:\n    print(value)\n", candidates)
+
+    def test_literal_candidates_simplify_numbers_booleans_and_strings(self):
+        candidates = literal_reduction_candidates("print(42, True, 'value')\n")
+
+        self.assertIn("print(0, True, 'value')\n", candidates)
+        self.assertIn("print(42, False, 'value')\n", candidates)
+        self.assertIn("print(42, True, '')\n", candidates)
+
+    def test_minimizer_keeps_only_candidates_that_preserve_failure(self):
+        source = "unused = 99\ntrigger = 42\nprint(trigger)\n"
+
+        minimized, attempts = minimize_source(
+            source,
+            lambda candidate: "trigger" in candidate and "print" in candidate,
+            max_attempts=30,
+        )
+
+        self.assertNotIn("unused", minimized)
+        self.assertIn("trigger", minimized)
+        self.assertIn("print", minimized)
+        self.assertGreater(attempts, 0)
 
 
 if __name__ == "__main__":
