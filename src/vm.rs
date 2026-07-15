@@ -43,10 +43,10 @@ use crate::value::{
     complex_value, dict_value, dict_view_value, dict_view_values, float_value,
     format_float_display, format_instance_object_repr, format_iterator_repr,
     frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
-    identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
+    identity_string_value, is_printable_char, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
     memory_view_from_parts_with_exported_bytearray_and_ndim, memory_view_from_parts_with_format,
-    memory_view_value, ordered_dict_view_value, set_value, tuple_value,
+    memory_view_value, ordered_dict_view_value, push_ascii_escape, set_value, tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
@@ -2851,15 +2851,6 @@ fn ascii_escape_text(text: &str) -> String {
     result
 }
 
-fn push_ascii_escape(output: &mut String, ch: char) {
-    let codepoint = ch as u32;
-    match codepoint {
-        0x00..=0xff => output.push_str(&format!("\\x{codepoint:02x}")),
-        0x0100..=0xffff => output.push_str(&format!("\\u{codepoint:04x}")),
-        _ => output.push_str(&format!("\\U{codepoint:08x}")),
-    }
-}
-
 fn repr_string(value: &str) -> String {
     let quote = if value.contains('\'') && !value.contains('"') {
         '"'
@@ -2881,6 +2872,7 @@ fn repr_string(value: &str) -> String {
             ch if ch.is_control() && (ch as u32) <= 0xff => {
                 result.push_str(&format!("\\x{:02x}", ch as u32));
             }
+            ch if !is_printable_char(ch) => push_ascii_escape(&mut result, ch),
             ch => result.push(ch),
         }
     }
@@ -86377,21 +86369,6 @@ fn string_isprintable(value: &str) -> bool {
     value.chars().all(is_printable_char)
 }
 
-fn is_printable_char(ch: char) -> bool {
-    ch == ' '
-        || !matches!(
-            get_general_category(ch),
-            GeneralCategory::Control
-                | GeneralCategory::Format
-                | GeneralCategory::PrivateUse
-                | GeneralCategory::Surrogate
-                | GeneralCategory::Unassigned
-                | GeneralCategory::LineSeparator
-                | GeneralCategory::ParagraphSeparator
-                | GeneralCategory::SpaceSeparator
-        )
-}
-
 fn is_digit_char(ch: char) -> bool {
     is_decimal_char(ch)
         || matches!(ch, '\u{00b2}' | '\u{00b3}' | '\u{00b9}')
@@ -101441,33 +101418,19 @@ fn load_slice(
             let start = slice_bound(start)?;
             let stop = slice_bound(stop)?;
             let step = slice_bound(step)?;
-            let slice_step = slice_step_value(step)?;
-            let indices = slice_indices(values.len(), start, stop, step)?;
+            let len = i64::try_from(values.len()).map_err(|_| "range is too large".to_string())?;
+            let (slice_start, slice_stop, slice_step) =
+                normalized_slice_indices(len, start, stop, step)?;
+            let new_start = &range_start + &range_step * BigInt::from(slice_start);
+            let new_stop = &range_start + &range_step * BigInt::from(slice_stop);
+            let new_step = range_step * BigInt::from(slice_step);
 
-            if let Some(first_index) = indices.first().copied() {
-                let last_index = indices
-                    .last()
-                    .copied()
-                    .expect("nonempty indices has a last index");
-                let new_step = range_step * BigInt::from(slice_step);
-                let new_start = values[first_index].clone();
-                let last_value = values[last_index].clone();
-                let new_stop = last_value + &new_step;
-
-                Ok(Value::Range {
-                    start: new_start,
-                    stop: new_stop,
-                    step: new_step,
-                    identity: Rc::new(()),
-                })
-            } else {
-                Ok(Value::Range {
-                    start: BigInt::zero(),
-                    stop: BigInt::zero(),
-                    step: BigInt::from(1),
-                    identity: Rc::new(()),
-                })
-            }
+            Ok(Value::Range {
+                start: new_start,
+                stop: new_stop,
+                step: new_step,
+                identity: Rc::new(()),
+            })
         }
         value => Err(format!("{value} does not support slicing")),
     }
@@ -102766,7 +102729,7 @@ fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
         }
         (left, right) => match (number_as_f64(left), number_as_f64(right)) {
             (Some(_), Some(0.0)) => Err("float floor division by zero".to_string()),
-            (Some(left), Some(right)) => Ok(float_value((left / right).floor())),
+            (Some(left), Some(right)) => Ok(float_value(float_divmod_value(left, right).0)),
             _ => Err(unsupported_binary_operand_message(
                 "//",
                 &original_left,
@@ -102846,12 +102809,33 @@ fn modulo_numeric_values(
 }
 
 fn float_modulo_value(left: f64, right: f64) -> f64 {
-    let result = left - (left / right).floor() * right;
-    if result == 0.0 {
-        0.0_f64.copysign(right)
+    float_divmod_value(left, right).1
+}
+
+fn float_divmod_value(left: f64, right: f64) -> (f64, f64) {
+    let mut modulo = left % right;
+    let mut division = (left - modulo) / right;
+
+    if modulo != 0.0 {
+        if (right < 0.0) != (modulo < 0.0) {
+            modulo += right;
+            division -= 1.0;
+        }
     } else {
-        result
+        modulo = 0.0_f64.copysign(right);
     }
+
+    let floor_division = if division != 0.0 {
+        let mut floor_division = division.floor();
+        if division - floor_division > 0.5 {
+            floor_division += 1.0;
+        }
+        floor_division
+    } else {
+        0.0_f64.copysign(left / right)
+    };
+
+    (floor_division, modulo)
 }
 
 fn percent_format_string(
@@ -102968,7 +102952,7 @@ fn percent_format_string_result(
         }
     }
 
-    if !used_mapping && arg_index < args.len() {
+    if !used_mapping && mapping.is_none() && arg_index < args.len() {
         return Err("TypeError: not all arguments converted during string formatting".to_string());
     }
 
@@ -103065,7 +103049,7 @@ fn percent_format_bytes(
         output.extend(formatted);
     }
 
-    if !used_mapping && arg_index < args.len() {
+    if !used_mapping && mapping.is_none() && arg_index < args.len() {
         return Err("TypeError: not all arguments converted during bytes formatting".to_string());
     }
 
@@ -103136,6 +103120,9 @@ fn percent_format_mapping(value: &Value) -> Option<Value> {
         | Value::MappingProxy { .. }
         | Value::ChainMap { .. }
         | Value::UserDict { .. }
+        | Value::List(_)
+        | Value::UserList { .. }
+        | Value::Range { .. }
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. } => Some(value.clone()),
         Value::Instance { .. } if instance_special_method(value, "__getitem__").is_some() => {
@@ -105344,7 +105331,8 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
         } => {
             let Some(needle) = str_method_text(&needle) else {
                 return Err(format!(
-                    "string membership requires string left operand, got {needle}"
+                    "TypeError: 'in <string>' requires string as left operand, not {}",
+                    type_name(&needle)
                 ));
             };
             Ok(haystack.contains(needle.as_ref()))
@@ -105354,7 +105342,8 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 str_subclass_string(&value).expect("str subclass storage exists after guard");
             let Some(needle) = str_method_text(&needle) else {
                 return Err(format!(
-                    "string membership requires string left operand, got {needle}"
+                    "TypeError: 'in <string>' requires string as left operand, not {}",
+                    type_name(&needle)
                 ));
             };
             Ok(haystack.contains(needle.as_ref()))

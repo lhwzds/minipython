@@ -394,6 +394,90 @@ fn runs_division_modulo_and_power() {
 }
 
 #[test]
+fn matches_nonfinite_float_divmod_semantics() {
+    assert_eq!(
+        run_source(
+            r#"for left, right in [
+    (float('-inf'), 1),
+    (float('inf'), 255),
+    (256, float('inf')),
+    (10**20, float('-inf')),
+    (True, float('-inf')),
+]:
+    print(repr(left // right), repr(left % right), repr(divmod(left, right)))"#,
+        ),
+        Ok(output_lines(&[
+            "nan nan (nan, nan)",
+            "nan nan (nan, nan)",
+            "0.0 256.0 (0.0, 256.0)",
+            "-1.0 -inf (-1.0, -inf)",
+            "-1.0 -inf (-1.0, -inf)",
+        ]))
+    );
+}
+
+#[test]
+fn preserves_normalized_range_slice_bounds() {
+    assert_eq!(
+        run_source(
+            r#"for value in [
+    range(5)[::2],
+    range(5)[10:20],
+    range(5)[3:1],
+    range(5)[::-1],
+    range(5)[1:1:-1],
+    range(2, 20, 3)[1:5:2],
+    range(10, 0, -2)[1:99:2],
+]:
+    print(repr(value), list(value))"#,
+        ),
+        Ok(output_lines(&[
+            "range(0, 5, 2) [0, 2, 4]",
+            "range(5, 5) []",
+            "range(3, 1) []",
+            "range(4, -1, -1) [4, 3, 2, 1, 0]",
+            "range(1, 1, -1) []",
+            "range(5, 17, 6) [5, 11]",
+            "range(8, 0, -4) [8, 4]",
+        ]))
+    );
+}
+
+#[test]
+fn formats_mapping_like_percent_rhs_without_conversions() {
+    assert_eq!(
+        run_source(
+            "for value in [[1, 2, 3], range(2), {}]:\n    print(repr('abc' % value), repr(b'abc' % value))",
+        ),
+        Ok(output_lines(&[
+            "'abc' b'abc'",
+            "'abc' b'abc'",
+            "'abc' b'abc'",
+        ]))
+    );
+}
+
+#[test]
+fn escapes_non_printable_unicode_in_repr() {
+    assert_eq!(
+        run_source(
+            "for codepoint in [0, 8, 10, 0xa0, 0xad, 0x2028, 0xe000, 0x1f600, 0x10ffff]:\n    value = chr(codepoint)\n    print(hex(codepoint), repr(value), value.isprintable())",
+        ),
+        Ok(output_lines(&[
+            "0x0 '\\x00' False",
+            "0x8 '\\x08' False",
+            "0xa '\\n' False",
+            "0xa0 '\\xa0' False",
+            "0xad '\\xad' False",
+            "0x2028 '\\u2028' False",
+            "0xe000 '\\ue000' False",
+            "0x1f600 '😀' True",
+            "0x10ffff '\\U0010ffff' False",
+        ]))
+    );
+}
+
+#[test]
 fn runs_sequence_repetition_and_basic_len_list_builtins() {
     assert_eq!(
         run_source(
@@ -3529,6 +3613,26 @@ fn runs_membership_comparisons() {
             "True True".to_string(),
             "True True".to_string(),
         ])
+    );
+}
+
+#[test]
+fn catches_string_membership_type_errors() {
+    assert_eq!(
+        run_source(
+            r#"for value in (-2.25, 1, None, b"a", []):
+    try:
+        value in "abc"
+    except BaseException as error:
+        print(type(value).__name__, type(error).__name__, str(error), error.args)"#,
+        ),
+        Ok(output_lines(&[
+            "float TypeError 'in <string>' requires string as left operand, not float (\"'in <string>' requires string as left operand, not float\",)",
+            "int TypeError 'in <string>' requires string as left operand, not int (\"'in <string>' requires string as left operand, not int\",)",
+            "NoneType TypeError 'in <string>' requires string as left operand, not NoneType (\"'in <string>' requires string as left operand, not NoneType\",)",
+            "bytes TypeError 'in <string>' requires string as left operand, not bytes (\"'in <string>' requires string as left operand, not bytes\",)",
+            "list TypeError 'in <string>' requires string as left operand, not list (\"'in <string>' requires string as left operand, not list\",)",
+        ]))
     );
 }
 

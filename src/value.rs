@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use unicode_general_category::{GeneralCategory, get_general_category};
 
 use crate::bytecode::Register;
 use crate::bytecode::{ExceptHandler, Instruction, instructions_without_debug_positions};
@@ -4813,11 +4814,36 @@ fn repr_string(value: &str) -> String {
                 result.push('\\');
                 result.push(ch);
             }
+            ch if !is_printable_char(ch) => push_ascii_escape(&mut result, ch),
             ch => result.push(ch),
         }
     }
     result.push(quote);
     result
+}
+
+pub(crate) fn is_printable_char(ch: char) -> bool {
+    ch == ' '
+        || !matches!(
+            get_general_category(ch),
+            GeneralCategory::Control
+                | GeneralCategory::Format
+                | GeneralCategory::PrivateUse
+                | GeneralCategory::Surrogate
+                | GeneralCategory::Unassigned
+                | GeneralCategory::LineSeparator
+                | GeneralCategory::ParagraphSeparator
+                | GeneralCategory::SpaceSeparator
+        )
+}
+
+pub(crate) fn push_ascii_escape(output: &mut String, ch: char) {
+    let codepoint = ch as u32;
+    match codepoint {
+        0x00..=0xff => output.push_str(&format!("\\x{codepoint:02x}")),
+        0x0100..=0xffff => output.push_str(&format!("\\u{codepoint:04x}")),
+        _ => output.push_str(&format!("\\U{codepoint:08x}")),
+    }
 }
 
 fn format_set(items: &[Value]) -> String {
