@@ -6,7 +6,7 @@ use std::sync::{
 
 use minipython::{
     ExecutionPhase, ExecutionStatus, ExternalCall, ExternalFunctionError, Sandbox, SandboxInputs,
-    SandboxValue,
+    SandboxLimits, SandboxValue,
 };
 
 fn sandbox() -> Sandbox {
@@ -259,5 +259,87 @@ fn external_function_registration_rejects_reserved_and_duplicate_names() {
             .expect("input conflict exception")
             .type_name,
         "SandboxInputError"
+    );
+}
+
+#[test]
+fn session_preserves_globals_functions_and_module_cache_without_replay() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let callback_calls = calls.clone();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/sandbox/import_root");
+    let mut sandbox = sandbox().with_root(root);
+    sandbox
+        .register_external_function("host_mark", move |_| {
+            callback_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(SandboxValue::None)
+        })
+        .expect("register host_mark");
+    let mut session = sandbox.session().expect("start session");
+
+    let setup = session.run(
+        "import plugin\nevents = [plugin.VALUE]\ndef total(delta):\n    return events[0] + delta\nhost_mark('once')\nplugin.VALUE = 10\n",
+    );
+    assert_eq!(setup.status, ExecutionStatus::Success);
+
+    let value = session.eval("total(plugin.VALUE)");
+    assert_eq!(value.status, ExecutionStatus::Success);
+    assert_eq!(value.value, Some(SandboxValue::from(17_i64)));
+
+    let cached_module = session.run("import plugin\nprint(plugin.VALUE)\n");
+    assert_eq!(cached_module.status, ExecutionStatus::Success);
+    assert_eq!(cached_module.stdout, "10\n");
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    session.close().expect("close session");
+}
+
+#[test]
+fn session_keeps_prior_mutations_after_an_exception_and_accepts_new_inputs() {
+    let mut session = sandbox().session().expect("start session");
+
+    let failed = session.run("value = 40\n1 / 0\n");
+    assert_eq!(failed.status, ExecutionStatus::Error);
+    assert_eq!(
+        failed.exception.expect("runtime exception").type_name,
+        "ZeroDivisionError"
+    );
+
+    let value = session.eval("value + 2");
+    assert_eq!(value.status, ExecutionStatus::Success);
+    assert_eq!(value.value, Some(SandboxValue::from(42_i64)));
+
+    let mut inputs = SandboxInputs::new();
+    inputs.insert("factor".to_string(), SandboxValue::from(3_i64));
+    let input_value = session.eval_with_inputs("value * factor", inputs);
+    assert_eq!(input_value.value, Some(SandboxValue::from(120_i64)));
+    assert_eq!(
+        session.eval("factor").value,
+        Some(SandboxValue::from(3_i64))
+    );
+}
+
+#[test]
+fn session_limit_termination_closes_the_worker() {
+    let limits = SandboxLimits {
+        max_time_ms: 1,
+        max_instructions: 100_000_000,
+        ..SandboxLimits::default()
+    };
+    let mut session = sandbox()
+        .with_limits(limits)
+        .session()
+        .expect("start session");
+
+    let timed_out = session.run("while True:\n    pass\n");
+    assert_eq!(timed_out.status, ExecutionStatus::TimeLimit);
+    assert!(session.is_closed());
+
+    let after_timeout = session.run("print('unreachable')\n");
+    assert_eq!(after_timeout.status, ExecutionStatus::WorkerCrash);
+    assert_eq!(
+        after_timeout
+            .exception
+            .expect("closed session exception")
+            .message,
+        "session is closed"
     );
 }

@@ -321,6 +321,13 @@ pub(crate) struct VmExecution {
 pub(crate) type ExternalCallHandler =
     Rc<dyn Fn(String, Vec<Value>, Vec<(String, Value)>) -> Result<Value, String>>;
 
+#[derive(Clone)]
+pub(crate) struct VmSessionState {
+    globals: Scope,
+    abc_registry: AbcRegistry,
+    module_cache: ModuleCache,
+}
+
 impl RuntimeOptions {
     pub fn with_bytes_warning(mut self, level: i64) -> Self {
         self.bytes_warning = level.clamp(0, 2);
@@ -5354,6 +5361,22 @@ impl Vm {
     pub(crate) fn with_external_call_handler(mut self, handler: ExternalCallHandler) -> Self {
         self.external_call_handler = Some(handler);
         self
+    }
+
+    pub(crate) fn with_session_state(mut self, state: VmSessionState) -> Self {
+        self.globals = state.globals;
+        self.locals = self.globals.clone();
+        self.abc_registry = state.abc_registry;
+        self.module_cache = state.module_cache;
+        self
+    }
+
+    pub(crate) fn session_state(&self) -> VmSessionState {
+        VmSessionState {
+            globals: self.globals.clone(),
+            abc_registry: self.abc_registry.clone(),
+            module_cache: self.module_cache.clone(),
+        }
     }
 
     pub(crate) fn with_source_modules(mut self, source_modules: SourceModuleTable) -> Self {

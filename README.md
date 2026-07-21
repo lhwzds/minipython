@@ -133,6 +133,25 @@ trusted host code: they may deliberately perform capabilities granted by the
 application, and their own runtime is not forcibly cancellable by the worker's
 wall-clock limit.
 
+For stateful agent workflows, create a `SandboxSession` from the same configured
+sandbox:
+
+```rust
+let mut session = sandbox.session()?;
+let setup = session.run("balance = 40");
+assert!(setup.is_success());
+let result = session.eval("balance + 2");
+assert_eq!(result.value, Some(SandboxValue::from(42_i64)));
+session.close()?;
+```
+
+A session keeps one isolated worker and preserves Python globals, function
+closures, mutations, and the module cache without replaying earlier source.
+Calls are sequential through `&mut self`; every call receives fresh VM and
+wall-clock budgets. A process-memory or wall-clock termination closes the whole
+session, and later calls fail instead of reusing a possibly corrupted worker.
+Dropping a session performs a bounded close and reaps the worker.
+
 CLI execution is bounded to 1,000,000 VM instructions by default. Use
 `--max-steps N` to select a smaller or larger budget. Library callers can use
 `RuntimeOptions::with_max_instructions`; `SandboxPolicy` also applies the same

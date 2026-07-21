@@ -7,7 +7,8 @@ use std::process;
 use minipython::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
     DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, ExecutionStatus,
-    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_worker_once,
+    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_session_worker,
+    serve_worker_once,
 };
 
 const DEFAULT_MAX_PROCESS_MEMORY_BYTES: u64 = 256 * 1_048_576;
@@ -277,18 +278,25 @@ fn infer_file_root(config: &mut Config, input: &SourceInput) {
     );
 }
 
-fn reject_direct_worker_invocation() -> ! {
-    eprintln!("mnpy: --worker is an internal implementation detail");
+fn reject_direct_worker_invocation(argument: &str) -> ! {
+    eprintln!("mnpy: {argument} is an internal implementation detail");
     process::exit(2);
 }
 
 pub(crate) fn main() {
     let args = env::args().collect::<Vec<_>>();
-    if args.get(1).is_some_and(|arg| arg == "--worker") {
+    if args
+        .get(1)
+        .is_some_and(|arg| matches!(arg.as_str(), "--worker" | "--session-worker"))
+    {
         if env::var(INTERNAL_WORKER_ENV).as_deref() != Ok("1") {
-            reject_direct_worker_invocation();
+            reject_direct_worker_invocation(&args[1]);
         }
-        process::exit(serve_worker_once());
+        process::exit(if args[1] == "--worker" {
+            serve_worker_once()
+        } else {
+            serve_session_worker()
+        });
     }
     let (mut config, input) = parse_args(&args);
     infer_file_root(&mut config, &input);

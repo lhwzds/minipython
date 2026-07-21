@@ -20,7 +20,7 @@ use crate::value::{
     Value, byte_array_value, bytes_value, dict_value, external_function_value, float_value,
     list_value, tuple_value,
 };
-use crate::vm::{ExternalCallHandler, SourceModule, Vm, VmExecution};
+use crate::vm::{ExternalCallHandler, SourceModule, Vm, VmExecution, VmSessionState};
 use crate::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
     DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, SANDBOX_STDLIB_ALLOWLIST,
@@ -316,6 +316,10 @@ impl Sandbox {
         Ok(())
     }
 
+    pub fn session(&self) -> Result<SandboxSession, String> {
+        SandboxSession::start(self)
+    }
+
     pub fn run(&self, source: &str) -> ExecutionResult {
         self.run_with_inputs(source, SandboxInputs::new())
     }
@@ -342,39 +346,10 @@ impl Sandbox {
         source: &str,
         inputs: SandboxInputs,
     ) -> ExecutionResult {
-        if source.len() > self.limits.max_source_bytes {
-            return sandbox_error(
-                ExecutionStatus::Error,
-                "ResourceError",
-                format!("source exceeds {} byte limit", self.limits.max_source_bytes),
-            );
-        }
-        if let Some(name) = inputs.keys().find(|name| !valid_input_name(name)) {
-            return sandbox_error(
-                ExecutionStatus::Error,
-                "SandboxInputError",
-                format!("invalid or reserved input name '{name}'"),
-            );
-        }
-        if let Some(name) = inputs
-            .iter()
-            .find_map(|(name, value)| (!valid_input_value(value, 0)).then_some(name))
+        if let Some(error) =
+            validate_execution_request(source, &inputs, &self.limits, &self.external_functions)
         {
-            return sandbox_error(
-                ExecutionStatus::Error,
-                "SandboxInputError",
-                format!("input '{name}' contains an opaque or excessively nested value"),
-            );
-        }
-        if let Some(name) = inputs
-            .keys()
-            .find(|name| self.external_functions.contains_key(*name))
-        {
-            return sandbox_error(
-                ExecutionStatus::Error,
-                "SandboxInputError",
-                format!("input '{name}' conflicts with an external function"),
-            );
+            return error;
         }
 
         let request = WorkerRequest {
@@ -502,6 +477,262 @@ impl Sandbox {
     }
 }
 
+pub struct SandboxSession {
+    child: Option<process::Child>,
+    worker_stdin: Option<process::ChildStdin>,
+    messages: mpsc::Receiver<Result<WorkerMessage, String>>,
+    stdout_reader: Option<thread::JoinHandle<()>>,
+    stderr_reader: Option<thread::JoinHandle<io::Result<Vec<u8>>>>,
+    limits: SandboxLimits,
+    root: Option<PathBuf>,
+    external_functions: BTreeMap<String, ExternalFunction>,
+    closed: bool,
+}
+
+impl fmt::Debug for SandboxSession {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SandboxSession")
+            .field("worker_pid", &self.child.as_ref().map(process::Child::id))
+            .field("limits", &self.limits)
+            .field("root", &self.root)
+            .field(
+                "external_functions",
+                &self.external_functions.keys().collect::<Vec<_>>(),
+            )
+            .field("closed", &self.closed)
+            .finish()
+    }
+}
+
+impl SandboxSession {
+    fn start(sandbox: &Sandbox) -> Result<Self, String> {
+        let mut command = Command::new(&sandbox.worker_path);
+        command
+            .arg("--session-worker")
+            .env(INTERNAL_WORKER_ENV, "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        apply_process_memory_limit(&mut command, sandbox.limits.max_process_memory_bytes);
+        let mut child = command.spawn().map_err(|error| {
+            format!(
+                "failed to start isolated session worker '{}': {error}",
+                sandbox.worker_path.display()
+            )
+        })?;
+        let worker_stdin = child.stdin.take().expect("session worker stdin is piped");
+        let mut stdout = child.stdout.take().expect("session worker stdout is piped");
+        let mut stderr = child.stderr.take().expect("session worker stderr is piped");
+        let (message_sender, messages) = mpsc::channel();
+        let stdout_reader = thread::spawn(move || {
+            loop {
+                let message = read_frame::<_, WorkerMessage>(&mut stdout);
+                let terminal = message.is_err();
+                if message_sender.send(message).is_err() || terminal {
+                    break;
+                }
+            }
+        });
+        let stderr_reader = thread::spawn(move || {
+            let mut bytes = Vec::new();
+            stderr.read_to_end(&mut bytes).map(|_| bytes)
+        });
+        Ok(Self {
+            child: Some(child),
+            worker_stdin: Some(worker_stdin),
+            messages,
+            stdout_reader: Some(stdout_reader),
+            stderr_reader: Some(stderr_reader),
+            limits: sandbox.limits.clone(),
+            root: sandbox.root.clone(),
+            external_functions: sandbox.external_functions.clone(),
+            closed: false,
+        })
+    }
+
+    pub fn run(&mut self, source: &str) -> ExecutionResult {
+        self.run_with_inputs(source, SandboxInputs::new())
+    }
+
+    pub fn run_with_inputs(&mut self, source: &str, inputs: SandboxInputs) -> ExecutionResult {
+        self.execute(SandboxMode::Exec, source, inputs)
+    }
+
+    pub fn eval(&mut self, source: &str) -> ExecutionResult {
+        self.eval_with_inputs(source, SandboxInputs::new())
+    }
+
+    pub fn eval_with_inputs(&mut self, source: &str, inputs: SandboxInputs) -> ExecutionResult {
+        self.execute(SandboxMode::Eval, source, inputs)
+    }
+
+    pub fn check(&mut self, source: &str) -> ExecutionResult {
+        self.execute(SandboxMode::Check, source, SandboxInputs::new())
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.closed
+    }
+
+    pub fn close(mut self) -> Result<(), String> {
+        self.shutdown()
+    }
+
+    fn execute(
+        &mut self,
+        mode: SandboxMode,
+        source: &str,
+        inputs: SandboxInputs,
+    ) -> ExecutionResult {
+        if self.closed {
+            return worker_error("session is closed".to_string());
+        }
+        if let Some(error) =
+            validate_execution_request(source, &inputs, &self.limits, &self.external_functions)
+        {
+            return error;
+        }
+        let request = WorkerRequest {
+            version: 1,
+            mode,
+            source: source.to_string(),
+            inputs,
+            limits: self.limits.clone(),
+            root: self.root.clone(),
+            external_functions: self.external_functions.keys().cloned().collect(),
+        };
+        let Some(worker_stdin) = self.worker_stdin.as_mut() else {
+            self.closed = true;
+            return worker_error("session worker input is closed".to_string());
+        };
+        if let Err(error) = write_frame(worker_stdin, &SessionCommand::Execute(request)) {
+            let _ = self.shutdown();
+            return worker_error(format!("failed to send session request: {error}"));
+        }
+
+        let started = Instant::now();
+        let outcome = {
+            let Some(child) = self.child.as_mut() else {
+                self.closed = true;
+                return worker_error("session worker is unavailable".to_string());
+            };
+            let worker_stdin = self
+                .worker_stdin
+                .as_mut()
+                .expect("open session has worker input");
+            drive_session_execution(
+                child,
+                worker_stdin,
+                &self.messages,
+                &self.external_functions,
+                self.limits.max_process_memory_bytes,
+                self.limits.max_time_ms,
+            )
+        };
+        let mut result = match outcome {
+            Ok(SessionExecutionOutcome::Complete(result)) => result,
+            Ok(SessionExecutionOutcome::TimeLimit) => {
+                self.finish_worker();
+                sandbox_error(
+                    ExecutionStatus::TimeLimit,
+                    "ResourceError",
+                    "worker wall-clock limit exceeded".to_string(),
+                )
+            }
+            Ok(SessionExecutionOutcome::MemoryLimit) => {
+                self.finish_worker();
+                sandbox_error(
+                    ExecutionStatus::MemoryLimit,
+                    "ResourceError",
+                    "worker exceeded process limits or crashed".to_string(),
+                )
+            }
+            Ok(SessionExecutionOutcome::Exited(status)) => {
+                let diagnostics = self.finish_worker();
+                worker_error(worker_exit_detail(status, &diagnostics))
+            }
+            Err(error) => {
+                let _ = self.shutdown();
+                worker_error(error)
+            }
+        };
+        result.usage.wall_time_micros =
+            u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
+        result
+    }
+
+    fn finish_worker(&mut self) -> String {
+        self.closed = true;
+        self.worker_stdin.take();
+        if let Some(mut child) = self.child.take() {
+            let _ = child.wait();
+        }
+        if let Some(reader) = self.stdout_reader.take() {
+            let _ = reader.join();
+        }
+        self.stderr_reader
+            .take()
+            .and_then(|reader| reader.join().ok())
+            .and_then(Result::ok)
+            .map(|bytes| String::from_utf8_lossy(&bytes).trim().to_string())
+            .unwrap_or_default()
+    }
+
+    fn shutdown(&mut self) -> Result<(), String> {
+        if self.closed {
+            return Ok(());
+        }
+        self.closed = true;
+        let mut first_error = None;
+        if let Some(mut worker_stdin) = self.worker_stdin.take() {
+            if let Err(error) = write_frame(&mut worker_stdin, &SessionCommand::Close) {
+                first_error = Some(format!("failed to close session worker: {error}"));
+            }
+        }
+        if let Some(mut child) = self.child.take() {
+            let deadline = Instant::now() + Duration::from_secs(1);
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => break,
+                    Ok(None) if Instant::now() < deadline => {
+                        thread::sleep(Duration::from_millis(2));
+                    }
+                    Ok(None) => {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        break;
+                    }
+                    Err(error) => {
+                        first_error.get_or_insert_with(|| {
+                            format!("failed to poll session worker shutdown: {error}")
+                        });
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        break;
+                    }
+                }
+            }
+        }
+        if let Some(reader) = self.stdout_reader.take() {
+            let _ = reader.join();
+        }
+        if let Some(reader) = self.stderr_reader.take() {
+            let _ = reader.join();
+        }
+        match first_error {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+}
+
+impl Drop for SandboxSession {
+    fn drop(&mut self) {
+        let _ = self.shutdown();
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct WorkerRequest {
     version: u8,
@@ -523,6 +754,12 @@ enum WorkerMessage {
 struct HostCallResponse {
     call_id: u64,
     result: Result<SandboxValue, ExternalFunctionError>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum SessionCommand {
+    Execute(WorkerRequest),
+    Close,
 }
 
 enum WorkerBridgeCommand {
@@ -552,28 +789,62 @@ pub fn serve_worker_once() -> i32 {
         );
         return 2;
     }
-    let (bridge_sender, bridge_receiver) = mpsc::channel();
-    let bridge = thread::spawn(move || run_worker_bridge(bridge_receiver));
-    let handler = worker_external_call_handler(bridge_sender.clone());
-    let result = execute_worker_request(request, handler);
-    if bridge_sender
-        .send(WorkerBridgeCommand::Complete(result))
-        .is_err()
-    {
-        eprintln!("worker protocol error: response bridge stopped early");
-        return 2;
-    }
-    drop(bridge_sender);
-    match bridge.join() {
-        Ok(Ok(())) => 0,
-        Ok(Err(error)) => {
+    let mut session_state = None;
+    match execute_worker_protocol_cycle(request, &mut session_state) {
+        Ok(()) => 0,
+        Err(error) => {
             eprintln!("worker protocol error: {error}");
             2
         }
-        Err(_) => {
-            eprintln!("worker protocol error: response bridge panicked");
-            2
+    }
+}
+
+pub fn serve_session_worker() -> i32 {
+    let mut session_state = None;
+    loop {
+        let command = match {
+            let stdin = io::stdin();
+            read_frame::<_, SessionCommand>(stdin.lock())
+        } {
+            Ok(command) => command,
+            Err(error) => {
+                eprintln!("worker protocol error: {error}");
+                return 2;
+            }
+        };
+        let request = match command {
+            SessionCommand::Execute(request) => request,
+            SessionCommand::Close => return 0,
+        };
+        if request.version != 1 {
+            eprintln!(
+                "worker protocol error: unsupported version {}",
+                request.version
+            );
+            return 2;
         }
+        if let Err(error) = execute_worker_protocol_cycle(request, &mut session_state) {
+            eprintln!("worker protocol error: {error}");
+            return 2;
+        }
+    }
+}
+
+fn execute_worker_protocol_cycle(
+    request: WorkerRequest,
+    session_state: &mut Option<VmSessionState>,
+) -> Result<(), String> {
+    let (bridge_sender, bridge_receiver) = mpsc::channel();
+    let bridge = thread::spawn(move || run_worker_bridge(bridge_receiver));
+    let handler = worker_external_call_handler(bridge_sender.clone());
+    let result = execute_worker_request(request, handler, session_state);
+    bridge_sender
+        .send(WorkerBridgeCommand::Complete(result))
+        .map_err(|_| "response bridge stopped early".to_string())?;
+    drop(bridge_sender);
+    match bridge.join() {
+        Ok(result) => result,
+        Err(_) => Err("response bridge panicked".to_string()),
     }
 }
 
@@ -667,6 +938,7 @@ fn worker_external_call_handler(sender: mpsc::Sender<WorkerBridgeCommand>) -> Ex
 fn execute_worker_request(
     request: WorkerRequest,
     external_call_handler: ExternalCallHandler,
+    session_state: &mut Option<VmSessionState>,
 ) -> ExecutionResult {
     if request.source.len() > request.limits.max_source_bytes {
         return sandbox_error(
@@ -729,8 +1001,13 @@ fn execute_worker_request(
 
     let started = Instant::now();
     let mut result = match request.mode {
-        SandboxMode::Exec => execute_program(&request, false, external_call_handler.clone()),
-        SandboxMode::Eval => execute_program(&request, true, external_call_handler),
+        SandboxMode::Exec => execute_program(
+            &request,
+            false,
+            external_call_handler.clone(),
+            session_state,
+        ),
+        SandboxMode::Eval => execute_program(&request, true, external_call_handler, session_state),
         SandboxMode::Check => execute_check(&request.source),
     };
     result.usage.wall_time_micros =
@@ -742,6 +1019,7 @@ fn execute_program(
     request: &WorkerRequest,
     eval: bool,
     external_call_handler: ExternalCallHandler,
+    session_state: &mut Option<VmSessionState>,
 ) -> ExecutionResult {
     if let Err(error) = reject_too_complex_source(&request.source) {
         return ExecutionResult::execution_error(error, String::new(), ExecutionUsage::default());
@@ -855,13 +1133,15 @@ fn execute_program(
             .iter()
             .map(|name| (name.clone(), external_function_value(name))),
     );
-    let vm = Vm::new(instructions)
+    let mut vm = Vm::new(instructions)
         .with_source_modules(Rc::new(module_sources))
         .with_runtime_options(options)
         .with_stdlib_import_policy(vm_stdlib_import_policy(policy))
-        .with_external_call_handler(external_call_handler)
-        .with_initial_globals(inputs);
-    let mut vm = match vm {
+        .with_external_call_handler(external_call_handler);
+    if let Some(state) = session_state.clone() {
+        vm = vm.with_session_state(state);
+    }
+    let mut vm = match vm.with_initial_globals(inputs) {
         Ok(vm) => vm,
         Err(error) => {
             return ExecutionResult::execution_error(
@@ -871,6 +1151,7 @@ fn execute_program(
             );
         }
     };
+    *session_state = Some(vm.session_state());
     let execution = if eval {
         vm.run_eval_captured()
     } else {
@@ -1157,6 +1438,61 @@ fn worker_error(message: String) -> ExecutionResult {
     )
 }
 
+fn worker_exit_detail(status: ExitStatus, stderr: &str) -> String {
+    if status.code().is_none() || status.code().is_some_and(|code| code >= 125) {
+        "worker exceeded process limits or crashed".to_string()
+    } else if stderr.is_empty() {
+        status
+            .code()
+            .map(|code| format!("worker exited with status {code}"))
+            .unwrap_or_else(|| "worker terminated without an exit status".to_string())
+    } else {
+        stderr.to_string()
+    }
+}
+
+fn validate_execution_request(
+    source: &str,
+    inputs: &SandboxInputs,
+    limits: &SandboxLimits,
+    external_functions: &BTreeMap<String, ExternalFunction>,
+) -> Option<ExecutionResult> {
+    if source.len() > limits.max_source_bytes {
+        return Some(sandbox_error(
+            ExecutionStatus::Error,
+            "ResourceError",
+            format!("source exceeds {} byte limit", limits.max_source_bytes),
+        ));
+    }
+    if let Some(name) = inputs.keys().find(|name| !valid_input_name(name)) {
+        return Some(sandbox_error(
+            ExecutionStatus::Error,
+            "SandboxInputError",
+            format!("invalid or reserved input name '{name}'"),
+        ));
+    }
+    if let Some(name) = inputs
+        .iter()
+        .find_map(|(name, value)| (!valid_input_value(value, 0)).then_some(name))
+    {
+        return Some(sandbox_error(
+            ExecutionStatus::Error,
+            "SandboxInputError",
+            format!("input '{name}' contains an opaque or excessively nested value"),
+        ));
+    }
+    inputs
+        .keys()
+        .find(|name| external_functions.contains_key(*name))
+        .map(|name| {
+            sandbox_error(
+                ExecutionStatus::Error,
+                "SandboxInputError",
+                format!("input '{name}' conflicts with an external function"),
+            )
+        })
+}
+
 fn valid_input_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
@@ -1286,6 +1622,71 @@ struct WorkerOutcome {
     status: ExitStatus,
     termination: WorkerTermination,
     result: Option<ExecutionResult>,
+}
+
+enum SessionExecutionOutcome {
+    Complete(ExecutionResult),
+    MemoryLimit,
+    TimeLimit,
+    Exited(ExitStatus),
+}
+
+fn drive_session_execution(
+    child: &mut process::Child,
+    worker_stdin: &mut process::ChildStdin,
+    messages: &mpsc::Receiver<Result<WorkerMessage, String>>,
+    external_functions: &BTreeMap<String, ExternalFunction>,
+    max_memory_bytes: u64,
+    max_time_ms: u64,
+) -> Result<SessionExecutionOutcome, String> {
+    let started = Instant::now();
+    let time_limit = Duration::from_millis(max_time_ms);
+    loop {
+        if started.elapsed() >= time_limit {
+            child.kill().map_err(|error| {
+                format!("failed to terminate timed-out session worker: {error}")
+            })?;
+            child
+                .wait()
+                .map_err(|error| format!("failed to reap timed-out session worker: {error}"))?;
+            return Ok(SessionExecutionOutcome::TimeLimit);
+        }
+        if worker_memory_limit_exceeded(child, max_memory_bytes)? {
+            child.kill().map_err(|error| {
+                format!("failed to terminate oversized session worker: {error}")
+            })?;
+            child
+                .wait()
+                .map_err(|error| format!("failed to reap oversized session worker: {error}"))?;
+            return Ok(SessionExecutionOutcome::MemoryLimit);
+        }
+        match messages.recv_timeout(Duration::from_millis(2)) {
+            Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
+                respond_to_external_call(worker_stdin, external_functions, call_id, call)?;
+            }
+            Ok(Ok(WorkerMessage::Complete(result))) => {
+                return Ok(SessionExecutionOutcome::Complete(result));
+            }
+            Ok(Err(error)) => return Err(format!("invalid session worker response: {error}")),
+            Err(mpsc::RecvTimeoutError::Timeout | mpsc::RecvTimeoutError::Disconnected) => {}
+        }
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("failed to poll session worker: {error}"))?
+        {
+            loop {
+                match messages.recv() {
+                    Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
+                        respond_to_external_call(worker_stdin, external_functions, call_id, call)?;
+                    }
+                    Ok(Ok(WorkerMessage::Complete(result))) => {
+                        return Ok(SessionExecutionOutcome::Complete(result));
+                    }
+                    Ok(Err(_)) | Err(_) => return Ok(SessionExecutionOutcome::Exited(status)),
+                }
+            }
+        }
+    }
 }
 
 fn drive_worker(

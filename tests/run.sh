@@ -95,13 +95,14 @@ run_differential_discovery() {
 if [[ "$mode" == "release" ]]; then
   MINIPYTHON_CPYTHON="$cpython" cargo test
 elif [[ "$mode" == "focused" ]]; then
+  cargo test --test product
   cargo test --test sandbox
   cargo test --test runtime sandbox_policy
   cargo test --test runtime instruction_budget
   cargo test --test runtime call_depth_guard
   cargo test --test runtime output_budget
   cargo test --test runtime allocation_budget
-  cargo test --test parity manifest::sandbox_mvp_checklist_keeps_completion_requirements_explicit
+  cargo test --test parity manifest::docs_keep_product_scope_and_single_test_command
 fi
 
 run_python_harness_tests

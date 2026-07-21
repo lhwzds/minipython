@@ -104,6 +104,22 @@ sandbox.register_external_function("lookup_price", |call| {
 panic 也不会穿透 `Sandbox::execute`。External callback 属于受信任宿主代码：它可以
 主动执行应用明确授予的能力，其自身运行时间不能由 worker wall-clock limit 强制取消。
 
+有状态的 Agent 工作流可以从同一个已配置 sandbox 创建 `SandboxSession`：
+
+```rust
+let mut session = sandbox.session()?;
+let setup = session.run("balance = 40");
+assert!(setup.is_success());
+let result = session.eval("balance + 2");
+assert_eq!(result.value, Some(SandboxValue::from(42_i64)));
+session.close()?;
+```
+
+Session 持有一个隔离 worker，保留 Python globals、函数闭包、mutation 和模块缓存，
+不会重放之前的源码。调用通过 `&mut self` 顺序执行，每次调用重新获得 VM 与
+wall-clock 预算。进程内存或 wall-clock 超限会关闭整个 Session；后续调用直接失败，
+不会复用可能已损坏的 worker。Session 被 drop 时也会有界关闭并回收 worker。
+
 CLI 默认最多执行 1,000,000 条 VM 指令。可以用 `--max-steps N` 调整预算；
 库调用方可以使用 `RuntimeOptions::with_max_instructions`，虚拟模块和 sandbox
 目录模块的 `SandboxPolicy` 也使用相同的有限默认值。函数、generator、

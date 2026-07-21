@@ -808,6 +808,14 @@ mod process {
             String::from_utf8_lossy(&output.stderr),
             "mnpy: --worker is an internal implementation detail\n"
         );
+
+        let output = run_sandbox(&["--session-worker"], "print('bypass')\n");
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stderr),
+            "mnpy: --session-worker is an internal implementation detail\n"
+        );
     }
 
     #[test]
