@@ -111,6 +111,28 @@ lists, tuples, and dictionaries). Unsupported runtime objects are output-only
 path is explicit so an embedding application controls which reviewed sidecar it
 executes.
 
+Host capabilities are opt-in external functions. A function exists in Python
+only after the embedding application registers its exact global name:
+
+```rust
+use minipython::{ExternalFunctionError, SandboxValue};
+
+sandbox.register_external_function("lookup_price", |call| {
+    let Some(SandboxValue::String(symbol)) = call.args.first() else {
+        return Err(ExternalFunctionError::new("TypeError", "symbol must be a string"));
+    };
+    Ok(SandboxValue::from(format!("quote:{symbol}")))
+})?;
+```
+
+Calls and responses cross the worker protocol using the same inert value
+allowlist. Runtime objects cannot be passed to the host, opaque host values
+cannot be returned, callback errors become catchable Python exceptions, and a
+callback panic cannot unwind through `Sandbox::execute`. External callbacks are
+trusted host code: they may deliberately perform capabilities granted by the
+application, and their own runtime is not forcibly cancellable by the worker's
+wall-clock limit.
+
 CLI execution is bounded to 1,000,000 VM instructions by default. Use
 `--max-steps N` to select a smaller or larger budget. Library callers can use
 `RuntimeOptions::with_max_instructions`; `SandboxPolicy` also applies the same

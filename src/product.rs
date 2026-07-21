@@ -1,8 +1,12 @@
+use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt;
 use std::io::{self, Read, Write};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, ExitStatus, Stdio};
 use std::rc::Rc;
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -13,9 +17,10 @@ use crate::compiler::{compile_eval, compile_with_options};
 use crate::lexer::{lex_for_parse, lex_with_spans_for_parse};
 use crate::parser::{parse, parse_eval};
 use crate::value::{
-    Value, byte_array_value, bytes_value, dict_value, float_value, list_value, tuple_value,
+    Value, byte_array_value, bytes_value, dict_value, external_function_value, float_value,
+    list_value, tuple_value,
 };
-use crate::vm::{SourceModule, Vm, VmExecution};
+use crate::vm::{ExternalCallHandler, SourceModule, Vm, VmExecution};
 use crate::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
     DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, SANDBOX_STDLIB_ALLOWLIST,
@@ -76,6 +81,31 @@ impl From<&str> for SandboxValue {
         Self::String(value.to_string())
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExternalCall {
+    pub name: String,
+    pub args: Vec<SandboxValue>,
+    pub keywords: Vec<(String, SandboxValue)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalFunctionError {
+    pub type_name: String,
+    pub message: String,
+}
+
+impl ExternalFunctionError {
+    pub fn new(type_name: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            type_name: type_name.into(),
+            message: message.into(),
+        }
+    }
+}
+
+type ExternalFunction =
+    Arc<dyn Fn(ExternalCall) -> Result<SandboxValue, ExternalFunctionError> + Send + Sync>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SandboxMode {
@@ -222,11 +252,27 @@ impl Default for SandboxLimits {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Sandbox {
     worker_path: PathBuf,
     limits: SandboxLimits,
     root: Option<PathBuf>,
+    external_functions: BTreeMap<String, ExternalFunction>,
+}
+
+impl fmt::Debug for Sandbox {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Sandbox")
+            .field("worker_path", &self.worker_path)
+            .field("limits", &self.limits)
+            .field("root", &self.root)
+            .field(
+                "external_functions",
+                &self.external_functions.keys().collect::<Vec<_>>(),
+            )
+            .finish()
+    }
 }
 
 impl Sandbox {
@@ -235,6 +281,7 @@ impl Sandbox {
             worker_path: worker_path.into(),
             limits: SandboxLimits::default(),
             root: None,
+            external_functions: BTreeMap::new(),
         }
     }
 
@@ -246,6 +293,27 @@ impl Sandbox {
     pub fn with_root(mut self, root: impl Into<PathBuf>) -> Self {
         self.root = Some(root.into());
         self
+    }
+
+    pub fn register_external_function<F>(
+        &mut self,
+        name: impl Into<String>,
+        function: F,
+    ) -> Result<(), String>
+    where
+        F: Fn(ExternalCall) -> Result<SandboxValue, ExternalFunctionError> + Send + Sync + 'static,
+    {
+        let name = name.into();
+        if !valid_input_name(&name) {
+            return Err(format!(
+                "invalid or reserved external function name '{name}'"
+            ));
+        }
+        if self.external_functions.contains_key(&name) {
+            return Err(format!("external function '{name}' is already registered"));
+        }
+        self.external_functions.insert(name, Arc::new(function));
+        Ok(())
     }
 
     pub fn run(&self, source: &str) -> ExecutionResult {
@@ -298,6 +366,16 @@ impl Sandbox {
                 format!("input '{name}' contains an opaque or excessively nested value"),
             );
         }
+        if let Some(name) = inputs
+            .keys()
+            .find(|name| self.external_functions.contains_key(*name))
+        {
+            return sandbox_error(
+                ExecutionStatus::Error,
+                "SandboxInputError",
+                format!("input '{name}' conflicts with an external function"),
+            );
+        }
 
         let request = WorkerRequest {
             version: 1,
@@ -306,6 +384,7 @@ impl Sandbox {
             inputs,
             limits: self.limits.clone(),
             root: self.root.clone(),
+            external_functions: self.external_functions.keys().cloned().collect(),
         };
         let request = match encode_frame(&request) {
             Ok(request) if request.len() <= MAX_PROTOCOL_FRAME_BYTES + 4 => request,
@@ -337,12 +416,8 @@ impl Sandbox {
                 ));
             }
         };
-        let write_result = child
-            .stdin
-            .take()
-            .expect("worker stdin is piped")
-            .write_all(&request);
-        if let Err(error) = write_result {
+        let mut worker_stdin = child.stdin.take().expect("worker stdin is piped");
+        if let Err(error) = worker_stdin.write_all(&request) {
             let _ = child.kill();
             let _ = child.wait();
             return worker_error(format!("failed to send request to worker: {error}"));
@@ -350,36 +425,47 @@ impl Sandbox {
 
         let mut stdout = child.stdout.take().expect("worker stdout is piped");
         let mut stderr = child.stderr.take().expect("worker stderr is piped");
+        let (message_sender, message_receiver) = mpsc::channel();
         let stdout_reader = thread::spawn(move || {
-            let mut bytes = Vec::new();
-            stdout.read_to_end(&mut bytes).map(|_| bytes)
+            loop {
+                let message = read_frame::<_, WorkerMessage>(&mut stdout);
+                let terminal =
+                    message.is_err() || matches!(message, Ok(WorkerMessage::Complete(_)));
+                if message_sender.send(message).is_err() || terminal {
+                    break;
+                }
+            }
         });
         let stderr_reader = thread::spawn(move || {
             let mut bytes = Vec::new();
             stderr.read_to_end(&mut bytes).map(|_| bytes)
         });
-        let (status, termination) = match wait_for_worker(
+        let outcome = match drive_worker(
             &mut child,
+            &mut worker_stdin,
+            &message_receiver,
+            &self.external_functions,
             self.limits.max_process_memory_bytes,
             self.limits.max_time_ms,
         ) {
-            Ok(result) => result,
-            Err(error) => return worker_error(format!("failed to wait for worker: {error}")),
-        };
-        let response = match stdout_reader.join() {
-            Ok(Ok(bytes)) => bytes,
-            Ok(Err(error)) => {
-                return worker_error(format!("failed to read worker response: {error}"));
+            Ok(outcome) => outcome,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return worker_error(error);
             }
-            Err(_) => return worker_error("worker response reader panicked".to_string()),
         };
+        drop(worker_stdin);
+        if stdout_reader.join().is_err() {
+            return worker_error("worker response reader panicked".to_string());
+        }
         let worker_stderr = match stderr_reader.join() {
             Ok(Ok(bytes)) => String::from_utf8_lossy(&bytes).trim().to_string(),
             Ok(Err(error)) => format!("failed to read worker diagnostics: {error}"),
             Err(_) => "worker diagnostics reader panicked".to_string(),
         };
 
-        let mut result = match termination {
+        let mut result = match outcome.termination {
             WorkerTermination::TimeLimit => sandbox_error(
                 ExecutionStatus::TimeLimit,
                 "ResourceError",
@@ -390,19 +476,17 @@ impl Sandbox {
                 "ResourceError",
                 "worker exceeded process limits or crashed".to_string(),
             ),
-            WorkerTermination::Completed if status.success() => {
-                match decode_frame::<ExecutionResult>(&response) {
-                    Ok(result) => result,
-                    Err(error) => worker_error(format!("invalid worker response: {error}")),
-                }
-            }
+            WorkerTermination::Completed if outcome.status.success() => outcome
+                .result
+                .unwrap_or_else(|| worker_error("worker exited without a result".to_string())),
             WorkerTermination::Completed => {
-                let detail = if status.code().is_none()
-                    || status.code().is_some_and(|code| code >= 125)
+                let detail = if outcome.status.code().is_none()
+                    || outcome.status.code().is_some_and(|code| code >= 125)
                 {
                     "worker exceeded process limits or crashed".to_string()
                 } else if worker_stderr.is_empty() {
-                    status
+                    outcome
+                        .status
                         .code()
                         .map(|code| format!("worker exited with status {code}"))
                         .unwrap_or_else(|| "worker terminated without an exit status".to_string())
@@ -426,10 +510,35 @@ struct WorkerRequest {
     inputs: SandboxInputs,
     limits: SandboxLimits,
     root: Option<PathBuf>,
+    external_functions: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum WorkerMessage {
+    ExternalCall { call_id: u64, call: ExternalCall },
+    Complete(ExecutionResult),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct HostCallResponse {
+    call_id: u64,
+    result: Result<SandboxValue, ExternalFunctionError>,
+}
+
+enum WorkerBridgeCommand {
+    ExternalCall {
+        call_id: u64,
+        call: ExternalCall,
+        response: mpsc::Sender<Result<SandboxValue, ExternalFunctionError>>,
+    },
+    Complete(ExecutionResult),
 }
 
 pub fn serve_worker_once() -> i32 {
-    let request = match read_frame::<_, WorkerRequest>(io::stdin().lock()) {
+    let request = match {
+        let stdin = io::stdin();
+        read_frame::<_, WorkerRequest>(stdin.lock())
+    } {
         Ok(request) => request,
         Err(error) => {
             eprintln!("worker protocol error: {error}");
@@ -443,17 +552,122 @@ pub fn serve_worker_once() -> i32 {
         );
         return 2;
     }
-    let result = execute_worker_request(request);
-    match write_frame(io::stdout().lock(), &result) {
-        Ok(()) => 0,
-        Err(error) => {
-            eprintln!("worker protocol error: cannot write response: {error}");
+    let (bridge_sender, bridge_receiver) = mpsc::channel();
+    let bridge = thread::spawn(move || run_worker_bridge(bridge_receiver));
+    let handler = worker_external_call_handler(bridge_sender.clone());
+    let result = execute_worker_request(request, handler);
+    if bridge_sender
+        .send(WorkerBridgeCommand::Complete(result))
+        .is_err()
+    {
+        eprintln!("worker protocol error: response bridge stopped early");
+        return 2;
+    }
+    drop(bridge_sender);
+    match bridge.join() {
+        Ok(Ok(())) => 0,
+        Ok(Err(error)) => {
+            eprintln!("worker protocol error: {error}");
+            2
+        }
+        Err(_) => {
+            eprintln!("worker protocol error: response bridge panicked");
             2
         }
     }
 }
 
-fn execute_worker_request(request: WorkerRequest) -> ExecutionResult {
+fn run_worker_bridge(receiver: mpsc::Receiver<WorkerBridgeCommand>) -> Result<(), String> {
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut input = stdin.lock();
+    let mut output = stdout.lock();
+    while let Ok(command) = receiver.recv() {
+        match command {
+            WorkerBridgeCommand::ExternalCall {
+                call_id,
+                call,
+                response,
+            } => {
+                if let Err(error) =
+                    write_frame(&mut output, &WorkerMessage::ExternalCall { call_id, call })
+                {
+                    let _ = response.send(Err(ExternalFunctionError::new(
+                        "RuntimeError",
+                        format!("external function bridge write failed: {error}"),
+                    )));
+                    return Err(error);
+                }
+                let host_response = match read_frame::<_, HostCallResponse>(&mut input) {
+                    Ok(host_response) => host_response,
+                    Err(error) => {
+                        let _ = response.send(Err(ExternalFunctionError::new(
+                            "RuntimeError",
+                            format!("external function bridge read failed: {error}"),
+                        )));
+                        return Err(error);
+                    }
+                };
+                if host_response.call_id != call_id {
+                    let error = format!(
+                        "external function response id {} does not match call id {call_id}",
+                        host_response.call_id
+                    );
+                    let _ = response.send(Err(ExternalFunctionError::new(
+                        "RuntimeError",
+                        error.clone(),
+                    )));
+                    return Err(error);
+                }
+                if response.send(host_response.result).is_err() {
+                    return Err("external function caller stopped before its response".to_string());
+                }
+            }
+            WorkerBridgeCommand::Complete(result) => {
+                return write_frame(&mut output, &WorkerMessage::Complete(result));
+            }
+        }
+    }
+    Err("worker bridge closed without a final result".to_string())
+}
+
+fn worker_external_call_handler(sender: mpsc::Sender<WorkerBridgeCommand>) -> ExternalCallHandler {
+    let next_call_id = Rc::new(Cell::new(1_u64));
+    Rc::new(move |name, args, keywords| {
+        let args = args
+            .iter()
+            .map(sandbox_value_from_internal_checked)
+            .collect::<Result<Vec<_>, _>>()?;
+        let keywords = keywords
+            .iter()
+            .map(|(name, value)| Ok((name.clone(), sandbox_value_from_internal_checked(value)?)))
+            .collect::<Result<Vec<_>, String>>()?;
+        let call_id = next_call_id.get();
+        next_call_id.set(call_id.saturating_add(1));
+        let (response_sender, response_receiver) = mpsc::channel();
+        sender
+            .send(WorkerBridgeCommand::ExternalCall {
+                call_id,
+                call: ExternalCall {
+                    name,
+                    args,
+                    keywords,
+                },
+                response: response_sender,
+            })
+            .map_err(|_| "RuntimeError: external function bridge is unavailable".to_string())?;
+        match response_receiver.recv() {
+            Ok(Ok(value)) => Ok(sandbox_value_to_internal(&value)),
+            Ok(Err(error)) => Err(format_external_function_error(error)),
+            Err(_) => Err("RuntimeError: external function response was lost".to_string()),
+        }
+    })
+}
+
+fn execute_worker_request(
+    request: WorkerRequest,
+    external_call_handler: ExternalCallHandler,
+) -> ExecutionResult {
     if request.source.len() > request.limits.max_source_bytes {
         return sandbox_error(
             ExecutionStatus::Error,
@@ -482,11 +696,41 @@ fn execute_worker_request(request: WorkerRequest) -> ExecutionResult {
             format!("input '{name}' contains an opaque or excessively nested value"),
         );
     }
+    if let Some(name) = request
+        .external_functions
+        .iter()
+        .find(|name| !valid_input_name(name))
+    {
+        return sandbox_error(
+            ExecutionStatus::Error,
+            "SandboxInputError",
+            format!("invalid or reserved external function name '{name}'"),
+        );
+    }
+    let unique_external_functions = request.external_functions.iter().collect::<HashSet<_>>();
+    if unique_external_functions.len() != request.external_functions.len() {
+        return sandbox_error(
+            ExecutionStatus::Error,
+            "SandboxInputError",
+            "external function names must be unique".to_string(),
+        );
+    }
+    if let Some(name) = request
+        .inputs
+        .keys()
+        .find(|name| unique_external_functions.contains(name))
+    {
+        return sandbox_error(
+            ExecutionStatus::Error,
+            "SandboxInputError",
+            format!("input '{name}' conflicts with an external function"),
+        );
+    }
 
     let started = Instant::now();
     let mut result = match request.mode {
-        SandboxMode::Exec => execute_program(&request, false),
-        SandboxMode::Eval => execute_program(&request, true),
+        SandboxMode::Exec => execute_program(&request, false, external_call_handler.clone()),
+        SandboxMode::Eval => execute_program(&request, true, external_call_handler),
         SandboxMode::Check => execute_check(&request.source),
     };
     result.usage.wall_time_micros =
@@ -494,7 +738,11 @@ fn execute_worker_request(request: WorkerRequest) -> ExecutionResult {
     result
 }
 
-fn execute_program(request: &WorkerRequest, eval: bool) -> ExecutionResult {
+fn execute_program(
+    request: &WorkerRequest,
+    eval: bool,
+    external_call_handler: ExternalCallHandler,
+) -> ExecutionResult {
     if let Err(error) = reject_too_complex_source(&request.source) {
         return ExecutionResult::execution_error(error, String::new(), ExecutionUsage::default());
     }
@@ -596,15 +844,22 @@ fn execute_program(request: &WorkerRequest, eval: bool) -> ExecutionResult {
         .collect::<HashMap<_, _>>();
     let policy = policy_for_limits(&request.limits);
     let options = runtime_options_for_sandbox_policy(&policy);
-    let inputs = request
+    let mut inputs = request
         .inputs
         .iter()
         .map(|(name, value)| (name.clone(), sandbox_value_to_internal(value)))
         .collect::<Vec<_>>();
+    inputs.extend(
+        request
+            .external_functions
+            .iter()
+            .map(|name| (name.clone(), external_function_value(name))),
+    );
     let vm = Vm::new(instructions)
         .with_source_modules(Rc::new(module_sources))
         .with_runtime_options(options)
         .with_stdlib_import_policy(vm_stdlib_import_policy(policy))
+        .with_external_call_handler(external_call_handler)
         .with_initial_globals(inputs);
     let mut vm = match vm {
         Ok(vm) => vm,
@@ -816,6 +1071,28 @@ fn sandbox_value_from_internal(value: &Value) -> SandboxValue {
     })
 }
 
+fn sandbox_value_from_internal_checked(value: &Value) -> Result<SandboxValue, String> {
+    match sandbox_value_from_internal(value) {
+        SandboxValue::Opaque { type_name, .. } => Err(format!(
+            "TypeError: external function values cannot contain '{type_name}' objects"
+        )),
+        value => Ok(value),
+    }
+}
+
+fn format_external_function_error(error: ExternalFunctionError) -> String {
+    let type_name = if valid_exception_type_name(&error.type_name) {
+        error.type_name
+    } else {
+        "ExternalFunctionError".to_string()
+    };
+    format!("{type_name}: {}", error.message)
+}
+
+fn valid_exception_type_name(name: &str) -> bool {
+    valid_input_name(name) && (name.ends_with("Error") || name.ends_with("Exception"))
+}
+
 fn classify_execution_error(error: &str) -> ExecutionException {
     let phases = [
         ("decode error: ", ExecutionPhase::Decode, "UnicodeError"),
@@ -969,20 +1246,6 @@ fn encode_frame<T: Serialize>(value: &T) -> Result<Vec<u8>, String> {
     Ok(frame)
 }
 
-fn decode_frame<T: for<'de> Deserialize<'de>>(frame: &[u8]) -> Result<T, String> {
-    if frame.len() < 4 {
-        return Err("truncated protocol frame header".to_string());
-    }
-    let length = u32::from_be_bytes(frame[..4].try_into().expect("four byte header")) as usize;
-    if length > MAX_PROTOCOL_FRAME_BYTES {
-        return Err("protocol frame exceeds size limit".to_string());
-    }
-    if frame.len() != length + 4 {
-        return Err("truncated or trailing protocol frame data".to_string());
-    }
-    rmp_serde::from_slice(&frame[4..]).map_err(|error| error.to_string())
-}
-
 fn read_frame<R: Read, T: for<'de> Deserialize<'de>>(mut reader: R) -> Result<T, String> {
     let mut header = [0_u8; 4];
     reader
@@ -1001,6 +1264,9 @@ fn read_frame<R: Read, T: for<'de> Deserialize<'de>>(mut reader: R) -> Result<T,
 
 fn write_frame<W: Write, T: Serialize>(mut writer: W, value: &T) -> Result<(), String> {
     let frame = encode_frame(value)?;
+    if frame.len() > MAX_PROTOCOL_FRAME_BYTES + 4 {
+        return Err("protocol frame exceeds size limit".to_string());
+    }
     writer
         .write_all(&frame)
         .map_err(|error| format!("cannot write frame: {error}"))?;
@@ -1014,6 +1280,125 @@ enum WorkerTermination {
     Completed,
     MemoryLimit,
     TimeLimit,
+}
+
+struct WorkerOutcome {
+    status: ExitStatus,
+    termination: WorkerTermination,
+    result: Option<ExecutionResult>,
+}
+
+fn drive_worker(
+    child: &mut process::Child,
+    worker_stdin: &mut process::ChildStdin,
+    messages: &mpsc::Receiver<Result<WorkerMessage, String>>,
+    external_functions: &BTreeMap<String, ExternalFunction>,
+    max_memory_bytes: u64,
+    max_time_ms: u64,
+) -> Result<WorkerOutcome, String> {
+    let started = Instant::now();
+    let time_limit = Duration::from_millis(max_time_ms);
+    let mut result = None;
+    loop {
+        if started.elapsed() >= time_limit {
+            child
+                .kill()
+                .map_err(|error| format!("failed to terminate timed-out worker: {error}"))?;
+            let status = child
+                .wait()
+                .map_err(|error| format!("failed to reap timed-out worker: {error}"))?;
+            return Ok(WorkerOutcome {
+                status,
+                termination: WorkerTermination::TimeLimit,
+                result: None,
+            });
+        }
+        if worker_memory_limit_exceeded(child, max_memory_bytes)? {
+            child
+                .kill()
+                .map_err(|error| format!("failed to terminate oversized worker: {error}"))?;
+            let status = child
+                .wait()
+                .map_err(|error| format!("failed to reap oversized worker: {error}"))?;
+            return Ok(WorkerOutcome {
+                status,
+                termination: WorkerTermination::MemoryLimit,
+                result: None,
+            });
+        }
+        match messages.recv_timeout(Duration::from_millis(2)) {
+            Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
+                respond_to_external_call(worker_stdin, external_functions, call_id, call)?;
+            }
+            Ok(Ok(WorkerMessage::Complete(execution_result))) => {
+                if result.replace(execution_result).is_some() {
+                    return Err("worker sent more than one final result".to_string());
+                }
+            }
+            Ok(Err(error)) => return Err(format!("invalid worker response: {error}")),
+            Err(mpsc::RecvTimeoutError::Timeout | mpsc::RecvTimeoutError::Disconnected) => {}
+        }
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("failed to poll worker: {error}"))?
+        {
+            while result.is_none() {
+                match messages.recv() {
+                    Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
+                        respond_to_external_call(worker_stdin, external_functions, call_id, call)?;
+                    }
+                    Ok(Ok(WorkerMessage::Complete(execution_result))) => {
+                        result = Some(execution_result);
+                    }
+                    Ok(Err(error)) => {
+                        return Err(format!("invalid worker response: {error}"));
+                    }
+                    Err(_) => break,
+                }
+            }
+            return Ok(WorkerOutcome {
+                status,
+                termination: WorkerTermination::Completed,
+                result,
+            });
+        }
+    }
+}
+
+fn respond_to_external_call(
+    worker_stdin: &mut process::ChildStdin,
+    external_functions: &BTreeMap<String, ExternalFunction>,
+    call_id: u64,
+    call: ExternalCall,
+) -> Result<(), String> {
+    let result = match external_functions.get(&call.name) {
+        Some(function) => match catch_unwind(AssertUnwindSafe(|| function(call))) {
+            Ok(Ok(value)) if valid_input_value(&value, 0) => Ok(value),
+            Ok(Ok(_)) => Err(ExternalFunctionError::new(
+                "TypeError",
+                "external function returned an opaque or excessively nested value",
+            )),
+            Ok(Err(error)) => Err(normalize_external_function_error(error)),
+            Err(_) => Err(ExternalFunctionError::new(
+                "RuntimeError",
+                "external function panicked",
+            )),
+        },
+        None => Err(ExternalFunctionError::new(
+            "PermissionError",
+            format!("external function '{}' is not authorized", call.name),
+        )),
+    };
+    write_frame(worker_stdin, &HostCallResponse { call_id, result })
+        .map_err(|error| format!("failed to send external function response: {error}"))
+}
+
+fn normalize_external_function_error(error: ExternalFunctionError) -> ExternalFunctionError {
+    if valid_exception_type_name(&error.type_name) {
+        error
+    } else {
+        ExternalFunctionError::new("ExternalFunctionError", error.message)
+    }
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -1061,56 +1446,21 @@ fn process_memory_bytes(child: &process::Child) -> io::Result<u64> {
 }
 
 #[cfg(target_os = "macos")]
-fn wait_for_worker(
-    child: &mut process::Child,
+fn worker_memory_limit_exceeded(
+    child: &process::Child,
     max_memory_bytes: u64,
-    max_time_ms: u64,
-) -> io::Result<(ExitStatus, WorkerTermination)> {
-    let started = Instant::now();
-    let time_limit = Duration::from_millis(max_time_ms);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return Ok((status, WorkerTermination::Completed));
-        }
-        if started.elapsed() >= time_limit {
-            child.kill()?;
-            return child
-                .wait()
-                .map(|status| (status, WorkerTermination::TimeLimit));
-        }
-        match process_memory_bytes(child) {
-            Ok(bytes) if bytes > max_memory_bytes => {
-                child.kill()?;
-                return child
-                    .wait()
-                    .map(|status| (status, WorkerTermination::MemoryLimit));
-            }
-            Ok(_) => {}
-            Err(error) if error.raw_os_error() == Some(libc::ESRCH) => {}
-            Err(error) => return Err(error),
-        }
-        thread::sleep(Duration::from_millis(2));
+) -> Result<bool, String> {
+    match process_memory_bytes(child) {
+        Ok(bytes) => Ok(bytes > max_memory_bytes),
+        Err(error) if error.raw_os_error() == Some(libc::ESRCH) => Ok(false),
+        Err(error) => Err(format!("failed to inspect worker memory: {error}")),
     }
 }
 
 #[cfg(not(target_os = "macos"))]
-fn wait_for_worker(
-    child: &mut process::Child,
+fn worker_memory_limit_exceeded(
+    _child: &process::Child,
     _max_memory_bytes: u64,
-    max_time_ms: u64,
-) -> io::Result<(ExitStatus, WorkerTermination)> {
-    let started = Instant::now();
-    let time_limit = Duration::from_millis(max_time_ms);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return Ok((status, WorkerTermination::Completed));
-        }
-        if started.elapsed() >= time_limit {
-            child.kill()?;
-            return child
-                .wait()
-                .map(|status| (status, WorkerTermination::TimeLimit));
-        }
-        thread::sleep(Duration::from_millis(2));
-    }
+) -> Result<bool, String> {
+    Ok(false)
 }

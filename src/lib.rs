@@ -29,8 +29,8 @@ use vm::Vm;
 
 pub use product::{
     ExecutionException, ExecutionPhase, ExecutionResult, ExecutionStatus, ExecutionUsage,
-    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, SandboxValue,
-    serve_worker_once,
+    ExternalCall, ExternalFunctionError, INTERNAL_WORKER_ENV, Sandbox, SandboxInputs,
+    SandboxLimits, SandboxMode, SandboxValue, serve_worker_once,
 };
 pub use vm::RuntimeOptions;
 

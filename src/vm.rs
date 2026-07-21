@@ -40,8 +40,8 @@ use crate::value::{
     SET_SUBCLASS_STORAGE_FIELD, STR_ENUM_MEMBER_NAME_FIELD, STR_ENUM_MEMBER_VALUE_FIELD, Scope,
     SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState, TemplateInterpolation, Value,
     byte_array_value, bytes_io_value, bytes_value, code_metadata_namespace_entries_equal,
-    complex_value, dict_value, dict_view_value, dict_view_values, float_value,
-    format_float_display, format_instance_object_repr, format_iterator_repr,
+    complex_value, dict_value, dict_view_value, dict_view_values, external_function_name,
+    float_value, format_float_display, format_instance_object_repr, format_iterator_repr,
     frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
     identity_string_value, is_printable_char, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
@@ -293,6 +293,7 @@ pub struct Vm {
     pending_resource_error: Option<String>,
     frame_stack: FrameStack,
     frame_line_spans: Vec<CodeLineSpan>,
+    external_call_handler: Option<ExternalCallHandler>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -316,6 +317,9 @@ pub(crate) struct VmExecution {
     pub stdout: String,
     pub usage: VmUsage,
 }
+
+pub(crate) type ExternalCallHandler =
+    Rc<dyn Fn(String, Vec<Value>, Vec<(String, Value)>) -> Result<Value, String>>;
 
 impl RuntimeOptions {
     pub fn with_bytes_warning(mut self, level: i64) -> Self {
@@ -5313,6 +5317,7 @@ impl Vm {
             pending_resource_error: None,
             frame_stack: Rc::new(RefCell::new(Vec::new())),
             frame_line_spans: default_code_line_spans(),
+            external_call_handler: None,
         }
     }
 
@@ -5344,6 +5349,11 @@ impl Vm {
         }
         self.globals.borrow_mut().extend(globals);
         Ok(self)
+    }
+
+    pub(crate) fn with_external_call_handler(mut self, handler: ExternalCallHandler) -> Self {
+        self.external_call_handler = Some(handler);
+        self
     }
 
     pub(crate) fn with_source_modules(mut self, source_modules: SourceModuleTable) -> Self {
@@ -5405,6 +5415,7 @@ impl Vm {
             pending_resource_error: None,
             frame_stack,
             frame_line_spans: line_spans,
+            external_call_handler: None,
         }
     }
 
@@ -5454,6 +5465,7 @@ impl Vm {
             pending_resource_error: None,
             frame_stack,
             frame_line_spans: default_code_line_spans(),
+            external_call_handler: None,
         }
     }
 
@@ -5505,6 +5517,7 @@ impl Vm {
             pending_resource_error: None,
             frame_stack,
             frame_line_spans: default_code_line_spans(),
+            external_call_handler: None,
         }
     }
 
@@ -6711,6 +6724,7 @@ impl Vm {
                     class_vm.instruction_budget = self.instruction_budget.clone();
                     class_vm.output_budget = self.output_budget.clone();
                     class_vm.allocation_budget = self.allocation_budget.clone();
+                    class_vm.external_call_handler = self.external_call_handler.clone();
                     class_vm.locals = class_locals;
                     class_vm.qualname_prefix = Some(class_qualname.clone());
                     class_vm.store_class_namespace_value(
@@ -7738,6 +7752,7 @@ impl Vm {
         module_vm.instruction_budget = self.instruction_budget.clone();
         module_vm.output_budget = self.output_budget.clone();
         module_vm.allocation_budget = self.allocation_budget.clone();
+        module_vm.external_call_handler = self.external_call_handler.clone();
 
         match module_vm.run() {
             Ok(output) => {
@@ -9728,6 +9743,15 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         match callee {
+            Value::Builtin(name) if external_function_name(&name).is_some() => {
+                let external_name = external_function_name(&name)
+                    .expect("guard checked external function")
+                    .to_string();
+                let handler = self.external_call_handler.clone().ok_or_else(|| {
+                    format!("RuntimeError: external function '{external_name}' has no host bridge")
+                })?;
+                handler(external_name, args, keywords)
+            }
             Value::Partial {
                 function,
                 args: bound_args,
@@ -12859,6 +12883,7 @@ impl Vm {
         function_vm.instruction_budget = self.instruction_budget.clone();
         function_vm.output_budget = self.output_budget.clone();
         function_vm.allocation_budget = self.allocation_budget.clone();
+        function_vm.external_call_handler = self.external_call_handler.clone();
         if locals_are_globals {
             function_vm.locals = function_vm.globals.clone();
             function_vm.captures_locals = false;
@@ -16619,6 +16644,7 @@ impl Vm {
         eval_vm.instruction_budget = self.instruction_budget.clone();
         eval_vm.output_budget = self.output_budget.clone();
         eval_vm.allocation_budget = self.allocation_budget.clone();
+        eval_vm.external_call_handler = self.external_call_handler.clone();
         let result = eval_vm.run_eval();
         self.absorb_output_from(&mut eval_vm);
         result
@@ -22511,6 +22537,7 @@ impl Vm {
         code_vm.instruction_budget = self.instruction_budget.clone();
         code_vm.output_budget = self.output_budget.clone();
         code_vm.allocation_budget = self.allocation_budget.clone();
+        code_vm.external_call_handler = self.external_call_handler.clone();
         code_vm.current_class = self.current_class.clone();
         code_vm.first_arg_name = self.first_arg_name.clone();
         code_vm.qualname_prefix = self.qualname_prefix.clone();
@@ -43017,6 +43044,7 @@ impl Vm {
                     state.first_line,
                     &state.line_sequence,
                 ),
+                external_call_handler: self.external_call_handler.clone(),
             }
         };
 
@@ -43221,6 +43249,7 @@ impl Vm {
                         state.first_line,
                         &state.line_sequence,
                     ),
+                    external_call_handler: self.external_call_handler.clone(),
                 },
                 state.resume_dst,
                 state.ip == 0,

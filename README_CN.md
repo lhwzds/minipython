@@ -85,6 +85,25 @@ bytes、bytearray、list、tuple 和 dict。不支持的 runtime 对象只会作
 `Opaque` 描述返回，不能重新注入 sandbox。worker 路径显式传入，使嵌入应用能够
 决定实际执行哪个经过审核的 sidecar。
 
+宿主能力通过 external function 显式授权。只有嵌入应用注册了准确的全局名称后，
+该函数才会出现在 Python 中：
+
+```rust
+use minipython::{ExternalFunctionError, SandboxValue};
+
+sandbox.register_external_function("lookup_price", |call| {
+    let Some(SandboxValue::String(symbol)) = call.args.first() else {
+        return Err(ExternalFunctionError::new("TypeError", "symbol must be a string"));
+    };
+    Ok(SandboxValue::from(format!("quote:{symbol}")))
+})?;
+```
+
+调用和返回值通过 worker 协议传输，并复用同一惰性数据 allowlist。runtime 对象不能
+传给宿主，opaque 宿主值不能返回，callback 错误会成为 Python 可捕获异常，callback
+panic 也不会穿透 `Sandbox::execute`。External callback 属于受信任宿主代码：它可以
+主动执行应用明确授予的能力，其自身运行时间不能由 worker wall-clock limit 强制取消。
+
 CLI 默认最多执行 1,000,000 条 VM 指令。可以用 `--max-steps N` 调整预算；
 库调用方可以使用 `RuntimeOptions::with_max_instructions`，虚拟模块和 sandbox
 目录模块的 `SandboxPolicy` 也使用相同的有限默认值。函数、generator、

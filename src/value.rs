@@ -43,6 +43,15 @@ pub const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_stor
 pub const GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_genericalias_storage";
 const CLASS_QUALNAME_ATTR: &str = "\0class_qualname";
 const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
+const EXTERNAL_FUNCTION_PREFIX: &str = "\0minipython_external_function:";
+
+pub(crate) fn external_function_value(name: &str) -> Value {
+    Value::Builtin(format!("{EXTERNAL_FUNCTION_PREFIX}{name}"))
+}
+
+pub(crate) fn external_function_name(name: &str) -> Option<&str> {
+    name.strip_prefix(EXTERNAL_FUNCTION_PREFIX)
+}
 
 pub fn identity_string_value(value: String) -> Value {
     Value::IdentityString {
@@ -1613,6 +1622,13 @@ impl fmt::Display for Value {
                 exceptions: Some(exceptions),
                 ..
             } => write!(f, "({})", format_subexception_count(exceptions.len())),
+            Value::Builtin(name) if external_function_name(name).is_some() => {
+                write!(
+                    f,
+                    "<external function {}>",
+                    external_function_name(name).expect("guard checked external function")
+                )
+            }
             Value::Builtin(name) if is_typing_special_form_name(name) => {
                 write!(f, "{name}")
             }
@@ -2345,6 +2361,10 @@ fn format_value_repr(value: &Value) -> String {
         Value::ParamSpecAccess { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => format!("<type alias {name}>"),
         Value::ForwardRef { arg } => format!("ForwardRef({})", repr_string(arg)),
+        Value::Builtin(name) if external_function_name(name).is_some() => format!(
+            "<external function {}>",
+            external_function_name(name).expect("guard checked external function")
+        ),
         Value::Builtin(name) if is_typing_special_form_name(name) => name.clone(),
         Value::NewType { name, module, .. } => format_new_type_name(module, name),
         Value::ConstEvaluator { kind, target } => format_const_evaluator(*kind, target),
