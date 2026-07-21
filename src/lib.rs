@@ -3,6 +3,7 @@ mod bytecode;
 mod compiler;
 mod lexer;
 mod parser;
+mod product;
 mod stdlib;
 mod value;
 mod vm;
@@ -26,6 +27,11 @@ use lexer::{
 use parser::{parse, parse_eval, parse_func_type, parse_interactive, parse_with_diagnostic};
 use vm::Vm;
 
+pub use product::{
+    ExecutionException, ExecutionPhase, ExecutionResult, ExecutionStatus, ExecutionUsage,
+    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, SandboxValue,
+    serve_worker_once,
+};
 pub use vm::RuntimeOptions;
 
 pub const DEFAULT_SANDBOX_MAX_INSTRUCTIONS: u64 = 1_000_000;

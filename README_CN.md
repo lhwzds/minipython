@@ -48,7 +48,7 @@ mnpy -e "1 + 2 * 3"     # 求值表达式
 echo "print(1)" | mnpy  # 管道输入
 ```
 
-`mnpy` 是唯一公开入口，并且始终在 sandbox 中运行代码：
+`mnpy` 始终通过 sandbox 边界运行代码：
 
 ```bash
 mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
@@ -60,6 +60,30 @@ mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
 使用内核进程限制。执行文件时，脚本目录默认作为 sandbox module root；`-c` 和
 stdin 默认不暴露宿主模块目录，除非显式传入 `--root`。库 API 仍可用于 focused
 runtime 和 parity 测试，但 in-process 调用不是运行不可信代码的正式安全边界。
+
+### Rust 执行 API
+
+嵌入方与 CLI 使用同一个 worker 安全边界。`Sandbox` 启动调用方指定的
+`mnpy` worker，通过带长度前缀的 MessagePack 请求执行代码，并返回结构化结果，
+不会把 VM 对象暴露给宿主：
+
+```rust
+use minipython::{Sandbox, SandboxInputs, SandboxValue};
+
+let sandbox = Sandbox::new("target/release/mnpy");
+let mut inputs = SandboxInputs::new();
+inputs.insert("price".into(), SandboxValue::from(40_i64));
+
+let result = sandbox.eval_with_inputs("price + 2", inputs);
+assert!(result.is_success());
+assert_eq!(result.value, Some(SandboxValue::from(42_i64)));
+```
+
+`ExecutionResult` 分别提供状态、返回值、精确捕获的 stdout/stderr、异常阶段/类型/文本
+以及资源使用量。输入和返回值只能是惰性数据：`None`、布尔值、数字、字符串、
+bytes、bytearray、list、tuple 和 dict。不支持的 runtime 对象只会作为输出专用的
+`Opaque` 描述返回，不能重新注入 sandbox。worker 路径显式传入，使嵌入应用能够
+决定实际执行哪个经过审核的 sidecar。
 
 CLI 默认最多执行 1,000,000 条 VM 指令。可以用 `--max-steps N` 调整预算；
 库调用方可以使用 `RuntimeOptions::with_max_instructions`，虚拟模块和 sandbox
@@ -126,7 +150,7 @@ report 也会写出对应的
 ## 架构
 
 ```
-Source → Lexer → Parser → AST → Compiler → Bytecode → VM → Output
+Host → Rust API / CLI → MessagePack worker → Lexer → Parser → Compiler → Register VM
 ```
 
 基于寄存器的虚拟机，包含 80+ 条指令和 60+ 种值类型。

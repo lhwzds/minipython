@@ -1,23 +1,18 @@
 use std::env;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::PathBuf;
-use std::process::{self, Command, ExitStatus, Stdio};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::process;
 
 use minipython::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
-    DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, SANDBOX_STDLIB_ALLOWLIST,
-    SandboxPolicy, compile_source, eval_source_with_sandbox_dir_and_policy,
-    eval_source_with_virtual_modules_and_policy, run_source_with_sandbox_dir_and_policy,
-    run_source_with_virtual_modules_and_policy,
+    DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, ExecutionStatus,
+    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_worker_once,
 };
 
 const DEFAULT_MAX_PROCESS_MEMORY_BYTES: u64 = 256 * 1_048_576;
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
 const DEFAULT_MAX_TIME_MS: u64 = 5_000;
-const INTERNAL_WORKER_ENV: &str = "MINIPYTHON_INTERNAL_WORKER";
 
 #[derive(Clone)]
 struct Config {
@@ -117,15 +112,6 @@ fn parse_args(args: &[String]) -> (Config, SourceInput) {
             "--max-allocated-bytes" => {
                 config.max_allocated_bytes =
                     parse_number(args.get(index + 1), "--max-allocated-bytes");
-                index += 2;
-            }
-            "--internal-mode" if env::var(INTERNAL_WORKER_ENV).as_deref() == Ok("1") => {
-                config.mode = match args.get(index + 1).map(String::as_str) {
-                    Some("exec") => ExecutionMode::Exec,
-                    Some("eval") => ExecutionMode::Eval,
-                    Some("check") => ExecutionMode::Check,
-                    _ => usage(),
-                };
                 index += 2;
             }
             "--root" => {
@@ -237,290 +223,43 @@ fn read_source(input: SourceInput, limit: usize) -> Result<String, String> {
     }
 }
 
-#[cfg(all(unix, not(target_os = "macos")))]
-fn apply_process_memory_limit(command: &mut Command, bytes: u64) {
-    use std::os::unix::process::CommandExt;
-
-    unsafe {
-        command.pre_exec(move || {
-            let limit = libc::rlimit {
-                rlim_cur: bytes as libc::rlim_t,
-                rlim_max: bytes as libc::rlim_t,
-            };
-            if libc::setrlimit(libc::RLIMIT_AS, &limit) != 0 {
-                return Err(io::Error::last_os_error());
-            }
-            if libc::setrlimit(libc::RLIMIT_DATA, &limit) != 0 {
-                return Err(io::Error::last_os_error());
-            }
-            Ok(())
-        });
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn apply_process_memory_limit(_command: &mut Command, _bytes: u64) {}
-
-#[cfg(not(unix))]
-fn apply_process_memory_limit(_command: &mut Command, _bytes: u64) {
-    eprintln!("sandbox error: process memory limits require a Unix host");
-    process::exit(2);
-}
-
-#[cfg(target_os = "macos")]
-fn process_memory_bytes(child: &process::Child) -> io::Result<u64> {
-    let mut usage = unsafe { std::mem::zeroed::<libc::rusage_info_v0>() };
-    let result = unsafe {
-        libc::proc_pid_rusage(
-            child.id() as libc::c_int,
-            libc::RUSAGE_INFO_V0,
-            &mut usage as *mut _ as *mut libc::rusage_info_t,
-        )
-    };
-    if result == 0 {
-        Ok(usage.ri_phys_footprint.max(usage.ri_resident_size))
-    } else {
-        Err(io::Error::last_os_error())
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum WorkerTermination {
-    Completed,
-    MemoryLimit,
-    TimeLimit,
-}
-
-#[cfg(target_os = "macos")]
-fn wait_for_worker(
-    child: &mut process::Child,
-    max_memory_bytes: u64,
-    max_time_ms: u64,
-) -> io::Result<(ExitStatus, WorkerTermination)> {
-    let started = Instant::now();
-    let time_limit = Duration::from_millis(max_time_ms);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return Ok((status, WorkerTermination::Completed));
-        }
-        if started.elapsed() >= time_limit {
-            child.kill()?;
-            return child
-                .wait()
-                .map(|status| (status, WorkerTermination::TimeLimit));
-        }
-        match process_memory_bytes(child) {
-            Ok(bytes) if bytes > max_memory_bytes => {
-                child.kill()?;
-                return child
-                    .wait()
-                    .map(|status| (status, WorkerTermination::MemoryLimit));
-            }
-            Ok(_) => {}
-            Err(error) if error.raw_os_error() == Some(libc::ESRCH) => {}
-            Err(error) => return Err(error),
-        }
-        thread::sleep(Duration::from_millis(2));
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn wait_for_worker(
-    child: &mut process::Child,
-    _max_memory_bytes: u64,
-    max_time_ms: u64,
-) -> io::Result<(ExitStatus, WorkerTermination)> {
-    let started = Instant::now();
-    let time_limit = Duration::from_millis(max_time_ms);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return Ok((status, WorkerTermination::Completed));
-        }
-        if started.elapsed() >= time_limit {
-            child.kill()?;
-            return child
-                .wait()
-                .map(|status| (status, WorkerTermination::TimeLimit));
-        }
-        thread::sleep(Duration::from_millis(2));
-    }
-}
-
-fn worker_args(config: &Config) -> Vec<String> {
-    let mode = match config.mode {
-        ExecutionMode::Exec => "exec",
-        ExecutionMode::Eval => "eval",
-        ExecutionMode::Check => "check",
-    };
-    let mut args = vec![
-        "--worker".to_string(),
-        "--internal-mode".to_string(),
-        mode.to_string(),
-        "--max-steps".to_string(),
-        config.max_steps.to_string(),
-        "--max-source-bytes".to_string(),
-        config.max_source_bytes.to_string(),
-        "--max-depth".to_string(),
-        config.max_depth.to_string(),
-        "--max-output-bytes".to_string(),
-        config.max_output_bytes.to_string(),
-        "--max-allocated-bytes".to_string(),
-        config.max_allocated_bytes.to_string(),
-    ];
-    if config.bytes_warning == 1 {
-        args.push("-b".to_string());
-    } else if config.bytes_warning >= 2 {
-        args.push("-bb".to_string());
-    }
-    if let Some(root) = &config.root {
-        args.push("--root".to_string());
-        args.push(root.display().to_string());
-    }
-    args
-}
-
 fn run_parent(config: Config, source: String) -> ! {
     let executable = env::current_exe().unwrap_or_else(|error| {
         eprintln!("sandbox error: cannot locate worker executable: {error}");
         process::exit(2);
     });
-    let mut command = Command::new(executable);
-    command
-        .args(worker_args(&config))
-        .env(INTERNAL_WORKER_ENV, "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    apply_process_memory_limit(&mut command, config.max_memory_bytes);
-    let mut child = command.spawn().unwrap_or_else(|error| {
-        eprintln!("sandbox error: failed to start memory-limited worker: {error}");
-        process::exit(1);
-    });
-    child
-        .stdin
-        .take()
-        .expect("worker stdin is piped")
-        .write_all(source.as_bytes())
-        .unwrap_or_else(|error| {
-            let _ = child.kill();
-            eprintln!("sandbox error: failed to send source to worker: {error}");
-            process::exit(1);
-        });
-    let mut stdout = child.stdout.take().expect("worker stdout is piped");
-    let mut stderr = child.stderr.take().expect("worker stderr is piped");
-    let stdout_reader = thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stdout.read_to_end(&mut bytes).map(|_| bytes)
-    });
-    let stderr_reader = thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stderr.read_to_end(&mut bytes).map(|_| bytes)
-    });
-    let (status, termination) =
-        wait_for_worker(&mut child, config.max_memory_bytes, config.max_time_ms).unwrap_or_else(
-            |error| {
-                eprintln!("sandbox error: failed to wait for worker: {error}");
-                process::exit(1);
-            },
-        );
-    let stdout = stdout_reader
-        .join()
-        .expect("worker stdout reader panicked")
-        .unwrap_or_else(|error| {
-            eprintln!("sandbox error: failed to read worker stdout: {error}");
-            process::exit(1);
-        });
-    let stderr = stderr_reader
-        .join()
-        .expect("worker stderr reader panicked")
-        .unwrap_or_else(|error| {
-            eprintln!("sandbox error: failed to read worker stderr: {error}");
-            process::exit(1);
-        });
-    print!("{}", String::from_utf8_lossy(&stdout));
-    eprint!("{}", String::from_utf8_lossy(&stderr));
-    if status.success() {
+    let limits = SandboxLimits {
+        max_process_memory_bytes: config.max_memory_bytes,
+        max_time_ms: config.max_time_ms,
+        max_source_bytes: config.max_source_bytes,
+        max_instructions: config.max_steps,
+        max_call_depth: config.max_depth,
+        max_output_bytes: config.max_output_bytes,
+        max_allocated_bytes: config.max_allocated_bytes,
+        bytes_warning: config.bytes_warning,
+    };
+    let mut sandbox = Sandbox::new(executable).with_limits(limits);
+    if let Some(root) = config.root {
+        sandbox = sandbox.with_root(root);
+    }
+    let mode = match config.mode {
+        ExecutionMode::Exec => SandboxMode::Exec,
+        ExecutionMode::Eval => SandboxMode::Eval,
+        ExecutionMode::Check => SandboxMode::Check,
+    };
+    let result = sandbox.execute(mode, &source, SandboxInputs::new());
+    print!("{}", result.stdout);
+    eprint!("{}", result.stderr);
+    if result.status == ExecutionStatus::Success {
+        if mode == SandboxMode::Eval {
+            println!("{}", result.value_display.unwrap_or_default());
+        }
         process::exit(0);
     }
-    if termination == WorkerTermination::TimeLimit {
-        eprintln!("sandbox error: worker wall-clock limit exceeded");
-    } else if termination == WorkerTermination::MemoryLimit
-        || status.code().is_none()
-        || status.code().is_some_and(|code| code >= 125)
-    {
-        eprintln!("sandbox error: worker exceeded process limits or crashed");
+    if let Some(exception) = result.exception {
+        eprintln!("{}", exception.display_message());
     }
     process::exit(1);
-}
-
-fn parse_worker_config(args: &[String]) -> Config {
-    let mut forwarded = vec!["mnpy".to_string()];
-    forwarded.extend_from_slice(&args[2..]);
-    let (config, input) = parse_args(&forwarded);
-    if !matches!(input, SourceInput::Stdin) {
-        usage();
-    }
-    config
-}
-
-fn run_worker(config: Config) -> ! {
-    let source =
-        read_limited(io::stdin().lock(), config.max_source_bytes).unwrap_or_else(|error| {
-            eprintln!("{error}");
-            process::exit(1);
-        });
-    let policy = SandboxPolicy::allow_stdlib_modules(SANDBOX_STDLIB_ALLOWLIST.iter().copied())
-        .expect("built-in sandbox stdlib allowlist is valid")
-        .with_bytes_warning(config.bytes_warning)
-        .with_max_instructions(config.max_steps)
-        .with_max_call_depth(config.max_depth)
-        .with_max_output_bytes(config.max_output_bytes)
-        .with_max_allocated_bytes(config.max_allocated_bytes);
-    match config.mode {
-        ExecutionMode::Exec => {
-            let result = if let Some(root) = config.root {
-                run_source_with_sandbox_dir_and_policy(&source, root, policy)
-            } else {
-                run_source_with_virtual_modules_and_policy(&source, [], policy)
-            };
-            match result {
-                Ok(lines) => {
-                    for line in lines {
-                        println!("{line}");
-                    }
-                    process::exit(0);
-                }
-                Err(error) => {
-                    eprintln!("{error}");
-                    process::exit(1);
-                }
-            }
-        }
-        ExecutionMode::Eval => {
-            let result = if let Some(root) = config.root {
-                eval_source_with_sandbox_dir_and_policy(&source, root, policy)
-            } else {
-                eval_source_with_virtual_modules_and_policy(&source, [], policy)
-            };
-            match result {
-                Ok(value) => {
-                    println!("{value}");
-                    process::exit(0);
-                }
-                Err(error) => {
-                    eprintln!("{error}");
-                    process::exit(1);
-                }
-            }
-        }
-        ExecutionMode::Check => match compile_source(&source) {
-            Ok(()) => process::exit(0),
-            Err(error) => {
-                eprintln!("{error}");
-                process::exit(1);
-            }
-        },
-    }
 }
 
 fn infer_file_root(config: &mut Config, input: &SourceInput) {
@@ -549,7 +288,7 @@ pub(crate) fn main() {
         if env::var(INTERNAL_WORKER_ENV).as_deref() != Ok("1") {
             reject_direct_worker_invocation();
         }
-        run_worker(parse_worker_config(&args));
+        process::exit(serve_worker_once());
     }
     let (mut config, input) = parse_args(&args);
     infer_file_root(&mut config, &input);

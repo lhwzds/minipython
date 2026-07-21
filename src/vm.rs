@@ -304,6 +304,19 @@ pub struct RuntimeOptions {
     pub max_allocated_bytes: Option<usize>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct VmUsage {
+    pub instructions: u64,
+    pub output_bytes: usize,
+    pub allocated_bytes: usize,
+}
+
+pub(crate) struct VmExecution {
+    pub result: Result<Value, String>,
+    pub stdout: String,
+    pub usage: VmUsage,
+}
+
 impl RuntimeOptions {
     pub fn with_bytes_warning(mut self, level: i64) -> Self {
         self.bytes_warning = level.clamp(0, 2);
@@ -5322,6 +5335,17 @@ impl Vm {
         self
     }
 
+    pub(crate) fn with_initial_globals(
+        self,
+        globals: Vec<(String, Value)>,
+    ) -> Result<Self, String> {
+        for (_, value) in &globals {
+            self.charge_value_allocation(value)?;
+        }
+        self.globals.borrow_mut().extend(globals);
+        Ok(self)
+    }
+
     pub(crate) fn with_source_modules(mut self, source_modules: SourceModuleTable) -> Self {
         self.source_modules = source_modules;
         self
@@ -5492,11 +5516,61 @@ impl Vm {
         }
     }
 
+    pub(crate) fn run_captured(&mut self) -> VmExecution {
+        let result = match self.run_inner() {
+            Ok(ExecutionExit::Halt) => Ok(Value::None),
+            Ok(ExecutionExit::Return(_)) => Err("return outside function".to_string()),
+            Ok(ExecutionExit::Yield { .. }) => Err("yield outside function".to_string()),
+            Err(error) => Err(error),
+        };
+        VmExecution {
+            result,
+            stdout: self.take_output_text(),
+            usage: self.execution_usage(),
+        }
+    }
+
     fn take_output_flushed(&mut self) -> Vec<String> {
         if !self.output_pending.is_empty() {
             self.output.push(std::mem::take(&mut self.output_pending));
         }
         std::mem::take(&mut self.output)
+    }
+
+    fn take_output_text(&mut self) -> String {
+        let mut text = String::new();
+        for line in std::mem::take(&mut self.output) {
+            text.push_str(&line);
+            text.push('\n');
+        }
+        text.push_str(&std::mem::take(&mut self.output_pending));
+        text
+    }
+
+    fn execution_usage(&self) -> VmUsage {
+        let instructions = self
+            .runtime_options
+            .max_instructions
+            .zip(self.instruction_budget.get())
+            .map(|(initial, remaining)| initial.saturating_sub(remaining))
+            .unwrap_or(0);
+        let output_bytes = self
+            .runtime_options
+            .max_output_bytes
+            .zip(self.output_budget.get())
+            .map(|(initial, remaining)| initial.saturating_sub(remaining))
+            .unwrap_or(0);
+        let allocated_bytes = self
+            .runtime_options
+            .max_allocated_bytes
+            .zip(self.allocation_budget.borrow().remaining)
+            .map(|(initial, remaining)| initial.saturating_sub(remaining))
+            .unwrap_or(0);
+        VmUsage {
+            instructions,
+            output_bytes,
+            allocated_bytes,
+        }
     }
 
     fn push_output_line_unchecked(&mut self, line: String) {
@@ -5539,6 +5613,20 @@ impl Vm {
             ExecutionExit::Return(value) => Ok(value),
             ExecutionExit::Halt => Ok(Value::None),
             ExecutionExit::Yield { .. } => Err("yield outside eval".to_string()),
+        }
+    }
+
+    pub(crate) fn run_eval_captured(&mut self) -> VmExecution {
+        let result = match self.run_inner() {
+            Ok(ExecutionExit::Return(value)) => Ok(value),
+            Ok(ExecutionExit::Halt) => Ok(Value::None),
+            Ok(ExecutionExit::Yield { .. }) => Err("yield outside eval".to_string()),
+            Err(error) => Err(error),
+        };
+        VmExecution {
+            result,
+            stdout: self.take_output_text(),
+            usage: self.execution_usage(),
         }
     }
 
@@ -78207,7 +78295,7 @@ fn copy_replace_hook_expected_got_counts(message: &str) -> Option<(usize, usize)
     Some((expected, got))
 }
 
-fn type_name(value: &Value) -> &str {
+pub(crate) fn type_name(value: &Value) -> &str {
     match value {
         Value::Number(_) | Value::BigInt(_) => "int",
         Value::Float(_) => "float",

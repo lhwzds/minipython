@@ -69,7 +69,7 @@ mnpy -e "1 + 2 * 3"     # evaluate an expression
 echo "print(1)" | mnpy  # pipe input
 ```
 
-`mnpy` is the single public entrypoint and always runs code in the sandbox:
+`mnpy` always runs code through the sandbox boundary:
 
 ```bash
 mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
@@ -84,6 +84,32 @@ directory as the default sandbox module root; `-c` and stdin expose no host
 module root unless `--root` is passed. Library APIs remain useful for focused
 runtime and parity tests, but in-process calls are not the supported untrusted-
 code boundary.
+
+### Rust execution API
+
+Embedders use the same worker boundary as the CLI. `Sandbox` starts the supplied
+`mnpy` worker executable, sends a length-framed MessagePack request, and returns
+a structured result without exposing VM objects to the host:
+
+```rust
+use minipython::{Sandbox, SandboxInputs, SandboxValue};
+
+let sandbox = Sandbox::new("target/release/mnpy");
+let mut inputs = SandboxInputs::new();
+inputs.insert("price".into(), SandboxValue::from(40_i64));
+
+let result = sandbox.eval_with_inputs("price + 2", inputs);
+assert!(result.is_success());
+assert_eq!(result.value, Some(SandboxValue::from(42_i64)));
+```
+
+`ExecutionResult` separates status, value, exact captured stdout/stderr,
+exception phase/type/message, and resource usage. Inputs and returned values are
+restricted to inert data (`None`, booleans, numbers, strings, bytes, bytearrays,
+lists, tuples, and dictionaries). Unsupported runtime objects are output-only
+`Opaque` descriptions and cannot be injected back into the sandbox. The worker
+path is explicit so an embedding application controls which reviewed sidecar it
+executes.
 
 CLI execution is bounded to 1,000,000 VM instructions by default. Use
 `--max-steps N` to select a smaller or larger budget. Library callers can use
@@ -159,7 +185,7 @@ command to rerun the grouped repair slice.
 ## Architecture
 
 ```
-Source → Lexer → Parser → AST → Compiler → Bytecode → VM → Output
+Host → Rust API / CLI → MessagePack worker → Lexer → Parser → Compiler → Register VM
 ```
 
 A register-based VM with 80+ instructions and 60+ value types.
