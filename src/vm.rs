@@ -20907,6 +20907,14 @@ impl Vm {
         self.call_with_exception_capture(|vm| vm.load_attribute_value(object, name))
     }
 
+    fn load_subscript_value_catching(
+        &mut self,
+        object: Value,
+        index: Value,
+    ) -> Result<Result<Value, MiniException>, String> {
+        self.call_with_exception_capture(|vm| vm.load_subscript_value(object, index))
+    }
+
     fn call_value_catching(
         &mut self,
         callee: Value,
@@ -34210,7 +34218,7 @@ impl Vm {
         if let Some((left, right)) = forward_ref_union_operands(&left, &right) {
             return self.union_type_value(left, right);
         }
-        if is_type_union_operand(&left) && is_type_union_operand(&right) {
+        if is_type_union_pair(&left, &right) {
             return self.union_type_value(left, right);
         }
         bit_or_values(left, right)
@@ -102859,11 +102867,8 @@ fn percent_format_string_result(
     format: &str,
     value: Value,
 ) -> Result<PercentStringResult, String> {
-    let mapping = percent_format_mapping(&value);
-    let args = match value {
-        Value::Tuple(items) => items.as_ref().clone(),
-        value => vec![value],
-    };
+    let mapping = percent_format_mapping(&value, true);
+    let args = percent_format_args(value);
     let mut arg_index = 0;
     let mut used_mapping = false;
     let mut output = String::new();
@@ -102965,11 +102970,8 @@ fn percent_format_bytes(
     value: Value,
     kind: BytesResultKind,
 ) -> Result<Value, String> {
-    let mapping = percent_format_mapping(&value);
-    let args = match value {
-        Value::Tuple(items) => items.as_ref().clone(),
-        value => vec![value],
-    };
+    let mapping = percent_format_mapping(&value, false);
+    let args = percent_format_args(value);
     let mut arg_index = 0;
     let mut used_mapping = false;
     let mut output = Vec::new();
@@ -103114,18 +103116,73 @@ enum PercentProtocolResult<T> {
     Raised,
 }
 
-fn percent_format_mapping(value: &Value) -> Option<Value> {
+fn percent_format_args(value: Value) -> Vec<Value> {
+    match value {
+        Value::Tuple(items) => items.as_ref().clone(),
+        Value::NamedTuple { values, .. } => values.as_ref().clone(),
+        value if tuple_subclass_items(&value).is_some() => tuple_subclass_items(&value)
+            .expect("tuple subclass storage exists after guard")
+            .as_ref()
+            .clone(),
+        value if namedtuple_subclass_storage(&value).is_some() => {
+            namedtuple_subclass_storage(&value)
+                .expect("named tuple subclass storage exists after guard")
+                .1
+                .as_ref()
+                .clone()
+        }
+        value => vec![value],
+    }
+}
+
+fn percent_format_mapping(value: &Value, string_format: bool) -> Option<Value> {
     match value {
         Value::Dict(_)
+        | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
+        | Value::Counter { .. }
         | Value::MappingProxy { .. }
+        | Value::MappingProxyObject { .. }
         | Value::ChainMap { .. }
         | Value::UserDict { .. }
         | Value::List(_)
         | Value::UserList { .. }
+        | Value::UserString { .. }
+        | Value::MemoryView(_)
         | Value::Range { .. }
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. } => Some(value.clone()),
-        Value::Instance { .. } if instance_special_method(value, "__getitem__").is_some() => {
+        Value::Bytes(_) | Value::ByteArray(_) if string_format => Some(value.clone()),
+        Value::Instance { .. }
+            if str_subclass_string(value).is_some()
+                || tuple_subclass_items(value).is_some()
+                || namedtuple_subclass_storage(value).is_some() =>
+        {
+            None
+        }
+        Value::Instance { .. }
+            if string_format
+                && (bytes_subclass_bytes(value).is_some()
+                    || bytearray_subclass_storage(value).is_some()) =>
+        {
+            Some(value.clone())
+        }
+        Value::Instance { .. }
+            if !string_format
+                && (bytes_subclass_bytes(value).is_some()
+                    || bytearray_subclass_storage(value).is_some()) =>
+        {
+            None
+        }
+        Value::Instance { .. }
+            if list_subclass_storage(value).is_some()
+                || dict_subclass_entries(value).is_some()
+                || counter_subclass_entries(value).is_some()
+                || user_dict_subclass_data(value).is_some()
+                || chain_map_subclass_maps(value).is_some()
+                || array_array_storage(value).is_some()
+                || instance_special_method(value, "__getitem__").is_some() =>
+        {
             Some(value.clone())
         }
         _ => None,
@@ -103137,14 +103194,8 @@ fn percent_mapping_value(
     mapping: &Value,
     key: Value,
 ) -> Result<PercentMappingValue, String> {
-    if matches!(mapping, Value::Instance { .. }) {
-        let Some(vm) = vm else {
-            return Err("TypeError: format requires a mapping".to_string());
-        };
-        let Some(method) = instance_special_method(mapping, "__getitem__") else {
-            return Err("TypeError: format requires a mapping".to_string());
-        };
-        return match vm.call_value_catching(method, vec![key])? {
+    if let Some(vm) = vm {
+        return match vm.load_subscript_value_catching(mapping.clone(), key)? {
             Ok(value) => Ok(PercentMappingValue::Value(value)),
             Err(exception) => {
                 vm.raise_exception(exception, true)?;
@@ -104447,7 +104498,7 @@ fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
         return set_union_from_iterables_with_kind(kind, left, &[set_value(right)]);
     }
 
-    if is_type_union_operand(&left) && is_type_union_operand(&right) {
+    if is_type_union_pair(&left, &right) {
         return Ok(union_type_value(left, right));
     }
 
@@ -104541,6 +104592,12 @@ fn is_type_union_operand(value: &Value) -> bool {
         Value::Instance { .. } => generic_alias_subclass_alias(value).is_some(),
         _ => false,
     }
+}
+
+fn is_type_union_pair(left: &Value, right: &Value) -> bool {
+    is_type_union_operand(left)
+        && is_type_union_operand(right)
+        && !matches!((left, right), (Value::None, Value::None))
 }
 
 fn forward_ref_union_operands(left: &Value, right: &Value) -> Option<(Value, Value)> {

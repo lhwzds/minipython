@@ -447,12 +447,76 @@ fn preserves_normalized_range_slice_bounds() {
 fn formats_mapping_like_percent_rhs_without_conversions() {
     assert_eq!(
         run_source(
-            "for value in [[1, 2, 3], range(2), {}]:\n    print(repr('abc' % value), repr(b'abc' % value))",
+            r#"from array import array
+from collections import UserString
+
+class S(str):
+    pass
+
+class B(bytes):
+    pass
+
+class BA(bytearray):
+    pass
+
+class T(tuple):
+    pass
+
+class G:
+    def __getitem__(self, key):
+        return 7
+
+def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, "OK", repr(value))
+    except BaseException as error:
+        print(label, "ERR", type(error).__name__)
+
+values = [
+    ("bytes", b""),
+    ("bytearray", bytearray()),
+    ("memoryview", memoryview(b"")),
+    ("array", array("B")),
+    ("user-string", UserString("")),
+    ("custom", G()),
+]
+for label, value in values:
+    show("str-" + label, lambda value=value: "abc" % value)
+    show("bytes-" + label, lambda value=value: b"abc" % value)
+
+show("str-subclass", lambda: "abc" % S(""))
+show("str-bytes-subclass", lambda: "abc" % B(b""))
+show("bytes-bytes-subclass", lambda: b"abc" % B(b""))
+show("str-bytearray-subclass", lambda: "abc" % BA())
+show("bytes-bytearray-subclass", lambda: b"abc" % BA())
+show("str-tuple-empty", lambda: "abc" % T())
+show("str-tuple-one", lambda: "abc" % T((1,)))
+show("str-tuple-format", lambda: "%s" % T((1,)))
+show("bytes-tuple-format", lambda: b"%s" % T((b"x",)))"#,
         ),
         Ok(output_lines(&[
-            "'abc' b'abc'",
-            "'abc' b'abc'",
-            "'abc' b'abc'",
+            "str-bytes OK 'abc'",
+            "bytes-bytes ERR TypeError",
+            "str-bytearray OK 'abc'",
+            "bytes-bytearray ERR TypeError",
+            "str-memoryview OK 'abc'",
+            "bytes-memoryview OK b'abc'",
+            "str-array OK 'abc'",
+            "bytes-array OK b'abc'",
+            "str-user-string OK 'abc'",
+            "bytes-user-string OK b'abc'",
+            "str-custom OK 'abc'",
+            "bytes-custom OK b'abc'",
+            "str-subclass ERR TypeError",
+            "str-bytes-subclass OK 'abc'",
+            "bytes-bytes-subclass ERR TypeError",
+            "str-bytearray-subclass OK 'abc'",
+            "bytes-bytearray-subclass ERR TypeError",
+            "str-tuple-empty OK 'abc'",
+            "str-tuple-one ERR TypeError",
+            "str-tuple-format OK '1'",
+            "bytes-tuple-format OK b'x'",
         ]))
     );
 }
@@ -6866,6 +6930,35 @@ fn runs_generic_alias_type_subscripts() {
             "print(list[int].__origin__.__name__, list[int].__args__[0].__name__)\nprint(dict[str, int].__origin__.__name__, dict[str, int].__args__[0].__name__, dict[str, int].__args__[1].__name__)"
         ),
         Ok(vec!["list int".to_string(), "dict str int".to_string()])
+    );
+    assert_eq!(
+        run_source(
+            r#"def show(label, thunk):
+    try:
+        value = thunk()
+        print(label, "OK", repr(value), type(value).__name__)
+    except BaseException as error:
+        print(label, "ERR", type(error).__name__)
+
+show("int-none", lambda: int | None)
+show("none-int", lambda: None | int)
+show("none-none", lambda: None | None)
+show("int-int", lambda: int | int)
+show("one-none", lambda: 1 | None)
+show("none-one", lambda: None | 1)
+show("none-union", lambda: None | (int | str))
+show("union-none", lambda: (int | str) | None)"#,
+        ),
+        Ok(output_lines(&[
+            "int-none OK int | None Union",
+            "none-int OK None | int Union",
+            "none-none ERR TypeError",
+            "int-int OK <class 'int'> type",
+            "one-none ERR TypeError",
+            "none-one ERR TypeError",
+            "none-union OK None | int | str Union",
+            "union-none OK int | str | None Union",
+        ]))
     );
     assert_eq!(
         run_source(
