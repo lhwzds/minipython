@@ -1,4 +1,5 @@
 mod ast;
+mod binding;
 mod bytecode;
 mod compiler;
 mod lexer;
@@ -27,6 +28,7 @@ use lexer::{
 use parser::{parse, parse_eval, parse_func_type, parse_interactive, parse_with_diagnostic};
 use vm::Vm;
 
+pub use binding::serve_python_binding;
 pub use product::{
     ExecutionException, ExecutionPhase, ExecutionResult, ExecutionStatus, ExecutionUsage,
     ExternalCall, ExternalFunctionError, INTERNAL_WORKER_ENV, Sandbox, SandboxInputs,

@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::process::{Command, Output};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicUsize, Ordering},
@@ -11,6 +12,28 @@ use minipython::{
 
 fn sandbox() -> Sandbox {
     Sandbox::new(env!("CARGO_BIN_EXE_mnpy"))
+}
+
+fn run_python_binding(source: &str) -> Output {
+    Command::new("/opt/homebrew/bin/python3")
+        .args(["-B", "-c", source])
+        .env(
+            "PYTHONPATH",
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("python"),
+        )
+        .env("MINIPYTHON_EXECUTABLE", env!("CARGO_BIN_EXE_mnpy"))
+        .output()
+        .expect("run Python binding client")
+}
+
+fn assert_python_binding_succeeds(source: &str) {
+    let output = run_python_binding(source);
+    assert!(
+        output.status.success(),
+        "Python binding client failed\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]
@@ -341,5 +364,103 @@ fn session_limit_termination_closes_the_worker() {
             .expect("closed session exception")
             .message,
         "session is closed"
+    );
+}
+
+#[test]
+fn pure_python_binding_returns_structured_values_and_exceptions() {
+    assert_python_binding_succeeds(
+        r#"
+from minipython_sandbox import OpaqueValue, Sandbox
+
+with Sandbox() as sandbox:
+    result = sandbox.eval(
+        "{'answer': answer + 2, 'blob': blob, 'pair': pair}",
+        {"answer": 40, "blob": b"\x00\xff", "pair": (True, None)},
+    )
+    assert result.is_success
+    assert result.value == {
+        "answer": 42,
+        "blob": b"\x00\xff",
+        "pair": (True, None),
+    }
+    assert result.stdout == ""
+    assert result.usage.instructions > 0
+
+    failed = sandbox.run("print('before')\n1 / 0\n")
+    assert failed.status == "error"
+    assert failed.stdout == "before\n"
+    assert failed.exception.phase == "runtime"
+    assert failed.exception.type_name == "ZeroDivisionError"
+
+    opaque = sandbox.eval("object()")
+    assert isinstance(opaque.value, OpaqueValue)
+    assert opaque.value.type_name == "object"
+"#,
+    );
+}
+
+#[test]
+fn pure_python_binding_external_functions_are_explicit_and_catchable() {
+    assert_python_binding_succeeds(
+        r#"
+from minipython_sandbox import Sandbox
+
+calls = []
+def host_add(value, *, delta):
+    calls.append((value, delta))
+    return value + delta
+
+def host_fail():
+    raise ValueError("rejected by Python host")
+
+with Sandbox(external_functions={"host_add": host_add, "host_fail": host_fail}) as sandbox:
+    result = sandbox.run(
+        "print(host_add(40, delta=2))\n"
+        "try:\n"
+        "    host_fail()\n"
+        "except ValueError as error:\n"
+        "    print(type(error).__name__, str(error))\n"
+    )
+    assert result.is_success
+    assert result.stdout == "42\nValueError rejected by Python host\n"
+    assert calls == [(40, 2)]
+
+    missing = sandbox.run("unregistered_host_call()")
+    assert missing.status == "error"
+    assert missing.exception.type_name == "NameError"
+"#,
+    );
+}
+
+#[test]
+fn pure_python_binding_session_persists_state_and_closes_after_timeout() {
+    assert_python_binding_succeeds(
+        r#"
+from minipython_sandbox import Limits, Sandbox
+
+marks = []
+with Sandbox(external_functions={"host_mark": lambda: marks.append("once")}) as sandbox:
+    with sandbox.session() as session:
+        setup = session.run(
+            "value = 40\n"
+            "def add(delta):\n"
+            "    return value + delta\n"
+            "host_mark()\n"
+        )
+        assert setup.is_success
+        assert session.eval("add(2)").value == 42
+        assert marks == ["once"]
+
+with Sandbox(limits=Limits(max_time_ms=1, max_instructions=100_000_000)) as sandbox:
+    session = sandbox.session()
+    timed_out = session.run("while True:\n    pass\n")
+    assert timed_out.status == "time_limit"
+    assert session.closed
+
+    replacement = sandbox.session()
+    assert replacement.eval("40 + 2").value == 42
+    replacement.close()
+"#,
     );
 }

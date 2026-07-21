@@ -7,8 +7,8 @@ use std::process;
 use minipython::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
     DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, ExecutionStatus,
-    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_session_worker,
-    serve_worker_once,
+    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_python_binding,
+    serve_session_worker, serve_worker_once,
 };
 
 const DEFAULT_MAX_PROCESS_MEMORY_BYTES: u64 = 256 * 1_048_576;
@@ -285,17 +285,20 @@ fn reject_direct_worker_invocation(argument: &str) -> ! {
 
 pub(crate) fn main() {
     let args = env::args().collect::<Vec<_>>();
-    if args
-        .get(1)
-        .is_some_and(|arg| matches!(arg.as_str(), "--worker" | "--session-worker"))
-    {
+    if args.get(1).is_some_and(|arg| {
+        matches!(
+            arg.as_str(),
+            "--worker" | "--session-worker" | "--python-binding"
+        )
+    }) {
         if env::var(INTERNAL_WORKER_ENV).as_deref() != Ok("1") {
             reject_direct_worker_invocation(&args[1]);
         }
-        process::exit(if args[1] == "--worker" {
-            serve_worker_once()
-        } else {
-            serve_session_worker()
+        process::exit(match args[1].as_str() {
+            "--worker" => serve_worker_once(),
+            "--session-worker" => serve_session_worker(),
+            "--python-binding" => serve_python_binding(),
+            _ => unreachable!(),
         });
     }
     let (mut config, input) = parse_args(&args);

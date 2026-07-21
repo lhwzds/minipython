@@ -120,6 +120,27 @@ Session 持有一个隔离 worker，保留 Python globals、函数闭包、mutat
 wall-clock 预算。进程内存或 wall-clock 超限会关闭整个 Session；后续调用直接失败，
 不会复用可能已损坏的 worker。Session 被 drop 时也会有界关闭并回收 worker。
 
+### Python Binding
+
+`python/` 包让 Python 宿主使用同一产品 API，但不会把 MiniPython VM 加载进
+宿主进程：
+
+```python
+from minipython_sandbox import Sandbox
+
+with Sandbox(executable="target/release/mnpy") as sandbox:
+    result = sandbox.eval("price + 2", {"price": 40})
+    assert result.is_success
+    assert result.value == 42
+```
+
+`Sandbox` 提供 `run`、`eval`、`check`、显式 `external_functions` 和一个持久
+`session()`，惰性值与结构化结果契约和 Rust API 相同。该包是只依赖 Python
+标准库的纯 Python 实现。它启动经过审核的 `mnpy` 中的私有 JSON-line broker；
+broker 仍然委托 Rust `Sandbox` API 为每次一次性执行或 Session 创建并监控隔离的
+MessagePack worker。这里没有 C extension、进程内 VM 路径、shell 调用或关闭 worker
+限制的开关。
+
 CLI 默认最多执行 1,000,000 条 VM 指令。可以用 `--max-steps N` 调整预算；
 库调用方可以使用 `RuntimeOptions::with_max_instructions`，虚拟模块和 sandbox
 目录模块的 `SandboxPolicy` 也使用相同的有限默认值。函数、generator、
@@ -185,7 +206,8 @@ report 也会写出对应的
 ## 架构
 
 ```
-Host → Rust API / CLI → MessagePack worker → Lexer → Parser → Compiler → Register VM
+Rust host / CLI -----------------> Sandbox API -> MessagePack worker -> Register VM
+Python host -> private JSON broker -----------^
 ```
 
 基于寄存器的虚拟机，包含 80+ 条指令和 60+ 种值类型。

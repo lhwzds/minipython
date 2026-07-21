@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minipython-sandbox"
+version = "0.1.0"
+description = "Pure Python client for the isolated MiniPython sandbox"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+py-modules = ["minipython_sandbox"]

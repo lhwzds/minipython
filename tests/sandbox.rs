@@ -816,6 +816,14 @@ mod process {
             String::from_utf8_lossy(&output.stderr),
             "mnpy: --session-worker is an internal implementation detail\n"
         );
+
+        let output = run_sandbox(&["--python-binding"], "{}");
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stderr),
+            "mnpy: --python-binding is an internal implementation detail\n"
+        );
     }
 
     #[test]

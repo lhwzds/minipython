@@ -152,6 +152,28 @@ wall-clock budgets. A process-memory or wall-clock termination closes the whole
 session, and later calls fail instead of reusing a possibly corrupted worker.
 Dropping a session performs a bounded close and reaps the worker.
 
+### Python binding
+
+The `python/` package exposes the same product surface to a Python host without
+loading MiniPython into that host process:
+
+```python
+from minipython_sandbox import Sandbox
+
+with Sandbox(executable="target/release/mnpy") as sandbox:
+    result = sandbox.eval("price + 2", {"price": 40})
+    assert result.is_success
+    assert result.value == 42
+```
+
+`Sandbox` supports `run`, `eval`, `check`, explicit `external_functions`, and
+one persistent `session()` using the same inert values and structured results
+as the Rust API. The package is pure Python and uses only the standard library.
+It starts a private JSON-line broker in the reviewed `mnpy` executable; that
+broker delegates every execution to the Rust `Sandbox` API, which still starts
+and monitors the isolated MessagePack worker. There is no C extension,
+in-process VM path, shell invocation, or flag that disables worker limits.
+
 CLI execution is bounded to 1,000,000 VM instructions by default. Use
 `--max-steps N` to select a smaller or larger budget. Library callers can use
 `RuntimeOptions::with_max_instructions`; `SandboxPolicy` also applies the same
@@ -226,7 +248,8 @@ command to rerun the grouped repair slice.
 ## Architecture
 
 ```
-Host → Rust API / CLI → MessagePack worker → Lexer → Parser → Compiler → Register VM
+Rust host / CLI -----------------> Sandbox API -> MessagePack worker -> Register VM
+Python host -> private JSON broker -----------^
 ```
 
 A register-based VM with 80+ instructions and 60+ value types.
