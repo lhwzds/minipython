@@ -768,7 +768,7 @@ class ReportTests(unittest.TestCase):
 
 
 class DiscoveryIntegrationTests(unittest.TestCase):
-    def test_generated_difference_is_compared_minimized_and_persisted(self):
+    def test_generated_differences_shrink_once_per_root_cause(self):
         generated_case = {
             "name": "generated-integration-case",
             "scope": "core-runtime",
@@ -780,6 +780,11 @@ class DiscoveryIntegrationTests(unittest.TestCase):
             "layer": "runtime",
             "origin": "generated",
             "seed": 7,
+        }
+        second_generated_case = {
+            **generated_case,
+            "name": "generated-integration-case-two",
+            "source": "unused = 100\nvalue = 43\nprint(value)\n",
         }
 
         def fake_run(command, source, timeout):
@@ -804,7 +809,7 @@ class DiscoveryIntegrationTests(unittest.TestCase):
                 module="*",
                 root_cause="*",
                 layer="syntax,runtime,stdlib,security",
-                generated_cases=1,
+                generated_cases=2,
                 seed=7,
                 shrink=True,
                 shrink_max_attempts=32,
@@ -814,7 +819,9 @@ class DiscoveryIntegrationTests(unittest.TestCase):
             with patch.object(
                 gap, "oracle_version", return_value="3.14.6"
             ), patch.object(
-                gap, "generate_cases", return_value=[generated_case]
+                gap,
+                "generate_cases",
+                return_value=[generated_case, second_generated_case],
             ), patch.object(
                 gap, "run_command", side_effect=fake_run
             ):
@@ -828,7 +835,11 @@ class DiscoveryIntegrationTests(unittest.TestCase):
             self.assertGreater(result.shrink_attempts, 0)
             self.assertTrue(repro.exists())
             self.assertIn(result.minimized_source, repro.read_text())
-            self.assertEqual(meta["generated_cases_selected"], 1)
+            self.assertEqual(results[1].status, "OUTPUT_DIFF")
+            self.assertIsNone(results[1].minimized_source)
+            self.assertEqual(results[1].shrink_attempts, 0)
+            self.assertFalse((repro_dir / "generated-integration-case-two.py").exists())
+            self.assertEqual(meta["generated_cases_selected"], 2)
             self.assertEqual(meta["corpus_cases_selected"], 0)
             self.assertEqual(meta["seed"], 7)
 
@@ -986,6 +997,20 @@ class GenerationTests(unittest.TestCase):
         self.assertIn("except BaseException as error:", case["source"])
         self.assertNotIn(" is ", case["source"])
         self.assertNotIn(" is not ", case["source"])
+
+    def test_runtime_value_shape_model_covers_subscripts_unary_and_builtins(self):
+        case = generate_cases(20260715, 6, ["runtime"])[5]
+
+        self.assertEqual(case["root_cause"], "generated-runtime-value-shape-model")
+        self.assertEqual(case["priority"], "must_fix")
+        self.assertEqual(case["modules"], ["builtins", "core-runtime", "exceptions"])
+        self.assertEqual(case["source"].count("lambda:"), 12)
+        self.assertEqual(case["source"].count("value_"), 12)
+        self.assertEqual(case["source"].count("index_"), 12)
+        self.assertNotIn("def getitem", case["source"])
+        self.assertNotIn("~(False)", case["source"])
+        self.assertNotIn("~(True)", case["source"])
+        self.assertIn("except BaseException as error:", case["source"])
 
     def test_security_generation_is_explicitly_classified(self):
         cases = generate_cases(9, 12, ["security"])

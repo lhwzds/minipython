@@ -131,8 +131,10 @@ The unified pipeline runs driver unit tests, the checked-in corpus, and
 deterministic generated programs through real CPython and the sandbox-default
 `mnpy`. The fixed seed is balanced across syntax, runtime, stdlib, and security
 layers. Unexpected generated differences are minimized and written under
-`reports/differential-repros/`; reports preserve original and minimized source,
-classification, root cause, seed, interpreter output, and shrink attempts.
+`reports/differential-repros/`; one representative per root cause is minimized
+while every original difference remains in the report. Reports preserve original
+and minimized source, classification, root cause, seed, interpreter output, and
+shrink attempts.
 The release and discovery modes fail while a generated `must_fix` or
 `should_fix` root cause remains open. The pipeline uses
 `/opt/homebrew/bin/python3` as the fixed CPython oracle, checks it against the

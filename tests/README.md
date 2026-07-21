@@ -243,7 +243,7 @@ completed one reproducible large run without an open supported-scope root cause.
 
 ## Pinned Run
 
-- Date: `2026-07-10`
+- Date: `2026-07-15`
 - CPython oracle: `/opt/homebrew/bin/python3`
 - Required CPython version: `3.14.6`
 - Seed: `20260710`
@@ -251,7 +251,7 @@ completed one reproducible large run without an open supported-scope root cause.
 - Curated corpus cases: `32`
 - Command: `tests/run.sh --discovery --seed 20260710 --generated-cases 1024`
 - Generated layers: `syntax=256`, `runtime=256`, `stdlib=256`, `security=256`
-- Generated root-cause templates: `15`
+- Generated root-cause templates: `17`
 
 ## Result
 

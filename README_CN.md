@@ -101,9 +101,10 @@ tests/run.sh --root-cause json-loads-core
 
 统一流水线会运行 driver 单测、仓库 corpus，以及固定种子生成的 Python 程序；
 每个程序都会交给真实 CPython 和默认启用 sandbox 的真实 `mnpy`。生成 case 在
-语法、运行时、stdlib、安全四层之间均衡分配。非预期差异会被自动缩减，最小复现
-写入 `reports/differential-repros/`；报告会保留原始/缩减源码、分类、root cause、
-seed、两侧输出和缩减次数。只要生成结果中仍有开放的 `must_fix` 或 `should_fix`
+语法、运行时、stdlib、安全四层之间均衡分配。每个 root cause 的一个代表性非预期
+差异会被自动缩减，最小复现写入 `reports/differential-repros/`；全部原始差异仍会
+保留在报告中。报告会保留原始/缩减源码、分类、root cause、seed、两侧输出和缩减
+次数。只要生成结果中仍有开放的 `must_fix` 或 `should_fix`
 根因，discovery 和 release 流水线就会失败。流水线固定使用
 `/opt/homebrew/bin/python3` 作为 CPython oracle，并用 `.python-version` 校验版本。
 提升为支持面的行为仍然需要对应的 `cpython_subset`、`cpython_diff`、manifest、

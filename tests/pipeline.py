@@ -371,6 +371,129 @@ def probe(label, thunk):
     )
 
 
+def _runtime_value_shape_model(rng: random.Random, index: int) -> dict[str, Any]:
+    sequences = (
+        "''",
+        "'abc'",
+        "'é😀'",
+        "b''",
+        "b'abc'",
+        "bytearray(b'abc')",
+        "[]",
+        "[1, 2, 3]",
+        "()",
+        "(1, 2)",
+        "range(0)",
+        "range(5)",
+        "range(-3, 6, 2)",
+        "{'a': 1, 0: 'zero'}",
+    )
+    indices = (
+        "-10",
+        "-2",
+        "-1",
+        "0",
+        "1",
+        "2",
+        "5",
+        "False",
+        "True",
+        "1.5",
+        "'a'",
+        "slice(None)",
+        "slice(None, None, -1)",
+        "slice(1, 4, 2)",
+        "slice(-10, 10)",
+    )
+    unary_atoms = (
+        "None",
+        "False",
+        "True",
+        "0",
+        "1",
+        "-1",
+        "10**20",
+        "0.0",
+        "-0.0",
+        "1.5",
+        "float('inf')",
+        "float('nan')",
+        "''",
+        "'abc'",
+        "b''",
+        "b'abc'",
+        "[]",
+        "[1]",
+        "()",
+        "(1,)",
+        "{}",
+        "{'a': 1}",
+        "range(0)",
+        "range(2)",
+    )
+    unary_operators = ("+", "-", "~", "not ")
+    builtin_expressions = (
+        "len(None)",
+        "len(0)",
+        "len('é😀')",
+        "len(bytearray(b'abc'))",
+        "bool(float('nan'))",
+        "abs(float('-inf'))",
+        "int('010')",
+        "int('-12')",
+        "int(1.5)",
+        "float('nan')",
+        "float('  -2.5  ')",
+        "complex('1+2j')",
+        "list(range(-2, 5, 2))",
+        "tuple('é😀')",
+        "bytes([0, 127, 255])",
+        "bytes([256])",
+        "bytearray(range(4))",
+        "sorted([3, -1, 2, 0])",
+        "min([3, -1, 2, 0])",
+        "max([3, -1, 2, 0])",
+    )
+
+    bindings: list[str] = []
+    expressions: list[str] = []
+    for probe_index in range(6):
+        bindings.append(f"value_{probe_index} = {rng.choice(sequences)}")
+        bindings.append(f"index_{probe_index} = {rng.choice(indices)}")
+        expressions.append(f"value_{probe_index}[index_{probe_index}]")
+    for _ in range(3):
+        operator = rng.choice(unary_operators)
+        atoms = unary_atoms
+        if operator == "~":
+            atoms = tuple(atom for atom in unary_atoms if atom not in {"False", "True"})
+        expressions.append(f"{operator}({rng.choice(atoms)})")
+    expressions.extend(rng.choice(builtin_expressions) for _ in range(3))
+    setup = "\n".join(bindings)
+    probes = "\n".join(
+        f"probe({probe_index}, lambda: ({expression}))"
+        for probe_index, expression in enumerate(expressions)
+    )
+    source = f"""
+def probe(label, thunk):
+    try:
+        value = thunk()
+        print(label, "OK", type(value).__name__, repr(value))
+    except BaseException as error:
+        print(label, "ERR", type(error).__name__)
+
+{setup}
+{probes}
+"""
+    return _case(
+        name=f"generated-runtime-value-shape-model-{index}",
+        layer="runtime",
+        root_cause="generated-runtime-value-shape-model",
+        modules=["builtins", "core-runtime", "exceptions"],
+        source=source,
+        priority="must_fix",
+    )
+
+
 def _stdlib_json(rng: random.Random, index: int) -> dict[str, Any]:
     values = [rng.randint(-100, 100) for _ in range(rng.randint(0, 7))]
     label = rng.choice(["alpha", "beta", "unicode-é", "line\nbreak"])
@@ -545,6 +668,7 @@ GENERATORS: dict[str, tuple[Callable[[random.Random, int], dict[str, Any]], ...]
         _runtime_exceptions,
         _runtime_generator,
         _runtime_expression_model,
+        _runtime_value_shape_model,
     ),
     "stdlib": (
         _stdlib_json,
@@ -1139,6 +1263,7 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
     ]
     started = time.time()
     results: list[SweepResult] = []
+    shrunk_root_causes: set[str] = set()
     cpython_command = [args.cpython, "-I", "-B", "-"]
     minipython_command = [minipython]
     for case in cases:
@@ -1164,7 +1289,13 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
             seed=case.get("seed"),
             source=source,
         )
-        if args.shrink and result.origin == "generated" and result.triage_status == "needs_triage":
+        if (
+            args.shrink
+            and result.origin == "generated"
+            and result.triage_status == "needs_triage"
+            and result.root_cause not in shrunk_root_causes
+        ):
+            shrunk_root_causes.add(result.root_cause)
             signature = failure_signature(status, cpython, mini)
 
             def preserves_failure(candidate: str) -> bool:
