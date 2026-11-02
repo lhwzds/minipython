@@ -1,0 +1,203 @@
+# Oracle corpora run by step (c) of `tests/run.sh --release-gate`.
+#
+# Each [[corpus]] is generated, run in the pinned CPython 3.14.6 and in the
+# release `mnpy`, and compared. `kind` is one of:
+#   random     our own randomized generator with the fixed seed and size below
+#   extract    reads CPython's Lib/test from the pinned install at gate time;
+#              the extracted programs are written under reports/ only and are
+#              never committed (AGENTS.md: Evidence Rules)
+#   programs   hand-written scenario programs committed in this directory
+# `compare` is one of:
+#   keyed      stdout is split into scenarios by a leading key token
+#              (`key_pattern`); every scenario must be identical
+#   exact      exit status, stdout and stderr must be identical
+#   traceback  exit status and stdout identical; stderr identical after
+#              dropping CPython's `File "...", line N` frame and source lines,
+#              which mnpy does not print (README: Usage)
+# Exclusions list scenario keys (`program:key`, or the program for whole-
+# program comparisons) that are known to differ, each with its reason. An
+# exclusion that starts matching is stale and fails the gate.
+#
+# `platform_exclusions` list the platform-scoped exclusions of a corpus: the
+# platform C library decides the result of some scenarios, so they differ
+# between macOS and Linux. A generator marks those scenarios in a
+# `<program>.platform-keys.json` file next to each program it writes; on the
+# platforms listed here the runner skips the marked scenarios and counts every
+# one of them as a documented exclusion with the reason given here, never as a
+# pass. Every other scenario is compared as usual, and a scenario the runner
+# did not see at all is a mismatch, never an exclusion.
+#
+# Sizes were chosen so the whole step runs in about two minutes on an M-series
+# Mac (8 parallel jobs); see tests/README.md "Oracle corpora". For a corpus
+# with `seeds`, the generator runs once per seed into its own directory, and
+# `count` (and `per`) apply to each seed.
+
+[defaults]
+cpython_args = ["-E", "-s", "-B", "-W", "ignore"]
+# The sandbox has no locale and its local time zone is always UTC
+# (README: clock and time zone contract), so CPython runs with the same.
+cpython_env = { TZ = "UTC", LC_ALL = "C" }
+mnpy_args = [
+  "--max-steps", "100000000000",
+  "--max-time-ms", "600000",
+  "--max-allocated-bytes", "8589934592",
+  "--max-output-bytes", "1073741824",
+  "--max-memory-bytes", "17179869184",
+  "--max-source-bytes", "67108864",
+]
+timeout = 600
+
+# ---------------------------------------------------------------- re
+
+[[corpus]]
+module = "re"
+name = "test-re-extract"
+kind = "extract"
+generator = ["re/extract_test_re.py", "{stdlib}", "{out}/prog.py"]
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "re-tests-table"
+kind = "extract"
+generator = ["re/re_tests_corpus.py", "{stdlib}", "{out}/prog.py"]
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "api"
+kind = "programs"
+generator = ["re/api_corpus.py", "{out}/prog.py"]
+compare = "keyed"
+exclusions = [
+  { key = "prog.py:1", reason = "dir(re) lists CPython's implementation imports (copyreg, enum, functools) and re.Scanner, an undocumented class mnpy does not provide." },
+]
+
+[[corpus]]
+module = "re"
+name = "random-ascii"
+kind = "random"
+generator = ["re/random_corpus.py", "{seed}", "{count}", "{out}/prog.py", "ascii"]
+seeds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+count = 4000
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "random-unicode"
+kind = "random"
+generator = ["re/random_corpus.py", "{seed}", "{count}", "{out}/prog.py", "unicode"]
+seeds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+count = 4000
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "random-bytes"
+kind = "random"
+generator = ["re/random_corpus.py", "{seed}", "{count}", "{out}/prog.py", "bytes"]
+seeds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+count = 4000
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "random-errors"
+kind = "random"
+generator = ["re/random_corpus.py", "{seed}", "{count}", "{out}/prog.py", "errors"]
+seeds = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+count = 4000
+compare = "keyed"
+
+[[corpus]]
+module = "re"
+name = "deep-captures"
+kind = "random"
+generator = ["re/deep_corpus.py", "{seed}", "{count}", "{out}/prog.py"]
+seeds = [1, 2, 3, 4, 5]
+count = 4000
+compare = "keyed"
+
+# ---------------------------------------------------------------- datetime
+
+[[corpus]]
+module = "datetime"
+name = "random"
+kind = "random"
+generator = ["datetime/random_corpus.py", "{out}", "{seed}", "{count}", "{per}"]
+seeds = [1, 2, 3]
+count = 80
+per = 300
+compare = "keyed"
+key_pattern = 's\d+(\.\d+)?'
+platform_exclusions = [
+  { platform = "Linux", reason = "platform strftime (Linux)" },
+]
+
+# ---------------------------------------------------------------- csv and io.StringIO
+
+[[corpus]]
+module = "csv"
+name = "random"
+kind = "random"
+generator = ["csv/random_corpus.py", "{out}", "{count}", "{seed}"]
+seeds = [1, 2, 3]
+count = 600
+compare = "exact"
+
+[[corpus]]
+module = "csv"
+name = "test-csv-extract"
+kind = "extract"
+generator = ["csv/derive_test_csv.py", "{stdlib}/test/test_csv.py", "{out}/test_csv_derived.py"]
+compare = "keyed"
+key_pattern = '[A-Za-z_]\w*\.test\w*'
+exclusions = [
+  { key = "test_csv_derived.py:TestArrayWrites.test_char_write", reason = "Uses the string module, which is outside the safe stdlib (AGENTS.md: Scope)." },
+]
+
+[[corpus]]
+module = "io"
+name = "test-memoryio-extract"
+kind = "extract"
+generator = ["csv/derive_test_memoryio.py", "{stdlib}/test/test_memoryio.py", "{out}/test_memoryio_derived.py"]
+compare = "keyed"
+key_pattern = '[A-Za-z_]\w*\.test\w*'
+
+# ---------------------------------------------------------------- exceptions
+
+[[corpus]]
+module = "exceptions"
+name = "report-probes"
+kind = "programs"
+generator = ["exceptions/make_probes.py", "{out}"]
+programs = "p_*.py"
+compare = "traceback"
+exclusions = [
+  { key = "p_keyboard.py", reason = "An uncaught KeyboardInterrupt makes CPython re-raise SIGINT (exit -2); mnpy exits 1 like every other uncaught exception (README: Usage)." },
+]
+
+[[corpus]]
+module = "exceptions"
+name = "handlers"
+kind = "programs"
+copy = "exceptions/programs"
+compare = "traceback"
+
+# ---------------------------------------------------------------- syntax
+
+[[corpus]]
+module = "syntax"
+name = "rejected-in-3.14.6"
+kind = "programs"
+copy = "syntax/programs"
+compare = "exact"
+
+# ---------------------------------------------------------------- str
+
+[[corpus]]
+module = "str"
+name = "unicode-predicates"
+kind = "programs"
+copy = "str/programs"
+compare = "exact"

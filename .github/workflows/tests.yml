@@ -1,0 +1,82 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_MIN_STACK: '8388608'
+
+jobs:
+  release-gate:
+    name: Release gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            musl-target: x86_64-unknown-linux-musl
+          - os: macos-latest
+            musl-target: ''
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The leak scan reads every commit since the last release tag.
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+          targets: ${{ matrix.musl-target }}
+
+      - name: Install musl tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Set up CPython 3.14.6 (the oracle)
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.6'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Grammar/python.gram is not installed with CPython. The source tree
+      # goes outside the checkout, which the gate requires to be clean.
+      - name: Fetch the CPython 3.14.6 source tree
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/Python-3.14.6.tar.xz" https://www.python.org/ftp/python/3.14.6/Python-3.14.6.tar.xz
+          echo "143b1dddefaec3bd2e21e3b839b34a2b7fb9842272883c576420d605e9f30c63  $RUNNER_TEMP/Python-3.14.6.tar.xz" | shasum -a 256 -c -
+          mkdir -p "$RUNNER_TEMP/cpython-src"
+          tar -xJf "$RUNNER_TEMP/Python-3.14.6.tar.xz" -C "$RUNNER_TEMP/cpython-src" --strip-components 1
+
+      # `tests/run.sh --release-gate` runs the full cargo test (release
+      # profile, all targets, no skipped evidence), the pipeline unit tests
+      # and the 1024-case discovery sweep against its baseline, the oracle
+      # corpora, the leak scan, and the packaging smoke test.
+      - name: Run the release gate
+        env:
+          MINIPYTHON_CPYTHON: ${{ steps.python.outputs.python-path }}
+          MINIPYTHON_CPYTHON_SRC: ${{ runner.temp }}/cpython-src
+          CARGO_TARGET_DIR: ${{ runner.temp }}/minipython-target
+        run: tests/run.sh --release-gate --keep-going
+
+      - name: Upload the gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-${{ matrix.os }}
+          path: reports/release-gate/
+          if-no-files-found: warn

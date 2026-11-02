@@ -1,0 +1,59 @@
+# Where the oracle CPython 3.14.6's math.cbrt (its C library's) differs from
+# mnpy's on the inputs of cbrt_case.py, per platform: PLATFORM INPUT.hex() ORACLE.hex().
+# PLATFORM is OS-ARCH as Rust names them. GNU libc's cbrt (Linux CPython)
+# errs by up to two units in the last place; mnpy uses the libm crate's
+# correctly rounded cbrt on Linux, and the system cbrt CPython uses on macOS,
+# so macOS has no entries. Every other input must match exactly; a listed
+# input that matches or is not exercised fails, and mnpy must stay within
+# two units in the last place. Measured on Debian 12 (GNU libc 2.36).
+# tests/README.md, "Platform-dependent behavior".
+linux-aarch64 0x1.b000000000000p+4 0x1.8000000000001p+1
+linux-aarch64 -0x1.b000000000000p+4 -0x1.8000000000001p+1
+linux-aarch64 0x1.b000000000000p+1 0x1.8000000000001p+0
+linux-aarch64 0x1.0000000000000p+1 0x1.428a2f98d728cp+0
+linux-aarch64 0x1.4000000000000p+3 0x1.13c484138704ep+1
+linux-aarch64 0x0.0000000000001p-1022 0x1.fffffffffffffp-359
+linux-aarch64 0x1.1ccf385ebc8a0p+1023 0x1.09438d5a385eap+341
+linux-aarch64 -0x1.fb7afb9a82decp+43 -0x1.952ce6dd179abp+14
+linux-aarch64 0x1.8a6c6ceb72a24p-19 0x1.d55abb7bcfab3p-7
+linux-aarch64 -0x1.02b2e20558cc9p+30 -0x1.00e57d6019079p+10
+linux-aarch64 0x1.35281377a3595p+2 0x1.b0c09b6dd750cp+0
+linux-aarch64 -0x1.dc3203f071e49p-39 -0x1.3ad6c13ceff07p-13
+linux-aarch64 0x1.84c0ea185dc2fp+31 0x1.72bbb0be9d088p+10
+linux-aarch64 0x1.88bda96e93831p+20 0x1.d4af9f6a82fc5p+6
+linux-aarch64 -0x1.697ed21d63405p-50 -0x1.69db845e18a1bp-17
+linux-aarch64 -0x1.fed6512231d14p-24 -0x1.424ba10726630p-8
+linux-aarch64 -0x1.b7c72ae9e4d34p+3 -0x1.32996afca4aa7p+1
+linux-aarch64 -0x1.691f96a666a88p-35 -0x1.69bbbaf2884b6p-12
+linux-aarch64 0x1.c7e482a2efc12p-22 0x1.ec91c9119dc48p-8
+linux-aarch64 0x1.c57ff0ad37a0ep+1 0x1.864477a21d9a1p+0
+linux-aarch64 -0x1.c7fb41ca87f5cp+18 -0x1.3651c99ca0622p+6
+linux-aarch64 0x1.c74d2c2be0511p-42 0x1.362a46d43f8dep-14
+linux-aarch64 -0x1.73959e6c8c1dbp-26 -0x1.6d316ab4720f4p-9
+linux-aarch64 -0x1.3383acf954ca8p-22 -0x1.affc1a2c4b99ep-8
+linux-x86_64 0x1.b000000000000p+4 0x1.8000000000001p+1
+linux-x86_64 -0x1.b000000000000p+4 -0x1.8000000000001p+1
+linux-x86_64 0x1.b000000000000p+1 0x1.8000000000001p+0
+linux-x86_64 0x1.0000000000000p+1 0x1.428a2f98d728cp+0
+linux-x86_64 0x1.4000000000000p+3 0x1.13c484138704ep+1
+linux-x86_64 0x0.0000000000001p-1022 0x1.fffffffffffffp-359
+linux-x86_64 0x1.1ccf385ebc8a0p+1023 0x1.09438d5a385eap+341
+linux-x86_64 -0x1.fb7afb9a82decp+43 -0x1.952ce6dd179abp+14
+linux-x86_64 0x1.8a6c6ceb72a24p-19 0x1.d55abb7bcfab3p-7
+linux-x86_64 -0x1.02b2e20558cc9p+30 -0x1.00e57d6019079p+10
+linux-x86_64 -0x1.dc3203f071e49p-39 -0x1.3ad6c13ceff07p-13
+linux-x86_64 0x1.84c0ea185dc2fp+31 0x1.72bbb0be9d088p+10
+linux-x86_64 0x1.88bda96e93831p+20 0x1.d4af9f6a82fc5p+6
+linux-x86_64 -0x1.697ed21d63405p-50 -0x1.69db845e18a1bp-17
+linux-x86_64 -0x1.fed6512231d14p-24 -0x1.424ba10726630p-8
+linux-x86_64 -0x1.b7c72ae9e4d34p+3 -0x1.32996afca4aa7p+1
+linux-x86_64 -0x1.691f96a666a88p-35 -0x1.69bbbaf2884b6p-12
+linux-x86_64 0x1.c7e482a2efc12p-22 0x1.ec91c9119dc48p-8
+linux-x86_64 0x1.000bf38f9551cp-66 0x1.0003fbcaa89f2p-22
+linux-x86_64 0x1.c57ff0ad37a0ep+1 0x1.864477a21d9a2p+0
+linux-x86_64 -0x1.9feef4b4dff14p+58 -0x1.7b2de4616885ap+19
+linux-x86_64 -0x1.c7fb41ca87f5cp+18 -0x1.3651c99ca0622p+6
+linux-x86_64 0x1.c74d2c2be0511p-42 0x1.362a46d43f8dfp-14
+linux-x86_64 -0x1.73959e6c8c1dbp-26 -0x1.6d316ab4720f4p-9
+linux-x86_64 -0x1.1601948cd2b09p+17 -0x1.a1b346da7b9aap+5
+linux-x86_64 -0x1.3383acf954ca8p-22 -0x1.affc1a2c4b99ep-8

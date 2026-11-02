@@ -1,0 +1,18 @@
+{
+  "_comment": "Step (b) of tests/run.sh --release-gate requires these exact counts. Update only with tests/run.sh --release-gate --update-discovery-baseline, in its own commit that explains every changed count (RELEASING.md).",
+  "seed": 20260710,
+  "generated_cases": 1024,
+  "corpus": "tests/cases.toml",
+  "summary": {
+    "CPYTHON_INTERNAL": 1,
+    "CPYTHON_MISSING_COMPAT": 1,
+    "INTENTIONAL_SANDBOX_BLOCK": 258,
+    "MATCH": 794,
+    "STDLIB_MISSING": 1,
+    "UNSUPPORTED_OUT_OF_SCOPE": 5
+  },
+  "triage": {
+    "accepted_gap": 266,
+    "passing": 794
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "minipython",
+  "version": "0.1.0",
+  "description": "mnpy: a sandbox for untrusted Python code, written in Rust, aligned with CPython 3.14.6.",
+  "keywords": [
+    "python",
+    "sandbox",
+    "interpreter",
+    "agent",
+    "untrusted-code",
+    "cli"
+  ],
+  "author": "Huaiwu Li",
+  "license": "MIT AND PSF-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lhwzds/minipython.git"
+  },
+  "homepage": "https://github.com/lhwzds/minipython",
+  "bugs": {
+    "url": "https://github.com/lhwzds/minipython/issues"
+  },
+  "bin": {
+    "mnpy": "bin/mnpy"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "test": "node scripts/install.test.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "files": [
+    "bin/mnpy",
+    "scripts/install.js",
+    "README.md",
+    "LICENSE",
+    "LICENSE-PSF",
+    "NOTICE"
+  ]
+}

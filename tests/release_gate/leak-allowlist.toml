@@ -1,0 +1,48 @@
+# Allowlist for tests/release_gate/leak_scan.py (release gate step d).
+#
+# Every entry needs a rule, a path glob (a tracked file, or `commit:<sha>`
+# for a commit message), a regex the finding must match, and the reason it is
+# not private data. An entry that no longer matches anything fails the scan,
+# so remove entries together with the text they cover.
+
+[[allow]]
+rule = "token"
+path = "src/host/worker.rs"
+match = '^sk-live-must-never-reach-a-worker$'
+reason = "Fake secret the worker start-up hygiene test plants in the parent environment to prove it never reaches a worker."
+
+[[allow]]
+rule = "token"
+path = "tests/sandbox.rs"
+match = '^sk-live-must-never-reach-a-worker$'
+reason = "The same fake secret, used by the worker process environment test."
+
+[[allow]]
+rule = "email"
+path = "tests/parity.rs"
+match = '^user@host\.com$'
+reason = "Subject string of a regular-expression conditional-group test."
+
+[[allow]]
+rule = "email"
+path = "tests/sandbox.rs"
+match = '^(ann@x\.com|bo\.b@y\.com|bo\.b\+x@mail\.co\.uk)$'
+reason = "Sample text for the re_text_tool example and its email-extraction test."
+
+[[allow]]
+rule = "hostname"
+path = "tests/parity.rs"
+match = '^C\.Local$'
+reason = "A Python attribute (`C.Local`, a type alias in a class body), not a host name."
+
+[[allow]]
+rule = "volume-path"
+path = "tests/release_gate/leak_scan.py"
+match = '^/Volumes/\.\.\.$'
+reason = "The scanner's own description of the pattern."
+
+[[allow]]
+rule = "private-tmp"
+path = "tests/release_gate/leak_scan.py"
+match = '^/private/(tmp|var)$'
+reason = "The scanner's own description of the pattern."

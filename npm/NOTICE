@@ -1,0 +1,80 @@
+# MiniPython is dual licensed: the code we wrote ourselves is MIT (see
+# LICENSE and LICENSES/MIT.txt), and the files listed below are derived from
+# CPython 3.14.6 and are therefore also under the Python Software Foundation
+# License Version 2 (see LICENSE-PSF and LICENSES/PSF-2.0.txt).
+#
+# Copyright (c) 2001 Python Software Foundation; All Rights Reserved.
+#
+# Python is a trademark of the Python Software Foundation. MiniPython is not
+# affiliated with the Python Software Foundation, and nothing here is an
+# endorsement of MiniPython by the Python Software Foundation.
+#
+# The files below are the files derived from CPython; every one of them
+# carries the "SPDX-License-Identifier: PSF-2.0 AND MIT" header and names its
+# CPython origin in its own header.
+src/unparse.rs
+# CPython origin: Python/ast_unparse.c
+src/vm/argparse.rs
+# CPython origin: Lib/argparse.py, Python/suggestions.c
+src/vm/argparse/actions.rs
+# CPython origin: Lib/argparse.py
+src/vm/argparse/container.rs
+# CPython origin: Lib/argparse.py
+src/vm/argparse/formatter.rs
+# CPython origin: Lib/argparse.py
+src/vm/argparse/parser.rs
+# CPython origin: Lib/argparse.py, Lib/difflib.py
+src/vm/argparse/textwrap.rs
+# CPython origin: Lib/textwrap.py
+src/vm/csv.rs
+# CPython origin: Lib/csv.py
+src/vm/csv/dict.rs
+# CPython origin: Lib/csv.py
+src/vm/csv/reader.rs
+# CPython origin: Modules/_csv.c
+src/vm/csv/sniffer.rs
+# CPython origin: Lib/csv.py
+src/vm/csv/writer.rs
+# CPython origin: Modules/_csv.c
+src/vm/datetime.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/calendar.rs
+# CPython origin: Modules/_datetimemodule.c
+src/vm/datetime/date.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/delta.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/format.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/iso.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/moment.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/seq.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/strptime.rs
+# CPython origin: Lib/_strptime.py
+src/vm/datetime/timeofday.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/datetime/tz.rs
+# CPython origin: Lib/_pydatetime.py
+src/vm/derived.rs
+# CPython origin: Modules/mathmodule.c, Objects/exceptions.c, Objects/unicodeobject.c, Objects/complexobject.c
+src/vm/derived/complex_arith.rs
+# CPython origin: Objects/complexobject.c
+src/vm/derived/exception_group.rs
+# CPython origin: Objects/exceptions.c
+src/vm/derived/fsum.rs
+# CPython origin: Modules/mathmodule.c
+src/vm/derived/unicode_digits.rs
+# CPython origin: Objects/unicodeobject.c
+src/vm/exception_report.rs
+# CPython origin: Lib/traceback.py
+src/vm/re.rs
+# CPython origin: Lib/re/__init__.py
+src/vm/re/compiler.rs
+# CPython origin: Lib/re/_compiler.py
+src/vm/re/engine.rs
+# CPython origin: Modules/_sre/sre.c
+src/vm/re/parser.rs
+# CPython origin: Lib/re/_parser.py

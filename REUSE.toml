@@ -1,0 +1,62 @@
+# The licence of the files that carry no SPDX header of their own.
+#
+# MiniPython is dual licensed: the code we wrote ourselves is MIT, and the
+# files derived from CPython are "PSF-2.0 AND MIT". The files of the tree
+# that cannot carry a header (the documentation, the data files, and the
+# test tree, whose cases are adapted from CPython's test suite) are
+# annotated here instead. The two licence texts themselves live in
+# LICENSES/, as the REUSE specification asks.
+version = 1
+
+# The documentation: our own prose.
+[[annotations]]
+path = "**/*.md"
+SPDX-License-Identifier = "MIT"
+
+# The data files: our own data.
+[[annotations]]
+path = "**/*.json"
+SPDX-License-Identifier = "MIT"
+
+# The workflow files of the repository.
+[[annotations]]
+path = "**/*.yml"
+SPDX-License-Identifier = "MIT"
+
+# The lock file of the Cargo workspace.
+[[annotations]]
+path = "Cargo.lock"
+SPDX-License-Identifier = "MIT"
+
+# The manifest of the Cargo package: our own file. The package it
+# describes is dual licensed (see the "license" key of Cargo.toml).
+[[annotations]]
+path = "Cargo.toml"
+SPDX-License-Identifier = "MIT"
+
+# The small configuration files of the repository and the Homebrew formula
+# template: our own files.
+[[annotations]]
+path = [".gitignore", ".python-version", "reports/.gitignore", "homebrew-tap-template/Formula/minipython.rb"]
+SPDX-License-Identifier = "MIT"
+
+# The MIT licence text at the root of the repository.
+[[annotations]]
+path = "LICENSE"
+SPDX-License-Identifier = "MIT"
+
+# The example programs and the outputs they produce: our own.
+[[annotations]]
+path = "examples/**"
+SPDX-License-Identifier = "MIT"
+
+# The licence files the packages carry: the project is dual licensed.
+[[annotations]]
+path = ["LICENSE-PSF", "NOTICE", "npm/LICENSE", "npm/LICENSE-PSF", "npm/NOTICE"]
+SPDX-License-Identifier = "MIT AND PSF-2.0"
+
+# The test tree: the test cases are adapted from CPython's test suite, so
+# the files are MIT and PSF-2.0 at the same time.
+[[annotations]]
+path = "tests/**"
+SPDX-License-Identifier = "MIT AND PSF-2.0"

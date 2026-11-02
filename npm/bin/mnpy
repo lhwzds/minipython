@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: MIT
+
+const { spawn } = require("child_process");
+const path = require("path");
+
+const binaryPath = path.join(__dirname, "mnpy-bin");
+
+const child = spawn(binaryPath, process.argv.slice(2), {
+  stdio: "inherit",
+});
+
+child.on("error", (error) => {
+  console.error(`Failed to run mnpy: ${error.message}`);
+  console.error("Try reinstalling the package: npm install -g minipython");
+  process.exit(1);
+});
+
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+    return;
+  }
+  process.exit(code === null ? 1 : code);
+});
