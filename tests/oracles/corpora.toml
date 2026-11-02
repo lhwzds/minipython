@@ -132,6 +132,7 @@ compare = "keyed"
 key_pattern = 's\d+(\.\d+)?'
 platform_exclusions = [
   { platform = "Linux", reason = "platform strftime (Linux)" },
+  { platform = "Linux", reason = "platform datetime timetuple type (Linux)" },
 ]
 
 # ---------------------------------------------------------------- csv and io.StringIO

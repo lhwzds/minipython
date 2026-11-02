@@ -465,6 +465,32 @@ exclusions listed here.
   macOS it rounds the product first. MiniPython does the same per target
   (`cpython_math_big_int_log_diff`).
 
+- `complex ** complex`: CPython computes the power with the platform C
+  library, so its last bits differ between macOS and Linux, while MiniPython
+  computes a power with a complex exponent one fixed way, in polar form. The
+  two results differ by a few units in the last place: `(1+2j) ** (3+4j)` is
+  `(0.12900959407446697+0.03392409290517014j)` on macOS and
+  `(0.129009594074467+0.03392409290517014j)` on Linux. Bit-exact agreement on
+  every platform is not a goal for 0.1.0, so the bit-exact diff case
+  `cpython_complex_power_and_repr_diff_subset` no longer holds the two
+  complex-power expressions. The new diff test
+  `cpython_complex_power_accuracy_diff` runs those two expressions and
+  twelve more pairs with a non-integer exponent, mixed signs and magnitudes
+  from 1e-3 to 1e3 through MiniPython and CPython, and holds every real and
+  imaginary component of the two results to eight units in the last place;
+  the special values (an infinite or a not-a-number operand, a zero and a
+  signed zero base, `OverflowError` and `ZeroDivisionError`) have to agree
+  exactly. The special values are compared component by component and
+  exactly: the sign of a zero is part of the result, so the cases produce
+  negative zeros in the real component and in the imaginary component
+  (which further cases do so depends on the platform's C library), and the
+  test fails when the cases stop producing them. An infinite
+  result of a finite operand never reaches the caller: CPython turns it into
+  an `OverflowError: complex exponentiation` and MiniPython does the same,
+  so that outcome is held exactly too; the rules of the comparison for an
+  infinite component (an infinity is not a finite number and not the other
+  infinity) are held by `complex_power_special_values_are_compared_exactly`.
+
 - `datetime.strftime`: CPython hands the format to the platform C library, so
   its results differ between macOS and Linux, while MiniPython renders every
   format one fixed way: the way macOS's C library does. On macOS the two
@@ -494,6 +520,30 @@ exclusions listed here.
   glibc-faithful `strftime` was rejected for this release because it would
   mean translating LGPL glibc code.
 
+- The sign of a NaN that arithmetic produced is not defined by Python: it
+  depends on the hardware and on the build of the interpreter, so CPython
+  does not agree with itself across platforms and builds. The `nan-as-repr`
+  and `neg-nan-as-repr` cases of `cpython_float_inf_nan_string_subset` and
+  of its differential twin `cpython_float_inf_nan_string_diff_subset`
+  (`tests/parity.rs`) therefore print the representation, the strings and the
+  infinity and not-a-number predicates of those two values, and not their
+  sign: on x86_64 the CPython of the `python:3.14-slim` image gives `-1.0`
+  where the CPython of `actions/setup-python` gives `1.0`, and on aarch64
+  every build gives `1.0`. The sign of a parsed NaN (`float('-nan')`) and of
+  an infinity is defined, and the tests still hold those exactly.
+
+- `datetime.strftime` with a `timetuple()` override that returns something
+  else than a tuple: CPython's own rejection of the wrong type differs
+  between the platforms: Linux reports `'int' object does not support
+  indexing`, macOS reports `Tuple or struct_time argument required`.
+  MiniPython always reports the macOS message. The case is therefore
+  compared apart, in the platform part of
+  `cpython_datetime_strftime_and_format_diff`: macOS compares it exactly and
+  Linux skips it and reports it as an excluded platform case, together with
+  the year-bearing directives of a year below 1000. The exclusion is
+  registered in `tests/oracles/corpora.toml` (`platform_exclusions`) and
+  guarded by `tests/oracles/test_platform_exclusions.py`.
+
 - The shipped Linux binary: the release links musl statically, so the
   math functions CPython takes from GNU libc come from musl's libm in it,
   while the gnu build the suites test imports GNU libc's and matches Linux
@@ -503,10 +553,10 @@ exclusions listed here.
   (23), `tan` (8), and `tanh` (1), each by the last place or two. Those
   entries are listed, not fixed, in
   `tests/oracles/math/libm-shipped-differences.txt`; any other difference
-  fails the gate, and a listed one that disappears is stale. x86_64 musl
-  differs from x86_64 Linux CPython in the same functions; its entries are
-  not listed yet because no x86_64 gate host has compared it with a gnu
-  build.
+  fails the gate, and a listed one that disappears is stale. On x86_64 musl
+  differs from GNU libc in the same functions plus `acosh` (1), in 112
+  inputs in all; those entries were measured on GitHub Actions
+  ubuntu-latest and are listed in the same file.
 
 ### Linux gate
 

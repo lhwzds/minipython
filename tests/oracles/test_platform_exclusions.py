@@ -32,6 +32,7 @@ sys.path.insert(0, str(HERE))
 import run_oracles  # noqa: E402
 
 REASON = "platform strftime (Linux)"
+TIMETUPLE_REASON = "platform datetime timetuple type (Linux)"
 
 
 def load_generator():
@@ -156,7 +157,10 @@ class PlatformScopeTests(unittest.TestCase):
         )
         self.assertEqual(
             corpus["platform_exclusions"],
-            [{"platform": "Linux", "reason": REASON}],
+            [
+                {"platform": "Linux", "reason": REASON},
+                {"platform": "Linux", "reason": TIMETUPLE_REASON},
+            ],
         )
 
 

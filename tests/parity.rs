@@ -17242,8 +17242,6 @@ values = [complex(0.0, 0.0), complex(-0.0, 0.0), complex(0.0, -0.0), complex(-0.
           complex(NAN, 1.0), complex(1.0, NAN), -1.5j, -0j, 0j, 1j, complex(1e16, 1.0)]
 for value in values:
     print(repr(value), str(value), repr(value.real), repr(value.imag))
-print(repr((1.6360268865396872-1.8480122762013274j) ** (3.6337214881942703+2.975040219520314j)))
-print(repr((1+2j) ** (3+4j)))
 class IntSub(int):
     pass
 print(repr((1j).__rpow__(IntSub(2))))
@@ -17262,6 +17260,256 @@ for label, fn in (("pow-mod", lambda: (2).__pow__(3, 5)),
     except Exception as exc:
         print(label, type(exc).__name__, exc)"#,
     });
+}
+
+/// The complex powers the accuracy diff compares: the two expressions the
+/// bit-exact diff case cannot hold on every platform, more pairs with a
+/// non-integer exponent, mixed signs and magnitudes from 1e-3 to 1e3, and
+/// the special values, which have to agree exactly.
+const COMPLEX_POWER_ACCURACY_PROGRAM: &str = r#"PAIRS = [
+    ('pair-1', (1.6360268865396872, -1.8480122762013274), (3.6337214881942703, 2.975040219520314)),
+    ('pair-2', (1.0, 2.0), (3.0, 4.0)),
+    ('pair-3', (0.002, 0.001), (2.0, -1.0)),
+    ('pair-4', (-2.0, 3.0), (-1.25, 2.75)),
+    ('pair-5', (10.0, -10.0), (0.5, 0.25)),
+    ('pair-6', (0.01, -0.03), (-2.25, -0.75)),
+    ('pair-7', (-0.125, 0.0625), (3.5, -2.5)),
+    ('pair-8', (100.0, 500.0), (-0.75, 1.25)),
+    ('pair-9', (1000.0, -1000.0), (0.25, -0.75)),
+    ('pair-10', (0.5, -0.25), (1.5, 0.0)),
+    ('pair-11', (2.0, 1.0), (0.001, 0.002)),
+    ('pair-12', (1.001, 0.0005), (100.0, 50.0)),
+    ('pair-13', (1.01, 0.002), (250.0, -125.0)),
+    ('pair-14', (40.0, -20.0), (0.5, -0.25)),
+]
+
+EXACT = [
+    ('zero-negative-exponent', (0.0, 0.0), (-1.0, 0.0)),
+    ('zero-complex-exponent', (0.0, 0.0), (0.5, 0.5)),
+    ('zero-base', (0.0, 0.0), (0.5, 0.0)),
+    ('signed-zero-base', (-0.0, 0.0), (0.5, 0.0)),
+    ('zero-exponent', (0.0, 0.0), (0.0, 0.0)),
+    ('infinite-exponent', (1.0, 0.0), (float('inf'), 0.0)),
+    ('not-a-number-base', (float('nan'), 1.0), (2.0, 0.0)),
+    ('overflow', (1e300, 0.0), (2.0, 0.0)),
+    ('overflow-both-parts', (1e308, 1e308), (2.0, 0.0)),
+    # The sign of a zero is part of the result: these cases produce a
+    # negative zero in the real component, in the imaginary component and in
+    # both, so the comparison has to hold the sign of a zero exactly.
+    ('negative-zero-base', (-0.0, 0.0), (1.0, 0.0)),
+    ('negative-zero-base-and-imaginary', (-0.0, -0.0), (1.0, 0.0)),
+    # An infinite operand whose result is a negative zero.
+    ('infinite-imaginary-negative-power', (0.0, float('inf')), (-2.0, 0.0)),
+    ('infinite-imaginary-negative-one', (0.0, float('inf')), (-1.0, 0.0)),
+    ('negative-infinite-real-negative-one', (-float('inf'), 0.0), (-1.0, 0.0)),
+    # A signed zero in the imaginary part of the base does not reach the
+    # result: both implementations give a positive zero.
+    ('negative-zero-imaginary-base', (0.0, -0.0), (1.0, 0.0)),
+    # An infinite result: CPython turns it into an `OverflowError` and
+    # MiniPython does the same, so the infinite outcome is held exactly.
+    ('infinite-result-fractional-exponent', (1e300, 0.0), (2.5, 0.0)),
+    ('infinite-result-complex-exponent', (1e308, 1e308), (1.5, 0.5)),
+    ('infinite-result-both-parts', (1e300, 1e300), (2.0, 0.0)),
+]
+
+
+def report(kind, label, base, exponent):
+    try:
+        value = complex(base[0], base[1]) ** complex(exponent[0], exponent[1])
+    except Exception as error:
+        print('|'.join([kind, label, 'error', type(error).__name__, str(error)]))
+        return
+    print('|'.join([kind, label, 'value', repr(value.real), repr(value.imag)]))
+
+
+for label, base, exponent in PAIRS:
+    report('ulp', label, base, exponent)
+for label, base, exponent in EXACT:
+    report('exact', label, base, exponent)
+"#;
+
+/// The distance in units in the last place between two components of a
+/// complex result. A zero, an infinity and a NaN have to agree exactly: their
+/// sign and their kind are part of the result.
+fn complex_component_distance(left: f64, right: f64) -> u64 {
+    if left.is_nan() || right.is_nan() {
+        return if left.is_nan() && right.is_nan() {
+            0
+        } else {
+            u64::MAX
+        };
+    }
+    if left == 0.0 || right == 0.0 {
+        return if left.to_bits() == right.to_bits() {
+            0
+        } else {
+            u64::MAX
+        };
+    }
+    if !left.is_finite() || !right.is_finite() {
+        return if left.to_bits() == right.to_bits() {
+            0
+        } else {
+            u64::MAX
+        };
+    }
+    float_ulp_distance(left, right)
+}
+
+/// The float a Python program printed with `repr`.
+fn parse_complex_component(text: &str) -> f64 {
+    match text {
+        "inf" => f64::INFINITY,
+        "-inf" => f64::NEG_INFINITY,
+        "nan" => f64::NAN,
+        _ => text
+            .parse::<f64>()
+            .unwrap_or_else(|error| panic!("could not parse the complex component {text:?}: {error}")),
+    }
+}
+
+/// Complex powers with a complex exponent: CPython computes them with the
+/// platform C library, MiniPython with its own polar formula, so the last
+/// bits of the result differ between the two and between the platforms. The
+/// components of an ordinary result must agree within eight units in the
+/// last place; the special values must agree exactly. The special values
+/// include the negative zeros (the sign of a zero is part of the result) and
+/// the infinite results, which CPython reports as an `OverflowError` and
+/// MiniPython reports the same way.
+#[test]
+fn cpython_complex_power_accuracy_diff() {
+    let cpython_output = run_cpython(COMPLEX_POWER_ACCURACY_PROGRAM).unwrap_or_else(|message| {
+        panic!("failed to run CPython for the complex power program\n\n{message}")
+    });
+    assert!(
+        cpython_output.status.success(),
+        "expected CPython to accept the complex power program\nstderr:\n{}",
+        String::from_utf8_lossy(&cpython_output.stderr)
+    );
+    let cpython_lines: Vec<String> = String::from_utf8(cpython_output.stdout)
+        .expect("CPython emitted non-UTF-8 output")
+        .lines()
+        .map(str::to_string)
+        .collect();
+    let minipython_lines =
+        run_minipython_source(COMPLEX_POWER_ACCURACY_PROGRAM).expect("MiniPython failed");
+    assert_eq!(
+        cpython_lines.len(),
+        minipython_lines.len(),
+        "the complex power programs printed a different number of lines"
+    );
+    let mut worst: u64 = 0;
+    // The special values have to be covered by the cases themselves: the
+    // named cases have to produce a negative zero in the real component, in
+    // the imaginary component and in both, and the infinite results have to
+    // be reported as an overflow.
+    let mut negative_zero_real: Vec<&str> = Vec::new();
+    let mut negative_zero_imaginary: Vec<&str> = Vec::new();
+    let mut infinite_result: Vec<&str> = Vec::new();
+    for (expected, actual) in cpython_lines.iter().zip(&minipython_lines) {
+        let expected_fields: Vec<&str> = expected.split('|').collect();
+        let actual_fields: Vec<&str> = actual.split('|').collect();
+        assert_eq!(
+            expected_fields.len(),
+            actual_fields.len(),
+            "the complex power programs printed a different shape: {expected:?} and {actual:?}"
+        );
+        assert_eq!(
+            &expected_fields[..3],
+            &actual_fields[..3],
+            "the complex power cases differ: {expected:?} and {actual:?}"
+        );
+        let label = expected_fields[1];
+        if expected_fields[2] == "error" {
+            assert_eq!(
+                expected_fields[3..],
+                actual_fields[3..],
+                "the complex power case {label} raised a different exception"
+            );
+            if label.starts_with("infinite-result") {
+                assert_eq!(
+                    expected_fields[3], "OverflowError",
+                    "the infinite result of the complex power case {label} is not reported as an overflow"
+                );
+                infinite_result.push(label);
+            }
+            continue;
+        }
+        // The special values have to agree exactly, the ordinary ones within
+        // eight units in the last place.
+        let limit = if expected_fields[0] == "exact" { 0 } else { 8 };
+        for (index, component) in ["real", "imaginary"].iter().enumerate() {
+            let want = parse_complex_component(expected_fields[3 + index]);
+            let got = parse_complex_component(actual_fields[3 + index]);
+            let distance = complex_component_distance(want, got);
+            assert!(
+                distance <= limit,
+                "the {component} component of the complex power case {label} differs: CPython {want:?}, MiniPython {got:?}: {distance} ulps"
+            );
+            worst = worst.max(distance);
+            if expected_fields[0] == "exact" && want == 0.0 && want.is_sign_negative() {
+                match index {
+                    0 => negative_zero_real.push(label),
+                    _ => negative_zero_imaginary.push(label),
+                }
+            }
+        }
+    }
+    assert!(
+        negative_zero_real.contains(&"negative-zero-base"),
+        "the complex power case negative-zero-base no longer produces a negative zero in the real component: {negative_zero_real:?}"
+    );
+    assert!(
+        negative_zero_imaginary.contains(&"negative-zero-base-and-imaginary"),
+        "the complex power case negative-zero-base-and-imaginary no longer produces a negative zero in the imaginary component: {negative_zero_imaginary:?}"
+    );
+    assert!(
+        infinite_result.contains(&"infinite-result-fractional-exponent"),
+        "the complex power cases no longer produce an infinite result: {infinite_result:?}"
+    );
+    eprintln!("worst complex power distance from CPython: {worst} ulps");
+}
+
+/// The special values of a complex power have to be compared exactly: a
+/// negative zero is not a positive zero, an infinity is not a finite number
+/// and a NaN is not a number. CPython never returns an infinite complex
+/// power (it turns the infinite result into an `OverflowError`), so the
+/// rules for the infinities are held here.
+#[test]
+fn complex_power_special_values_are_compared_exactly() {
+    assert_eq!(complex_component_distance(f64::INFINITY, f64::INFINITY), 0);
+    assert_eq!(
+        complex_component_distance(f64::NEG_INFINITY, f64::NEG_INFINITY),
+        0
+    );
+    assert_eq!(
+        complex_component_distance(f64::INFINITY, f64::NEG_INFINITY),
+        u64::MAX
+    );
+    assert_eq!(complex_component_distance(f64::INFINITY, 1.0), u64::MAX);
+    assert_eq!(complex_component_distance(f64::NAN, f64::NAN), 0);
+    assert_eq!(complex_component_distance(f64::NAN, f64::INFINITY), u64::MAX);
+    assert_eq!(complex_component_distance(0.0, -0.0), u64::MAX);
+    assert_eq!(complex_component_distance(-0.0, 0.0), u64::MAX);
+    assert_eq!(complex_component_distance(-0.0, -0.0), 0);
+    assert_eq!(complex_component_distance(0.0, 0.0), 0);
+    assert_eq!(complex_component_distance(1.0, 1.0 + f64::EPSILON), 1);
+    // The printed components have to be read back into the very same values,
+    // the sign of a zero and the sign of an infinity included.
+    assert_eq!(
+        parse_complex_component("-0.0").to_bits(),
+        (-0.0f64).to_bits(),
+        "the printed negative zero lost its sign"
+    );
+    assert_eq!(
+        parse_complex_component("inf").to_bits(),
+        f64::INFINITY.to_bits()
+    );
+    assert_eq!(
+        parse_complex_component("-inf").to_bits(),
+        f64::NEG_INFINITY.to_bits()
+    );
+    assert!(parse_complex_component("nan").is_nan());
 }
 
 #[test]
@@ -51699,10 +51947,17 @@ for text in ['nana', '+nana', '-nana', 'na', '+na', '-na', '++nan', '-+NAN', '+-
 for label, value in [
     ('inf-as-repr', 1e300 * 1e300),
     ('ninf-as-repr', -1e300 * 1e300),
+]:
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+# The sign of a NaN that arithmetic produced is not defined by Python: it
+# depends on the hardware and on the build of the interpreter, so the two
+# cases below print no sign. The sign of a parsed NaN and of an infinity is
+# defined, and the cases above and below hold it exactly.
+for label, value in [
     ('nan-as-repr', 1e300 * 1e300 * 0),
     ('neg-nan-as-repr', -1e300 * 1e300 * 0),
 ]:
-    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value))
 print('sign-inf', math.copysign(1.0, float('inf')), math.copysign(1.0, float('-inf')))
 print('sign-nan', math.copysign(1.0, float('nan')), math.copysign(1.0, float('-nan')))"#,
     });
@@ -64461,16 +64716,18 @@ t('date str', lambda: (str(date(2020, 1, 2)), format(date(2020, 1, 2), ''), f'{d
 }
 
 
-/// The strftime cases the platform C library decides: the year-bearing
-/// directives of a year below 1000, which glibc does not zero-pad the way
-/// macOS does. They are compared apart and are a documented, Linux-scoped
-/// exclusion (tests/README.md, "Platform-dependent behavior").
+/// The strftime cases the platform decides: the year-bearing directives of a
+/// year below 1000, which glibc does not zero-pad the way macOS does, and
+/// the `timetuple()` override that returns something else than a tuple,
+/// which CPython rejects with a different message on Linux than on macOS.
+/// They are compared apart and are a documented, Linux-scoped exclusion
+/// (tests/README.md, "Platform-dependent behavior").
 fn assert_cpython_strftime_platform_parity(name: &str, body: &str) {
     if cfg!(target_os = "linux") {
         use std::io::Write;
         let _ = writeln!(
             std::io::stderr(),
-            "\n*** EXCLUDED platform strftime (Linux): the datetime strftime cases of a year below 1000 are not compared on Linux ***"
+            "\n*** EXCLUDED platform strftime (Linux): the datetime strftime cases of a year below 1000 and the timetuple type case are not compared on Linux ***"
         );
         return;
     }
@@ -64533,17 +64790,17 @@ class D2(date):
     def timetuple(self):
         return (2001, 13, 3, 4, 5, 6, 0, 34, 0)
 t('bad timetuple', lambda: D2(2020, 1, 1).strftime('%Y'))
+"#,
+    );
+    assert_cpython_strftime_platform_parity(
+        "strftime_and_format_platform_cases",
+        r#"directives = 'aAbBcCdDeFgGhHIjklmMnprRStTuUVwWxXyYzZf%'
+for value in [date(999, 1, 1), date(12, 1, 1), date(1, 1, 1)]:
+    print(repr(value), [value.strftime('%' + c) for c in directives if c in 'YGCFcx'])
 class D3(date):
     def timetuple(self):
         return 5
 t('timetuple type', lambda: D3(2020, 1, 1).strftime('%Y'))
-"#,
-    );
-    assert_cpython_strftime_platform_parity(
-        "strftime_and_format_years_below_1000",
-        r#"directives = 'aAbBcCdDeFgGhHIjklmMnprRStTuUVwWxXyYzZf%'
-for value in [date(999, 1, 1), date(12, 1, 1), date(1, 1, 1)]:
-    print(repr(value), [value.strftime('%' + c) for c in directives if c in 'YGCFcx'])
 "#,
     );
 }
@@ -68727,7 +68984,7 @@ mod manifest {
         let inventory = source_section("mod inventory {", Some("mod manifest {"));
         let subset = source_section("mod subset {", None);
 
-        assert_eq!(test_count(diff), 1497, "CPython diff count drifted");
+        assert_eq!(test_count(diff), 1499, "CPython diff count drifted");
         assert_eq!(test_count(inventory), 3, "grammar inventory count drifted");
         assert_eq!(test_count(subset), 1973, "CPython subset count drifted");
     }
@@ -75485,10 +75742,17 @@ for text in ['nana', '+nana', '-nana', 'na', '+na', '-na', '++nan', '-+NAN', '+-
 for label, value in [
     ('inf-as-repr', 1e300 * 1e300),
     ('ninf-as-repr', -1e300 * 1e300),
+]:
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+# The sign of a NaN that arithmetic produced is not defined by Python: it
+# depends on the hardware and on the build of the interpreter, so the two
+# cases below print no sign. The sign of a parsed NaN and of an infinity is
+# defined, and the cases above and below hold it exactly.
+for label, value in [
     ('nan-as-repr', 1e300 * 1e300 * 0),
     ('neg-nan-as-repr', -1e300 * 1e300 * 0),
 ]:
-    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value))
 print('sign-inf', math.copysign(1.0, float('inf')), math.copysign(1.0, float('-inf')))
 print('sign-nan', math.copysign(1.0, float('nan')), math.copysign(1.0, float('-nan')))"#,
         &[
@@ -75536,8 +75800,8 @@ print('sign-nan', math.copysign(1.0, float('nan')), math.copysign(1.0, float('-n
             "bad-nan --nAn ValueError could not convert string to float: '--nAn'",
             "inf-as-repr inf inf True False 1.0",
             "ninf-as-repr -inf -inf True False -1.0",
-            "nan-as-repr nan nan False True 1.0",
-            "neg-nan-as-repr nan nan False True 1.0",
+            "nan-as-repr nan nan False True",
+            "neg-nan-as-repr nan nan False True",
             "sign-inf 1.0 -1.0",
             "sign-nan 1.0 -1.0",
         ],
