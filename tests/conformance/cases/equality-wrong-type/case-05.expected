@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"result\", \"result\": \"subclass result\"}\n",
+    "{\"calls\": [[\"__eq__\", \"b\", \"a\"]], \"kind\": \"calls\"}\n"
+  ]
+}

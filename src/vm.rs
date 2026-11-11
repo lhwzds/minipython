@@ -42,19 +42,20 @@ use crate::syntax_report::{
 };
 use crate::terminal::TerminalKind;
 use crate::value::{
-    ByteArrayRef, BytesIORef, COMPLEX_SUBCLASS_STORAGE_FIELD, CodeLineSpan, CodeMode,
-    ConstEvaluatorKind, CoroutineState, DeferredTypeParamExpr, DictRef, DictStorage, DictViewKind,
-    EXCEPTION_TRACEBACK_ATTR, FLOAT_SUBCLASS_STORAGE_FIELD, FROZEN_SET_SUBCLASS_STORAGE_FIELD,
-    FrozenSetRef, GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD, GeneratorState, GroupByRef, GroupByState,
+    ByteArrayRef, BytesIORef, COMPLEX_SUBCLASS_STORAGE_FIELD, COUNTER_SUBCLASS_STORAGE_FIELD,
+    CodeLineSpan, CodeMode, ConstEvaluatorKind, CoroutineState, DeferredTypeParamExpr, DictRef,
+    DictStorage, DictViewKind, EXCEPTION_TRACEBACK_ATTR, ExceptionIdentity,
+    FLOAT_SUBCLASS_STORAGE_FIELD, FROZEN_SET_SUBCLASS_STORAGE_FIELD, FrozenSetRef,
+    GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD, GeneratorState, GroupByRef, GroupByState,
     INT_ENUM_MEMBER_NAME_FIELD, INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef,
     LruCacheState, MemoryViewRef, MockCallsRef, MockSideEffectRef,
     NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType, NamedTupleTypeRef,
     SET_SUBCLASS_STORAGE_FIELD, STR_ENUM_MEMBER_NAME_FIELD, STR_ENUM_MEMBER_VALUE_FIELD, Scope,
-    SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState, TemplateInterpolation, Value,
-    byte_array_value, bytes_io_value, bytes_value, code_metadata_namespace_entries_equal,
-    complex_value, dict_value, dict_view_value, dict_view_values, external_function_name,
-    float_value, format_float_display, format_instance_object_repr, format_iterator_repr,
-    frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
+    SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState, TemplateInterpolation, TracebackNode,
+    Value, byte_array_value, bytes_io_value, bytes_value, code_metadata_namespace_entries_equal,
+    complex_value, dict_value, dict_value_with_hashes, dict_view_value, dict_view_values,
+    external_function_name, float_value, format_float_display, format_instance_object_repr,
+    format_iterator_repr, frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
     identity_string_value, is_printable_char, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
     memory_view_from_parts_with_exported_bytearray_and_ndim, memory_view_from_parts_with_format,
@@ -67,6 +68,11 @@ pub(crate) mod datetime;
 pub(crate) mod derived;
 mod exception_report;
 mod native_class;
+pub(crate) mod protocol;
+use protocol::{
+    SequenceItems, SequenceReader, identity_bits, identity_hash_value, identity_value,
+    is_identical, rc_identity_bits, rc_plain_identity_bits,
+};
 pub(crate) mod re;
 pub(crate) mod stringio;
 mod unicode_ctype;
@@ -80,6 +86,7 @@ use self::derived::complex_arith::{
 use self::derived::fsum::{call_math_fsum, math_fsum_add_partial, math_fsum_finish};
 use self::derived::unicode_digits::unicode_decimal_digit_value;
 
+use crate::rc::Rc;
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
@@ -89,11 +96,9 @@ use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, hash_map::DefaultHasher};
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
 use unicode_general_category::{GeneralCategory, get_general_category};
 
 const DICT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_dict_storage";
-const COUNTER_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_counter_storage";
 const LIST_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_list_storage";
 const USER_DICT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_user_dict_storage";
 const CHAIN_MAP_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_chain_map_storage";
@@ -124,6 +129,8 @@ const ANNOTATION_FORMAT_VALUE: i64 = 1;
 const ANNOTATION_FORMAT_FORWARDREF: i64 = 2;
 const ANNOTATION_FORMAT_STRING: i64 = 3;
 const CONST_EVALUATOR_TYPE_NAME: &str = "_typing._ConstEvaluator";
+/// The error of an iteration over a deque whose length changed.
+const DEQUE_MUTATED_DURING_ITERATION: &str = "RuntimeError: deque mutated during iteration";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct AstFeatureVersion {
@@ -152,8 +159,6 @@ thread_local! {
     static JSON_BUILTIN_ANNOTATIONS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_DEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
     static JSON_BUILTIN_KWDEFAULTS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
-    static EXCEPTION_NOTES: RefCell<HashMap<usize, (Rc<()>, Value)>> = RefCell::new(HashMap::new());
-    static EXCEPTION_DUNDERS: RefCell<ExceptionDunderTable> = RefCell::new(ExceptionDunderTable::default());
     static EXCEPTION_BOUND_METHOD_MODULES: RefCell<HashMap<usize, (Rc<()>, Value)>> = RefCell::new(HashMap::new());
     static DEFAULT_DICT_DEFAULT_FACTORY_DESCRIPTOR_IDENTITY: Rc<()> = Rc::new(());
 }
@@ -308,6 +313,9 @@ pub struct Vm {
     output_pending: String,
     stderr_output: Rc<RefCell<String>>,
     exception_handlers: Vec<ExceptionHandlerFrame>,
+    /// The exception leaving native code or a called frame. Only `run_frame`
+    /// consumes it to enter a handler; `current_exception` is handled state.
+    in_flight_exception: Option<MiniException>,
     current_exception: Option<MiniException>,
     /// CPython's exception-info stack for this frame: entering a handler
     /// block pushes the exception that was being handled before (with the
@@ -345,6 +353,11 @@ pub struct Vm {
     /// Future flags of the code this frame runs; `exec()`, `eval()`, and
     /// `compile()` inherit them.
     future_flags: i64,
+    /// The containers whose repr is being rendered right now. The state is
+    /// shared with the calls a user-defined `__repr__` makes, so a container
+    /// that shows itself again stops instead of recursing forever.
+    repr_active_containers: Option<Rc<RefCell<HashSet<usize>>>>,
+    active_iterator_states: Rc<RefCell<HashSet<usize>>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -386,7 +399,7 @@ pub(crate) struct VmSystemExit {
 }
 
 pub(crate) type ExternalCallHandler =
-    Rc<dyn Fn(String, Vec<Value>, Vec<(String, Value)>) -> Result<Value, String>>;
+    std::rc::Rc<dyn Fn(String, Vec<Value>, Vec<(String, Value)>) -> Result<Value, String>>;
 
 #[derive(Clone)]
 pub(crate) struct VmSessionState {
@@ -659,16 +672,32 @@ fn estimated_value_allocation(value: &Value, seen: &mut HashSet<(usize, u8)>) ->
                 total.saturating_add(estimated_value_allocation(value, seen))
             })),
         Value::Template {
+            identity,
             strings,
             interpolations,
-        } => strings
-            .iter()
-            .fold(0usize, |total, value| total.saturating_add(value.len()))
-            .saturating_add(
-                interpolations
-                    .len()
-                    .saturating_mul(std::mem::size_of::<TemplateInterpolation>()),
-            ),
+        } => {
+            if !mark_allocation(identity, 16, seen) {
+                return 0;
+            }
+            // Charge the template payload once per logical object. The VM
+            // budget estimates materialized data, while the process limit
+            // bounds Rust container and reference-counting overhead.
+            let strings_size = strings
+                .capacity()
+                .saturating_mul(std::mem::size_of::<String>())
+                .saturating_add(
+                    interpolations
+                        .capacity()
+                        .saturating_mul(std::mem::size_of::<Rc<TemplateInterpolation>>()),
+                );
+            let strings_size = strings.iter().fold(strings_size, |total, value| {
+                total.saturating_add(value.len())
+            });
+            interpolations.iter().fold(strings_size, |total, item| {
+                total.saturating_add(estimated_interpolation_allocation(item, seen))
+            })
+        }
+        Value::TemplateInterpolation(item) => estimated_interpolation_allocation(item, seen),
         Value::Iterator(state) => {
             if !mark_allocation(state, 14, seen) {
                 return 0;
@@ -681,11 +710,17 @@ fn estimated_value_allocation(value: &Value, seen: &mut HashSet<(usize, u8)>) ->
         }
         Value::ItertoolsCycle {
             iterator, saved, ..
-        } => estimated_value_allocation(iterator, seen)
-            .saturating_add(saved.len().saturating_mul(std::mem::size_of::<Value>()))
-            .saturating_add(saved.iter().fold(0usize, |total, value| {
-                total.saturating_add(estimated_value_allocation(value, seen))
-            })),
+        } => {
+            let total = estimated_value_allocation(iterator, seen);
+            let Ok(saved) = saved.try_borrow() else {
+                return total.saturating_add(std::mem::size_of::<Value>());
+            };
+            total
+                .saturating_add(saved.len().saturating_mul(std::mem::size_of::<Value>()))
+                .saturating_add(saved.iter().fold(0usize, |total, value| {
+                    total.saturating_add(estimated_value_allocation(value, seen))
+                }))
+        }
         Value::ItertoolsProduct { pools, indices, .. } => pools.iter().fold(
             indices.len().saturating_mul(std::mem::size_of::<usize>()),
             |total, pool| {
@@ -718,15 +753,30 @@ fn estimated_value_allocation(value: &Value, seen: &mut HashSet<(usize, u8)>) ->
             state
                 .try_borrow()
                 .map_or(std::mem::size_of::<Value>(), |state| {
-                    state
-                        .buffer
-                        .len()
+                    let buffered = state.buffer.try_borrow().map_or(0, |buffer| buffer.len());
+                    buffered
                         .saturating_mul(std::mem::size_of::<Value>())
                         .saturating_add(estimated_value_allocation(&state.iterator, seen))
                 })
         }
         _ => 0,
     }
+}
+
+fn estimated_interpolation_allocation(
+    item: &Rc<TemplateInterpolation>,
+    seen: &mut HashSet<(usize, u8)>,
+) -> usize {
+    if !mark_allocation(item, 17, seen) {
+        return 0;
+    }
+    // Match the existing materialization estimate for template entries;
+    // the process limit covers the remaining Rust object overhead.
+    (std::mem::size_of::<usize>() * 3)
+        .saturating_add(item.expression.len())
+        .saturating_add(item.format_spec.len())
+        .saturating_add(item.conversion.as_ref().map_or(0, String::len))
+        .saturating_add(estimated_value_allocation(&item.value, seen))
 }
 
 fn scope_already_charged(scope: &Scope, seen: &HashSet<(usize, u8)>) -> bool {
@@ -924,7 +974,6 @@ impl StdlibContext for Vm {
         match self.advance_owned_iterator(iterator)? {
             IteratorAdvance::Yield(value) => Ok(StdlibIteratorAdvance::Yield(value)),
             IteratorAdvance::Complete(_) => Ok(StdlibIteratorAdvance::Complete),
-            IteratorAdvance::Raised => Ok(StdlibIteratorAdvance::Raised),
         }
     }
 
@@ -948,19 +997,24 @@ impl StdlibContext for Vm {
     }
 
     fn stdlib_call_repr_method(&mut self, value: &Value) -> Result<Option<Value>, String> {
-        let Some(method) = instance_special_method(value, "__repr__") else {
-            return Ok(None);
-        };
-        match self.call_value_catching(method, Vec::new())? {
-            Ok(value) => Ok(Some(value)),
-            Err(exception) => Err(format_exception_error(&exception)),
+        if let Some(method) = instance_special_method(value, "__repr__") {
+            return match self.call_value_catching(method, Vec::new())? {
+                Ok(value) => Ok(Some(value)),
+                Err(exception) => Err(self.propagate_captured_exception(exception)),
+            };
         }
+        // A container shows the values it holds with their own repr, so the
+        // repr of a container asks every item it holds for its repr.
+        if let Some(rendered) = self.container_repr_with_dispatch(value)? {
+            return Ok(Some(Value::String(rendered)));
+        }
+        Ok(None)
     }
 
     fn stdlib_call_value(&mut self, callee: Value, args: Vec<Value>) -> Result<Value, String> {
         match self.call_value_catching(callee, args)? {
             Ok(value) => Ok(value),
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -1102,7 +1156,6 @@ enum LoopExit {
 enum IteratorAdvance {
     Yield(Value),
     Complete(Value),
-    Raised,
 }
 
 enum BufferConversion {
@@ -1138,6 +1191,28 @@ fn bytes_comparison_warning_message(left: &Value, right: &Value) -> Option<&'sta
         }
         (Some(BytesWarningOperandKind::Bytes), Some(BytesWarningOperandKind::Int))
         | (Some(BytesWarningOperandKind::Int), Some(BytesWarningOperandKind::Bytes)) => {
+            Some("Comparison between bytes and int")
+        }
+        _ => None,
+    }
+}
+
+/// The bytes warning the left operand reports to the right operand.
+///
+/// CPython warns from the byte string side of the comparison only, so a
+/// comparison of a byte string with text warns once instead of twice.
+fn bytes_comparison_warning_message_from(left: &Value, right: &Value) -> Option<&'static str> {
+    match (
+        bytes_warning_operand_kind(left),
+        bytes_warning_operand_kind(right),
+    ) {
+        (Some(BytesWarningOperandKind::Bytes), Some(BytesWarningOperandKind::String)) => {
+            Some("Comparison between bytes and string")
+        }
+        (Some(BytesWarningOperandKind::ByteArray), Some(BytesWarningOperandKind::String)) => {
+            Some("Comparison between bytearray and string")
+        }
+        (Some(BytesWarningOperandKind::Bytes), Some(BytesWarningOperandKind::Int)) => {
             Some("Comparison between bytes and int")
         }
         _ => None,
@@ -1948,9 +2023,17 @@ fn bytes_io_getbuffer(bytes_io: &BytesIORef) -> Result<Value, String> {
     ))
 }
 
+#[derive(Clone)]
 enum PrintSeparatorOrEnd {
     Text(String),
     StrSubclass(Value),
+}
+
+/// Where `print()` writes: the default output, stderr, or a file object.
+enum PrintTarget {
+    Default,
+    Stderr,
+    File(Value),
 }
 
 fn print_separator_or_end(name: &str, value: Value) -> Result<PrintSeparatorOrEnd, String> {
@@ -2072,7 +2155,6 @@ fn bytearray_slice_assignment_value(value: Value) -> Result<Vec<u8>, String> {
 enum AwaitAdvance {
     Yield { value: Value, pending: Value },
     Complete(Value),
-    Raised,
 }
 
 enum AwaitResume {
@@ -2104,7 +2186,7 @@ struct MiniException {
     context: Option<Box<MiniException>>,
     suppress_context: bool,
     exceptions: Option<Vec<MiniException>>,
-    identity: Rc<()>,
+    identity: Rc<ExceptionIdentity>,
 }
 
 #[derive(Debug, Clone)]
@@ -2296,7 +2378,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         }
         Value::List(items) => repr_list_items_checked(items, active),
         Value::UserList { data, .. } => repr_list_items_checked(data, active),
-        Value::Deque { data, maxlen } => repr_deque_checked(data, *maxlen, active),
+        Value::Deque { data, maxlen, .. } => repr_deque_checked(data, maxlen.get(), active),
         Value::Tuple(items) => repr_tuple_checked(items, active),
         Value::Set(items) => {
             let ptr = Rc::as_ptr(items) as usize;
@@ -3275,7 +3357,9 @@ fn apply_format_spec(
             .align
             .unwrap_or_else(|| default_format_align(value, converted, spec.ty));
         if align == '=' && (converted || matches!(value, Value::String(_) | Value::Bytes(_))) {
-            return Err("'=' alignment not allowed in string format specifier".to_string());
+            return Err(
+                "ValueError: '=' alignment not allowed in string format specifier".to_string(),
+            );
         }
         body = pad_formatted_value(
             body,
@@ -5460,6 +5544,7 @@ fn generic_alias_value_with_union_unhashable_count(
         origin: Box::new(origin),
         args,
         union_unhashable_count,
+        identity: Rc::new(()),
     }
 }
 
@@ -5592,6 +5677,7 @@ impl Vm {
             output_pending: String::new(),
             stderr_output: Rc::new(RefCell::new(String::new())),
             exception_handlers: Vec::new(),
+            in_flight_exception: None,
             current_exception: None,
             handled_exceptions: Vec::new(),
             outer_handled_exception: None,
@@ -5616,6 +5702,8 @@ impl Vm {
             frame_line_spans: default_code_line_spans(),
             external_call_handler: None,
             future_flags: 0,
+            repr_active_containers: None,
+            active_iterator_states: Rc::new(RefCell::new(HashSet::new())),
         }
     }
 
@@ -5725,6 +5813,7 @@ impl Vm {
             output_pending: String::new(),
             stderr_output: Rc::new(RefCell::new(String::new())),
             exception_handlers: Vec::new(),
+            in_flight_exception: None,
             current_exception: None,
             handled_exceptions: Vec::new(),
             outer_handled_exception: None,
@@ -5752,6 +5841,8 @@ impl Vm {
             frame_line_spans: line_spans,
             external_call_handler: None,
             future_flags: 0,
+            repr_active_containers: None,
+            active_iterator_states: Rc::new(RefCell::new(HashSet::new())),
         }
     }
 
@@ -5780,6 +5871,7 @@ impl Vm {
             output_pending: String::new(),
             stderr_output: Rc::new(RefCell::new(String::new())),
             exception_handlers: Vec::new(),
+            in_flight_exception: None,
             current_exception: None,
             handled_exceptions: Vec::new(),
             outer_handled_exception: None,
@@ -5807,6 +5899,8 @@ impl Vm {
             frame_line_spans: default_code_line_spans(),
             external_call_handler: None,
             future_flags: 0,
+            repr_active_containers: None,
+            active_iterator_states: Rc::new(RefCell::new(HashSet::new())),
         }
     }
 
@@ -5837,6 +5931,7 @@ impl Vm {
             output_pending: String::new(),
             stderr_output: Rc::new(RefCell::new(String::new())),
             exception_handlers: Vec::new(),
+            in_flight_exception: None,
             current_exception: None,
             handled_exceptions: Vec::new(),
             outer_handled_exception: None,
@@ -5864,6 +5959,8 @@ impl Vm {
             frame_line_spans: default_code_line_spans(),
             external_call_handler: None,
             future_flags: 0,
+            repr_active_containers: None,
+            active_iterator_states: Rc::new(RefCell::new(HashSet::new())),
         }
     }
 
@@ -5945,14 +6042,12 @@ impl Vm {
     /// budget; a budget or sandbox error raised while formatting or charging
     /// it replaces `result`, so the run fails with that error instead.
     fn uncaught_system_exit(&mut self, result: &mut Result<Value, String>) -> Option<VmSystemExit> {
-        let Err(error) = result else {
+        let Err(message) = result else {
             return None;
         };
-        let exception = self
-            .current_exception
-            .clone()
-            .filter(|exception| format_exception_error(exception) == *error)?;
+        let exception = matching_exception(self.in_flight_exception.take(), message)?;
         if !exception_is_builtin_instance(&exception, "SystemExit") {
+            self.in_flight_exception = Some(exception);
             return None;
         }
         let code = exception
@@ -6085,47 +6180,111 @@ impl Vm {
         attrs.borrow().get("stdout").cloned()
     }
 
+    /// Writes the items of a `print()` call, one piece at a time, as CPython
+    /// writes them: the separator goes out before the item that follows it,
+    /// and an item whose `__str__` raises leaves the earlier pieces written.
     fn print_to_file(
         &mut self,
         file: Value,
-        parts: Vec<String>,
-        sep: &str,
-        end: &str,
+        args: &[Value],
+        sep: &PrintSeparatorOrEnd,
+        end: &PrintSeparatorOrEnd,
         flush: bool,
     ) -> Result<(), String> {
         let file = match file {
             Value::None => match self.current_sys_stdout() {
                 Some(stream) => stream,
-                None => return self.emit_print_output(&parts.join(sep), end),
+                None => {
+                    // Without a `sys.stdout` the default output is used.
+                    return self.print_items(&PrintTarget::Default, &None, args, sep, end);
+                }
             },
             file => file,
         };
-        match builtin_stdio_stream_name(&file) {
-            Some("stdout") => return self.emit_print_output(&parts.join(sep), end),
-            Some("stderr") => {
-                let mut text = parts.join(sep);
-                text.push_str(end);
-                return self.emit_stderr_output(&text);
+        let target = match builtin_stdio_stream_name(&file) {
+            Some("stdout") => PrintTarget::Default,
+            Some("stderr") => PrintTarget::Stderr,
+            _ => {
+                if matches!(file, Value::None) {
+                    // CPython's print() silently does nothing when sys.stdout
+                    // is None.
+                    return Ok(());
+                }
+                PrintTarget::File(file)
             }
-            _ => {}
-        }
-        if matches!(file, Value::None) {
-            // CPython's print() silently does nothing when sys.stdout is None.
-            return Ok(());
-        }
-        let write = self.load_attribute_value(file.clone(), "write")?;
-        for (index, part) in parts.into_iter().enumerate() {
-            if index > 0 {
-                self.call_value(write.clone(), vec![Value::String(sep.to_string())])?;
-            }
-            self.call_value(write.clone(), vec![Value::String(part)])?;
-        }
-        self.call_value(write, vec![Value::String(end.to_string())])?;
-        if flush {
-            let flush = self.load_attribute_value(file, "flush")?;
+        };
+        let write = match &target {
+            PrintTarget::File(file) => Some(self.load_attribute_value(file.clone(), "write")?),
+            _ => None,
+        };
+        self.print_items(&target, &write, args, sep, end)?;
+        if flush && let PrintTarget::File(file) = &target {
+            let flush = self.load_attribute_value(file.clone(), "flush")?;
             self.call_value(flush, Vec::new())?;
         }
         Ok(())
+    }
+
+    /// Writes the items of a `print()` call: every item is written as it is
+    /// converted, the separator goes out before the item that follows it,
+    /// and the separator and the end are converted when they are written,
+    /// as CPython converts them.
+    fn print_items(
+        &mut self,
+        target: &PrintTarget,
+        write: &Option<Value>,
+        args: &[Value],
+        sep: &PrintSeparatorOrEnd,
+        end: &PrintSeparatorOrEnd,
+    ) -> Result<(), String> {
+        for (index, arg) in args.iter().enumerate() {
+            if index > 0 {
+                let separator = resolve_print_separator_or_end(self, sep.clone())?;
+                self.print_piece(target, write, &separator)?;
+            }
+            let text = self.str_value(arg)?;
+            self.print_piece(target, write, &text)?;
+        }
+        let end = resolve_print_separator_or_end(self, end.clone())?;
+        self.print_piece(target, write, &end)?;
+        if matches!(target, PrintTarget::Default) {
+            self.end_print_line();
+        }
+        Ok(())
+    }
+
+    /// Writes one piece of a `print()` call to its target.
+    fn print_piece(
+        &mut self,
+        target: &PrintTarget,
+        write: &Option<Value>,
+        text: &str,
+    ) -> Result<(), String> {
+        match target {
+            PrintTarget::Default => {
+                self.consume_output_budget(text.len())?;
+                self.output_pending.push_str(text);
+                Ok(())
+            }
+            PrintTarget::Stderr => self.emit_stderr_output(text),
+            PrintTarget::File(_) => {
+                let write = write
+                    .clone()
+                    .expect("a file target has its write method loaded");
+                self.call_value(write, vec![Value::String(text.to_string())])
+                    .map(|_| ())
+            }
+        }
+    }
+
+    /// Ends the line the pending output holds: the newline that ends it is
+    /// not part of the line.
+    fn end_print_line(&mut self) {
+        if self.output_pending.ends_with('\n') {
+            self.output_pending.pop();
+            let line = std::mem::take(&mut self.output_pending);
+            self.push_output_line_unchecked(line);
+        }
     }
 
     fn emit_stderr_output(&mut self, text: &str) -> Result<(), String> {
@@ -6417,24 +6576,60 @@ impl Vm {
     /// underneath a nested Python call; this is what keeps the native stack
     /// cost of one Python frame small.
     fn run_frame(&mut self) -> Result<ExecutionExit, String> {
+        // A throw into a suspended frame is the only pending exception at entry.
+        let mut thrown = self
+            .in_flight_exception
+            .as_ref()
+            .map(format_exception_error);
         loop {
-            match self.run_inner_loop()? {
-                LoopExit::Exit(exit) => {
-                    if let Some(error) = crate::stack::take_deferred_recursion_error() {
-                        return Err(error);
+            let result = if let Some(message) = thrown.take() {
+                Err(message)
+            } else {
+                match self.run_inner_loop() {
+                    Ok(LoopExit::Exit(exit)) => {
+                        if let Some(error) = crate::stack::take_deferred_recursion_error() {
+                            Err(error)
+                        } else {
+                            self.in_flight_exception = None;
+                            return Ok(exit);
+                        }
                     }
-                    return Ok(exit);
+                    Ok(LoopExit::Call {
+                        dst,
+                        callee,
+                        args,
+                        keywords,
+                    }) => self
+                        .call_value_from_frame(callee, args, keywords)
+                        .map(|value| {
+                            self.in_flight_exception = None;
+                            self.write_register(dst, value);
+                        }),
+                    Err(message) => Err(message),
                 }
-                LoopExit::Call {
-                    dst,
-                    callee,
-                    args,
-                    keywords,
-                } => {
-                    let value = self.call_value_from_frame(callee, args, keywords);
-                    if let Some(value) = self.runtime_result_or_raise(value)? {
-                        self.write_register(dst, value);
+            };
+            if let Err(message) = result {
+                crate::terminal::check()?;
+                let exception = match matching_exception(self.in_flight_exception.take(), &message)
+                {
+                    Some(exception) => exception,
+                    None => {
+                        let Some(exception) = runtime_exception_from_message(&message) else {
+                            return Err(message);
+                        };
+                        self.prepare_exception(exception, true)
                     }
+                };
+                if let Some(frame) = self.exception_handlers.pop() {
+                    let target = frame
+                        .handlers
+                        .first()
+                        .ok_or_else(|| "exception handler block has no handler".to_string())?
+                        .target;
+                    self.enter_exception_handler(exception);
+                    self.jump_to(target)?;
+                } else {
+                    return Err(self.propagate_captured_exception(exception));
                 }
             }
         }
@@ -6465,6 +6660,9 @@ impl Vm {
     #[inline(never)]
     fn run_inner_loop(&mut self) -> Result<LoopExit, String> {
         loop {
+            if self.in_flight_exception.is_some() {
+                self.in_flight_exception = None;
+            }
             if let Some(error) = self.pending_resource_error.take() {
                 return Err(error);
             }
@@ -6488,7 +6686,6 @@ impl Vm {
                 self.update_current_frame_line(self.ip);
             }
             self.ip += 1;
-
             match instruction {
                 Instruction::Noop => {}
                 Instruction::LoadConst { dst, value } => {
@@ -6564,7 +6761,7 @@ impl Vm {
                 }
                 Instruction::BuildUnpack { dst, value } => {
                     let value = self.read_register(value)?.clone();
-                    self.write_register(dst, Value::Unpack(Box::new(value)));
+                    self.write_register(dst, Value::Unpack(Rc::new(value)));
                 }
                 Instruction::LoadName { dst, name } => {
                     let result = self.load_name(&name);
@@ -7003,49 +7200,49 @@ impl Vm {
                 Instruction::Equal { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.equal_values(left, right);
+                    let result = self.equal_result_values(&left, &right);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::NotEqual { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.not_equal_values(left, right);
+                    let result = self.not_equal_result_values(&left, &right);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::Less { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.less_values(left, right);
+                    let result = self.order_result_values(left, right, SequenceOrder::Less);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::LessEqual { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.less_equal_values(left, right);
+                    let result = self.order_result_values(left, right, SequenceOrder::LessEqual);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::Greater { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.greater_values(left, right);
+                    let result = self.order_result_values(left, right, SequenceOrder::Greater);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::GreaterEqual { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.greater_equal_values(left, right);
+                    let result = self.order_result_values(left, right, SequenceOrder::GreaterEqual);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
-                        self.write_register(dst, Value::Bool(value));
+                        self.write_register(dst, value);
                     }
                 }
                 Instruction::Contains {
@@ -7261,6 +7458,7 @@ impl Vm {
                     self.write_register(
                         dst,
                         Value::TypeAlias {
+                            identity: Rc::new(()),
                             name,
                             type_params,
                             value: Box::new(value),
@@ -7396,7 +7594,6 @@ impl Vm {
                                 resume_dst: None,
                             }));
                         }
-                        AwaitAdvance::Raised => {}
                     }
                 }
                 Instruction::AwaitContextManager { dst, src, is_exit } => {
@@ -7477,6 +7674,7 @@ impl Vm {
                         self.runtime_options,
                         self.frame_stack.clone(),
                     );
+                    class_vm.active_iterator_states = self.active_iterator_states.clone();
                     class_vm.instruction_budget = self.instruction_budget.clone();
                     class_vm.outer_handled_exception = self.handed_down_exception();
                     class_vm.output_budget = self.output_budget.clone();
@@ -7505,11 +7703,13 @@ impl Vm {
                         Ok(exit) => exit,
                         Err(message) => {
                             self.absorb_output_from(&mut class_vm);
-                            if let Some(exception) = class_vm.current_exception {
-                                self.raise_exception(exception, true)?;
+                            if let Some(exception) =
+                                matching_exception(class_vm.in_flight_exception.take(), &message)
+                            {
+                                self.raise_exception::<()>(exception, true)?;
                                 continue;
                             }
-                            self.raise_frame_start_error(message)?;
+                            self.raise_frame_start_error::<()>(message)?;
                             continue;
                         }
                     };
@@ -7620,7 +7820,7 @@ impl Vm {
                         let args = message_value.into_iter().collect::<Vec<_>>();
                         let message = exception_message_from_args(&args);
 
-                        self.raise_exception(
+                        self.raise_exception::<()>(
                             MiniException {
                                 type_name: "AssertionError".to_string(),
                                 type_hierarchy: builtin_exception_type_hierarchy("AssertionError"),
@@ -7632,7 +7832,7 @@ impl Vm {
                                 context: None,
                                 suppress_context: false,
                                 exceptions: None,
-                                identity: Rc::new(()),
+                                identity: Rc::new(crate::value::ExceptionIdentity::default()),
                             },
                             true,
                         )?;
@@ -7804,23 +8004,40 @@ impl Vm {
                             ))
                         })
                         .collect::<Result<Vec<_>, String>>()?;
-                    let value = build_dict(entries)?;
+                    let value = Value::Dict(self.dict_ref_with_stored_hashes(entries)?);
                     self.write_register(dst, value);
                 }
                 Instruction::DictSetItem { dict, key, value } => {
                     let key = self.read_register(key)?.clone();
                     let value = self.read_register(value)?.clone();
                     self.consume_allocation_budget(std::mem::size_of::<Value>() * 2)?;
+                    let hash = self.stored_key_hash(&key)?;
                     match self.read_register_mut(dict)? {
                         Value::Dict(entries) => {
-                            insert_live_dict_entry(&mut entries.borrow_mut(), key, value)?;
+                            insert_live_dict_entry_with_hash(
+                                &mut entries.borrow_mut(),
+                                key,
+                                value,
+                                hash,
+                            )?;
                         }
                         value => return Err(format!("{value} is not a dict")),
                     }
                 }
                 Instruction::DictUpdate { dict, src } => {
                     let src = self.read_register(src)?.clone();
-                    let updates = dict_entries_from_mapping(src)?;
+                    let (updates, hashes) = match &src {
+                        Value::Dict(_) | Value::OrderedDict(_) | Value::DefaultDict { .. } => {
+                            dict_entries_and_hashes_from_mapping(src)?
+                        }
+                        // A source that is not a dictionary is asked for its
+                        // keys, as CPython does.
+                        src => {
+                            let updates = self.dict_update_source_entries(src.clone())?;
+                            let hashes = vec![None; updates.len()];
+                            (updates, hashes)
+                        }
+                    };
                     self.consume_allocation_budget(
                         updates
                             .len()
@@ -7829,8 +8046,8 @@ impl Vm {
                     match self.read_register_mut(dict)? {
                         Value::Dict(entries) => {
                             let mut entries = entries.borrow_mut();
-                            for (key, value) in updates {
-                                insert_live_dict_entry(&mut entries, key, value)?;
+                            for ((key, value), hash) in updates.into_iter().zip(hashes) {
+                                insert_live_dict_entry_with_hash(&mut entries, key, value, hash)?;
                             }
                         }
                         value => return Err(format!("{value} is not a dict")),
@@ -7944,11 +8161,15 @@ impl Vm {
                     iterator,
                     dst,
                     target,
-                } => match self.advance_iterator(iterator)? {
-                    IteratorAdvance::Yield(value) => self.write_register(dst, value),
-                    IteratorAdvance::Complete(_) => self.jump_to(target)?,
-                    IteratorAdvance::Raised => {}
-                },
+                } => {
+                    let result = self.advance_iterator(iterator);
+                    if let Some(advance) = self.runtime_result_or_raise(result)? {
+                        match advance {
+                            IteratorAdvance::Yield(value) => self.write_register(dst, value),
+                            IteratorAdvance::Complete(_) => self.jump_to(target)?,
+                        }
+                    }
+                }
                 Instruction::AsyncForIter {
                     iterator,
                     dst,
@@ -7958,7 +8179,6 @@ impl Vm {
                     match self.advance_async_iterator(iterator)? {
                         IteratorAdvance::Yield(value) => self.write_register(dst, value),
                         IteratorAdvance::Complete(_) => self.jump_to(target)?,
-                        IteratorAdvance::Raised => {}
                     }
                 }
                 Instruction::ForIterValue {
@@ -7973,7 +8193,34 @@ impl Vm {
                     } else {
                         None
                     };
-                    match self.advance_iterator(iterator)? {
+                    let advance = if track_yield_from {
+                        match self.resume_value.take() {
+                            Some(value) if !matches!(value, Value::None) => {
+                                let delegate = self.read_register(iterator)?.clone();
+                                self.load_attribute_value(delegate, "send")
+                                    .and_then(|send| {
+                                        self.call_iterator_method_catching(
+                                            send,
+                                            vec![value],
+                                            &["StopIteration"],
+                                        )
+                                    })
+                            }
+                            _ => self.advance_iterator(iterator),
+                        }
+                    } else {
+                        self.advance_iterator(iterator)
+                    };
+                    let advance = match advance {
+                        Ok(advance) => advance,
+                        Err(message) => {
+                            if track_yield_from {
+                                self.yield_from_delegate = None;
+                            }
+                            return Err(message);
+                        }
+                    };
+                    match advance {
                         IteratorAdvance::Yield(value) => {
                             if track_yield_from {
                                 self.yield_from_delegate = yield_from_delegate;
@@ -7986,11 +8233,6 @@ impl Vm {
                             }
                             self.write_register(completion, value);
                             self.jump_to(target)?;
-                        }
-                        IteratorAdvance::Raised => {
-                            if track_yield_from {
-                                self.yield_from_delegate = None;
-                            }
                         }
                     }
                 }
@@ -8146,8 +8388,13 @@ impl Vm {
     }
 
     fn build_template(&self, parts: Vec<TemplatePartRegister>) -> Result<Value, String> {
-        let mut strings = vec![String::new()];
-        let mut interpolations = Vec::new();
+        let count = parts
+            .iter()
+            .filter(|part| matches!(part, TemplatePartRegister::Interpolation { .. }))
+            .count();
+        let mut strings = Vec::with_capacity(count.saturating_add(1));
+        strings.push(String::new());
+        let mut interpolations = Vec::with_capacity(count);
 
         for part in parts {
             match part {
@@ -8176,20 +8423,22 @@ impl Vm {
                         })
                         .transpose()?
                         .unwrap_or_default();
-                    interpolations.push(TemplateInterpolation {
+                    interpolations.push(Rc::new(TemplateInterpolation {
+                        identity: Rc::new(()),
                         value: Box::new(value),
                         expression,
                         conversion: conversion.map(template_conversion_name),
                         format_spec,
-                    });
+                    }));
                     strings.push(String::new());
                 }
             }
         }
 
         Ok(Value::Template {
-            strings,
-            interpolations,
+            identity: Rc::new(()),
+            strings: Rc::new(strings),
+            interpolations: Rc::new(interpolations),
         })
     }
 
@@ -8213,12 +8462,15 @@ impl Vm {
             })
             .transpose()?
             .unwrap_or_default();
-        Ok(Value::TemplateInterpolation(TemplateInterpolation {
-            value: Box::new(value),
-            expression,
-            conversion: conversion.map(template_conversion_name),
-            format_spec,
-        }))
+        Ok(Value::TemplateInterpolation(Rc::new(
+            TemplateInterpolation {
+                identity: Rc::new(()),
+                value: Box::new(value),
+                expression,
+                conversion: conversion.map(template_conversion_name),
+                format_spec,
+            },
+        )))
     }
 
     fn jump_to(&mut self, target: usize) -> Result<(), String> {
@@ -8333,7 +8585,7 @@ impl Vm {
             Ok(value) => Ok(Some(value)),
             Err(exception) if exception_is_builtin_instance(&exception, "KeyError") => Ok(None),
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(Some(Value::None))
             }
         }
@@ -8374,7 +8626,7 @@ impl Vm {
                 Ok(None)
             }
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(None)
             }
         }
@@ -8592,6 +8844,7 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        module_vm.active_iterator_states = self.active_iterator_states.clone();
         module_vm.instruction_budget = self.instruction_budget.clone();
         module_vm.output_budget = self.output_budget.clone();
         module_vm.stderr_output = self.stderr_output.clone();
@@ -8608,8 +8861,10 @@ impl Vm {
             }
             Err(message) => {
                 self.absorb_output_from(&mut module_vm);
-                if let Some(exception) = module_vm.current_exception {
-                    Err(format_exception_error(&exception))
+                if let Some(exception) =
+                    matching_exception(module_vm.in_flight_exception.take(), &message)
+                {
+                    Err(self.propagate_captured_exception(exception))
                 } else {
                     Err(message)
                 }
@@ -9142,14 +9397,14 @@ impl Vm {
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                 Value::None
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         let module = match self.load_attribute_catching(function.clone(), "__module__")? {
             Ok(value) => value,
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                 Value::String("functools".to_string())
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         attrs
             .borrow_mut()
@@ -9593,7 +9848,7 @@ impl Vm {
             ));
         };
         if !matches!(dispatcher, Value::SingleDispatch { .. }) {
-            return Err("_clear_cache() expected a singledispatch receiver".to_string());
+            return Err("TypeError: _clear_cache() expected a singledispatch receiver".to_string());
         }
         Ok(Value::None)
     }
@@ -9721,10 +9976,14 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
-            return Err("__get__() expected a singledispatchmethod receiver".to_string());
+            return Err(
+                "TypeError: __get__() expected a singledispatchmethod receiver".to_string(),
+            );
         };
         let descriptor @ Value::SingleDispatchMethod { .. } = descriptor.clone() else {
-            return Err("__get__() expected a singledispatchmethod receiver".to_string());
+            return Err(
+                "TypeError: __get__() expected a singledispatchmethod receiver".to_string(),
+            );
         };
         if rest.len() > 2 {
             return Err(format!(
@@ -9805,7 +10064,8 @@ impl Vm {
         registry: &Rc<RefCell<Vec<(Value, Value)>>>,
     ) -> Result<Option<Value>, String> {
         let mut best: Option<(Value, Value)> = None;
-        for (candidate, implementation) in registry.borrow().iter() {
+        let candidates = registry.borrow().clone();
+        for (candidate, implementation) in &candidates {
             if !self.class_matches_classinfo(class, candidate)? {
                 continue;
             }
@@ -9858,7 +10118,7 @@ impl Vm {
         };
 
         Ok(Value::CmpToKey {
-            comparator: Box::new(comparator),
+            comparator: Rc::new(comparator),
             identity: Rc::new(()),
         })
     }
@@ -9895,7 +10155,7 @@ impl Vm {
         };
 
         Ok(Value::CmpToKeyObject {
-            comparator: Box::new(comparator),
+            comparator: Rc::new(comparator),
             object: Rc::new(RefCell::new(object)),
             identity: Rc::new(()),
         })
@@ -9932,7 +10192,7 @@ impl Vm {
                 Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                     continue;
                 }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             if name == "__annotate__" {
                 // Copy the annotations first: assigning `__annotations__`
@@ -9952,7 +10212,7 @@ impl Vm {
                 Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                     continue;
                 }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             let wrapper_attr = self.load_attribute_value(wrapper.clone(), &name)?;
             let update = self.load_attribute_value(wrapper_attr, "update")?;
@@ -10248,20 +10508,12 @@ impl Vm {
             }
         };
 
-        let has_iter_method = instance_special_method(&iterable, "__iter__").is_some();
         let mut iterator = match self.get_iter_capturing(iterable) {
             Ok(Ok(iterator)) => iterator,
-            Ok(Err(exception))
-                if !has_iter_method
-                    && exception.type_name == "TypeError"
-                    && exception
-                        .message
-                        .as_ref()
-                        .is_some_and(|message| message.ends_with(" is not iterable")) =>
-            {
+            Ok(Err(exception)) if exception_is_builtin_instance(&exception, "TypeError") => {
                 return Err("TypeError: reduce() arg 2 must support iteration".to_string());
             }
-            Ok(Err(exception)) => return Err(format_exception_error(&exception)),
+            Ok(Err(exception)) => return Err(self.propagate_captured_exception(exception)),
             Err(error) if error.ends_with(" is not iterable") => {
                 return Err("TypeError: reduce() arg 2 must support iteration".to_string());
             }
@@ -10279,8 +10531,7 @@ impl Vm {
                         "TypeError: reduce() of empty sequence with no initial value".to_string(),
                     );
                 }
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             },
         };
 
@@ -10288,8 +10539,7 @@ impl Vm {
             let value = match self.advance_owned_iterator_capturing(&mut iterator)? {
                 Ok(IteratorAdvance::Yield(value)) => value,
                 Ok(IteratorAdvance::Complete(_)) => return Ok(accumulator),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             accumulator = self.call_value(function.clone(), vec![accumulator, value])?;
         }
@@ -10435,7 +10685,7 @@ impl Vm {
         let exception =
             self.call_value(Value::Builtin("SystemExit".to_string()), exception_args)?;
         let exception = exception_from_value(exception)?;
-        self.raise_exception(exception, true)?;
+        self.raise_exception::<()>(exception, true)?;
         Ok(Value::None)
     }
 
@@ -10657,9 +10907,10 @@ impl Vm {
         }
 
         calls.borrow_mut().push(args);
-        if let Some(effect) = side_effect.borrow().clone() {
+        let effect = side_effect.borrow().clone();
+        if let Some(effect) = effect {
             let exception = exception_from_value(effect)?;
-            self.raise_exception(exception, true)?;
+            self.raise_exception::<()>(exception, true)?;
         }
         Ok(Value::None)
     }
@@ -10683,7 +10934,7 @@ impl Vm {
                 "TypeError: assert_called_once_with() expected a MagicMock receiver".to_string(),
             );
         };
-        let calls = calls.borrow();
+        let calls = calls.borrow().clone();
         if calls.len() != 1 {
             return Err(format!(
                 "AssertionError: Expected to be called once. Called {} times.",
@@ -10806,7 +11057,7 @@ impl Vm {
                 function, state, ..
             } => self.call_lru_cache_wrapper(*function, state, args, keywords),
             Value::StaticMethod { function, .. } => {
-                self.call_value_with_keywords(*function, args, keywords)
+                self.call_value_with_keywords(function.as_ref().clone(), args, keywords)
             }
             Value::SingleDispatch {
                 function, registry, ..
@@ -10829,7 +11080,7 @@ impl Vm {
                 keywords,
             ),
             Value::CmpToKey { comparator, .. } | Value::CmpToKeyObject { comparator, .. } => {
-                self.call_cmp_to_key_object(*comparator, args, keywords)
+                self.call_cmp_to_key_object(comparator.as_ref().clone(), args, keywords)
             }
             Value::OperatorAttrGetter { attrs, .. } => {
                 self.call_operator_attrgetter(attrs, args, keywords)
@@ -10901,17 +11152,7 @@ impl Vm {
                         }
                     }
                 }
-                let mut parts = Vec::with_capacity(args.len());
-                for arg in &args {
-                    parts.push(self.str_value(arg)?);
-                }
-                let sep = if args.len() > 1 {
-                    resolve_print_separator_or_end(self, sep)?
-                } else {
-                    String::new()
-                };
-                let end = resolve_print_separator_or_end(self, end)?;
-                self.print_to_file(file, parts, &sep, &end, flush)?;
+                self.print_to_file(file, &args, &sep, &end, flush)?;
                 Ok(Value::None)
             }
             Value::Builtin(name) if name == "object" => {
@@ -12087,6 +12328,9 @@ impl Vm {
             Value::Builtin(name) if name == "json.function.__get__" => {
                 self.call_json_function_get(args, keywords)
             }
+            Value::Builtin(name) if is_builtin_getset_descriptor_name(&name) => {
+                Err("TypeError: 'getset_descriptor' object is not callable".to_string())
+            }
             Value::Builtin(name) if name == "getset_descriptor.__get__" => {
                 self.call_getset_descriptor_get(args, keywords)
             }
@@ -12142,6 +12386,7 @@ impl Vm {
                     origin: Box::new(Value::Builtin("dict".to_string())),
                     args: generic_alias_args(item.clone()),
                     union_unhashable_count: 0,
+                    identity: Rc::new(()),
                 })
             }
             Value::Builtin(name) if name == "type.__class_getitem__" => {
@@ -12164,6 +12409,7 @@ impl Vm {
                     origin: Box::new(Value::Builtin("defaultdict".to_string())),
                     args: generic_alias_args(item.clone()),
                     union_unhashable_count: 0,
+                    identity: Rc::new(()),
                 })
             }
             Value::Builtin(name) if name == "bytes.__new__" => self.call_bytes_new(args, keywords),
@@ -12593,7 +12839,7 @@ impl Vm {
                     return Err(format!("{name}() does not accept keyword arguments"));
                 }
                 if !args.is_empty() {
-                    return Err("time() takes no arguments".to_string());
+                    return Err("TypeError: time() takes no arguments".to_string());
                 }
 
                 Ok(float_value(0.0))
@@ -13123,10 +13369,10 @@ impl Vm {
                 self.call_value_with_keywords(*origin, args, keywords)
             }
             Value::NamedTupleType(typ) => self.call_named_tuple_type(typ, args, keywords),
-            Value::NamedTupleTypeMethod { typ, name } => {
+            Value::NamedTupleTypeMethod { typ, name, .. } => {
                 self.call_named_tuple_type_method(typ, &name, args, keywords)
             }
-            Value::NamedTupleInstanceMethod { instance, name } => {
+            Value::NamedTupleInstanceMethod { instance, name, .. } => {
                 self.call_named_tuple_instance_method(*instance, &name, args, keywords)
             }
             Value::TypesCoroutineFunction { function, .. } => {
@@ -13147,7 +13393,7 @@ impl Vm {
                 args_with_receiver.extend(args);
                 self.call_value_with_keywords(*function, args_with_receiver, keywords)
             }
-            Value::ConstEvaluator { kind, target } => {
+            Value::ConstEvaluator { kind, target, .. } => {
                 self.call_const_evaluator(kind, *target, args, keywords)
             }
             value @ Value::Instance { .. } => {
@@ -13934,6 +14180,8 @@ impl Vm {
         function_vm.stderr_output = self.stderr_output.clone();
         function_vm.allocation_budget = self.allocation_budget.clone();
         function_vm.external_call_handler = self.external_call_handler.clone();
+        function_vm.repr_active_containers = self.repr_active_containers.clone();
+        function_vm.active_iterator_states = self.active_iterator_states.clone();
         function_vm.future_flags = future_flags;
         if locals_are_globals {
             function_vm.locals = function_vm.globals.clone();
@@ -14074,9 +14322,12 @@ impl Vm {
             Ok(exit) => exit,
             Err(message) => {
                 self.absorb_output_from(&mut function_vm);
-                if let Some(exception) = function_vm.current_exception.take() {
-                    self.raise_exception(exception, true)?;
-                    return Ok(Value::None);
+                if let Some(mut exception) =
+                    matching_exception(function_vm.in_flight_exception.take(), &message)
+                {
+                    prepend_exception_traceback(&mut exception);
+                    self.raise_exception::<()>(exception, true)?;
+                    return Err(message);
                 }
                 return Err(message);
             }
@@ -14475,7 +14726,7 @@ impl Vm {
                 keywords,
             )?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
         Ok(Some(class_value))
@@ -14512,7 +14763,7 @@ impl Vm {
                 keywords,
             )?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
         Ok(Some(class_value))
@@ -14815,8 +15066,20 @@ impl Vm {
                         vec![class_value.clone(), Value::String(name.clone())],
                     )? {
                         Ok(_) => {}
-                        Err(_) => {
-                            return Err(class_set_name_error(&descriptor, class_value, &name));
+                        Err(exception) => {
+                            // CPython lets the exception the descriptor
+                            // raised leave the class body with its type and
+                            // message unchanged, after adding its note about
+                            // the failed `__set_name__` call.
+                            let note = class_set_name_note(&descriptor, class_value, &name);
+                            if add_exception_note(&exception, note).is_err() {
+                                let mut error = type_error_exception(
+                                    "Cannot add note: __notes__ is not a list",
+                                );
+                                error.context = Some(Box::new(exception));
+                                return self.raise_exception::<Value>(error, false);
+                            }
+                            return Err(self.propagate_captured_exception(exception));
                         }
                     }
                 }
@@ -15062,7 +15325,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         } else if !custom_new && (!args.is_empty() || !keywords.is_empty()) {
             return Err(format!("TypeError: {name}() takes no arguments"));
@@ -15167,7 +15430,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15204,7 +15467,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15227,7 +15490,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         } else if !keywords.is_empty() {
             return Err("TypeError: float() takes no keyword arguments".to_string());
@@ -15309,7 +15572,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15322,7 +15585,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15383,7 +15646,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15419,7 +15682,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15442,7 +15705,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         } else if !keywords.is_empty() {
             return Err("TypeError: tuple() takes no keyword arguments".to_string());
@@ -15480,7 +15743,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             } else {
                 self.initialize_list_storage(&instance, args, keywords)?;
@@ -15517,7 +15780,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15578,7 +15841,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
                 return Ok(instance);
             }
@@ -15590,7 +15853,7 @@ impl Vm {
             };
             let result = self.call_value_with_keywords(init, args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
             return Ok(instance);
         }
@@ -15620,7 +15883,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15657,7 +15920,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15685,7 +15948,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15717,7 +15980,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15753,7 +16016,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15768,7 +16031,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15833,7 +16096,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15847,7 +16110,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15883,7 +16146,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             } else {
                 let mut init_args = vec![instance.clone()];
@@ -15905,7 +16168,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15942,7 +16205,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -15957,7 +16220,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -15990,7 +16253,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -16049,7 +16312,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             }
             return Ok(instance);
@@ -16071,7 +16334,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -16101,7 +16364,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
             return Ok(instance);
         }
@@ -16302,7 +16565,7 @@ impl Vm {
                     keywords,
                 )?;
                 if !matches!(result, Value::None) {
-                    return Err("__init__() should return None".to_string());
+                    return Err(init_should_return_none_error(&result));
                 }
             } else {
                 self.initialize_dict_storage(&instance, args, keywords)?;
@@ -16332,7 +16595,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -16399,7 +16662,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -16436,7 +16699,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         }
 
@@ -16615,7 +16878,7 @@ impl Vm {
             match self.load_attribute_catching(left.clone(), "__iadd__")? {
                 Ok(method) => return self.call_value(method, vec![right]),
                 Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {}
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
 
@@ -16624,9 +16887,8 @@ impl Vm {
             return Ok(left);
         }
 
-        if let Value::Deque { data, maxlen } = &left {
-            let values = self.collect_iterable_values(right)?;
-            deque_extend_values(data, *maxlen, values);
+        if matches!(&left, Value::Deque { .. }) {
+            self.call_deque_method("deque.extend", vec![left.clone(), right], Vec::new())?;
             return Ok(left);
         }
 
@@ -16644,6 +16906,12 @@ impl Vm {
         if let Value::List(items) = &left {
             self.extend_list_from_iterable(items, right)?;
             return Ok(left);
+        }
+
+        if let Some(value) =
+            counter_in_place_value_from_operands(self, &left, &right, CounterBinaryOp::Add)?
+        {
+            return Ok(value);
         }
 
         if let Some(value) = self.call_instance_operator(&left, &right, "__add__", "__radd__")? {
@@ -16727,7 +16995,7 @@ impl Vm {
             match self.load_attribute_catching(left.clone(), "__imul__")? {
                 Ok(method) => return self.call_value(method, vec![right]),
                 Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {}
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
 
@@ -16737,9 +17005,14 @@ impl Vm {
             return Ok(left);
         }
 
-        if let Value::Deque { data, maxlen } = &left {
+        if let Value::Deque {
+            data,
+            maxlen,
+            state,
+        } = &left
+        {
             let count = self.deque_repeat_count_operator(right)?;
-            deque_repeat_in_place(data, *maxlen, count)?;
+            deque_repeat_in_place(data, maxlen.get(), state, count)?;
             return Ok(left);
         }
 
@@ -16808,22 +17081,23 @@ impl Vm {
                     self.load_attribute_from_getattr(object, name, Some(exception))
                 }
                 Err(exception) => {
-                    self.raise_exception(exception, true)?;
+                    self.raise_exception::<()>(exception, true)?;
                     Ok(Value::None)
                 }
             };
         }
 
-        match self.load_attribute_without_custom_getattribute(object.clone(), name) {
+        match self.call_with_exception_capture(|vm| {
+            vm.load_attribute_without_custom_getattribute(object.clone(), name)
+        })? {
             Ok(value) => Ok(value),
-            Err(message)
-                if message.starts_with("AttributeError:")
+            Err(exception)
+                if exception_is_builtin_instance(&exception, "AttributeError")
                     && matches!(object, Value::Instance { .. }) =>
             {
-                let exception = runtime_exception_from_message(&message);
-                self.load_attribute_from_getattr(object, name, exception)
+                self.load_attribute_from_getattr(object, name, Some(exception))
             }
-            Err(message) => Err(message),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -16834,12 +17108,12 @@ impl Vm {
         is_async: bool,
     ) -> Result<Value, String> {
         let name = context_manager_method_name(is_exit, is_async);
-        match self.load_attribute_value(manager.clone(), name) {
+        match self.load_attribute_catching(manager.clone(), name)? {
             Ok(method) => Ok(method),
-            Err(message) if message.starts_with("AttributeError:") => {
+            Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                 Err(self.context_manager_protocol_error(&manager, is_exit, is_async))
             }
-            Err(message) => Err(message),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -17107,6 +17381,10 @@ impl Vm {
                     });
                 }
 
+                if let Some(method) = counter_subclass_method(instance.clone(), name) {
+                    return Ok(method);
+                }
+
                 if matches!(
                     name,
                     "__init__" | "__repr__" | "__str__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
@@ -17116,10 +17394,6 @@ impl Vm {
                         receiver: Box::new(instance),
                         identity: Rc::new(()),
                     });
-                }
-
-                if let Some(method) = counter_subclass_method(instance.clone(), name) {
-                    return Ok(method);
                 }
 
                 if let Some(method) = dict_subclass_method(instance.clone(), name) {
@@ -17421,7 +17695,8 @@ impl Vm {
                 name: alias_name,
                 type_params,
                 value,
-            } => self.load_type_alias_attribute(alias_name, type_params, *value, name),
+                identity,
+            } => self.load_type_alias_attribute(alias_name, type_params, *value, identity, name),
             module @ Value::Module { .. } => {
                 if is_collections_abc_bytestring_module_attr(&module, name) {
                     self.emit_collections_abc_bytestring_warning()?;
@@ -17586,6 +17861,7 @@ impl Vm {
         };
 
         Ok(Value::TypeAlias {
+            identity: Rc::new(()),
             name: alias_name.clone(),
             type_params: Vec::new(),
             value: Box::new(value.clone()),
@@ -17732,6 +18008,7 @@ impl Vm {
         alias_name: String,
         type_params: Vec<Value>,
         value: Value,
+        identity: Rc<()>,
         name: &str,
     ) -> Result<Value, String> {
         match name {
@@ -17741,6 +18018,7 @@ impl Vm {
             "evaluate_value" => Ok(Value::ConstEvaluator {
                 kind: ConstEvaluatorKind::TypeAliasValue,
                 target: Box::new(Value::TypeAlias {
+                    identity,
                     name: alias_name,
                     type_params,
                     value: Box::new(value),
@@ -17792,14 +18070,27 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        eval_vm.active_iterator_states = self.active_iterator_states.clone();
         eval_vm.instruction_budget = self.instruction_budget.clone();
         eval_vm.output_budget = self.output_budget.clone();
         eval_vm.stderr_output = self.stderr_output.clone();
         eval_vm.allocation_budget = self.allocation_budget.clone();
         eval_vm.external_call_handler = self.external_call_handler.clone();
+        eval_vm.outer_handled_exception = self.handed_down_exception();
         let result = eval_vm.run_eval();
         self.absorb_output_from(&mut eval_vm);
-        result
+        match result {
+            Err(message) => {
+                match matching_exception(eval_vm.in_flight_exception.take(), &message) {
+                    Some(mut exception) => {
+                        prepend_exception_traceback(&mut exception);
+                        Err(self.propagate_captured_exception(exception))
+                    }
+                    None => Err(message),
+                }
+            }
+            Ok(value) => Ok(value),
+        }
     }
 
     fn load_attribute_from_getattr(
@@ -17813,7 +18104,7 @@ impl Vm {
         }
 
         if let Some(exception) = original_exception {
-            Err(format_exception_error(&exception))
+            Err(self.propagate_captured_exception(exception))
         } else {
             Err(format!("AttributeError: object has no attribute '{name}'"))
         }
@@ -18050,60 +18341,38 @@ impl Vm {
         self.hash_key_value(value).map(|_| ())
     }
 
-    fn hash_key_value(&mut self, value: &Value) -> Result<Value, String> {
-        // Nested hashable containers (tuples, frozensets) hash recursively.
-        crate::stack::check_native_recursion("")?;
-        if let Value::MappingProxyObject { mapping, .. } = value {
-            return self.hash_key_value(mapping);
+    /// The hash of a key that a user-defined `__hash__` provides.
+    ///
+    /// CPython computes the hash of a key when the key goes into a
+    /// dictionary and keeps the hash with the entry of the key, so a
+    /// comparison of two dictionaries answers with the stored hash instead
+    /// of hashing the key again.
+    fn stored_key_hash(&mut self, key: &Value) -> Result<Option<Value>, String> {
+        // A key without a hash is not hashable at all, and the insertion of
+        // the key reports that.
+        let user_hash = matches!(instance_hash_method(key), Ok(Some(_)))
+            || matches!(class_hash_method(key), Ok(Some(_)));
+        if user_hash {
+            return Ok(Some(self.hash_key_value(key)?));
         }
+        Ok(None)
+    }
 
-        if let Value::WeakRef { target, .. } = value {
-            return self.hash_key_value(target);
+    /// A dictionary that keeps the hash of every key that a user-defined
+    /// `__hash__` provides.
+    fn dict_ref_with_stored_hashes(
+        &mut self,
+        entries: Vec<(Value, Value)>,
+    ) -> Result<DictRef, String> {
+        let mut dict = Vec::new();
+        let mut hashes: Vec<Option<Value>> = Vec::new();
+        for (key, value) in entries {
+            let hash = self.stored_key_hash(&key)?;
+            if insert_dict_entry(&mut dict, key, value)? {
+                hashes.push(hash);
+            }
         }
-
-        if let Some(alias) = generic_alias_subclass_alias(value) {
-            return self.hash_key_value(&alias);
-        }
-
-        if let Value::FrozenSet(items) = value {
-            return self.frozenset_hash(items.as_ref().clone());
-        }
-
-        if let Value::GenericAlias {
-            origin,
-            args,
-            union_unhashable_count,
-        } = value
-            && matches!(origin.as_ref(), Value::Builtin(name) if name == "Union")
-        {
-            return self.hash_union_alias_value(args, *union_unhashable_count);
-        }
-
-        if dict_view_is_values_hashable_value(value) {
-            return Ok(identity_hash_value(value));
-        }
-
-        if matches!(value, Value::Cell { .. }) {
-            return Err("TypeError: unhashable type: 'cell'".to_string());
-        }
-
-        if let Some(method) = instance_hash_method(value)? {
-            let result = match self.call_value_catching(method, Vec::new())? {
-                Ok(value) => value,
-                Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
-            };
-            return hash_result_from_special_method(result);
-        }
-
-        if let Some(method) = class_hash_method(value)? {
-            let result = match self.call_value_catching(method, Vec::new())? {
-                Ok(value) => value,
-                Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
-            };
-            return hash_result_from_special_method(result);
-        }
-
-        hash_value(value)
+        Ok(dict_ref_from_entries_with_hashes(dict, hashes))
     }
 
     fn hash_union_alias_value(
@@ -18137,7 +18406,7 @@ impl Vm {
             Some(function) => {
                 match self.call_value_catching(function.clone(), vec![value.clone()])? {
                     Ok(result) => Ok(result),
-                    Err(exception) => Err(format_exception_error(&exception)),
+                    Err(exception) => Err(self.propagate_captured_exception(exception)),
                 }
             }
         }
@@ -18146,7 +18415,8 @@ impl Vm {
     fn ensure_set_lookup_key(&mut self, value: &Value) -> Result<(), String> {
         match value {
             Value::Set(items) => {
-                for item in items.borrow().iter() {
+                let snapshot = items.borrow().clone();
+                for item in &snapshot {
                     self.ensure_hashable_key(item)?;
                 }
                 Ok(())
@@ -18178,7 +18448,9 @@ impl Vm {
     }
 
     fn set_position(&mut self, items: &[Value], value: &Value) -> Result<Option<usize>, String> {
-        let value_hash = self.hash_key_value(value)?;
+        let value_hash = self
+            .hash_key_value(value)
+            .map_err(|error| set_element_error(value, error))?;
         for (index, item) in items.iter().enumerate() {
             let item_hash = self.hash_key_value(item)?;
             if item_hash == value_hash
@@ -18361,7 +18633,11 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                Ok(Value::Bool(contains_value(key.clone(), dict.clone())?))
+                Ok(Value::Bool(contains_value(
+                    self,
+                    key.clone(),
+                    dict.clone(),
+                )?))
             }
             "scope_dict.__delitem__" => {
                 let [dict @ Value::ScopeDict(_), key] = args.as_slice() else {
@@ -18470,7 +18746,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                store_subscript(dict.clone(), key.clone(), value.clone())?;
+                store_subscript(self, dict.clone(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
             "scope_dict.__repr__" | "scope_dict.__str__" => {
@@ -18504,7 +18780,7 @@ impl Vm {
             }
             "scope_dict.get" => {
                 let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
-                    return Err("get() expected a dict receiver".to_string());
+                    return Err("TypeError: get() expected a dict receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -18542,7 +18818,7 @@ impl Vm {
             }
             "scope_dict.pop" => {
                 let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
-                    return Err("pop() expected a dict receiver".to_string());
+                    return Err("TypeError: pop() expected a dict receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -18580,7 +18856,7 @@ impl Vm {
             }
             "scope_dict.setdefault" => {
                 let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
-                    return Err("setdefault() expected a dict receiver".to_string());
+                    return Err("TypeError: setdefault() expected a dict receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -18598,7 +18874,7 @@ impl Vm {
             }
             "scope_dict.update" => {
                 let [Value::ScopeDict(scope), rest @ ..] = args.as_slice() else {
-                    return Err("update() expected a dict receiver".to_string());
+                    return Err("TypeError: update() expected a dict receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -18765,16 +19041,8 @@ impl Vm {
         };
 
         let method = method_display_name(name);
-        match method {
-            "__eq__" if is_identical(left, right) => Ok(Value::Bool(true)),
-            "__eq__" => Ok(Value::NotImplemented),
-            "__ne__" if is_identical(left, right) => Ok(Value::Bool(false)),
-            "__ne__" if object_direct_ne_uses_rich_equality(left, right) => {
-                Ok(Value::Bool(!self.rich_equal_values(left, right)?))
-            }
-            "__ne__" => Ok(Value::NotImplemented),
-            _ => Ok(Value::NotImplemented),
-        }
+        self.object_rich_compare_values(method, left, right)
+            .map(|value| value.unwrap_or(Value::NotImplemented))
     }
 
     fn call_cell_rich_compare_method(
@@ -18953,6 +19221,7 @@ impl Vm {
             origin: Box::new(origin.clone()),
             args: generic_alias_args(item.clone()),
             union_unhashable_count: 0,
+            identity: Rc::new(()),
         })
     }
 
@@ -19158,7 +19427,7 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((property, rest)) = args.split_first() else {
             return Err(format!(
-                "{}() expected a property receiver",
+                "TypeError: {}() expected a property receiver",
                 method_display_name(name)
             ));
         };
@@ -19173,7 +19442,7 @@ impl Vm {
         } = property.clone()
         else {
             return Err(format!(
-                "{}() expected a property receiver",
+                "TypeError: {}() expected a property receiver",
                 method_display_name(name)
             ));
         };
@@ -19193,7 +19462,7 @@ impl Vm {
                 };
                 let doc = derived_property_doc(doc_from_getter, Some(getter), &doc)?;
                 Ok(Value::Property {
-                    fget: Some(Box::new(getter.clone())),
+                    fget: Some(Rc::new(getter.clone())),
                     fset,
                     fdel,
                     doc,
@@ -19217,7 +19486,7 @@ impl Vm {
                 let doc = derived_property_doc(doc_from_getter, fget.as_deref(), &doc)?;
                 Ok(Value::Property {
                     fget,
-                    fset: Some(Box::new(setter.clone())),
+                    fset: Some(Rc::new(setter.clone())),
                     fdel,
                     doc,
                     doc_from_getter,
@@ -19241,7 +19510,7 @@ impl Vm {
                 Ok(Value::Property {
                     fget,
                     fset,
-                    fdel: Some(Box::new(deleter.clone())),
+                    fdel: Some(Rc::new(deleter.clone())),
                     doc,
                     doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
@@ -19357,13 +19626,13 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
-                "{}() expected a member_descriptor receiver",
+                "TypeError: {}() expected a member_descriptor receiver",
                 method_display_name(name)
             ));
         };
         let descriptor @ Value::MemberDescriptor { .. } = descriptor.clone() else {
             return Err(format!(
-                "{}() expected a member_descriptor receiver",
+                "TypeError: {}() expected a member_descriptor receiver",
                 method_display_name(name)
             ));
         };
@@ -19402,13 +19671,13 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
-                "{}() expected a namedtuple field descriptor receiver",
+                "TypeError: {}() expected a namedtuple field descriptor receiver",
                 method_display_name(name)
             ));
         };
         let descriptor @ Value::NamedTupleFieldDescriptor { .. } = descriptor.clone() else {
             return Err(format!(
-                "{}() expected a namedtuple field descriptor receiver",
+                "TypeError: {}() expected a namedtuple field descriptor receiver",
                 method_display_name(name)
             ));
         };
@@ -19460,6 +19729,7 @@ impl Vm {
                     ));
                 };
                 Ok(maxlen
+                    .get()
                     .map(|value| Value::Number(value as i64))
                     .unwrap_or(Value::None))
             }
@@ -19661,7 +19931,7 @@ impl Vm {
                 property_no_getter_error(&name, &object)
             ));
         };
-        self.call_value(*fget, vec![object])
+        self.call_value((*fget).clone(), vec![object])
     }
 
     fn property_set(&mut self, property: Value, object: Value, value: Value) -> Result<(), String> {
@@ -19677,7 +19947,7 @@ impl Vm {
                 property_missing_accessor_error(&fget, &name, &object, "setter")?
             ));
         };
-        self.call_value(*fset, vec![object, value])?;
+        self.call_value(fset.as_ref().clone(), vec![object, value])?;
         Ok(())
     }
 
@@ -19694,7 +19964,7 @@ impl Vm {
                 property_missing_accessor_error(&fget, &name, &object, "deleter")?
             ));
         };
-        self.call_value(*fdel, vec![object])?;
+        self.call_value(fdel.as_ref().clone(), vec![object])?;
         Ok(())
     }
 
@@ -19745,13 +20015,13 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
-                "{}() expected a partialmethod receiver",
+                "TypeError: {}() expected a partialmethod receiver",
                 method_display_name(name)
             ));
         };
         let descriptor @ Value::PartialMethod { .. } = descriptor.clone() else {
             return Err(format!(
-                "{}() expected a partialmethod receiver",
+                "TypeError: {}() expected a partialmethod receiver",
                 method_display_name(name)
             ));
         };
@@ -19885,7 +20155,9 @@ impl Vm {
             attrname, attrs, ..
         } = descriptor
         else {
-            return Err("__set_name__() expected a cached_property receiver".to_string());
+            return Err(
+                "TypeError: __set_name__() expected a cached_property receiver".to_string(),
+            );
         };
         let Value::String(name) = name else {
             return Err(format!(
@@ -19923,13 +20195,13 @@ impl Vm {
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
-                "{}() expected a cached_property receiver",
+                "TypeError: {}() expected a cached_property receiver",
                 method_display_name(name)
             ));
         };
         let descriptor @ Value::CachedProperty { .. } = descriptor.clone() else {
             return Err(format!(
-                "{}() expected a cached_property receiver",
+                "TypeError: {}() expected a cached_property receiver",
                 method_display_name(name)
             ));
         };
@@ -20180,10 +20452,10 @@ impl Vm {
         owner: Value,
     ) -> Result<Option<Value>, String> {
         match descriptor {
-            Value::StaticMethod { function, .. } => return Ok(Some(*function)),
+            Value::StaticMethod { function, .. } => return Ok(Some(function.as_ref().clone())),
             Value::ClassMethod { function, .. } => {
                 return Ok(Some(Value::BoundMethod {
-                    function,
+                    function: Box::new(function.as_ref().clone()),
                     receiver: Box::new(owner),
                     identity: Rc::new(()),
                 }));
@@ -20238,14 +20510,14 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
-            return Err("__get__() expected a staticmethod receiver".to_string());
+            return Err("TypeError: __get__() expected a staticmethod receiver".to_string());
         };
         let Value::StaticMethod { function, .. } = descriptor.clone() else {
-            return Err("__get__() expected a staticmethod receiver".to_string());
+            return Err("TypeError: __get__() expected a staticmethod receiver".to_string());
         };
         descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
         descriptor_get_owner(rest)?;
-        Ok(*function)
+        Ok(function.as_ref().clone())
     }
 
     fn call_classmethod_get(
@@ -20254,15 +20526,15 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
-            return Err("__get__() expected a classmethod receiver".to_string());
+            return Err("TypeError: __get__() expected a classmethod receiver".to_string());
         };
         let Value::ClassMethod { function, .. } = descriptor.clone() else {
-            return Err("__get__() expected a classmethod receiver".to_string());
+            return Err("TypeError: __get__() expected a classmethod receiver".to_string());
         };
         descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
         let owner = descriptor_get_owner(rest)?;
         Ok(Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(owner),
             identity: Rc::new(()),
         })
@@ -20274,10 +20546,10 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
-            return Err("__get__() expected a super receiver".to_string());
+            return Err("TypeError: __get__() expected a super receiver".to_string());
         };
         let descriptor @ Value::Super { .. } = descriptor.clone() else {
-            return Err("__get__() expected a super receiver".to_string());
+            return Err("TypeError: __get__() expected a super receiver".to_string());
         };
         descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
 
@@ -22093,6 +22365,13 @@ impl Vm {
                         identity: Rc::new(()),
                     });
                 }
+                if type_name == "Counter" && is_builtin_counter_type_method(name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
                 if type_name == "ChainMap" && is_builtin_chain_map_type_method(name) {
                     return Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
@@ -22233,33 +22512,26 @@ impl Vm {
         self.call_with_exception_capture(|vm| vm.call_value_with_keywords(callee, args, keywords))
     }
 
-    fn call_with_exception_capture<F>(
+    fn call_with_exception_capture<T, F>(
         &mut self,
         call: F,
-    ) -> Result<Result<Value, MiniException>, String>
+    ) -> Result<Result<T, MiniException>, String>
     where
-        F: FnOnce(&mut Self) -> Result<Value, String>,
+        F: FnOnce(&mut Self) -> Result<T, String>,
     {
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
+        self.in_flight_exception = None;
         let result = call(self);
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
-
+        let raised = self.in_flight_exception.take();
+        crate::terminal::check()?;
         match result {
             Ok(value) => Ok(Ok(value)),
-            Err(message) => {
-                if let Some(exception) =
-                    runtime_exception_from_current_or_message(raised_exception, &message)
-                {
-                    Ok(Err(exception))
-                } else {
-                    Err(message)
-                }
-            }
+            Err(message) => match matching_exception(raised, &message) {
+                Some(exception) => Ok(Err(exception)),
+                None => match runtime_exception_from_message(&message) {
+                    Some(exception) => Ok(Err(self.prepare_exception(exception, true))),
+                    None => Err(message),
+                },
+            },
         }
     }
 
@@ -22267,7 +22539,7 @@ impl Vm {
     /// native stack guard refused it) reports a bare `RecursionError`
     /// message instead of a raised exception. Raise it in the frame that tried
     /// to start the new one, as CPython does; other errors pass through.
-    fn raise_frame_start_error(&mut self, message: String) -> Result<(), String> {
+    fn raise_frame_start_error<T>(&mut self, message: String) -> Result<T, String> {
         match runtime_exception_from_message(&message) {
             Some(exception) if exception.type_name == "RecursionError" => {
                 self.raise_exception(exception, true)
@@ -22277,14 +22549,8 @@ impl Vm {
     }
 
     fn raise_runtime_exception_value(&mut self, exception: MiniException) -> Result<Value, String> {
-        self.raise_exception(exception, true)?;
+        self.raise_exception::<()>(exception, true)?;
         Ok(Value::None)
-    }
-
-    fn remember_runtime_exception_error(&mut self, exception: MiniException) -> String {
-        let message = format_exception_error(&exception);
-        self.current_exception = Some(exception);
-        message
     }
 
     fn load_subscript_value(&mut self, object: Value, index: Value) -> Result<Value, String> {
@@ -22314,12 +22580,14 @@ impl Vm {
 
         if let Some(entries) = counter_subclass_entries(&object) {
             ensure_hashable_key(&index)?;
-            return Ok(entries
+            if let Some((_, value)) = entries
                 .borrow()
                 .iter()
-                .find(|(key, _)| dict_keys_equal(key, &index))
-                .map(|(_, value)| value.clone())
-                .unwrap_or(Value::Number(0)));
+                .find(|(existing_key, _)| dict_keys_equal(existing_key, &index))
+            {
+                return Ok(value.clone());
+            }
+            return self.counter_missing_value(&object, index);
         }
 
         if let Some(entries) = dict_subclass_entries(&object) {
@@ -22339,11 +22607,8 @@ impl Vm {
             default_factory,
         } = &object
         {
-            return self.load_default_dict_subscript(
-                entries.clone(),
-                default_factory.borrow().clone(),
-                index,
-            );
+            let factory = default_factory.borrow().clone();
+            return self.load_default_dict_subscript(entries.clone(), factory, index);
         }
 
         if let Value::ChainMap { maps } = &object {
@@ -22363,6 +22628,14 @@ impl Vm {
             };
         }
 
+        if let Value::Deque { .. } = &object
+            && let Value::Slice { .. } = &index
+        {
+            // A deque does not support slicing: CPython raises the error
+            // without converting anything.
+            return Err("TypeError: sequence index must be integer, not 'slice'".to_string());
+        }
+
         let index = if uses_sequence_index_protocol(&object) {
             self.sequence_subscript_index(index)?
         } else {
@@ -22370,6 +22643,206 @@ impl Vm {
         };
 
         load_subscript_or_raise_key_error(self, object, index)
+    }
+
+    /// A missing `Counter` key runs `__missing__`, which a subclass may
+    /// override; the built-in `Counter.__missing__` counts nothing.
+    fn counter_missing_value(&mut self, receiver: &Value, key: Value) -> Result<Value, String> {
+        if let Some(missing) = instance_special_method(receiver, "__missing__") {
+            return self.call_value(missing, vec![key]);
+        }
+        Ok(Value::Number(0))
+    }
+
+    /// The count a counter operand reports for `key`, read through the
+    /// subscript protocol so an overridden `__getitem__` or `__missing__`
+    /// decides the value.
+    fn counter_operand_count(&mut self, operand: &Value, key: &Value) -> Result<Value, String> {
+        match self.load_subscript_value_catching(operand.clone(), key.clone())? {
+            Ok(value) => Ok(value),
+            // CPython propagates the exception the operand raised, so the
+            // original exception object reaches the handler that catches it.
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
+        }
+    }
+
+    /// Whether a counter operand owns `key`, as CPython asks the operand
+    /// itself through its membership protocol.
+    fn counter_operand_contains(&mut self, operand: &Value, key: &Value) -> Result<bool, String> {
+        self.contains_value(key.clone(), operand.clone())
+    }
+
+    /// The items a counter operand reports, read through its `items()` method
+    /// so an overridden `items()` decides what the operand owns. Every item
+    /// reaches `sink` as soon as the view produces it, so an operation
+    /// applies an item before a later item raises, as CPython does.
+    fn counter_operand_items<F>(&mut self, operand: &Value, mut sink: F) -> Result<(), String>
+    where
+        F: FnMut(&mut Self, (Value, Value)) -> Result<(), String>,
+    {
+        let items = self.load_attribute_value(operand.clone(), "items")?;
+        let view = match self.call_value_catching(items, vec![])? {
+            Ok(value) => value,
+            // CPython propagates the exception the `items()` method raised,
+            // so the original exception object reaches the handler that
+            // catches it.
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
+        };
+        self.for_each_iterable_value(view, |vm, item| {
+            let pair = vm.counter_item_pair(item)?;
+            sink(vm, pair)
+        })
+    }
+
+    /// The two values a counter item carries, unpacked through the iteration
+    /// protocol so a user-defined iterable works. CPython reads a third value
+    /// at most, so an item that carries more reports the unpack error right
+    /// away and never reads the rest of the item.
+    fn counter_item_pair(&mut self, item: Value) -> Result<(Value, Value), String> {
+        let mut values: Vec<Value> = Vec::new();
+        let mut iterator = self.get_iter_for_unpack(item.clone())?;
+        loop {
+            match self.advance_owned_iterator_capturing(&mut iterator)? {
+                Ok(IteratorAdvance::Yield(value)) => {
+                    values.push(value);
+                    if values.len() > 2 {
+                        // CPython stops at the third value, so an item that
+                        // fails while it is read never raises that failure.
+                        let count = counter_item_sequence_length(&item).unwrap_or(values.len());
+                        return Err(counter_item_unpack_message(&item, count));
+                    }
+                }
+                Ok(IteratorAdvance::Complete(_)) => break,
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
+            }
+        }
+        if values.len() == 2 {
+            return Ok((values[0].clone(), values[1].clone()));
+        }
+        Err(counter_item_unpack_message(&item, values.len()))
+    }
+
+    /// Drop the counts a counter receiver reports that are not positive, as
+    /// CPython's in-place operations keep only the positive counts. Every
+    /// count is compared while the receiver reports it, so a count that
+    /// cannot be compared stops the operation before a later item fails. The
+    /// counts are dropped after the whole view was read, because CPython
+    /// drops them after the whole update and not while the view is running.
+    fn counter_drop_non_positive_entries(&mut self, receiver: &Value) -> Result<(), String> {
+        let mut dropped: Vec<Value> = Vec::new();
+        self.counter_operand_items(receiver, |vm, (key, count)| {
+            // CPython asks the count itself with `count > 0`, so a count
+            // that defines its own comparison decides whether it stays.
+            if vm.greater_values(count, Value::Number(0))? {
+                return Ok(());
+            }
+            dropped.push(key);
+            Ok(())
+        })?;
+        for key in dropped {
+            self.delete_subscript_value(receiver.clone(), key)?;
+        }
+        Ok(())
+    }
+
+    /// The repr of a counter, as CPython renders it: the counts of the
+    /// counter decide the order of the entries, and every key and count is
+    /// shown with its own repr.
+    fn counter_repr_text(&mut self, receiver: &Value) -> Result<String, String> {
+        let entries = counter_receiver_entries(receiver)?;
+        let name = counter_repr_class_name(receiver);
+        let items = entries.borrow().entries.clone();
+        if items.is_empty() {
+            return Ok(format!("{name}()"));
+        }
+        let ordered = match self.counter_repr_ordered_items(items.clone()) {
+            Ok(ordered) => ordered,
+            // CPython keeps the order the counter reports when the counts
+            // cannot be compared with each other.
+            Err(message) if message.starts_with("TypeError:") => items,
+            Err(message) => return Err(message),
+        };
+        let mut rendered = Vec::with_capacity(ordered.len());
+        for (key, count) in ordered {
+            let key_repr = self.repr_value_with_dispatch(&key)?;
+            let count_repr = self.repr_value_with_dispatch(&count)?;
+            rendered.push(format!("{key_repr}: {count_repr}"));
+        }
+        Ok(format!("{name}({{{}}})", rendered.join(", ")))
+    }
+
+    /// The entries of a counter in the order CPython shows them: the larger
+    /// count comes first, and the counts that cannot be compared with each
+    /// other keep the order the counter reports. The counts are compared
+    /// with `<`, as CPython's sort compares them, so a count that cannot be
+    /// compared stops the order and the counter keeps the order it reports.
+    fn counter_repr_ordered_items(
+        &mut self,
+        items: Vec<(Value, Value)>,
+    ) -> Result<Vec<(Value, Value)>, String> {
+        let length = items.len();
+        if length < 2 {
+            return Ok(items);
+        }
+        let mut source = items;
+        let mut target = source.clone();
+        let mut width = 1;
+        while width < length {
+            let mut start = 0;
+            while start < length {
+                let middle = (start + width).min(length);
+                let end = (start + 2 * width).min(length);
+                let mut left = start;
+                let mut right = middle;
+                let mut index = start;
+                while left < middle && right < end {
+                    // The larger count comes first, so a count that is not
+                    // smaller than the other one comes first as well.
+                    if self.less_values(source[left].1.clone(), source[right].1.clone())? {
+                        target[index] = source[right].clone();
+                        right += 1;
+                    } else {
+                        target[index] = source[left].clone();
+                        left += 1;
+                    }
+                    index += 1;
+                }
+                while left < middle {
+                    target[index] = source[left].clone();
+                    left += 1;
+                    index += 1;
+                }
+                while right < end {
+                    target[index] = source[right].clone();
+                    right += 1;
+                    index += 1;
+                }
+                start = end;
+            }
+            std::mem::swap(&mut source, &mut target);
+            width *= 2;
+        }
+        Ok(source)
+    }
+
+    /// The `update` method CPython calls on a counter receiver: an instance
+    /// attribute, a subclass override, or the built-in `Counter.update`.
+    fn counter_update_method(&mut self, receiver: &Value) -> Result<Value, String> {
+        match self.load_attribute_catching(receiver.clone(), "update") {
+            Ok(Ok(value)) => Ok(value),
+            Ok(Err(exception)) => {
+                // A subclass that overrides `__getattribute__` answers every
+                // lookup, so a failed lookup stops the initialization the way
+                // CPython propagates the exception.
+                if exception_is_builtin_instance(&exception, "AttributeError")
+                    && !counter_receiver_overrides_attribute_lookup(receiver)
+                {
+                    return Ok(counter_builtin_update_method(receiver));
+                }
+                Err(self.propagate_captured_exception(exception))
+            }
+            Err(message) => Err(message),
+        }
     }
 
     fn load_dict_subclass_subscript(
@@ -22475,7 +22948,7 @@ impl Vm {
         };
 
         if let Some(items) = list_subclass_storage(&object) {
-            store_subscript(Value::List(items), index, value)?;
+            store_subscript(self, Value::List(items), index, value)?;
             return Ok(object);
         }
 
@@ -22490,7 +22963,7 @@ impl Vm {
                         step,
                         identity: Rc::new(()),
                     })?;
-                    store_subscript(object, index, value)
+                    store_subscript(self, object, index, value)
                 }
                 index => {
                     let index = self.memoryview_tuple_subscript_index(view, index, true)?;
@@ -22506,6 +22979,14 @@ impl Vm {
 
         if array_array_storage(&object).is_some() {
             return self.store_array_array_subscript_value(object, index, value);
+        }
+
+        if let Value::Deque { .. } = &object
+            && let Value::Slice { .. } = &index
+        {
+            // A deque does not support slicing: CPython raises the error
+            // without converting anything.
+            return Err("TypeError: sequence index must be integer, not 'slice'".to_string());
         }
 
         let index = if uses_sequence_index_protocol(&object) {
@@ -22527,7 +23008,7 @@ impl Vm {
             return Err("bytearray index out of range".to_string());
         }
 
-        store_subscript(object, index, value)
+        store_subscript(self, object, index, value)
     }
 
     fn delete_subscript_value(&mut self, object: Value, index: Value) -> Result<Value, String> {
@@ -22585,6 +23066,14 @@ impl Vm {
 
         if array_array_storage(&object).is_some() {
             return self.delete_array_array_subscript_value(object, index);
+        }
+
+        if let Value::Deque { .. } = &object
+            && let Value::Slice { .. } = &index
+        {
+            // A deque does not support slicing: CPython raises the error
+            // without converting anything.
+            return Err("TypeError: sequence index must be integer, not 'slice'".to_string());
         }
 
         let index = if uses_sequence_index_protocol(&object) {
@@ -22708,24 +23197,25 @@ impl Vm {
         ))
     }
 
-    fn index_slice_part(
-        &mut self,
-        value: Option<Box<Value>>,
-    ) -> Result<Option<Box<Value>>, String> {
-        match value.map(|value| *value) {
-            None | Some(Value::None) => Ok(None),
-            Some(value) => self
-                .maybe_index_integer_value(value)
-                .map(|value| Some(Box::new(value))),
+    fn index_slice_part(&mut self, value: Option<Rc<Value>>) -> Result<Option<Rc<Value>>, String> {
+        match value {
+            None => Ok(None),
+            Some(value) => {
+                if matches!(value.as_ref(), Value::None) {
+                    return Ok(None);
+                }
+                self.maybe_index_integer_value(value.as_ref().clone())
+                    .map(|value| Some(Rc::new(value)))
+            }
         }
     }
 
     fn load_memoryview_slice_subscript(
         &mut self,
         view: MemoryViewRef,
-        start: Option<Box<Value>>,
-        stop: Option<Box<Value>>,
-        step: Option<Box<Value>>,
+        start: Option<Rc<Value>>,
+        stop: Option<Rc<Value>>,
+        step: Option<Rc<Value>>,
     ) -> Result<Value, String> {
         let (
             bytes,
@@ -22753,9 +23243,15 @@ impl Vm {
             )
         };
 
-        let start = self.index_slice_part(start)?.map(|value| *value);
-        let stop = self.index_slice_part(stop)?.map(|value| *value);
-        let step = self.index_slice_part(step)?.map(|value| *value);
+        let start = self
+            .index_slice_part(start)?
+            .map(|value| value.as_ref().clone());
+        let stop = self
+            .index_slice_part(stop)?
+            .map(|value| value.as_ref().clone());
+        let step = self
+            .index_slice_part(step)?
+            .map(|value| value.as_ref().clone());
         let start = slice_bound(start)?;
         let stop = slice_bound(stop)?;
         let step = slice_bound(step)?;
@@ -22888,7 +23384,7 @@ impl Vm {
         if let Some(method) = instance_special_method(&value, "__bool__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             return match result {
                 Value::Bool(value) => Ok(value),
@@ -22902,7 +23398,7 @@ impl Vm {
         if let Some(method) = instance_special_method(&value, "__len__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             return Ok(len_result_from_value(result)? != 0);
         }
@@ -22966,7 +23462,7 @@ impl Vm {
         if let Some(method) = instance_special_method(&value, "__len__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             return len_result_from_value(result);
         }
@@ -23213,7 +23709,7 @@ impl Vm {
                     return Err(compile_filename_type_error(&value));
                 };
                 match self.call_value_catching(method, Vec::new())? {
-                    Err(exception) => Err(format_exception_error(&exception)),
+                    Err(exception) => Err(self.propagate_captured_exception(exception)),
                     Ok(
                         Value::String(filename)
                         | Value::IdentityString {
@@ -23538,10 +24034,14 @@ impl Vm {
         let code = compile_eval_argument(source, self.future_flags)?;
         let result = self.run_code_object(code, globals, locals, is_module, true, None);
 
-        match self.sync_exec_writebacks(&writebacks) {
-            Ok(()) => result,
+        let owed_exception = self.in_flight_exception.take();
+        let writeback_result = self.sync_exec_writebacks(&writebacks);
+        match writeback_result {
             Err(writeback_error) if result.is_ok() => Err(writeback_error),
-            Err(_) => result,
+            _ => {
+                self.in_flight_exception = owed_exception;
+                result
+            }
         }
     }
 
@@ -23590,10 +24090,14 @@ impl Vm {
         if result.is_ok() && !string_annotations {
             install_exec_annotate_function(&locals, &globals);
         }
-        match self.sync_exec_writebacks(&writebacks) {
-            Ok(()) => result,
+        let owed_exception = self.in_flight_exception.take();
+        let writeback_result = self.sync_exec_writebacks(&writebacks);
+        match writeback_result {
             Err(writeback_error) if result.is_ok() => Err(writeback_error),
-            Err(_) => result,
+            _ => {
+                self.in_flight_exception = owed_exception;
+                result
+            }
         }
     }
 
@@ -23812,6 +24316,7 @@ impl Vm {
             self.runtime_options,
             self.frame_stack.clone(),
         );
+        code_vm.active_iterator_states = self.active_iterator_states.clone();
         code_vm.instruction_budget = self.instruction_budget.clone();
         code_vm.outer_handled_exception = self.handed_down_exception();
         code_vm.output_budget = self.output_budget.clone();
@@ -23829,8 +24334,10 @@ impl Vm {
             return match result {
                 Ok(value) => Ok(value),
                 Err(message) => {
-                    if let Some(exception) = code_vm.current_exception {
-                        self.raise_exception(exception, true)?;
+                    if let Some(exception) =
+                        matching_exception(code_vm.in_flight_exception.take(), &message)
+                    {
+                        self.raise_exception::<()>(exception, true)?;
                         Ok(Value::None)
                     } else {
                         Err(message)
@@ -23845,8 +24352,10 @@ impl Vm {
             return match result {
                 Ok(_) => Ok(Value::None),
                 Err(message) => {
-                    if let Some(exception) = code_vm.current_exception {
-                        self.raise_exception(exception, true)?;
+                    if let Some(exception) =
+                        matching_exception(code_vm.in_flight_exception.take(), &message)
+                    {
+                        self.raise_exception::<()>(exception, true)?;
                         Ok(Value::None)
                     } else {
                         Err(message)
@@ -23863,8 +24372,10 @@ impl Vm {
             Ok(ExecutionExit::Yield { .. }) => Err("yield outside exec".to_string()),
             Err(message) => {
                 self.absorb_output_from(&mut code_vm);
-                if let Some(exception) = code_vm.current_exception {
-                    self.raise_exception(exception, true)?;
+                if let Some(exception) =
+                    matching_exception(code_vm.in_flight_exception.take(), &message)
+                {
+                    self.raise_exception::<()>(exception, true)?;
                     Ok(Value::None)
                 } else {
                     Err(message)
@@ -24310,7 +24821,7 @@ impl Vm {
                 .load_subscript_value_catching(mapping.clone(), Value::String(root.to_string()))?
             {
                 Ok(value) => value,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         } else {
             keywords
@@ -24329,7 +24840,7 @@ impl Vm {
                 }
                 value = match self.load_attribute_catching(value, attr)? {
                     Ok(value) => value,
-                    Err(exception) => return Err(format_exception_error(&exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 tail = &rest[next_end..];
             } else if let Some(rest) = tail.strip_prefix('[') {
@@ -24348,7 +24859,7 @@ impl Vm {
                 };
                 value = match self.load_subscript_value_catching(value, key)? {
                     Ok(value) => value,
-                    Err(exception) => return Err(format_exception_error(&exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 tail = &rest[end + 1..];
             } else {
@@ -24386,7 +24897,7 @@ impl Vm {
         if let Some(method) = instance_special_method(value, "__str__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             return dunder_str_result_text(result);
         }
@@ -24394,9 +24905,17 @@ impl Vm {
         if let Some(method) = instance_special_method(value, "__repr__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             return dunder_str_result_text(result);
+        }
+
+        if let Some(rendered) = self.container_repr_with_dispatch(value)? {
+            return Ok(rendered);
+        }
+
+        if let Value::Counter { .. } = value {
+            return self.counter_repr_text(value);
         }
 
         str_value_checked(value)
@@ -24404,7 +24923,128 @@ impl Vm {
 
     fn repr_value(&mut self, value: &Value) -> Result<String, String> {
         crate::stack::check_native_recursion(REPR_RECURSION_CONTEXT)?;
-        if let Some(result) = self.stdlib_call_repr_method(value)? {
+        self.repr_value_with_dispatch(value)
+    }
+
+    /// The repr of a container that shows the values it holds with their own
+    /// repr, as CPython asks every item a container holds for its repr.
+    fn container_repr_with_dispatch(&mut self, value: &Value) -> Result<Option<String>, String> {
+        match value {
+            Value::List(_)
+            | Value::Tuple(_)
+            | Value::Dict(_)
+            | Value::Set(_)
+            | Value::FrozenSet(_)
+            | Value::Deque { .. }
+            | Value::OrderedDict(_)
+            | Value::DefaultDict { .. }
+            | Value::UserDict { .. }
+            | Value::UserList { .. }
+            | Value::ChainMap { .. }
+            | Value::Counter { .. }
+            | Value::DictView { .. }
+            | Value::MappingView { .. } => Ok(Some(self.repr_value_with_dispatch(value)?)),
+            _ => Ok(None),
+        }
+    }
+
+    /// The repr of a value, where a user-defined `__repr__` decides how the
+    /// value shows itself and how a container shows the values it holds.
+    fn repr_value_with_dispatch(&mut self, value: &Value) -> Result<String, String> {
+        // The containers that are being rendered are shared with the calls a
+        // user-defined `__repr__` makes, so a container that shows itself
+        // again stops instead of recursing forever.
+        let outermost = self.repr_active_containers.is_none();
+        if outermost {
+            self.repr_active_containers = Some(Rc::new(RefCell::new(HashSet::new())));
+        }
+        let result = self.repr_value_dispatching(value);
+        if outermost {
+            self.repr_active_containers = None;
+        }
+        result
+    }
+
+    /// The containers whose repr is being rendered right now, which the
+    /// nested calls share so a container that shows itself again stops.
+    fn repr_active_container_set(&self) -> Rc<RefCell<HashSet<usize>>> {
+        self.repr_active_containers
+            .clone()
+            .unwrap_or_else(|| Rc::new(RefCell::new(HashSet::new())))
+    }
+
+    /// The repr of the entries of a mapping. CPython walks the mapping while
+    /// it renders it, so a key that the repr of another entry adds is shown,
+    /// and a key that the repr of another entry removes is skipped.
+    fn repr_dict_entries_with_dispatch(&mut self, entries: &DictRef) -> Result<String, String> {
+        let mut rendered = Vec::new();
+        let mut shown: Vec<Value> = Vec::new();
+        let mut index = 0usize;
+        let mut version = entries.borrow().version;
+        loop {
+            let pair = {
+                let borrowed = entries.borrow();
+                if borrowed.version != version {
+                    version = borrowed.version;
+                    // The dictionary changed while it was rendered, so the
+                    // entry that follows a removed key moved into its place.
+                    index = borrowed
+                        .entries
+                        .iter()
+                        .position(|(key, _)| !shown.iter().any(|done| dict_keys_equal(done, key)))
+                        .unwrap_or(borrowed.entries.len());
+                }
+                match borrowed.entries.get(index) {
+                    Some(pair) => pair.clone(),
+                    None => break,
+                }
+            };
+            shown.push(pair.0.clone());
+            let key_repr = self.repr_value_dispatching(&pair.0)?;
+            let count_repr = self.repr_value_dispatching(&pair.1)?;
+            rendered.push(format!("{key_repr}: {count_repr}"));
+            index += 1;
+        }
+        Ok(rendered.join(", "))
+    }
+
+    /// The repr of a container that shows the values it holds with their own
+    /// repr. The result is `None` when the container shows itself again, as
+    /// CPython stops a repr that would not end and shows the marker of the
+    /// container instead.
+    fn repr_container_with_dispatch<F>(
+        &mut self,
+        identity: usize,
+        render: F,
+    ) -> Result<Option<String>, String>
+    where
+        F: FnOnce(&mut Self) -> Result<String, String>,
+    {
+        let active = self.repr_active_container_set();
+        {
+            let mut active = active.borrow_mut();
+            if !active.insert(identity) {
+                return Ok(None);
+            }
+        }
+        let rendered = render(self);
+        active.borrow_mut().remove(&identity);
+        Ok(Some(rendered?))
+    }
+
+    /// The repr of a value, where a container renders the values it holds
+    /// with the same dispatch, so the `__repr__` of an item a container
+    /// holds decides how the container shows it.
+    fn repr_value_dispatching(&mut self, value: &Value) -> Result<String, String> {
+        crate::stack::check_native_recursion(REPR_RECURSION_CONTEXT)?;
+        if let Some(method) = instance_special_method(value, "__repr__") {
+            let result = match self.call_value_catching(method, Vec::new())? {
+                Ok(result) => result,
+                // CPython propagates the exception the `__repr__` raised, so
+                // the original exception object reaches the handler that
+                // catches it.
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
+            };
             return match result {
                 Value::String(value) | Value::IdentityString { value, .. } => Ok(value),
                 value if str_subclass_string(&value).is_some() => {
@@ -24418,7 +25058,267 @@ impl Vm {
             };
         }
 
-        repr_value_checked(value)
+        match value {
+            Value::List(items) => {
+                let identity = Rc::as_ptr(items) as usize;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    // CPython reads the list while it renders it, so an item
+                    // that the repr of another item appends or replaces is
+                    // shown, and an item that the repr of another item
+                    // removes is skipped.
+                    let mut rendered = Vec::new();
+                    let mut index = 0usize;
+                    loop {
+                        let item = {
+                            let borrowed = items.borrow();
+                            match borrowed.get(index) {
+                                Some(item) => item.clone(),
+                                None => break,
+                            }
+                        };
+                        rendered.push(vm.repr_value_dispatching(&item)?);
+                        index += 1;
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("[{rendered}]")),
+                    // The list shows itself again, so CPython stops the repr
+                    // that would not end.
+                    None => Ok("[...]".to_string()),
+                }
+            }
+            Value::Deque { data, maxlen, .. } => {
+                let identity = Rc::as_ptr(data) as usize;
+                let maxlen = maxlen.get();
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let items = data.borrow().clone();
+                    let mut rendered = Vec::with_capacity(items.len());
+                    for item in &items {
+                        rendered.push(vm.repr_value_dispatching(item)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => match maxlen {
+                        Some(maxlen) => Ok(format!("deque([{rendered}], maxlen={maxlen})")),
+                        None => Ok(format!("deque([{rendered}])")),
+                    },
+                    None => Ok("[...]".to_string()),
+                }
+            }
+            Value::Tuple(items) => {
+                let identity = Rc::as_ptr(items) as usize;
+                let single = items.len() == 1;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let mut rendered = Vec::new();
+                    for item in items.iter() {
+                        rendered.push(vm.repr_value_dispatching(item)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => {
+                        if single {
+                            Ok(format!("({rendered},)"))
+                        } else {
+                            Ok(format!("({rendered})"))
+                        }
+                    }
+                    // The tuple shows itself again, so CPython stops the repr
+                    // that would not end.
+                    None => Ok("(...)".to_string()),
+                }
+            }
+            Value::Dict(entries) => {
+                let identity = Rc::as_ptr(entries) as usize;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    vm.repr_dict_entries_with_dispatch(entries)
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("{{{rendered}}}")),
+                    // The dictionary shows itself again, so CPython stops the
+                    // repr that would not end.
+                    None => Ok("{...}".to_string()),
+                }
+            }
+            Value::Counter { .. } => self.counter_repr_text(value),
+            value if counter_subclass_entries(value).is_some() => self.counter_repr_text(value),
+            Value::OrderedDict(entries) => {
+                let identity = Rc::as_ptr(entries) as usize;
+                // An ordered dictionary takes its entries before it renders
+                // them, so a repr that changes the dictionary does not change
+                // what the repr shows.
+                let items = entries.borrow().entries.clone();
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let mut rendered = Vec::with_capacity(items.len());
+                    for (key, value) in &items {
+                        let key_repr = vm.repr_value_dispatching(key)?;
+                        let value_repr = vm.repr_value_dispatching(value)?;
+                        rendered.push(format!("{key_repr}: {value_repr}"));
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => {
+                        if rendered.is_empty() {
+                            Ok("OrderedDict()".to_string())
+                        } else {
+                            Ok(format!("OrderedDict({{{rendered}}})"))
+                        }
+                    }
+                    // The dictionary shows itself again, so CPython stops the
+                    // repr that would not end.
+                    None => Ok("...".to_string()),
+                }
+            }
+            Value::DefaultDict {
+                entries,
+                default_factory,
+            } => {
+                let identity = Rc::as_ptr(entries) as usize;
+                let factory = default_factory.borrow().clone();
+                let factory = self.repr_value_dispatching(&factory)?;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    vm.repr_dict_entries_with_dispatch(entries)
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("defaultdict({factory}, {{{rendered}}})")),
+                    None => Ok(format!("defaultdict({factory}, {{...}})")),
+                }
+            }
+            Value::UserDict { data, .. } => {
+                let identity = Rc::as_ptr(data) as usize;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    vm.repr_dict_entries_with_dispatch(data)
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("{{{rendered}}}")),
+                    None => Ok("{...}".to_string()),
+                }
+            }
+            Value::UserList { data, .. } => {
+                let identity = Rc::as_ptr(data) as usize;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    // The list is read while it renders, so an item that the
+                    // repr of another item changes is shown.
+                    let mut rendered = Vec::new();
+                    let mut index = 0usize;
+                    loop {
+                        let item = {
+                            let borrowed = data.borrow();
+                            match borrowed.get(index) {
+                                Some(item) => item.clone(),
+                                None => break,
+                            }
+                        };
+                        rendered.push(vm.repr_value_dispatching(&item)?);
+                        index += 1;
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("[{rendered}]")),
+                    None => Ok("[...]".to_string()),
+                }
+            }
+            Value::ChainMap { maps } => {
+                let mut rendered = Vec::with_capacity(maps.len());
+                for map in maps.iter() {
+                    rendered.push(self.repr_value_dispatching(map)?);
+                }
+                Ok(format!("ChainMap({})", rendered.join(", ")))
+            }
+            Value::DictView {
+                kind,
+                entries,
+                ordered,
+                ..
+            } => {
+                let name = if *ordered {
+                    ordered_dict_view_type_name(*kind)
+                } else {
+                    dict_view_type_name(*kind)
+                };
+                let identity = Rc::as_ptr(entries) as usize;
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let items = entries.borrow().entries.clone();
+                    let mut rendered = Vec::with_capacity(items.len());
+                    for (key, value) in items {
+                        let item = match kind {
+                            DictViewKind::Keys => key,
+                            DictViewKind::Values => value,
+                            DictViewKind::Items => tuple_value(vec![key, value]),
+                        };
+                        rendered.push(vm.repr_value_dispatching(&item)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("{name}([{rendered}])")),
+                    None => Ok(format!("{name}([...])")),
+                }
+            }
+            Value::MappingView { kind, mapping, .. } => {
+                let name = dict_view_type_name(*kind);
+                let Some(identity) = mapping_view_repr_identity(*kind, mapping) else {
+                    let rendered = self.repr_value_dispatching(mapping)?;
+                    return Ok(format!("{name}({rendered})"));
+                };
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let values = mapping_view_repr_values(*kind, mapping);
+                    let mut rendered = Vec::with_capacity(values.len());
+                    for value in &values {
+                        rendered.push(vm.repr_value_dispatching(value)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("{name}([{rendered}])")),
+                    None => Ok(format!("{name}([...])")),
+                }
+            }
+            Value::Set(items) => {
+                let identity = Rc::as_ptr(items) as usize;
+                let items = items.borrow().clone();
+                if items.is_empty() {
+                    return Ok("set()".to_string());
+                }
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let mut rendered = Vec::with_capacity(items.len());
+                    for item in &items {
+                        rendered.push(vm.repr_value_dispatching(item)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("{{{rendered}}}")),
+                    // The set shows itself again, so CPython stops the repr
+                    // that would not end and names the kind of the set.
+                    None => Ok("set(...)".to_string()),
+                }
+            }
+            Value::FrozenSet(items) => {
+                let identity = Rc::as_ptr(items) as usize;
+                if items.is_empty() {
+                    return Ok("frozenset()".to_string());
+                }
+                let rendered = self.repr_container_with_dispatch(identity, |vm| {
+                    let mut rendered = Vec::with_capacity(items.len());
+                    for item in items.iter() {
+                        rendered.push(vm.repr_value_dispatching(item)?);
+                    }
+                    Ok(rendered.join(", "))
+                })?;
+                match rendered {
+                    Some(rendered) => Ok(format!("frozenset({{{rendered}}})")),
+                    // The frozen set shows itself again, so CPython stops the
+                    // repr that would not end and names the kind of the set.
+                    None => Ok("frozenset(...)".to_string()),
+                }
+            }
+            _ => repr_value_checked(value),
+        }
     }
 
     fn format_value_with_spec_object(
@@ -24731,9 +25631,15 @@ impl Vm {
         value: Value,
     ) -> Result<(), String> {
         let source_type = type_name(&value).to_string();
-        let mut iterator = match self.get_iter(value) {
-            Ok(iterator) => iterator,
-            Err(error) if error.ends_with(" is not iterable") => {
+        let mut iterator = match self.get_iter_capturing(value) {
+            Ok(Ok(iterator)) => iterator,
+            Ok(Err(exception)) if exception_is_builtin_instance(&exception, "TypeError") => {
+                return Err(format!(
+                    "TypeError: cannot convert '{source_type}' object to bytearray"
+                ));
+            }
+            Ok(Err(exception)) => return Err(self.propagate_captured_exception(exception)),
+            Err(error) if error.starts_with("TypeError:") => {
                 return Err(format!(
                     "TypeError: cannot convert '{source_type}' object to bytearray"
                 ));
@@ -24750,10 +25656,7 @@ impl Vm {
                     storage.borrow_mut().push(byte);
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(()),
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -25917,7 +26820,7 @@ impl Vm {
             }
             "memoryview.__exit__" => {
                 let [Value::MemoryView(view), ..] = args.as_slice() else {
-                    return Err("__exit__() expected a memoryview receiver".to_string());
+                    return Err("TypeError: __exit__() expected a memoryview receiver".to_string());
                 };
                 release_memoryview(view);
                 Ok(Value::None)
@@ -25965,7 +26868,7 @@ impl Vm {
                 let Some(needle) = needle else {
                     return Err("ValueError: memoryview.index(x): x not found".to_string());
                 };
-                let (start, stop) = list_search_bounds(rest, bytes.len())?;
+                let (start, stop) = self.memoryview_search_bounds(rest, bytes.len())?;
                 let index = bytes[start..stop]
                     .iter()
                     .position(|byte| *byte == needle)
@@ -26452,7 +27355,14 @@ impl Vm {
                         let count = byte_sequence_constructor_length_from_index(count)?;
                         Ok(vec![0; count])
                     }
-                    _ => self.bytes_from_iterable(name, value),
+                    _ => self.bytes_from_iterable(
+                        if honor_dunder_bytes {
+                            "bytes"
+                        } else {
+                            "bytearray"
+                        },
+                        value,
+                    ),
                 }
             }
         }
@@ -26465,7 +27375,7 @@ impl Vm {
         let result = match self.call_value_catching(method, Vec::new())? {
             Ok(result) => result,
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 return Ok(DunderBytesResult::Raised);
             }
         };
@@ -26490,9 +27400,15 @@ impl Vm {
 
     fn bytes_from_iterable(&mut self, name: &str, value: Value) -> Result<Vec<u8>, String> {
         let source_type = type_name(&value).to_string();
-        let mut iterator = match self.get_iter(value) {
-            Ok(iterator) => iterator,
-            Err(error) if error.ends_with(" is not iterable") => {
+        let mut iterator = match self.get_iter_capturing(value) {
+            Ok(Ok(iterator)) => iterator,
+            Ok(Err(exception)) if exception_is_builtin_instance(&exception, "TypeError") => {
+                return Err(format!(
+                    "TypeError: cannot convert '{source_type}' object to {name}"
+                ));
+            }
+            Ok(Err(exception)) => return Err(self.propagate_captured_exception(exception)),
+            Err(error) if error.starts_with("TypeError:") => {
                 return Err(format!(
                     "TypeError: cannot convert '{source_type}' object to {name}"
                 ));
@@ -26507,10 +27423,7 @@ impl Vm {
                     bytes.push(self.bytes_constructor_item(value)?);
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(bytes),
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -26534,14 +27447,16 @@ impl Vm {
                 .0),
             value => {
                 let source_type = type_name(&value).to_string();
-                let mut iterator = match self.get_iter(value) {
+                let mut iterator = match self.get_iter_capturing(value)? {
                     Ok(iterator) => iterator,
-                    Err(error) if error.ends_with(" is not iterable") => {
-                        return Err(format!(
-                            "TypeError: can't extend bytearray with {source_type}"
-                        ));
+                    Err(exception) => {
+                        if is_not_iterable_type_error(&exception) {
+                            return Err(format!(
+                                "TypeError: can't extend bytearray with {source_type}"
+                            ));
+                        }
+                        return Err(self.propagate_captured_exception(exception));
                     }
-                    Err(error) => return Err(error),
                 };
                 let mut bytes = Vec::new();
 
@@ -26551,10 +27466,9 @@ impl Vm {
                             bytes.push(self.bytes_constructor_item(value)?);
                         }
                         Ok(IteratorAdvance::Complete(_)) => return Ok(bytes),
-                        Ok(IteratorAdvance::Raised) => {
-                            return Err("iterator raised exception".to_string());
+                        Err(exception) => {
+                            return Err(self.propagate_captured_exception(exception));
                         }
-                        Err(exception) => return Err(format_exception_error(&exception)),
                     }
                 }
             }
@@ -26598,6 +27512,31 @@ impl Vm {
         }
         let value = self.maybe_index_integer_value(value)?;
         memoryview_assignment_byte(value)
+    }
+
+    /// The bounds of a memoryview search. The bounds are converted with the
+    /// index protocol, as CPython does.
+    fn memoryview_search_bounds(
+        &mut self,
+        args: &[Value],
+        len: usize,
+    ) -> Result<(usize, usize), String> {
+        let len = i64::try_from(len).map_err(|_| "memoryview is too large".to_string())?;
+        let start = match args.first() {
+            Some(value) => bytes_bound_argument(self, value, 0, "index")?,
+            None => 0,
+        };
+        let stop = match args.get(1) {
+            Some(value) => bytes_bound_argument(self, value, len, "index")?,
+            None => len,
+        };
+        let start = normalize_positive_slice_bound(start, len);
+        let stop = normalize_positive_slice_bound(stop, len).max(start);
+        let start =
+            usize::try_from(start).map_err(|_| "memoryview index out of range".to_string())?;
+        let stop =
+            usize::try_from(stop).map_err(|_| "memoryview index out of range".to_string())?;
+        Ok((start, stop))
     }
 
     fn memoryview_assignment_bytes_value(
@@ -26861,8 +27800,9 @@ impl Vm {
                     ));
                 };
                 let bytes = bytearray_receiver_storage(receiver, name)?;
+                let index = self.index_i64(index.clone(), "insert index")?;
                 let byte = self.bytearray_assignment_byte_value(item.clone())?;
-                let index = normalized_insert_index(index, bytes.borrow().len())?;
+                let index = normalized_insert_index(&Value::Number(index), bytes.borrow().len())?;
                 ensure_bytearray_resizable(&bytes)?;
                 self.consume_allocation_budget(1)?;
                 bytes.borrow_mut().insert(index, byte);
@@ -27109,7 +28049,7 @@ impl Vm {
         let buffer = match self.call_value_catching(buffer_method, vec![Value::Number(0)])? {
             Ok(buffer) => buffer,
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 return Ok(BufferConversion::Raised);
             }
         };
@@ -27124,7 +28064,7 @@ impl Vm {
             match self.call_value_catching(release_method, vec![Value::MemoryView(view.clone())])? {
                 Ok(_) => Ok(()),
                 Err(exception) => {
-                    self.raise_exception(exception, true)?;
+                    self.raise_exception::<()>(exception, true)?;
                     return Ok(BufferConversion::Raised);
                 }
             }
@@ -27302,7 +28242,7 @@ impl Vm {
                     return self.index_integer_value(value);
                 }
                 Err(format!(
-                    "int() argument must be a string or a number, got {value}"
+                    "TypeError: int() argument must be a string or a number, got {value}"
                 ))
             }
         }
@@ -27547,7 +28487,7 @@ impl Vm {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
                 Err(exception) => {
-                    self.raise_exception(exception, true)?;
+                    self.raise_exception::<()>(exception, true)?;
                     return Ok(ComplexParts::new(0.0, 0.0));
                 }
             };
@@ -27581,7 +28521,7 @@ impl Vm {
                     let result = match self.call_value_catching(method, Vec::new())? {
                         Ok(result) => result,
                         Err(exception) => {
-                            self.raise_exception(exception, true)?;
+                            self.raise_exception::<()>(exception, true)?;
                             return Ok(ComplexParts::new(0.0, 0.0));
                         }
                     };
@@ -27594,7 +28534,7 @@ impl Vm {
                     {
                         Ok(integer) => integer,
                         Err(exception) => {
-                            self.raise_exception(exception, true)?;
+                            self.raise_exception::<()>(exception, true)?;
                             return Ok(ComplexParts::new(0.0, 0.0));
                         }
                     };
@@ -27883,7 +28823,7 @@ impl Vm {
                 };
                 let result = match self.call_value_catching(method, Vec::new())? {
                     Ok(result) => result,
-                    Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 integer_dunder_result("__index__", result)
             }
@@ -27905,7 +28845,7 @@ impl Vm {
                 };
                 let result = match self.call_value_catching(method, Vec::new())? {
                     Ok(result) => result,
-                    Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 integer_dunder_result("__index__", result)
             }
@@ -27914,6 +28854,19 @@ impl Vm {
 
     fn index_i64(&mut self, value: Value, context: &str) -> Result<i64, String> {
         integer_value_to_i64(self.index_integer_value(value)?, context)
+    }
+
+    /// The number of steps of a deque rotation. CPython reads the count as a
+    /// size, so a count that does not fit raises an overflow error instead
+    /// of rotating the deque.
+    fn deque_rotate_steps(&mut self, value: Value) -> Result<i64, String> {
+        match self.index_integer_value(value)? {
+            Value::Number(value) => Ok(value),
+            Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            }),
+            _ => unreachable!("index_integer_value returns an integer"),
+        }
     }
 
     fn index_big_int(&mut self, value: Value) -> Result<BigInt, String> {
@@ -27959,6 +28912,13 @@ impl Vm {
                     .iter()
                     .any(|(key, _)| dict_keys_equal(key, &needle)));
             }
+            if let Some(entries) = counter_subclass_entries(&haystack) {
+                ensure_hashable_key(&needle)?;
+                return Ok(entries
+                    .borrow()
+                    .iter()
+                    .any(|(key, _)| dict_keys_equal(key, &needle)));
+            }
             if let Some(maps) = chain_map_subclass_maps(&haystack) {
                 return self.chain_map_contains_key_in_maps(&maps, &needle);
             }
@@ -27974,14 +28934,14 @@ impl Vm {
         match haystack {
             Value::List(items) => self.list_contains_rich(&items, &needle),
             Value::UserList { data, .. } => self.list_contains_rich(&data, &needle),
-            Value::Deque { data, .. } => self.deque_contains_rich(&data, &needle),
+            Value::Deque { data, state, .. } => self.deque_contains_rich(&data, &state, &needle),
             haystack @ (Value::Tuple(_) | Value::NamedTuple { .. } | Value::Range { .. }) => {
                 self.sequence_abc_contains(haystack, needle)
             }
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
-            Value::OrderedDict(entries) => contains_value(needle, Value::Dict(entries)),
-            Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
-            Value::UserDict { data, .. } => contains_value(needle, Value::Dict(data)),
+            Value::OrderedDict(entries) => contains_value(self, needle, Value::Dict(entries)),
+            Value::Counter { entries } => contains_value(self, needle, Value::Dict(entries)),
+            Value::UserDict { data, .. } => contains_value(self, needle, Value::Dict(data)),
             Value::Set(items) => {
                 let snapshot = items.borrow().clone();
                 Ok(self.set_lookup_position(&snapshot, &needle)?.is_some())
@@ -28002,7 +28962,7 @@ impl Vm {
             }
             // Generators and other iterators are consumed only up to the
             // first match, through the VM iteration protocol.
-            haystack => match contains_value(needle.clone(), haystack.clone()) {
+            haystack => match contains_value(self, needle.clone(), haystack.clone()) {
                 Err(error) if error.ends_with(" is not iterable") => {
                     self.iterator_contains_value(haystack, needle)
                 }
@@ -28030,7 +28990,6 @@ impl Vm {
                     }
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(false),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
                 Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
@@ -28059,16 +29018,16 @@ impl Vm {
                     BufferConversion::Raised => return Ok(false),
                     BufferConversion::NotBuffer => {}
                 }
-                contains_value(needle, receiver)
+                contains_value(self, needle, receiver)
             }
-            needle => contains_value(needle, receiver),
+            needle => contains_value(self, needle, receiver),
         }
     }
 
     fn get_iter(&mut self, value: Value) -> Result<Value, String> {
         match self.get_iter_capturing(value)? {
             Ok(iterator) => Ok(iterator),
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -28085,7 +29044,7 @@ impl Vm {
         match self.get_iter_capturing(value)? {
             Ok(iterator) => Ok(Some(iterator)),
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(None)
             }
         }
@@ -28190,7 +29149,6 @@ impl Vm {
                 Some(default) => Ok(default.clone()),
                 None => self.raise_stop_iteration(value),
             },
-            IteratorAdvance::Raised => Ok(Value::None),
         }
     }
 
@@ -28216,6 +29174,7 @@ impl Vm {
                 let anext = load_attribute(value.clone(), "__anext__")?;
                 let awaitable = self.call_value(anext, Vec::new())?;
                 Ok(Value::AnextDefault {
+                    identity: Rc::new(()),
                     awaitable: Box::new(awaitable),
                     default: Box::new(default.clone()),
                 })
@@ -28243,11 +29202,11 @@ impl Vm {
                     type_name(value)
                 ));
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         let iterator = match self.call_value_catching(aiter, Vec::new())? {
             Ok(iterator) => iterator,
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         match self.load_attribute_catching(iterator.clone(), "__anext__")? {
             Ok(_) => Ok(iterator),
@@ -28257,7 +29216,7 @@ impl Vm {
                     type_name(&iterator)
                 ))
             }
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -28408,17 +29367,21 @@ impl Vm {
             ));
         }
 
-        let mut entries = match args.as_slice() {
-            [] => Vec::new(),
-            [source] => self.dict_entries_from_update_source(source.clone())?,
+        let (mut entries, mut hashes) = match args.as_slice() {
+            [] => (Vec::new(), Vec::new()),
+            [source] => self.dict_update_entries_with_hashes(source)?,
             _ => unreachable!("dict constructor arity is checked before matching args"),
         };
 
         for (key, value) in keywords {
-            insert_dict_entry(&mut entries, Value::String(key), value)?;
+            if insert_dict_entry(&mut entries, Value::String(key), value)? {
+                hashes.push(None);
+            }
         }
 
-        build_dict(entries)
+        Ok(Value::Dict(dict_ref_from_entries_with_stored_hashes(
+            entries, hashes,
+        )?))
     }
 
     fn call_dict_new(
@@ -28477,17 +29440,21 @@ impl Vm {
             ));
         }
 
-        let mut entries = match args.as_slice() {
-            [] => Vec::new(),
-            [source] => self.dict_entries_from_update_source(source.clone())?,
+        let (mut entries, mut hashes) = match args.as_slice() {
+            [] => (Vec::new(), Vec::new()),
+            [source] => self.dict_update_entries_with_hashes(source)?,
             _ => unreachable!("OrderedDict constructor arity is checked before matching args"),
         };
 
         for (key, value) in keywords {
-            insert_dict_entry(&mut entries, Value::String(key), value)?;
+            if insert_dict_entry(&mut entries, Value::String(key), value)? {
+                hashes.push(None);
+            }
         }
 
-        build_ordered_dict(entries)
+        Ok(Value::OrderedDict(
+            dict_ref_from_entries_with_stored_hashes(entries, hashes)?,
+        ))
     }
 
     fn call_default_dict_constructor(
@@ -28642,7 +29609,7 @@ impl Vm {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
-                return Err("__init__() should return None".to_string());
+                return Err(init_should_return_none_error(&result));
             }
         } else {
             let mut init_args = Vec::with_capacity(args.len() + 1);
@@ -29028,7 +29995,13 @@ impl Vm {
             Value::Dict(entries) | Value::Counter { entries } => {
                 let entries = entries.clone();
                 self.for_each_iterable_value(iterable, |vm, key| {
-                    vm.counter_adjust_count(&entries, key, Value::Number(1), CounterUpdateMode::Add)
+                    vm.counter_adjust_count(
+                        &entries,
+                        key,
+                        Value::Number(1),
+                        CounterUpdateMode::Add,
+                        false,
+                    )
                 })
             }
             _ => self.for_each_iterable_value(iterable, |vm, key| {
@@ -29037,6 +30010,7 @@ impl Vm {
                     key,
                     Value::Number(1),
                     CounterUpdateMode::Add,
+                    false,
                 )
             }),
         }
@@ -29059,7 +30033,7 @@ impl Vm {
         }
 
         self.for_each_iterable_value(source, |vm, key| {
-            vm.counter_adjust_count(entries, key, Value::Number(1), mode)
+            vm.counter_adjust_count(entries, key, Value::Number(1), mode, false)
         })
     }
 
@@ -29085,7 +30059,13 @@ impl Vm {
         }
 
         for key in self.collect_iterable_values_propagating(source)? {
-            self.adjust_mapping_count_by_protocol(receiver.clone(), key, Value::Number(1), mode)?;
+            self.adjust_mapping_count_by_protocol(
+                receiver.clone(),
+                key,
+                Value::Number(1),
+                mode,
+                false,
+            )?;
         }
         Ok(())
     }
@@ -29101,23 +30081,45 @@ impl Vm {
             return self.counter_update_mapping_entries(entries, updates, mode);
         }
 
+        // An empty counter keeps the counts of a mapping as they are, which is
+        // the `dict.update` fast path CPython takes while the counter is
+        // empty. CPython asks the receiver for its truth value, so a subclass
+        // `__bool__` decides whether the fast path applies.
+        if matches!(mode, CounterUpdateMode::Add) && !self.truth_value(receiver.clone())? {
+            for (key, value) in updates {
+                ensure_hashable_key(&key)?;
+                insert_live_dict_entry(&mut entries.borrow_mut(), key, value)?;
+            }
+            return Ok(());
+        }
+
         for (key, delta) in updates {
-            self.adjust_mapping_count_by_protocol(receiver.clone(), key, delta, mode)?;
+            self.adjust_mapping_count_by_protocol(receiver.clone(), key, delta, mode, true)?;
         }
         Ok(())
     }
 
+    /// `count_first` mirrors CPython, where a mapping count is added to the
+    /// stored count as `count + stored` while counted elements are stored as
+    /// `stored + 1`.
     fn counter_adjust_count(
         &mut self,
         entries: &DictRef,
         key: Value,
         delta: Value,
         mode: CounterUpdateMode,
+        count_first: bool,
     ) -> Result<(), String> {
         ensure_hashable_key(&key)?;
         let current = dict_lookup(&entries.borrow().entries, &key).unwrap_or(Value::Number(0));
         let value = match mode {
-            CounterUpdateMode::Add => self.add_values(current, delta)?,
+            CounterUpdateMode::Add => {
+                if count_first {
+                    self.add_values(delta, current)?
+                } else {
+                    self.add_values(current, delta)?
+                }
+            }
             CounterUpdateMode::Subtract => subtract_values(current, delta)?,
         };
         insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
@@ -29140,23 +30142,33 @@ impl Vm {
         }
 
         for (key, value) in updates {
-            self.counter_adjust_count(entries, key, value, mode)?;
+            self.counter_adjust_count(entries, key, value, mode, true)?;
         }
         Ok(())
     }
 
+    /// `count_first` mirrors CPython, where a mapping count is added to the
+    /// stored count as `count + stored` while counted elements are stored as
+    /// `stored + 1`.
     fn adjust_mapping_count_by_protocol(
         &mut self,
         mapping: Value,
         key: Value,
         delta: Value,
         mode: CounterUpdateMode,
+        count_first: bool,
     ) -> Result<(), String> {
         ensure_hashable_key(&key)?;
         let get = self.load_attribute_value(mapping.clone(), "get")?;
         let current = self.call_value(get, vec![key.clone(), Value::Number(0)])?;
         let next = match mode {
-            CounterUpdateMode::Add => add_values(current, delta)?,
+            CounterUpdateMode::Add => {
+                if count_first {
+                    add_values(delta, current)?
+                } else {
+                    add_values(current, delta)?
+                }
+            }
             CounterUpdateMode::Subtract => subtract_values(current, delta)?,
         };
         self.store_subscript_value(mapping, key, next)?;
@@ -29168,7 +30180,8 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let data = dict_ref_from_entries(self.user_dict_constructor_entries(args, keywords)?)?;
+        let (entries, hashes) = self.user_dict_constructor_entries(args, keywords)?;
+        let data = dict_ref_from_entries_with_stored_hashes(entries, hashes)?;
         Ok(Value::UserDict {
             data,
             attrs: dict_ref_from_entries(Vec::new())?,
@@ -29219,7 +30232,7 @@ impl Vm {
         &mut self,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
-    ) -> Result<Vec<(Value, Value)>, String> {
+    ) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
         if args.len() > 1 {
             return Err(format!(
                 "UserDict expected at most 1 argument, got {}",
@@ -29227,17 +30240,19 @@ impl Vm {
             ));
         }
 
-        let mut entries = match args.as_slice() {
-            [] | [Value::None] => Vec::new(),
-            [source] => self.dict_entries_from_update_source(source.clone())?,
+        let (mut entries, mut hashes) = match args.as_slice() {
+            [] | [Value::None] => (Vec::new(), Vec::new()),
+            [source] => self.dict_update_entries_with_hashes(source)?,
             _ => unreachable!("UserDict constructor arity is checked before matching args"),
         };
 
         for (key, value) in keywords {
-            insert_dict_entry(&mut entries, Value::String(key), value)?;
+            if insert_dict_entry(&mut entries, Value::String(key), value)? {
+                hashes.push(None);
+            }
         }
 
-        Ok(entries)
+        Ok((entries, hashes))
     }
 
     fn call_user_list(
@@ -29341,6 +30356,21 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        let deque = Value::Deque {
+            data: Rc::new(RefCell::new(Vec::new())),
+            maxlen: Rc::new(Cell::new(None)),
+            state: Rc::new(Cell::new(0)),
+        };
+        self.init_deque(&deque, args, keywords)?;
+        Ok(deque)
+    }
+
+    fn init_deque(
+        &mut self,
+        receiver: &Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let mut iterable = None;
         let mut maxlen = None;
         let total_args = args.len() + keywords.len();
@@ -29392,20 +30422,23 @@ impl Vm {
             None | Some(Value::None) => None,
             Some(value) => Some(deque_maxlen_value(value)?),
         };
-        let mut values = match iterable {
-            None => Vec::new(),
-            Some(value) => self.collect_iterable_values(value)?,
+        let Value::Deque {
+            data,
+            maxlen: current_maxlen,
+            state,
+        } = receiver
+        else {
+            return Err("TypeError: deque.__init__() expected a deque receiver".to_string());
         };
-        if let Some(maxlen) = maxlen {
-            if values.len() > maxlen {
-                values = values[values.len() - maxlen..].to_vec();
-            }
+        current_maxlen.set(maxlen);
+        if !data.borrow().is_empty() {
+            data.borrow_mut().clear();
+            state.set(state.get().wrapping_add(1));
         }
-
-        Ok(Value::Deque {
-            data: Rc::new(RefCell::new(values)),
-            maxlen,
-        })
+        if let Some(iterable) = iterable {
+            self.call_deque_method("deque.extend", vec![receiver.clone(), iterable], Vec::new())?;
+        }
+        Ok(Value::None)
     }
 
     fn call_array_array(
@@ -29549,10 +30582,7 @@ impl Vm {
                     bytes.extend(self.array_array_item_bytes(typecode, value)?);
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(bytes),
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -29806,9 +30836,9 @@ impl Vm {
 
     fn copy_array_array_value(&self, receiver: &Value) -> Result<Value, String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "__copy__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __copy__() expected an array receiver".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "__copy__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __copy__() expected an array receiver".to_string())?;
         Ok(array_array_instance(
             Some(&typecode),
             Some(bytearray_bytes(&storage)),
@@ -29822,7 +30852,7 @@ impl Vm {
         error_action: &str,
     ) -> Result<Value, String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "__add__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __add__() expected an array receiver".to_string())?;
         let Some(other_storage) = array_array_storage(other) else {
             return Err(format!(
                 "TypeError: can only {error_action} array (not \"{}\") to array",
@@ -29834,7 +30864,7 @@ impl Vm {
             return Err("TypeError: bad argument type for built-in operation".to_string());
         }
         let mut bytes = array_array_bytes(receiver)
-            .ok_or_else(|| "__add__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __add__() expected an array receiver".to_string())?;
         bytes.extend(bytearray_bytes(&other_storage));
         Ok(array_array_instance(Some(&typecode), Some(bytes)))
     }
@@ -29846,9 +30876,9 @@ impl Vm {
         non_array_message: &str,
     ) -> Result<(), String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "__iadd__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __iadd__() expected an array receiver".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "__iadd__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __iadd__() expected an array receiver".to_string())?;
         let Some(other_storage) = array_array_storage(other) else {
             return Err(format!(
                 "TypeError: {non_array_message} (not \"{}\")",
@@ -29886,9 +30916,9 @@ impl Vm {
 
     fn array_array_repeat_value(&self, receiver: &Value, count: i64) -> Result<Value, String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "__mul__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __mul__() expected an array receiver".to_string())?;
         let bytes = array_array_bytes(receiver)
-            .ok_or_else(|| "__mul__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __mul__() expected an array receiver".to_string())?;
         Ok(array_array_instance(
             Some(&typecode),
             Some(repeat_bytes(bytes, count)?),
@@ -29897,7 +30927,7 @@ impl Vm {
 
     fn array_array_repeat_in_place(&self, receiver: &Value, count: i64) -> Result<(), String> {
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "__imul__() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __imul__() expected an array receiver".to_string())?;
         let current_len = storage.borrow().len();
         let next_len = repeat_bytes_len(current_len, count)?;
         if next_len != current_len {
@@ -29943,11 +30973,11 @@ impl Vm {
         value: Value,
     ) -> Result<(), String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "array assignment expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: array assignment expected an array receiver".to_string())?;
         let itemsize = array_array_itemsize_for_typecode(&typecode)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "array assignment expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: array assignment expected an array receiver".to_string())?;
         let len = storage.borrow().len() / itemsize;
         let index = normalized_index(index, len, "array")
             .map_err(|_| "IndexError: array assignment index out of range".to_string())?;
@@ -29971,12 +31001,14 @@ impl Vm {
         step: Option<Value>,
         value: Value,
     ) -> Result<(), String> {
-        let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "array slice assignment expected an array receiver".to_string())?;
+        let typecode = array_array_typecode(receiver).ok_or_else(|| {
+            "TypeError: array slice assignment expected an array receiver".to_string()
+        })?;
         let itemsize = array_array_itemsize_for_typecode(&typecode)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
-        let storage = array_array_storage(receiver)
-            .ok_or_else(|| "array slice assignment expected an array receiver".to_string())?;
+        let storage = array_array_storage(receiver).ok_or_else(|| {
+            "TypeError: array slice assignment expected an array receiver".to_string()
+        })?;
         let start = slice_bound(start)?;
         let stop = slice_bound(stop)?;
         let step = slice_bound(step)?;
@@ -29988,10 +31020,10 @@ impl Vm {
             let (start, stop) = contiguous_slice_bounds(len, start, stop)?;
             let byte_start = start
                 .checked_mul(itemsize)
-                .ok_or_else(|| "array index out of range".to_string())?;
+                .ok_or_else(|| "IndexError: array index out of range".to_string())?;
             let byte_stop = stop
                 .checked_mul(itemsize)
-                .ok_or_else(|| "array index out of range".to_string())?;
+                .ok_or_else(|| "IndexError: array index out of range".to_string())?;
             if replacement.len() != byte_stop.saturating_sub(byte_start) {
                 ensure_bytearray_resizable(&storage)?;
             }
@@ -30013,7 +31045,7 @@ impl Vm {
             for (index, chunk) in indices.into_iter().zip(replacement.chunks_exact(itemsize)) {
                 let start = index
                     .checked_mul(itemsize)
-                    .ok_or_else(|| "array index out of range".to_string())?;
+                    .ok_or_else(|| "IndexError: array index out of range".to_string())?;
                 borrowed[start..start + itemsize].copy_from_slice(chunk);
             }
         }
@@ -30043,7 +31075,7 @@ impl Vm {
 
     fn delete_array_array_item(&mut self, receiver: &Value, index: Value) -> Result<(), String> {
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "array deletion expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: array deletion expected an array receiver".to_string())?;
         let itemsize = array_array_itemsize(receiver)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
         let len = storage.borrow().len() / itemsize;
@@ -30064,8 +31096,9 @@ impl Vm {
         stop: Option<Value>,
         step: Option<Value>,
     ) -> Result<(), String> {
-        let storage = array_array_storage(receiver)
-            .ok_or_else(|| "array slice deletion expected an array receiver".to_string())?;
+        let storage = array_array_storage(receiver).ok_or_else(|| {
+            "TypeError: array slice deletion expected an array receiver".to_string()
+        })?;
         let itemsize = array_array_itemsize(receiver)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
         let start = slice_bound(start)?;
@@ -30081,10 +31114,10 @@ impl Vm {
             }
             let byte_start = start
                 .checked_mul(itemsize)
-                .ok_or_else(|| "array index out of range".to_string())?;
+                .ok_or_else(|| "IndexError: array index out of range".to_string())?;
             let byte_stop = stop
                 .checked_mul(itemsize)
-                .ok_or_else(|| "array index out of range".to_string())?;
+                .ok_or_else(|| "IndexError: array index out of range".to_string())?;
             storage.borrow_mut().drain(byte_start..byte_stop);
         } else {
             let len = storage.borrow().len() / itemsize;
@@ -30097,7 +31130,7 @@ impl Vm {
             for index in indices {
                 let start = index
                     .checked_mul(itemsize)
-                    .ok_or_else(|| "array index out of range".to_string())?;
+                    .ok_or_else(|| "IndexError: array index out of range".to_string())?;
                 borrowed.drain(start..start + itemsize);
             }
         }
@@ -30107,9 +31140,9 @@ impl Vm {
 
     fn array_array_extend_items(&mut self, receiver: &Value, source: Value) -> Result<(), String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "extend() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: extend() expected an array receiver".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "extend() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: extend() expected an array receiver".to_string())?;
 
         if let Some(source_storage) = array_array_storage(&source) {
             let source_typecode = array_array_typecode(&source).unwrap_or_else(|| "B".to_string());
@@ -30124,7 +31157,10 @@ impl Vm {
             return Ok(());
         }
 
-        let mut iterator = self.get_iter(source)?;
+        let mut iterator = match self.get_iter_capturing(source)? {
+            Ok(iterator) => iterator,
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
+        };
         let mut resized = false;
         loop {
             match self.advance_owned_iterator_capturing(&mut iterator)? {
@@ -30137,17 +31173,16 @@ impl Vm {
                     storage.borrow_mut().extend(bytes);
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(()),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
 
     fn array_array_from_list(&mut self, receiver: &Value, source: &Value) -> Result<(), String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "fromlist() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: fromlist() expected an array receiver".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "fromlist() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: fromlist() expected an array receiver".to_string())?;
         let Value::List(items) = source else {
             return Err("TypeError: arg must be list".to_string());
         };
@@ -30167,9 +31202,9 @@ impl Vm {
 
     fn array_array_from_bytes(&mut self, receiver: &Value, source: &Value) -> Result<(), String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "frombytes() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: frombytes() expected an array receiver".to_string())?;
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "frombytes() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: frombytes() expected an array receiver".to_string())?;
         let Some(extension) = bytes_buffer_value_bytes(source)? else {
             return Err(format!(
                 "TypeError: a bytes-like object is required, not '{}'",
@@ -30186,7 +31221,7 @@ impl Vm {
 
     fn array_array_to_file(&mut self, receiver: &Value, file: Value) -> Result<(), String> {
         let bytes = array_array_bytes(receiver)
-            .ok_or_else(|| "tofile() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: tofile() expected an array receiver".to_string())?;
         let write = self.load_attribute_value(file, "write")?;
         self.call_value(write, vec![bytes_value(bytes)])?;
         Ok(())
@@ -30199,9 +31234,9 @@ impl Vm {
         count: Value,
     ) -> Result<(), String> {
         let storage = array_array_storage(receiver)
-            .ok_or_else(|| "fromfile() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: fromfile() expected an array receiver".to_string())?;
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "fromfile() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: fromfile() expected an array receiver".to_string())?;
         let itemsize = array_array_itemsize_for_typecode(&typecode)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
         let count = self.index_i64(count, "array.fromfile() argument 2")?;
@@ -30236,9 +31271,9 @@ impl Vm {
 
     fn array_array_count_value(&mut self, receiver: &Value, needle: Value) -> Result<i64, String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "count() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: count() expected an array receiver".to_string())?;
         let bytes = array_array_bytes(receiver)
-            .ok_or_else(|| "count() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: count() expected an array receiver".to_string())?;
         let mut count = 0_i64;
         let values = array_array_values_from_bytes(&typecode, &bytes)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
@@ -30260,9 +31295,9 @@ impl Vm {
         stop: Option<Value>,
     ) -> Result<i64, String> {
         let typecode = array_array_typecode(receiver)
-            .ok_or_else(|| "index() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: index() expected an array receiver".to_string())?;
         let bytes = array_array_bytes(receiver)
-            .ok_or_else(|| "index() expected an array receiver".to_string())?;
+            .ok_or_else(|| "TypeError: index() expected an array receiver".to_string())?;
         let values = array_array_values_from_bytes(&typecode, &bytes)
             .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
         let len = i64::try_from(values.len()).map_err(|_| "array is too large".to_string())?;
@@ -30276,13 +31311,15 @@ impl Vm {
         };
         let start = normalize_positive_slice_bound(start, len);
         let stop = normalize_positive_slice_bound(stop, len).max(start);
-        let start = usize::try_from(start).map_err(|_| "array index out of range".to_string())?;
-        let stop = usize::try_from(stop).map_err(|_| "array index out of range".to_string())?;
+        let start = usize::try_from(start)
+            .map_err(|_| "IndexError: array index out of range".to_string())?;
+        let stop = usize::try_from(stop)
+            .map_err(|_| "IndexError: array index out of range".to_string())?;
 
         for (index, item) in values[start..stop].iter().enumerate() {
             if self.equal_values(item.clone(), needle.clone())? {
                 return i64::try_from(start + index)
-                    .map_err(|_| "array index out of range".to_string());
+                    .map_err(|_| "IndexError: array index out of range".to_string());
             }
         }
         Err("ValueError: array.index(x): x not in array".to_string())
@@ -30295,7 +31332,7 @@ impl Vm {
         method: &str,
     ) -> Result<Value, String> {
         let Some(left) = array_array_values(receiver) else {
-            return Err(format!("{method}() expected an array receiver"));
+            return Err(format!("TypeError: {method}() expected an array receiver"));
         };
         let Some(right) = array_array_values(other) else {
             return Ok(Value::NotImplemented);
@@ -30304,10 +31341,12 @@ impl Vm {
         let result = match method {
             "__eq__" => self.rich_sequence_equal(&left, &right)?,
             "__ne__" => !self.rich_sequence_equal(&left, &right)?,
-            "__lt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Less)?,
-            "__le__" => self.rich_sequence_order(&left, &right, SequenceOrder::LessEqual)?,
-            "__gt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Greater)?,
-            "__ge__" => self.rich_sequence_order(&left, &right, SequenceOrder::GreaterEqual)?,
+            "__lt__" => return self.rich_sequence_order(&left, &right, SequenceOrder::Less),
+            "__le__" => return self.rich_sequence_order(&left, &right, SequenceOrder::LessEqual),
+            "__gt__" => return self.rich_sequence_order(&left, &right, SequenceOrder::Greater),
+            "__ge__" => {
+                return self.rich_sequence_order(&left, &right, SequenceOrder::GreaterEqual);
+            }
             _ => return Err(format!("unknown array comparison method: {method}")),
         };
         Ok(Value::Bool(result))
@@ -30481,9 +31520,9 @@ impl Vm {
                     ));
                 };
                 let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "append() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: append() expected an array receiver".to_string())?;
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "append() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: append() expected an array receiver".to_string())?;
                 let bytes = self.array_array_item_bytes(&typecode, item.clone())?;
                 ensure_bytearray_resizable(&storage)?;
                 storage.borrow_mut().extend(bytes);
@@ -30507,16 +31546,20 @@ impl Vm {
                     ));
                 };
                 let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "insert() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: insert() expected an array receiver".to_string())?;
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "insert() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: insert() expected an array receiver".to_string())?;
                 let itemsize = array_array_itemsize_for_typecode(&typecode)
                     .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
+                let index = self.index_i64(index.clone(), "insert index")?;
                 let bytes = self.array_array_item_bytes(&typecode, item.clone())?;
-                let index = normalized_insert_index(index, storage.borrow().len() / itemsize)?;
+                let index = normalized_insert_index(
+                    &Value::Number(index),
+                    storage.borrow().len() / itemsize,
+                )?;
                 let byte_index = index
                     .checked_mul(itemsize)
-                    .ok_or_else(|| "array index out of range".to_string())?;
+                    .ok_or_else(|| "IndexError: array index out of range".to_string())?;
                 ensure_bytearray_resizable(&storage)?;
                 storage.borrow_mut().splice(byte_index..byte_index, bytes);
                 Ok(Value::None)
@@ -30583,8 +31626,9 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "fromunicode() expected an array receiver".to_string())?;
+                let typecode = array_array_typecode(receiver).ok_or_else(|| {
+                    "TypeError: fromunicode() expected an array receiver".to_string()
+                })?;
                 let source = match source {
                     Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
                     value if str_subclass_string(value).is_some() => {
@@ -30602,8 +31646,9 @@ impl Vm {
                         "ValueError: fromunicode() may only be called on unicode type arrays ('u' or 'w')"
                     ));
                 }
-                let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "fromunicode() expected an array receiver".to_string())?;
+                let storage = array_array_storage(receiver).ok_or_else(|| {
+                    "TypeError: fromunicode() expected an array receiver".to_string()
+                })?;
                 let extension = array_array_unicode_text_bytes(&source);
                 if !extension.is_empty() {
                     ensure_bytearray_resizable(&storage)?;
@@ -30618,8 +31663,9 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "tounicode() expected an array receiver".to_string())?;
+                let typecode = array_array_typecode(receiver).ok_or_else(|| {
+                    "TypeError: tounicode() expected an array receiver".to_string()
+                })?;
                 if !matches!(typecode.as_str(), "u" | "w") {
                     return Err(
                         "ValueError: tounicode() may only be called on unicode type arrays ('u' or 'w')"
@@ -30642,9 +31688,9 @@ impl Vm {
                     ));
                 }
                 let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "pop() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: pop() expected an array receiver".to_string())?;
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "pop() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: pop() expected an array receiver".to_string())?;
                 let itemsize = array_array_itemsize_for_typecode(&typecode)
                     .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
                 let len = storage.borrow().len() / itemsize;
@@ -30675,9 +31721,9 @@ impl Vm {
                     ));
                 };
                 let typecode = array_array_typecode(receiver)
-                    .ok_or_else(|| "remove() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: remove() expected an array receiver".to_string())?;
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "remove() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: remove() expected an array receiver".to_string())?;
                 let bytes = bytearray_bytes(&storage);
                 let itemsize = array_array_itemsize_for_typecode(&typecode)
                     .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
@@ -30695,7 +31741,7 @@ impl Vm {
                 };
                 let byte_index = index
                     .checked_mul(itemsize)
-                    .ok_or_else(|| "array index out of range".to_string())?;
+                    .ok_or_else(|| "IndexError: array index out of range".to_string())?;
                 ensure_bytearray_resizable(&storage)?;
                 storage
                     .borrow_mut()
@@ -30710,7 +31756,7 @@ impl Vm {
                     ));
                 };
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "reverse() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: reverse() expected an array receiver".to_string())?;
                 let itemsize = array_array_itemsize(receiver)
                     .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
                 if storage.borrow().len() > itemsize {
@@ -30733,7 +31779,7 @@ impl Vm {
                     ));
                 };
                 let storage = array_array_storage(receiver)
-                    .ok_or_else(|| "clear() expected an array receiver".to_string())?;
+                    .ok_or_else(|| "TypeError: clear() expected an array receiver".to_string())?;
                 if !storage.borrow().is_empty() {
                     ensure_bytearray_resizable(&storage)?;
                 }
@@ -30849,7 +31895,7 @@ impl Vm {
                     ));
                 };
                 if array_array_storage(receiver).is_none() {
-                    return Err("__iter__() expected an array receiver".to_string());
+                    return Err("TypeError: __iter__() expected an array receiver".to_string());
                 }
                 Ok(shared_iterator(Value::ArrayIterator {
                     object: Box::new(receiver.clone()),
@@ -30863,10 +31909,9 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let len = i64::try_from(
-                    array_array_len(receiver)
-                        .ok_or_else(|| "__len__() expected an array receiver".to_string())?,
-                )
+                let len = i64::try_from(array_array_len(receiver).ok_or_else(|| {
+                    "TypeError: __len__() expected an array receiver".to_string()
+                })?)
                 .map_err(|_| "len() result is too large".to_string())?;
                 Ok(Value::Number(len))
             }
@@ -31038,7 +32083,7 @@ impl Vm {
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                 return Ok(None);
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         self.call_value(method, Vec::new()).map(Some)
     }
@@ -31060,7 +32105,7 @@ impl Vm {
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
                 return Ok(None);
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         copy_deepcopy_sync_memo(memo_value, memo)?;
         self.call_value(method, vec![memo_value.clone()]).map(Some)
@@ -31192,13 +32237,13 @@ impl Vm {
         let (method, hook_error_name) = match method {
             Value::StaticMethod { function, .. } => {
                 let hook_error_name = copy_replace_hook_error_name(&function, class_name);
-                (*function, hook_error_name)
+                (function.as_ref().clone(), hook_error_name)
             }
             Value::ClassMethod { function, .. } => {
                 let hook_error_name = copy_replace_hook_error_name(&function, class_name);
                 (
                     Value::BoundMethod {
-                        function,
+                        function: Box::new(function.as_ref().clone()),
                         receiver: Box::new(owner),
                         identity: Rc::new(()),
                     },
@@ -31261,7 +32306,7 @@ impl Vm {
         }
 
         let mut memo = HashMap::new();
-        Ok(Value::PicklePayload(Box::new(deep_copy_value(
+        Ok(Value::PicklePayload(Rc::new(deep_copy_value(
             &value, &mut memo,
         )?)))
     }
@@ -31382,7 +32427,7 @@ impl Vm {
                 }
                 let exception =
                     self.json_decode_error_exception(&message, &source, pos, line, column)?;
-                Err(self.propagate_captured_exception(exception))
+                self.raise_exception::<Value>(exception, true)
             }
             (result, _) => result,
         }
@@ -31430,7 +32475,7 @@ impl Vm {
             context: None,
             suppress_context: false,
             exceptions: None,
-            identity: Rc::new(()),
+            identity: Rc::new(crate::value::ExceptionIdentity::default()),
         })
     }
 
@@ -31586,7 +32631,10 @@ impl Vm {
         if matches!(
             numeric_bool_value(value.clone()),
             Value::Number(_) | Value::BigInt(_) | Value::Float(_) | Value::Complex { .. }
-        ) {
+        ) || ["__int__", "__float__", "__index__"]
+            .iter()
+            .any(|name| instance_special_method(value, name).is_some())
+        {
             Ok(())
         } else {
             Err("TypeError: a number is required".to_string())
@@ -31671,7 +32719,7 @@ impl Vm {
         };
         Ok(shared_iterator(Value::ItertoolsCycle {
             iterator: Box::new(self.get_iter_propagating(iterable.clone())?),
-            saved: Vec::new(),
+            saved: Rc::new(RefCell::new(Vec::new())),
             index: 0,
             exhausted: false,
         }))
@@ -32116,41 +33164,41 @@ impl Vm {
         }
         let step = self.itertools_islice_index(value, "Step")?;
         if step <= 0 {
-            Err("ValueError: Step for islice() must be a positive integer or None".to_string())
+            Err("ValueError: Step for islice() must be a positive integer or None.".to_string())
         } else {
             Ok(step)
         }
     }
 
     fn itertools_islice_index(&mut self, value: Value, name: &str) -> Result<i64, String> {
-        let index = self.index_i64(value, name).map_err(|error| {
-            if error.contains("__index__ returned non-int") {
-                if name == "Step" {
-                    "ValueError: Step for islice() must be a positive integer or None.".to_string()
-                } else if name == "Start" {
-                    "ValueError: Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.".to_string()
-                } else {
-                    format!(
-                        "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
-                    )
-                }
-            } else {
-                error
-            }
-        })?;
+        let index = match self.index_i64(value, name) {
+            Ok(index) => index,
+            // CPython replaces the error of the conversion with its own
+            // message, and the replaced error is not the context of the new
+            // one.
+            Err(_) => return Err(self.raise_islice_index_error(name)),
+        };
         if index < 0 {
-            if name == "Start" {
-                Err(
-                    "ValueError: Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize."
-                        .to_string(),
-                )
-            } else {
-                Err(format!(
-                    "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
-                ))
-            }
-        } else {
-            Ok(index)
+            return Err(self.raise_islice_index_error(name));
+        }
+        Ok(index)
+    }
+
+    /// CPython's error for an `islice()` index argument that is not a usable
+    /// integer. It is raised as its own exception, so it replaces the error
+    /// of the conversion instead of chaining it.
+    fn raise_islice_index_error(&mut self, name: &str) -> String {
+        let message = match name {
+            "Start" => "Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+                .to_string(),
+            "Step" => "Step for islice() must be a positive integer or None.".to_string(),
+            _ => format!(
+                "{name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+            ),
+        };
+        match self.raise_exception::<()>(value_error_exception(&message), true) {
+            Err(message) => message,
+            Ok(()) => format!("ValueError: {message}"),
         }
     }
 
@@ -32313,7 +33361,7 @@ impl Vm {
         };
         let done = r > n;
         let indices = (0..n).collect();
-        let cycles = (0..r).map(|index| n - index).collect();
+        let cycles = (0..r.min(n)).map(|index| n - index).collect();
         Ok(shared_iterator(Value::ItertoolsPermutations {
             pool,
             indices,
@@ -32386,7 +33434,7 @@ impl Vm {
         let iterator = self.get_iter_propagating(args[0].clone())?;
         let state = Rc::new(RefCell::new(TeeState {
             iterator,
-            buffer: Vec::new(),
+            buffer: Rc::new(RefCell::new(Vec::new())),
             exhausted: false,
         }));
         let iterators = (0..n)
@@ -32639,11 +33687,17 @@ impl Vm {
         };
 
         let mut entries = Vec::new();
+        let mut hashes = Vec::new();
         for key in self.collect_iterable_values_propagating(iterable)? {
-            insert_dict_entry(&mut entries, key, default.clone())?;
+            let hash = self.stored_key_hash(&key)?;
+            if insert_dict_entry(&mut entries, key, default.clone())? {
+                hashes.push(hash);
+            }
         }
 
-        build_dict(entries)
+        Ok(Value::Dict(dict_ref_from_entries_with_stored_hashes(
+            entries, hashes,
+        )?))
     }
 
     fn call_ordered_dict_fromkeys(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -32660,11 +33714,17 @@ impl Vm {
         };
 
         let mut entries = Vec::new();
+        let mut hashes = Vec::new();
         for key in self.collect_iterable_values_propagating(iterable)? {
-            insert_dict_entry(&mut entries, key, default.clone())?;
+            let hash = self.stored_key_hash(&key)?;
+            if insert_dict_entry(&mut entries, key, default.clone())? {
+                hashes.push(hash);
+            }
         }
 
-        build_ordered_dict(entries)
+        Ok(Value::OrderedDict(
+            dict_ref_from_entries_with_stored_hashes(entries, hashes)?,
+        ))
     }
 
     fn call_default_dict_fromkeys(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -32681,11 +33741,19 @@ impl Vm {
         };
 
         let mut entries = Vec::new();
+        let mut hashes = Vec::new();
         for key in self.collect_iterable_values_propagating(iterable)? {
-            insert_dict_entry(&mut entries, key, default.clone())?;
+            let hash = self.stored_key_hash(&key)?;
+            if insert_dict_entry(&mut entries, key, default.clone())? {
+                hashes.push(hash);
+            }
         }
 
-        build_default_dict(entries)
+        let default_factory = Rc::new(RefCell::new(Value::None));
+        Ok(Value::DefaultDict {
+            entries: dict_ref_from_entries_with_stored_hashes(entries, hashes)?,
+            default_factory,
+        })
     }
 
     fn dict_entries_from_update_source(
@@ -32713,7 +33781,7 @@ impl Vm {
         if let Some(keys_method) = instance_special_method(&value, "keys") {
             let keys = match self.call_value_catching(keys_method, Vec::new())? {
                 Ok(keys) => keys,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             let keys = self.collect_iterable_values_propagating(keys)?;
             let mut entries = Vec::new();
@@ -32722,7 +33790,7 @@ impl Vm {
                     vm.load_subscript_value(value.clone(), key.clone())
                 })? {
                     Ok(item) => item,
-                    Err(exception) => return Err(format_exception_error(&exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 entries.push((key, item));
             }
@@ -33089,8 +34157,7 @@ impl Vm {
                     }
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(false),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -33108,17 +34175,13 @@ impl Vm {
                     }
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(Value::Number(count)),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
 
     fn sequence_abc_item_matches(&mut self, item: &Value, needle: &Value) -> Result<bool, String> {
-        if sequence_items_match(item, needle) {
-            return Ok(true);
-        }
-        self.equal_values(item.clone(), needle.clone())
+        self.container_items_equal(item, needle)
     }
 
     fn sequence_abc_index(
@@ -33187,7 +34250,7 @@ impl Vm {
         })? {
             Ok(value) => Ok(Some(value)),
             Err(exception) if exception_is_builtin_instance(&exception, "IndexError") => Ok(None),
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -33266,7 +34329,7 @@ impl Vm {
                 Err(exception) if exception_is_builtin_instance(&exception, "IndexError") => {
                     return Ok(Value::None);
                 }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -33399,10 +34462,10 @@ impl Vm {
                     | receiver @ Value::MappingProxyObject { .. } => Ok(Value::Bool(
                         self.contains_value(key.clone(), receiver.clone())?,
                     )),
-                    _ => {
-                        Err("mappingproxy.__contains__ expected a mappingproxy receiver"
-                            .to_string())
-                    }
+                    _ => Err(
+                        "TypeError: mappingproxy.__contains__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__class_getitem__" => {
@@ -33416,6 +34479,7 @@ impl Vm {
                     origin: Box::new(Value::Builtin("mappingproxy".to_string())),
                     args: generic_alias_args(item.clone()),
                     union_unhashable_count: 0,
+                    identity: Rc::new(()),
                 })
             }
             "__getitem__" => {
@@ -33430,9 +34494,10 @@ impl Vm {
                     | receiver @ Value::MappingProxyObject { .. } => {
                         self.load_subscript_value(receiver.clone(), key.clone())
                     }
-                    _ => {
-                        Err("mappingproxy.__getitem__ expected a mappingproxy receiver".to_string())
-                    }
+                    _ => Err(
+                        "TypeError: mappingproxy.__getitem__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__eq__" | "__ne__" => {
@@ -33454,7 +34519,7 @@ impl Vm {
                         }))
                     }
                     _ => Err(format!(
-                        "mappingproxy.{} expected a mappingproxy receiver",
+                        "TypeError: mappingproxy.{} expected a mappingproxy receiver",
                         method_display_name(name)
                     )),
                 }
@@ -33471,7 +34536,10 @@ impl Vm {
                     | receiver @ Value::MappingProxyObject { .. } => {
                         Ok(Value::String(repr_value_checked(receiver)?))
                     }
-                    _ => Err("mappingproxy.__repr__ expected a mappingproxy receiver".to_string()),
+                    _ => Err(
+                        "TypeError: mappingproxy.__repr__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__str__" => {
@@ -33488,7 +34556,10 @@ impl Vm {
                     Value::MappingProxyObject { mapping, .. } => {
                         Ok(Value::String(self.str_value(mapping)?))
                     }
-                    _ => Err("mappingproxy.__str__ expected a mappingproxy receiver".to_string()),
+                    _ => Err(
+                        "TypeError: mappingproxy.__str__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__format__" => Ok(Value::String(self.call_object_format(args)?)),
@@ -33513,7 +34584,10 @@ impl Vm {
                     | receiver @ Value::MappingProxyObject { .. } => {
                         self.get_iter(receiver.clone())
                     }
-                    _ => Err("mappingproxy.__iter__ expected a mappingproxy receiver".to_string()),
+                    _ => Err(
+                        "TypeError: mappingproxy.__iter__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__len__" => {
@@ -33548,10 +34622,10 @@ impl Vm {
                     | receiver @ Value::MappingProxyObject { .. } => {
                         self.reversed_value(receiver.clone())
                     }
-                    _ => {
-                        Err("mappingproxy.__reversed__ expected a mappingproxy receiver"
-                            .to_string())
-                    }
+                    _ => Err(
+                        "TypeError: mappingproxy.__reversed__ expected a mappingproxy receiver"
+                            .to_string(),
+                    ),
                 }
             }
             "__ror__" => {
@@ -33576,12 +34650,12 @@ impl Vm {
                         let method = self.load_attribute_value(*mapping.clone(), "copy")?;
                         self.call_value(method, Vec::new())
                     }
-                    _ => Err("copy() expected a mappingproxy receiver".to_string()),
+                    _ => Err("TypeError: copy() expected a mappingproxy receiver".to_string()),
                 }
             }
             "get" => {
                 let [receiver, key, rest @ ..] = args.as_slice() else {
-                    return Err("get() expected a mappingproxy receiver".to_string());
+                    return Err("TypeError: get() expected a mappingproxy receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -33606,7 +34680,7 @@ impl Vm {
                         call_args.extend(rest.iter().cloned());
                         self.call_value(method, call_args)
                     }
-                    _ => Err("get() expected a mappingproxy receiver".to_string()),
+                    _ => Err("TypeError: get() expected a mappingproxy receiver".to_string()),
                 }
             }
             "items" => {
@@ -33624,7 +34698,7 @@ impl Vm {
                         let method = self.load_attribute_value(*mapping.clone(), "items")?;
                         self.call_value(method, Vec::new())
                     }
-                    _ => Err("items() expected a mappingproxy receiver".to_string()),
+                    _ => Err("TypeError: items() expected a mappingproxy receiver".to_string()),
                 }
             }
             "keys" => {
@@ -33642,7 +34716,7 @@ impl Vm {
                         let method = self.load_attribute_value(*mapping.clone(), "keys")?;
                         self.call_value(method, Vec::new())
                     }
-                    _ => Err("keys() expected a mappingproxy receiver".to_string()),
+                    _ => Err("TypeError: keys() expected a mappingproxy receiver".to_string()),
                 }
             }
             "values" => {
@@ -33660,7 +34734,7 @@ impl Vm {
                         let method = self.load_attribute_value(*mapping.clone(), "values")?;
                         self.call_value(method, Vec::new())
                     }
-                    _ => Err("values() expected a mappingproxy receiver".to_string()),
+                    _ => Err("TypeError: values() expected a mappingproxy receiver".to_string()),
                 }
             }
             _ => Err(format!("unknown builtin: {name}")),
@@ -33863,7 +34937,7 @@ impl Vm {
             "get" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver, key, rest @ ..] = args.as_slice() else {
-                    return Err("get() expected a ChainMap receiver".to_string());
+                    return Err("TypeError: get() expected a ChainMap receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -33959,7 +35033,7 @@ impl Vm {
             "pop" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver, key, rest @ ..] = args.as_slice() else {
-                    return Err("pop() expected a ChainMap receiver".to_string());
+                    return Err("TypeError: pop() expected a ChainMap receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -34207,6 +35281,18 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if counter_subclass_entries(receiver).is_some() {
+                    let entries = counter_receiver_entries(receiver)?;
+                    ensure_hashable_key(key)?;
+                    if let Some((_, value)) = entries
+                        .borrow()
+                        .iter()
+                        .find(|(existing_key, _)| dict_keys_equal(existing_key, key))
+                    {
+                        return Ok(value.clone());
+                    }
+                    return self.counter_missing_value(receiver, key.clone());
+                }
                 load_subscript(receiver.clone(), key.clone())
             }
             "__missing__" => {
@@ -34445,7 +35531,7 @@ impl Vm {
                 let Some(op) = counter_binary_op_from_method(method) else {
                     unreachable!("counter binary method names are matched above")
                 };
-                Ok(counter_binary_value_from_operands(&left, &right, op)?
+                Ok(counter_binary_value_from_operands(self, &left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
             "__iadd__" | "__isub__" => {
@@ -34454,7 +35540,7 @@ impl Vm {
                 let Some(op) = counter_in_place_op_from_method(method) else {
                     unreachable!("counter in-place method names are matched above")
                 };
-                Ok(counter_in_place_value_from_operands(&left, &right, op)?
+                Ok(counter_in_place_value_from_operands(self, &left, &right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
             "__ior__" | "__iand__" => {
@@ -34469,7 +35555,7 @@ impl Vm {
                 let Some(op) = counter_in_place_op_from_method(method_display_name(name)) else {
                     unreachable!("counter in-place method names are matched above")
                 };
-                Ok(counter_in_place_value_from_operands(left, right, op)?
+                Ok(counter_in_place_value_from_operands(self, left, right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
             "__eq__" | "__ne__" => {
@@ -34679,8 +35765,7 @@ impl Vm {
                     "TypeError: Counter.__repr__() missing 1 required positional argument: 'self'"
                         .to_string()
                 })?;
-                counter_receiver_entries(&receiver)?;
-                Ok(Value::String(repr_value_checked(&receiver)?))
+                Ok(Value::String(self.counter_repr_text(&receiver)?))
             }
             "__str__" => {
                 let mut duplicate_keyword = None;
@@ -34720,8 +35805,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                counter_receiver_entries(receiver)?;
-                Ok(Value::String(repr_value_checked(receiver)?))
+                Ok(Value::String(self.counter_repr_text(receiver)?))
             }
             "__format__" => {
                 let mut duplicate_keyword = None;
@@ -34793,6 +35877,19 @@ impl Vm {
                         rest.len()
                     ));
                 }
+                if display_name == "__init__" {
+                    // CPython's `Counter.__init__` delegates to `self.update`,
+                    // so an instance attribute or a subclass override of
+                    // `update` runs while the counter is initialized.
+                    let update = self.counter_update_method(receiver)?;
+                    let mut update_args = rest.to_vec();
+                    if update_args.is_empty() {
+                        update_args.push(Value::None);
+                    }
+                    self.call_value_with_keywords(update, update_args, keywords)?;
+                    return Ok(Value::None);
+                }
+
                 let entries = counter_receiver_entries(receiver)?;
                 let mode = if display_name == "subtract" {
                     CounterUpdateMode::Subtract
@@ -34803,6 +35900,19 @@ impl Vm {
                     && !matches!(source, Value::None)
                 {
                     self.counter_update_receiver(receiver.clone(), &entries, source.clone(), mode)?;
+                }
+                if display_name == "update" && !keywords.is_empty() {
+                    // CPython applies keyword counts with `self.update(kwds)`,
+                    // which a subclass override of `update` sees as well.
+                    let counts = build_dict(
+                        keywords
+                            .into_iter()
+                            .map(|(key, value)| (Value::String(key), value))
+                            .collect(),
+                    )?;
+                    let update = self.counter_update_method(receiver)?;
+                    self.call_value(update, vec![counts])?;
+                    return Ok(Value::None);
                 }
                 self.counter_update_receiver_from_mapping(
                     receiver.clone(),
@@ -35110,7 +36220,7 @@ impl Vm {
             }
             "most_common" => {
                 let [receiver, rest @ ..] = args.as_slice() else {
-                    return Err("most_common() expected a Counter receiver".to_string());
+                    return Err("TypeError: most_common() expected a Counter receiver".to_string());
                 };
                 if rest.len() > 1 {
                     return Err(format!(
@@ -35520,7 +36630,21 @@ impl Vm {
     fn mapping_abc_get_item(&mut self, receiver: Value, key: Value) -> Result<Value, String> {
         match self.call_with_exception_capture(|vm| vm.load_subscript_value(receiver, key))? {
             Ok(value) => Ok(value),
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
+        }
+    }
+
+    /// The item of a mapping whose `__getitem__` raised: the exception keeps
+    /// its identity, so that a handler of the frame catches the object the
+    /// mapping raised.
+    fn mapping_abc_get_item_propagating(
+        &mut self,
+        receiver: Value,
+        key: Value,
+    ) -> Result<Value, String> {
+        match self.call_with_exception_capture(|vm| vm.load_subscript_value(receiver, key))? {
+            Ok(value) => Ok(value),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -35532,7 +36656,7 @@ impl Vm {
         match self.call_with_exception_capture(|vm| vm.load_subscript_value(receiver, key))? {
             Ok(value) => Ok(Some(value)),
             Err(exception) if exception_is_builtin_instance(&exception, "KeyError") => Ok(None),
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -35580,19 +36704,7 @@ impl Vm {
                     .iter()
                     .any(|(key, _)| dict_keys_equal(key, needle)))
             }
-            DictViewKind::Values => {
-                let values: Vec<Value> = entries
-                    .borrow()
-                    .iter()
-                    .map(|(_, value)| value.clone())
-                    .collect();
-                for value in values {
-                    if self.sequence_abc_item_matches(&value, needle)? {
-                        return Ok(true);
-                    }
-                }
-                Ok(false)
-            }
+            DictViewKind::Values => self.dict_view_contains_value(entries, needle),
             DictViewKind::Items => {
                 let Some((needle_key, needle_value)) = dict_view_item_pair(needle) else {
                     return Ok(false);
@@ -35610,6 +36722,49 @@ impl Vm {
                 Ok(false)
             }
         }
+    }
+
+    /// Whether a dictionary holds a value that compares equal to the needle.
+    ///
+    /// The values are read one at a time, because the comparison of a
+    /// value can run user code that changes the dictionary.
+    fn dict_view_contains_value(
+        &mut self,
+        entries: &DictRef,
+        needle: &Value,
+    ) -> Result<bool, String> {
+        let (expected_len, expected_version) = {
+            let entries = entries.borrow();
+            (entries.len(), entries.version)
+        };
+        let mut index = 0;
+        loop {
+            let value = {
+                let entries = entries.borrow();
+                if entries.len() != expected_len {
+                    return Err(
+                        "RuntimeError: dictionary changed size during iteration".to_string()
+                    );
+                }
+                if entries.version != expected_version {
+                    return Err(
+                        "RuntimeError: dictionary keys changed during iteration".to_string()
+                    );
+                }
+                match entries.entries.get(index) {
+                    Some((_, value)) => Some(value.clone()),
+                    None => None,
+                }
+            };
+            let Some(value) = value else {
+                break;
+            };
+            if self.container_items_equal(&value, needle)? {
+                return Ok(true);
+            }
+            index += 1;
+        }
+        Ok(false)
     }
 
     fn mapping_view_contains(
@@ -35731,35 +36886,6 @@ impl Vm {
         }
     }
 
-    fn equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
-        if let Some(result) = self.dict_item_view_equal(&left, &right)? {
-            return Ok(result);
-        }
-
-        if self.is_set_like_equality_operand(&left) || self.is_set_like_equality_operand(&right) {
-            if !self.is_set_like_equality_operand(&left)
-                || !self.is_set_like_equality_operand(&right)
-            {
-                return Ok(false);
-            }
-            let left = self.set_operator_values(left, "==")?;
-            let right = self.set_operator_values(right, "==")?;
-            return self.set_values_equal(&left, &right);
-        }
-
-        self.rich_equal_values(&left, &right)
-    }
-
-    fn not_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
-        if let Some(value) = self.call_ne_special(left.clone(), right.clone())? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_ne_special(right.clone(), left.clone())? {
-            return Ok(value);
-        }
-        self.equal_values(left, right).map(|value| !value)
-    }
-
     fn add_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         if let Some(method) = instance_special_method(&left, "__add__") {
             let result = self.call_value(method, vec![right.clone()])?;
@@ -35800,6 +36926,12 @@ impl Vm {
             let mut items = self.collect_iterable_values(left)?;
             items.extend(data.borrow().iter().cloned());
             return user_list_value(items);
+        }
+
+        if let Some(value) =
+            counter_binary_value_from_operands(self, &left, &right, CounterBinaryOp::Add)?
+        {
+            return Ok(value);
         }
 
         let left = int_subclass_integer(&left).unwrap_or(left);
@@ -35915,7 +37047,7 @@ impl Vm {
             return Ok(value);
         }
         if let Some(value) =
-            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Subtract)?
+            counter_binary_value_from_operands(self, &left, &right, CounterBinaryOp::Subtract)?
         {
             return Ok(value);
         }
@@ -35962,7 +37094,7 @@ impl Vm {
             return Ok(value);
         }
         if let Some(value) =
-            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Union)?
+            counter_binary_value_from_operands(self, &left, &right, CounterBinaryOp::Union)?
         {
             return Ok(value);
         }
@@ -35999,7 +37131,7 @@ impl Vm {
         let mut raw_args = Vec::new();
         extend_union_raw_args(&mut raw_args, left);
         extend_union_raw_args(&mut raw_args, right);
-        let union_unhashable_count = self.union_unhashable_count_from_raw_args(&raw_args);
+        let union_unhashable_count = self.union_unhashable_count_from_raw_args(&raw_args)?;
 
         let mut args = Vec::new();
         for value in raw_args {
@@ -36037,20 +37169,18 @@ impl Vm {
         Ok(())
     }
 
-    fn union_unhashable_count_from_raw_args(&mut self, args: &[Value]) -> usize {
+    fn union_unhashable_count_from_raw_args(&mut self, args: &[Value]) -> Result<usize, String> {
         let mut unhashable_args = Vec::new();
         for arg in args {
-            match self.hash_key_value(arg) {
-                Ok(_) => {}
-                Err(message) if message.starts_with("TypeError:") => {
-                    if !unhashable_args.iter().any(|existing| existing == arg) {
-                        unhashable_args.push(arg.clone());
-                    }
-                }
-                Err(_) => {}
+            if self
+                .call_with_exception_capture(|vm| vm.hash_key_value(arg))?
+                .is_err()
+                && !unhashable_args.iter().any(|existing| existing == arg)
+            {
+                unhashable_args.push(arg.clone());
             }
         }
-        unhashable_args.len()
+        Ok(unhashable_args.len())
     }
 
     fn bit_xor_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
@@ -36088,7 +37218,7 @@ impl Vm {
             return Ok(value);
         }
         if let Some(value) =
-            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Intersection)?
+            counter_binary_value_from_operands(self, &left, &right, CounterBinaryOp::Intersection)?
         {
             return Ok(value);
         }
@@ -36113,17 +37243,18 @@ impl Vm {
             return Ok(value);
         }
         if let Some(value) =
-            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Subtract)?
+            counter_in_place_value_from_operands(self, &left, &right, CounterBinaryOp::Subtract)?
         {
             return Ok(value);
         }
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "-=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self.set_difference_from_iterables_with_kind(
                         SetResultKind::Set,
-                        items.borrow().clone(),
+                        snapshot,
                         &[set_value(other)],
                     )?
                     else {
@@ -36138,10 +37269,11 @@ impl Vm {
                 let items =
                     set_subclass_items(&left).expect("set subclass items exist after guard");
                 let other = self.set_operator_values(right, "-=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self.set_difference_from_iterables_with_kind(
                         SetResultKind::Set,
-                        items.borrow().clone(),
+                        snapshot,
                         &[set_value(other)],
                     )?
                     else {
@@ -36173,7 +37305,7 @@ impl Vm {
             return Ok(value);
         }
         if let Some(value) =
-            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Union)?
+            counter_in_place_value_from_operands(self, &left, &right, CounterBinaryOp::Union)?
         {
             return Ok(value);
         }
@@ -36276,11 +37408,12 @@ impl Vm {
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "^=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self
                         .set_symmetric_difference_from_iterable_with_kind(
                             SetResultKind::Set,
-                            items.borrow().clone(),
+                            snapshot,
                             &set_value(other),
                         )?
                     else {
@@ -36297,11 +37430,12 @@ impl Vm {
                 let items =
                     set_subclass_items(&left).expect("set subclass items exist after guard");
                 let other = self.set_operator_values(right, "^=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self
                         .set_symmetric_difference_from_iterable_with_kind(
                             SetResultKind::Set,
-                            items.borrow().clone(),
+                            snapshot,
                             &set_value(other),
                         )?
                     else {
@@ -36334,18 +37468,22 @@ impl Vm {
         if let Some(value) = self.call_in_place_special_method(&left, &right, "__iand__")? {
             return Ok(value);
         }
-        if let Some(value) =
-            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Intersection)?
-        {
+        if let Some(value) = counter_in_place_value_from_operands(
+            self,
+            &left,
+            &right,
+            CounterBinaryOp::Intersection,
+        )? {
             return Ok(value);
         }
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "&=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self.set_intersection_from_iterables_with_kind(
                         SetResultKind::Set,
-                        items.borrow().clone(),
+                        snapshot,
                         &[set_value(other)],
                     )?
                     else {
@@ -36360,10 +37498,11 @@ impl Vm {
                 let items =
                     set_subclass_items(&left).expect("set subclass items exist after guard");
                 let other = self.set_operator_values(right, "&=")?;
+                let snapshot = items.borrow().clone();
                 let result_items = {
                     let Value::Set(result) = self.set_intersection_from_iterables_with_kind(
                         SetResultKind::Set,
-                        items.borrow().clone(),
+                        snapshot,
                         &[set_value(other)],
                     )?
                     else {
@@ -36450,10 +37589,9 @@ impl Vm {
             return Ok(None);
         };
 
-        let result = self.call_value(
-            *comparator.clone(),
-            vec![left_object.borrow().clone(), right_object.borrow().clone()],
-        )?;
+        let left = left_object.borrow().clone();
+        let right = right_object.borrow().clone();
+        let result = self.call_value(comparator.as_ref().clone(), vec![left, right])?;
         let zero = Value::Number(0);
         let ordered = match op {
             SequenceOrder::Less => self.less_values(result, zero)?,
@@ -36489,11 +37627,45 @@ impl Vm {
             return Ok(None);
         };
 
-        let result = self.call_value(
-            *comparator.clone(),
-            vec![left_object.borrow().clone(), right_object.borrow().clone()],
-        )?;
+        let left = left_object.borrow().clone();
+        let right = right_object.borrow().clone();
+        let result = self.call_value(comparator.as_ref().clone(), vec![left, right])?;
         Ok(Some(self.rich_equal_values(&result, &Value::Number(0))?))
+    }
+
+    /// The `!=` answer of two key wrappers.
+    ///
+    /// CPython compares two key wrappers with their comparator and rejects a
+    /// comparison with an operand that is not a key wrapper.
+    fn cmp_to_key_not_equal_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        let (
+            Value::CmpToKeyObject {
+                comparator,
+                object: left_object,
+                ..
+            },
+            Value::CmpToKeyObject {
+                object: right_object,
+                ..
+            },
+        ) = (left, right)
+        else {
+            if matches!(left, Value::CmpToKeyObject { .. })
+                || matches!(right, Value::CmpToKeyObject { .. })
+            {
+                return Err("TypeError: other argument must be K instance".to_string());
+            }
+            return Ok(None);
+        };
+
+        let left = left_object.borrow().clone();
+        let right = right_object.borrow().clone();
+        let result = self.call_value(comparator.as_ref().clone(), vec![left, right])?;
+        Ok(Some(!self.rich_equal_values(&result, &Value::Number(0))?))
     }
 
     fn cell_rich_equal_if_cells(
@@ -36554,6 +37726,11 @@ impl Vm {
     }
 
     fn less_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        let result = self.order_result_values(left, right, SequenceOrder::Less)?;
+        self.truth_value(result)
+    }
+
+    fn less_builtin_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) = self.cmp_to_key_order_values(&left, &right, SequenceOrder::Less)? {
             return Ok(result);
         }
@@ -36561,7 +37738,7 @@ impl Vm {
             return Ok(result);
         }
         if let Some(result) = self.rich_sequence_order_values(&left, &right, SequenceOrder::Less)? {
-            return Ok(result);
+            return self.truth_value(result);
         }
         if let Some(result) = self.dict_item_view_less(&left, &right)? {
             return Ok(result);
@@ -36579,12 +37756,6 @@ impl Vm {
                 return self.set_is_proper_subset(&left, &right);
             }
         }
-        if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__lt__")? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_order_special(right.clone(), left.clone(), "__gt__")? {
-            return Ok(value);
-        }
         if let Some(message) = mappingproxy_order_type_error(&left, &right, "<") {
             return Err(message);
         }
@@ -36595,6 +37766,11 @@ impl Vm {
     }
 
     fn less_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        let result = self.order_result_values(left, right, SequenceOrder::LessEqual)?;
+        self.truth_value(result)
+    }
+
+    fn less_equal_builtin_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) =
             self.cmp_to_key_order_values(&left, &right, SequenceOrder::LessEqual)?
         {
@@ -36606,7 +37782,7 @@ impl Vm {
         if let Some(result) =
             self.rich_sequence_order_values(&left, &right, SequenceOrder::LessEqual)?
         {
-            return Ok(result);
+            return self.truth_value(result);
         }
         if let Some(result) = self.dict_item_view_less_equal(&left, &right)? {
             return Ok(result);
@@ -36626,12 +37802,6 @@ impl Vm {
                 return self.set_is_subset(&left, &right);
             }
         }
-        if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__le__")? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_order_special(right.clone(), left.clone(), "__ge__")? {
-            return Ok(value);
-        }
         if let Some(message) = mappingproxy_order_type_error(&left, &right, "<=") {
             return Err(message);
         }
@@ -36642,6 +37812,11 @@ impl Vm {
     }
 
     fn greater_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        let result = self.order_result_values(left, right, SequenceOrder::Greater)?;
+        self.truth_value(result)
+    }
+
+    fn greater_builtin_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) = self.cmp_to_key_order_values(&left, &right, SequenceOrder::Greater)? {
             return Ok(result);
         }
@@ -36651,7 +37826,7 @@ impl Vm {
         if let Some(result) =
             self.rich_sequence_order_values(&left, &right, SequenceOrder::Greater)?
         {
-            return Ok(result);
+            return self.truth_value(result);
         }
         if let Some(result) = self.dict_item_view_greater(&left, &right)? {
             return Ok(result);
@@ -36671,12 +37846,6 @@ impl Vm {
                 return self.set_is_proper_superset(&left, &right);
             }
         }
-        if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__gt__")? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_order_special(right.clone(), left.clone(), "__lt__")? {
-            return Ok(value);
-        }
         if let Some(message) = mappingproxy_order_type_error(&left, &right, ">") {
             return Err(message);
         }
@@ -36687,6 +37856,11 @@ impl Vm {
     }
 
     fn greater_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        let result = self.order_result_values(left, right, SequenceOrder::GreaterEqual)?;
+        self.truth_value(result)
+    }
+
+    fn greater_equal_builtin_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) =
             self.cmp_to_key_order_values(&left, &right, SequenceOrder::GreaterEqual)?
         {
@@ -36698,7 +37872,7 @@ impl Vm {
         if let Some(result) =
             self.rich_sequence_order_values(&left, &right, SequenceOrder::GreaterEqual)?
         {
-            return Ok(result);
+            return self.truth_value(result);
         }
         if let Some(result) = self.dict_item_view_greater_equal(&left, &right)? {
             return Ok(result);
@@ -36717,12 +37891,6 @@ impl Vm {
                 let right = self.set_operator_values(right, ">=")?;
                 return self.set_is_superset(&left, &right);
             }
-        }
-        if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__ge__")? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_order_special(right.clone(), left.clone(), "__le__")? {
-            return Ok(value);
         }
         if let Some(message) = mappingproxy_order_type_error(&left, &right, ">=") {
             return Err(message);
@@ -36873,7 +38041,6 @@ impl Vm {
                     }
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(false),
-                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
                 Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
@@ -36937,6 +38104,28 @@ impl Vm {
 
     fn set_values_equal(&mut self, left: &[Value], right: &[Value]) -> Result<bool, String> {
         Ok(left.len() == right.len() && self.set_is_subset(left, right)?)
+    }
+
+    /// The comparison of the entries of two dictionaries.
+    ///
+    /// CPython looks the key of every entry of the left dictionary up in
+    /// the right dictionary, so the hash of the key decides whether the
+    /// keys are compared at all, and the `__eq__` of the key types answers
+    /// the comparison.
+    fn dict_storage_entries_equal(
+        &mut self,
+        left: &crate::value::DictRef,
+        right: &crate::value::DictRef,
+    ) -> Result<bool, String> {
+        let (left_entries, left_hashes) = {
+            let storage = left.borrow();
+            (storage.entries.clone(), storage.hashes.clone())
+        };
+        let (right_entries, right_hashes) = {
+            let storage = right.borrow();
+            (storage.entries.clone(), storage.hashes.clone())
+        };
+        self.mapping_entries_equal(&left_entries, &left_hashes, &right_entries, &right_hashes)
     }
 
     fn dict_item_view_equal(
@@ -37042,7 +38231,9 @@ impl Vm {
             else {
                 return Ok(false);
             };
-            if !self.rich_equal_values(value, other_value)? {
+            // CPython compares the values with an identity shortcut, so the
+            // same object never reaches a user-defined `__eq__`.
+            if !is_identical(value, other_value) && !self.rich_equal_values(value, other_value)? {
                 return Ok(false);
             }
         }
@@ -37096,195 +38287,9 @@ impl Vm {
         Ok(self.set_position(items, value)?.is_some())
     }
 
-    fn rich_equal_values(&mut self, left: &Value, right: &Value) -> Result<bool, String> {
-        crate::stack::check_native_recursion(COMPARISON_RECURSION_CONTEXT)?;
-        if let Some(value) = self.cmp_to_key_equal_values(left, right)? {
-            return Ok(value);
-        }
-
-        if is_identical(left, right)
-            && !matches!(left, Value::Float(_))
-            && !matches!(left, Value::Complex { .. })
-            && float_subclass_float(left).is_none()
-            && complex_subclass_parts(left).is_none()
-        {
-            return Ok(true);
-        }
-
-        if let Some(value) = self.cell_rich_equal_if_cells(left, right)? {
-            return Ok(value);
-        }
-
-        if let Some(value) = self.counter_equal_values(left, right)? {
-            return Ok(value);
-        }
-
-        if let Some(value) = self.dict_item_view_equal(left, right)? {
-            return Ok(value);
-        }
-
-        if let Some(value) = self.scope_backed_mapping_equal(left, right)? {
-            return Ok(value);
-        }
-
-        if array_array_storage(left).is_some() || array_array_storage(right).is_some() {
-            return if array_array_storage(left).is_some() && array_array_storage(right).is_some() {
-                let left = array_array_values(left).expect("array storage exists after guard");
-                let right = array_array_values(right).expect("array storage exists after guard");
-                self.rich_sequence_equal(&left, &right)
-            } else {
-                Ok(false)
-            };
-        }
-
-        if let Some(value) = self.union_aliases_equal(left, right)? {
-            return Ok(value);
-        }
-
-        if let Some(value) = bound_methods_directly_equal(left, right) {
-            return Ok(value);
-        }
-
-        if let Some(value) = user_string_rich_equal_values(left, right) {
-            return Ok(value);
-        }
-
-        if let Some(message) = bytes_comparison_warning_message(left, right) {
-            self.emit_bytes_comparison_warning(message)?;
-        }
-
-        if let Some(left_items) = tuple_subclass_items(left) {
-            match right {
-                Value::Tuple(right_items) => {
-                    return self.rich_sequence_equal(left_items.as_ref(), right_items.as_ref());
-                }
-                Value::NamedTuple { values, .. } => {
-                    return self.rich_sequence_equal(left_items.as_ref(), values.as_ref());
-                }
-                value if tuple_subclass_items(value).is_some() => {
-                    let right_items = tuple_subclass_items(value)
-                        .expect("tuple subclass items exist after guard");
-                    return self.rich_sequence_equal(left_items.as_ref(), right_items.as_ref());
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(right_items) = tuple_subclass_items(right) {
-            match left {
-                Value::Tuple(left_items) => {
-                    return self.rich_sequence_equal(left_items.as_ref(), right_items.as_ref());
-                }
-                Value::NamedTuple { values, .. } => {
-                    return self.rich_sequence_equal(values.as_ref(), right_items.as_ref());
-                }
-                _ => {}
-            }
-        }
-
-        match (left, right) {
-            (Value::Tuple(left), Value::Tuple(right)) => {
-                return self.rich_sequence_equal(left.as_ref(), right.as_ref());
-            }
-            (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) => {
-                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
-            }
-            (Value::List(left), Value::List(right)) => {
-                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
-            }
-            (Value::UserList { data: left, .. }, Value::UserList { data: right, .. }) => {
-                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
-            }
-            (Value::List(left), Value::UserList { data: right, .. })
-            | (Value::UserList { data: right, .. }, Value::List(left)) => {
-                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
-            }
-            (Value::Dict(left), Value::Dict(right)) => {
-                let left = left.borrow().entries.clone();
-                let right = right.borrow().entries.clone();
-                return Ok(
-                    left.len() == right.len() && self.dict_item_entries_subset(&left, &right)?
-                );
-            }
-            (Value::UserDict { data: left, .. }, Value::UserDict { data: right, .. }) => {
-                let left = left.borrow().entries.clone();
-                let right = right.borrow().entries.clone();
-                return Ok(
-                    left.len() == right.len() && self.dict_item_entries_subset(&left, &right)?
-                );
-            }
-            (Value::SimpleNamespace { fields: left }, Value::SimpleNamespace { fields: right }) => {
-                let left = left.borrow().entries.clone();
-                let right = right.borrow().entries.clone();
-                if let Some(value) = code_metadata_namespace_entries_equal(&left, &right) {
-                    return Ok(value);
-                }
-                return Ok(
-                    left.len() == right.len() && self.dict_item_entries_subset(&left, &right)?
-                );
-            }
-            _ => {}
-        }
-
-        if let (Some(left_bytes), Some(right_bytes)) = (
-            bytes_equality_value_bytes(left),
-            bytes_equality_value_bytes(right),
-        ) {
-            return Ok(left_bytes == right_bytes);
-        }
-
-        if let (
-            Value::WeakRef {
-                target: left_target,
-                ..
-            },
-            Value::WeakRef {
-                target: right_target,
-                ..
-            },
-        ) = (left, right)
-        {
-            return self.rich_equal_values(left_target, right_target);
-        }
-
-        if let Some(value) = forward_ref_equal_values(left, right)? {
-            return Ok(value);
-        }
-
-        if let Some(value) = self.call_eq_special(left.clone(), right.clone())? {
-            return Ok(value);
-        }
-        if let Some(value) = self.call_eq_special(right.clone(), left.clone())? {
-            return Ok(value);
-        }
-        if let Some(left) = generic_alias_subclass_alias(left) {
-            return self.rich_equal_values(&left, right);
-        }
-        if let Some(right) = generic_alias_subclass_alias(right) {
-            return self.rich_equal_values(left, &right);
-        }
-        if let Some(left) = int_subclass_integer(left) {
-            return self.rich_equal_values(&left, right);
-        }
-        if let Some(right) = int_subclass_integer(right) {
-            return self.rich_equal_values(left, &right);
-        }
-        if let Some(left) = float_subclass_value(left) {
-            return self.rich_equal_values(&left, right);
-        }
-        if let Some(right) = float_subclass_value(right) {
-            return self.rich_equal_values(left, &right);
-        }
-        if let Some(left) = complex_subclass_value(left) {
-            return self.rich_equal_values(&left, right);
-        }
-        if let Some(right) = complex_subclass_value(right) {
-            return self.rich_equal_values(left, &right);
-        }
-        if matches!(left, Value::Instance { .. }) || matches!(right, Value::Instance { .. }) {
-            return Ok(false);
-        }
-        Ok(left == right)
+    /// The comparison method the operand's type provides.
+    fn operand_comparison_method(&mut self, value: &Value, name: &str) -> ComparisonMethod {
+        comparison_method_for_type(value, name)
     }
 
     fn union_aliases_equal(&mut self, left: &Value, right: &Value) -> Result<Option<bool>, String> {
@@ -37322,6 +38327,277 @@ impl Vm {
         Ok(Some(true))
     }
 
+    /// The comparison of a chain map with another mapping.
+    ///
+    /// A chain map inherits the comparison of the mapping base class, so
+    /// CPython compares it with every mapping by their merged items.
+    fn chain_map_equal_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        if chain_map_maps_if_value(left).is_none() && chain_map_maps_if_value(right).is_none() {
+            // Neither operand is a chain map.
+            return Ok(None);
+        }
+        // A chain map does not compare equal to a value that is not a
+        // mapping, but a failure of the comparison itself propagates.
+        if !is_mapping_value(left) || !is_mapping_value(right) {
+            return Ok(Some(false));
+        }
+        // CPython compares two mappings by their items, so it copies both
+        // mappings into dictionaries and compares the copies.
+        let (left_entries, left_hashes) = self.comparison_mapping_entries(left)?;
+        let (right_entries, right_hashes) = self.comparison_mapping_entries(right)?;
+        Ok(Some(self.mapping_entries_equal(
+            &left_entries,
+            &left_hashes,
+            &right_entries,
+            &right_hashes,
+        )?))
+    }
+
+    /// The entries of a mapping for a comparison, with the hash of every
+    /// key.
+    ///
+    /// CPython copies a mapping into a dictionary before it compares it
+    /// with another mapping, so the hash of every key is computed again,
+    /// and a chain map is copied with the items of its merged maps.
+    fn comparison_mapping_entries(
+        &mut self,
+        value: &Value,
+    ) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
+        if let Some(maps) = chain_map_maps_if_value(value) {
+            return self.chain_map_comparison_entries(&maps);
+        }
+        // CPython copies a mapping into a dictionary before it compares it
+        // with another mapping. A mapping that keeps the hash of its keys
+        // answers the copy with the stored hash, so it does not hash a key
+        // again.
+        self.mapping_entries_with_hashes(value)
+    }
+
+    /// The entries of the copy of a chain map, with the hash of every key.
+    ///
+    /// CPython compares two mappings by their items, so it copies a chain
+    /// map into a dictionary. The copy looks every key up in the maps of
+    /// the chain map, and the lookup hashes the key, and the copy puts
+    /// every key into the dictionary, and the insertion hashes the key
+    /// again.
+    fn chain_map_comparison_entries(
+        &mut self,
+        maps: &[Value],
+    ) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
+        let mut entries = Vec::new();
+        let mut hashes: Vec<Option<Value>> = Vec::new();
+        for (key, _) in self.chain_map_merged_keys(maps)? {
+            let value = self.chain_map_value_for_key(maps, &key)?;
+            // The insertion of the key into the copy hashes the key again.
+            let hash = self.hash_key_value(&key)?;
+            entries.push((key, value));
+            hashes.push(Some(hash));
+        }
+        Ok((entries, hashes))
+    }
+
+    /// The merged entries of the maps of a chain map, with the hash of
+    /// every key.
+    ///
+    /// CPython merges the maps of a chain map into a dictionary, so a key of
+    /// a map replaces an equal key of a map that came before it, and the
+    /// value of a key comes from the first map that holds it. The merge
+    /// hashes every key of every map.
+    fn chain_map_merged_keys(
+        &mut self,
+        maps: &[Value],
+    ) -> Result<Vec<(Value, Option<Value>)>, String> {
+        let mut merged: Vec<(Value, Option<Value>)> = Vec::new();
+        for map in maps.iter().rev() {
+            let (entries, hashes) = self.mapping_entries_with_hashes(map)?;
+            for index in 0..entries.len() {
+                let key = entries[index].0.clone();
+                let hash = self.mapping_entry_hash(&entries, &hashes, index)?;
+                if self.merged_key_position(&merged, &key, &hash)?.is_some() {
+                    continue;
+                }
+                merged.push((key, Some(hash)));
+            }
+        }
+        Ok(merged)
+    }
+
+    /// The index of a key in the merged entries of a chain map.
+    ///
+    /// The hash of the key decides whether the keys are compared at all,
+    /// and the `__eq__` of the key types answers the comparison.
+    fn merged_key_position(
+        &mut self,
+        merged: &[(Value, Option<Value>)],
+        key: &Value,
+        key_hash: &Value,
+    ) -> Result<Option<usize>, String> {
+        for (index, (existing_key, existing_hash)) in merged.iter().enumerate() {
+            // CPython looks the key up in the merged dictionary, so the
+            // hash of the key decides whether the keys are compared at all.
+            if let Some(existing_hash) = existing_hash
+                && existing_hash != key_hash
+            {
+                continue;
+            }
+            if is_identical(existing_key, key) {
+                return Ok(Some(index));
+            }
+            if self.rich_equal_values(existing_key, key)? {
+                return Ok(Some(index));
+            }
+        }
+        Ok(None)
+    }
+
+    /// The value a chain map holds for a key.
+    ///
+    /// The first map that holds an equal key provides the value. CPython
+    /// looks the key up in every map, so the hash of the key is computed
+    /// again for every map it looks in.
+    fn chain_map_value_for_key(&mut self, maps: &[Value], key: &Value) -> Result<Value, String> {
+        for map in maps {
+            // CPython looks the key up in every map, and the lookup hashes
+            // the key.
+            let key_hash = self.hash_key_value(key)?;
+            let (entries, hashes) = self.mapping_entries_with_hashes(map)?;
+            for index in 0..entries.len() {
+                let (existing_key, _) = &entries[index];
+                if is_identical(existing_key, key) {
+                    return Ok(entries[index].1.clone());
+                }
+                let existing_hash = self.mapping_entry_hash(&entries, &hashes, index)?;
+                if existing_hash != key_hash {
+                    continue;
+                }
+                if self.rich_equal_values(existing_key, key)? {
+                    return Ok(entries[index].1.clone());
+                }
+            }
+        }
+        Err(format!("KeyError: {}", format_key_error(key)))
+    }
+
+    /// The entries of a mapping with the hash of every key.
+    ///
+    /// The hash of a key is only known for a mapping that keeps it with
+    /// its entries, and every other mapping reports an unknown hash.
+    fn mapping_entries_with_hashes(
+        &mut self,
+        value: &Value,
+    ) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
+        if let Some(entries) = stored_mapping_entries(value) {
+            return Ok(entries);
+        }
+        let entries = mapping_entries(value)?;
+        let hashes = vec![None; entries.len()];
+        Ok((entries, hashes))
+    }
+
+    /// The hash of every key of a list of entries.
+    ///
+    /// CPython computes the hash of a key when the key goes into a
+    /// dictionary, so a dictionary that is built from a list of entries
+    /// hashes every key.
+    fn entry_hashes(&mut self, entries: &[(Value, Value)]) -> Result<Vec<Option<Value>>, String> {
+        entries
+            .iter()
+            .map(|(key, _)| self.stored_key_hash(key))
+            .collect()
+    }
+
+    /// The entries of a source of a dictionary update, with the hash of
+    /// every key.
+    ///
+    /// CPython keeps the hash of a key with its entry, so a dictionary
+    /// that is copied from another dictionary reuses the stored hash of
+    /// every key, and a dictionary that is built from a list of pairs
+    /// hashes every key.
+    fn dict_update_entries_with_hashes(
+        &mut self,
+        value: &Value,
+    ) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
+        if let Some(entries) = stored_mapping_entries(value) {
+            return Ok(entries);
+        }
+        let entries = self.dict_entries_from_update_source(value.clone())?;
+        let hashes = self.entry_hashes(&entries)?;
+        Ok((entries, hashes))
+    }
+
+    /// The hash of the key of an entry of a mapping.
+    ///
+    /// CPython keeps the hash of a key with its entry, so a comparison of
+    /// two mappings answers with the stored hash instead of hashing the key
+    /// again.
+    fn mapping_entry_hash(
+        &mut self,
+        entries: &[(Value, Value)],
+        hashes: &[Option<Value>],
+        index: usize,
+    ) -> Result<Value, String> {
+        match hashes.get(index) {
+            Some(Some(hash)) => Ok(hash.clone()),
+            _ => self.hash_key_value(&entries[index].0),
+        }
+    }
+
+    /// The comparison of the entries of a mapping with the entries of
+    /// another mapping.
+    ///
+    /// CPython looks the key of every entry of the left mapping up in the
+    /// right mapping: the hash of the key decides whether the keys are
+    /// compared at all, and the `__eq__` of the key types answers the
+    /// comparison.
+    fn mapping_entries_equal(
+        &mut self,
+        left: &[(Value, Value)],
+        left_hashes: &[Option<Value>],
+        right: &[(Value, Value)],
+        right_hashes: &[Option<Value>],
+    ) -> Result<bool, String> {
+        if left.len() != right.len() {
+            return Ok(false);
+        }
+        for index in 0..left.len() {
+            let (key, value) = &left[index];
+            let key_hash = self.mapping_entry_hash(left, left_hashes, index)?;
+            let mut matched = None;
+            for other_index in 0..right.len() {
+                let (other_key, other_value) = &right[other_index];
+                // CPython looks the key up in the right mapping, so the
+                // hash of the key decides whether the keys are compared at
+                // all, and the key that the lookup finds answers the
+                // comparison.
+                let other_hash = self.mapping_entry_hash(right, right_hashes, other_index)?;
+                if other_hash != key_hash {
+                    continue;
+                }
+                if is_identical(other_key, key) {
+                    matched = Some(other_value);
+                    break;
+                }
+                if self.rich_equal_values(other_key, key)? {
+                    matched = Some(other_value);
+                    break;
+                }
+            }
+            let Some(other_value) = matched else {
+                return Ok(false);
+            };
+            // CPython compares the values with an identity shortcut, so the
+            // same object never reaches a user-defined `__eq__`.
+            if !is_identical(value, other_value) && !self.rich_equal_values(value, other_value)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
     fn counter_equal_values(
         &mut self,
         left: &Value,
@@ -37343,6 +38619,41 @@ impl Vm {
             }
         }
         Ok(Some(true))
+    }
+
+    /// The comparison of a counter with a mapping that is not a counter.
+    ///
+    /// CPython compares two counters by their counts and ignores the counts
+    /// that are zero, while a counter and a plain mapping are compared by
+    /// their items.
+    fn counter_mapping_equal(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        let left_counter = counter_entries_if_value(left).is_some();
+        let right_counter = counter_entries_if_value(right).is_some();
+        if left_counter == right_counter {
+            // Both operands are counters, or neither of them is.
+            return Ok(None);
+        }
+        let (counter_side, mapping_side) = if left_counter {
+            (left, right)
+        } else {
+            (right, left)
+        };
+        let Ok(mapping_entries) = mapping_entries(mapping_side) else {
+            return Ok(None);
+        };
+        let counter_entries = counter_entries_if_value(counter_side)
+            .expect("the counter operand holds counter entries")
+            .borrow()
+            .entries
+            .clone();
+        Ok(Some(
+            counter_entries.len() == mapping_entries.len()
+                && self.dict_item_entries_subset(&counter_entries, &mapping_entries)?,
+        ))
     }
 
     fn counter_compare_values(
@@ -37408,9 +38719,7 @@ impl Vm {
             return Ok(false);
         }
         for (left_item, right_item) in left.iter().zip(right.iter()) {
-            if !sequence_items_match(left_item, right_item)
-                && !self.rich_equal_values(left_item, right_item)?
-            {
+            if !self.container_items_equal(left_item, right_item)? {
                 return Ok(false);
             }
         }
@@ -37422,7 +38731,7 @@ impl Vm {
         left: &Value,
         right: &Value,
         op: SequenceOrder,
-    ) -> Result<Option<bool>, String> {
+    ) -> Result<Option<Value>, String> {
         if array_array_storage(left).is_some() || array_array_storage(right).is_some() {
             return if array_array_storage(left).is_some() && array_array_storage(right).is_some() {
                 let left = array_array_values(left).expect("array storage exists after guard");
@@ -37433,10 +38742,37 @@ impl Vm {
             };
         }
 
-        if let (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) = (left, right) {
-            let left = left.borrow().clone();
-            let right = right.borrow().clone();
-            return Ok(Some(self.rich_sequence_order(&left, &right, op)?));
+        if let (
+            Value::Deque {
+                data: left,
+                state: left_state,
+                ..
+            },
+            Value::Deque {
+                data: right,
+                state: right_state,
+                ..
+            },
+        ) = (left, right)
+        {
+            return Ok(Some(Value::Bool(self.rich_deque_items_order(
+                left,
+                left_state,
+                right,
+                right_state,
+                op,
+            )?)));
+        }
+
+        if let (Some(left), Some(right)) = (
+            list_order_operand_items(left),
+            list_order_operand_items(right),
+        ) {
+            let mut left = SequenceReader::new(SequenceItems::Mutable(left));
+            let mut right = SequenceReader::new(SequenceItems::Mutable(right));
+            return Ok(Some(
+                self.rich_sequence_items_order(&mut left, &mut right, op)?,
+            ));
         }
 
         let Some((left, right)) = sequence_order_operands(left, right) else {
@@ -37446,25 +38782,121 @@ impl Vm {
         Ok(Some(self.rich_sequence_order(&left, &right, op)?))
     }
 
+    /// The comparison of two deques, whose items are read one at a time.
+    ///
+    /// A change of a deque counter is reported by its iteration.
+    fn deque_comparison_result(
+        &mut self,
+        left: &ListRef,
+        left_state: &Rc<Cell<u64>>,
+        right: &ListRef,
+        right_state: &Rc<Cell<u64>>,
+        method: &str,
+    ) -> Result<bool, String> {
+        match method {
+            "__eq__" | "__ne__" => {
+                let mut left =
+                    SequenceReader::new(SequenceItems::Deque(left.clone(), left_state.clone()));
+                let mut right =
+                    SequenceReader::new(SequenceItems::Deque(right.clone(), right_state.clone()));
+                let equal = self.rich_deque_items_equal(&mut left, &mut right)?;
+                Ok(if method == "__ne__" { !equal } else { equal })
+            }
+            "__lt__" => self.rich_deque_items_order(
+                left,
+                left_state,
+                right,
+                right_state,
+                SequenceOrder::Less,
+            ),
+            "__le__" => self.rich_deque_items_order(
+                left,
+                left_state,
+                right,
+                right_state,
+                SequenceOrder::LessEqual,
+            ),
+            "__gt__" => self.rich_deque_items_order(
+                left,
+                left_state,
+                right,
+                right_state,
+                SequenceOrder::Greater,
+            ),
+            "__ge__" => self.rich_deque_items_order(
+                left,
+                left_state,
+                right,
+                right_state,
+                SequenceOrder::GreaterEqual,
+            ),
+            _ => unreachable!("method is filtered above"),
+        }
+    }
+
     fn rich_sequence_order(
         &mut self,
         left: &[Value],
         right: &[Value],
         op: SequenceOrder,
-    ) -> Result<bool, String> {
+    ) -> Result<Value, String> {
         for (left_item, right_item) in left.iter().zip(right.iter()) {
-            if self.rich_equal_values(left_item, right_item)? {
+            // CPython compares the items with an identity shortcut, so the
+            // same object never reaches a user-defined `__eq__`.
+            if is_identical(left_item, right_item)
+                || self.rich_equal_values(left_item, right_item)?
+            {
                 continue;
             }
             return self.sequence_item_order(left_item.clone(), right_item.clone(), op);
         }
 
-        Ok(match op {
+        Ok(Value::Bool(match op {
             SequenceOrder::Less => left.len() < right.len(),
             SequenceOrder::LessEqual => left.len() <= right.len(),
             SequenceOrder::Greater => left.len() > right.len(),
             SequenceOrder::GreaterEqual => left.len() >= right.len(),
-        })
+        }))
+    }
+
+    fn order_result_values(
+        &mut self,
+        left: Value,
+        right: Value,
+        op: SequenceOrder,
+    ) -> Result<Value, String> {
+        crate::stack::check_native_recursion(COMPARISON_RECURSION_CONTEXT)?;
+        if let Some(result) = self.rich_sequence_order_values(&left, &right, op)? {
+            return Ok(result);
+        }
+        let (method, reflected) = match op {
+            SequenceOrder::Less => ("__lt__", "__gt__"),
+            SequenceOrder::LessEqual => ("__le__", "__ge__"),
+            SequenceOrder::Greater => ("__gt__", "__lt__"),
+            SequenceOrder::GreaterEqual => ("__ge__", "__le__"),
+        };
+        let reflected_first = right_type_is_strict_subclass(&left, &right);
+        let operands = if reflected_first {
+            [(&right, &left, reflected), (&left, &right, method)]
+        } else {
+            [(&left, &right, method), (&right, &left, reflected)]
+        };
+        for (receiver, other, name) in operands {
+            if let Some(method) = instance_special_method(receiver, name) {
+                let result = self.call_value(method, vec![other.clone()])?;
+                if !matches!(result, Value::NotImplemented) {
+                    return Ok(result);
+                }
+            }
+        }
+        // The remaining builtin comparisons produce booleans.
+        let result = match op {
+            SequenceOrder::Less => self.less_builtin_values(left, right)?,
+            SequenceOrder::LessEqual => self.less_equal_builtin_values(left, right)?,
+            SequenceOrder::Greater => self.greater_builtin_values(left, right)?,
+            SequenceOrder::GreaterEqual => self.greater_equal_builtin_values(left, right)?,
+        };
+        Ok(Value::Bool(result))
     }
 
     fn sequence_item_order(
@@ -37472,55 +38904,8 @@ impl Vm {
         left: Value,
         right: Value,
         op: SequenceOrder,
-    ) -> Result<bool, String> {
-        match op {
-            SequenceOrder::Less => self.less_values(left, right),
-            SequenceOrder::LessEqual => self.less_equal_values(left, right),
-            SequenceOrder::Greater => self.greater_values(left, right),
-            SequenceOrder::GreaterEqual => self.greater_equal_values(left, right),
-        }
-    }
-
-    fn call_eq_special(&mut self, left: Value, right: Value) -> Result<Option<bool>, String> {
-        let Some(method) = instance_special_method(&left, "__eq__")
-            .or_else(|| metaclass_special_method(&left, "__eq__"))
-        else {
-            return Ok(None);
-        };
-        let result = self.call_value(method, vec![right])?;
-        if matches!(result, Value::NotImplemented) {
-            return Ok(None);
-        }
-        self.truth_value(result).map(Some)
-    }
-
-    fn call_ne_special(&mut self, left: Value, right: Value) -> Result<Option<bool>, String> {
-        let Some(method) = instance_special_method(&left, "__ne__")
-            .or_else(|| metaclass_special_method(&left, "__ne__"))
-        else {
-            return Ok(None);
-        };
-        let result = self.call_value(method, vec![right])?;
-        if matches!(result, Value::NotImplemented) {
-            return Ok(None);
-        }
-        self.truth_value(result).map(Some)
-    }
-
-    fn call_order_special(
-        &mut self,
-        left: Value,
-        right: Value,
-        method_name: &str,
-    ) -> Result<Option<bool>, String> {
-        let Some(method) = instance_special_method(&left, method_name) else {
-            return Ok(None);
-        };
-        let result = self.call_value(method, vec![right])?;
-        if matches!(result, Value::NotImplemented) {
-            return Ok(None);
-        }
-        self.truth_value(result).map(Some)
+    ) -> Result<Value, String> {
+        self.order_result_values(left, right, op)
     }
 
     fn mutable_mapping_abc_update_from_source(
@@ -37540,7 +38925,7 @@ impl Vm {
             Ok(keys_method) => {
                 let keys = match self.call_value_catching(keys_method, Vec::new())? {
                     Ok(keys) => keys,
-                    Err(exception) => return Err(format_exception_error(&exception)),
+                    Err(exception) => return Err(self.propagate_captured_exception(exception)),
                 };
                 for key in self.collect_iterable_values_propagating(keys)? {
                     let value = self.mapping_abc_get_item(source.clone(), key.clone())?;
@@ -37571,7 +38956,7 @@ impl Vm {
                     }
                 }
             }
-            Err(exception) => return Err(format_exception_error(&exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         }
 
         Ok(())
@@ -37865,7 +39250,7 @@ impl Vm {
                 let class = type_object_for_value(&receiver);
                 self.call_value(class, vec![iterable])
             }
-            Err(exception) => Err(format_exception_error(&exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -37951,7 +39336,7 @@ impl Vm {
                 Err(exception) if exception_is_builtin_instance(&exception, "KeyError") => {
                     return Ok(Value::None);
                 }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -38144,27 +39529,27 @@ impl Vm {
         match function {
             "lt" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.less_values(left, right)?))
+                self.order_result_values(left, right, SequenceOrder::Less)
             }
             "le" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.less_equal_values(left, right)?))
+                self.order_result_values(left, right, SequenceOrder::LessEqual)
             }
             "eq" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.equal_values(left, right)?))
+                self.equal_result_values(&left, &right)
             }
             "ne" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.not_equal_values(left, right)?))
+                self.not_equal_result_values(&left, &right)
             }
             "ge" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.greater_equal_values(left, right)?))
+                self.order_result_values(left, right, SequenceOrder::GreaterEqual)
             }
             "gt" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                Ok(Value::Bool(self.greater_values(left, right)?))
+                self.order_result_values(left, right, SequenceOrder::Greater)
             }
             "truth" => {
                 let value = operator_unary_arg(function, args)?;
@@ -38384,7 +39769,7 @@ impl Vm {
         }
 
         Ok(Value::OperatorItemGetter {
-            items: args,
+            items: Rc::new(args),
             identity: Rc::new(()),
         })
     }
@@ -38409,8 +39794,8 @@ impl Vm {
 
         Ok(Value::OperatorMethodCaller {
             name,
-            args: bound_args.to_vec(),
-            keywords,
+            args: Rc::new(bound_args.to_vec()),
+            keywords: Rc::new(keywords),
             identity: Rc::new(()),
         })
     }
@@ -38466,7 +39851,7 @@ impl Vm {
 
     fn call_operator_itemgetter(
         &mut self,
-        items: Vec<Value>,
+        items: Rc<Vec<Value>>,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
@@ -38475,8 +39860,8 @@ impl Vm {
         }
         let object = operator_call_object_arg("itemgetter", args)?;
         let mut values = Vec::with_capacity(items.len());
-        for item in items {
-            values.push(self.load_subscript_value(object.clone(), item)?);
+        for item in items.iter() {
+            values.push(self.load_subscript_value(object.clone(), item.clone())?);
         }
         Ok(operator_getter_result(values))
     }
@@ -38484,8 +39869,8 @@ impl Vm {
     fn call_operator_methodcaller(
         &mut self,
         name: String,
-        bound_args: Vec<Value>,
-        bound_keywords: Vec<(String, Value)>,
+        bound_args: Rc<Vec<Value>>,
+        bound_keywords: Rc<Vec<(String, Value)>>,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
@@ -38494,7 +39879,7 @@ impl Vm {
         }
         let object = operator_call_object_arg("methodcaller", args)?;
         let method = self.load_attribute_value(object, &name)?;
-        self.call_value_with_keywords(method, bound_args, bound_keywords)
+        self.call_value_with_keywords(method, (*bound_args).clone(), (*bound_keywords).clone())
     }
 
     fn operator_concat_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
@@ -38528,10 +39913,7 @@ impl Vm {
                     }
                 }
                 Ok(IteratorAdvance::Complete(_)) => return Ok(Value::Number(count)),
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -38550,10 +39932,7 @@ impl Vm {
                 Ok(IteratorAdvance::Complete(_)) => {
                     return Err("ValueError: sequence.index(x): x not in sequence".to_string());
                 }
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
@@ -39229,6 +40608,7 @@ impl Vm {
                 stop,
                 step,
             } => Ok(Some(range_len_usize(&current, &stop, &step)?)),
+            Value::DequeIterator { remaining, .. } => Ok(Some(remaining)),
             Value::ListIterator {
                 items,
                 index,
@@ -39406,12 +40786,15 @@ impl Vm {
         let iterable = iterable.ok_or_else(|| {
             "TypeError: enumerate() missing required argument 'iterable'".to_string()
         })?;
+        // CPython converts the start before it takes the iterator, so a
+        // start that changes the iterable does not disturb the iteration.
+        let index = self.index_big_int(start.unwrap_or(Value::Number(0)))?;
         let Some(iterator) = self.get_iter_or_raise(iterable)? else {
             return Ok(Value::None);
         };
         Ok(shared_iterator(Value::EnumerateIterator {
             iterator: Box::new(iterator),
-            index: self.index_big_int(start.unwrap_or(Value::Number(0)))?,
+            index,
         }))
     }
 
@@ -39524,7 +40907,7 @@ impl Vm {
                 if let Some(method) = instance_special_method(&value, "__abs__") {
                     return match self.call_value_catching(method, Vec::new())? {
                         Ok(result) => Ok(result),
-                        Err(exception) => Err(format_exception_error(&exception)),
+                        Err(exception) => Err(self.propagate_captured_exception(exception)),
                     };
                 }
                 Err(format!(
@@ -39540,7 +40923,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let options = sorted_options(self, args.len(), keywords)?;
+        let options = sorted_options(args.len(), keywords)?;
         let [iterable] = args.as_slice() else {
             return Err(format!(
                 "TypeError: sorted expected 1 argument, got {}",
@@ -39548,13 +40931,21 @@ impl Vm {
             ));
         };
 
+        // The input is read before the `reverse` flag is read, as CPython
+        // does: a flag whose truth value depends on the input sees the input
+        // as it was when the sort started.
+        let values = self.collect_iterable_values(iterable.clone())?;
+        let reverse = match options.reverse {
+            Some(value) => sorted_reverse_option(self, value)?,
+            None => false,
+        };
         let mut items = Vec::new();
-        for value in self.collect_iterable_values(iterable.clone())? {
+        for value in values {
             let key = self.sort_key_value(options.key.as_ref(), &value)?;
             items.push(SortItem { value, key });
         }
 
-        self.sort_items_by_key(&mut items, options.reverse.unwrap_or(false))?;
+        self.sort_items_by_key(&mut items, reverse)?;
         Ok(list_value(
             items.into_iter().map(|item| item.value).collect(),
         ))
@@ -39596,7 +40987,7 @@ impl Vm {
             (name, args.as_slice())
         {
             let value = self.list_slice_assignment_values(value.clone())?;
-            store_subscript(list.clone(), index.clone(), value)?;
+            store_subscript(self, list.clone(), index.clone(), value)?;
             return Ok(Value::None);
         }
 
@@ -39608,7 +40999,7 @@ impl Vm {
         } else {
             None
         };
-        let result = call_list_method(name, args)?;
+        let result = call_list_method(self, name, args)?;
         if let Some((items, previous_len)) = tracked_list {
             let added = items.borrow().len().saturating_sub(previous_len);
             self.consume_allocation_budget(added.saturating_mul(std::mem::size_of::<Value>()))?;
@@ -39651,10 +41042,24 @@ impl Vm {
     }
 
     fn list_item_matches(&mut self, item: Value, needle: &Value) -> Result<bool, String> {
-        if sequence_items_match(&item, needle) {
-            return Ok(true);
+        self.container_items_equal(&item, needle)
+    }
+
+    /// Whether a container holds an item that compares equal to the needle.
+    ///
+    /// The items are read one at a time, because the comparison of an item
+    /// can run user code that changes the container.
+    fn container_items_contain(
+        &mut self,
+        items: &mut SequenceReader,
+        needle: &Value,
+    ) -> Result<bool, String> {
+        while let Some(item) = items.next()? {
+            if self.container_items_equal(&item, needle)? {
+                return Ok(true);
+            }
         }
-        self.equal_values(item, needle.clone())
+        Ok(false)
     }
 
     fn list_contains_rich(&mut self, items: &ListRef, needle: &Value) -> Result<bool, String> {
@@ -39686,24 +41091,31 @@ impl Vm {
     fn list_search_bounds_for_dynamic_list(
         &mut self,
         args: &[Value],
-        len: usize,
+        items: &ListRef,
     ) -> Result<(usize, Option<usize>), String> {
-        let len = i64::try_from(len).map_err(|_| "list is too large".to_string())?;
         let start = match args.first() {
             Some(value) => self.list_search_bound_argument(value)?,
             None => 0,
         };
-        let start = normalize_positive_slice_bound(start, len);
-        let stop = match args.get(1) {
-            Some(value) => {
-                let stop = self.list_search_bound_argument(value)?;
-                Some(normalize_positive_slice_bound(stop, len).max(start))
+        let stop = args
+            .get(1)
+            .map(|value| self.list_search_bound_argument(value))
+            .transpose()?;
+        let len =
+            i64::try_from(items.borrow().len()).map_err(|_| "list is too large".to_string())?;
+        let normalize = |bound: i64| {
+            if bound < 0 {
+                bound.saturating_add(len).max(0)
+            } else {
+                bound
             }
-            None => None,
         };
-        let start = usize::try_from(start).map_err(|_| "list index out of range".to_string())?;
+        let start =
+            usize::try_from(normalize(start)).map_err(|_| "list index out of range".to_string())?;
         let stop = stop
-            .map(|stop| usize::try_from(stop).map_err(|_| "list index out of range".to_string()))
+            .map(|stop| {
+                usize::try_from(normalize(stop)).map_err(|_| "list index out of range".to_string())
+            })
             .transpose()?;
         Ok((start, stop))
     }
@@ -39727,7 +41139,7 @@ impl Vm {
                     let result = match self.call_value_catching(method, Vec::new())? {
                         Ok(result) => result,
                         Err(exception) => {
-                            return Err(self.remember_runtime_exception_error(exception));
+                            return Err(self.propagate_captured_exception(exception));
                         }
                     };
                     integer_dunder_result("__index__", result)?
@@ -39820,8 +41232,7 @@ impl Vm {
                     ));
                 }
 
-                let len = items.borrow().len();
-                let (start, stop) = self.list_search_bounds_for_dynamic_list(rest, len)?;
+                let (start, stop) = self.list_search_bounds_for_dynamic_list(rest, items)?;
                 match self.list_find_rich(items, needle, start, stop)? {
                     Some(index) => {
                         let index = i64::try_from(index)
@@ -39856,7 +41267,9 @@ impl Vm {
         }
 
         let [Value::UserList { data, attrs }, rest @ ..] = args.as_slice() else {
-            return Err(format!("{method}() expected a UserList receiver"));
+            return Err(format!(
+                "TypeError: {method}() expected a UserList receiver"
+            ));
         };
 
         if matches!(method, "copy" | "__copy__") {
@@ -39945,13 +41358,13 @@ impl Vm {
             let left = Value::List(data.clone());
             let right = user_list_comparison_operand(other);
             let result = match method {
-                "__lt__" => self.less_values(left, right)?,
-                "__le__" => self.less_equal_values(left, right)?,
-                "__gt__" => self.greater_values(left, right)?,
-                "__ge__" => self.greater_equal_values(left, right)?,
+                "__lt__" => self.order_result_values(left, right, SequenceOrder::Less)?,
+                "__le__" => self.order_result_values(left, right, SequenceOrder::LessEqual)?,
+                "__gt__" => self.order_result_values(left, right, SequenceOrder::Greater)?,
+                "__ge__" => self.order_result_values(left, right, SequenceOrder::GreaterEqual)?,
                 _ => unreachable!("method is filtered above"),
             };
-            return Ok(Value::Bool(result));
+            return Ok(result);
         }
 
         if matches!(method, "__add__" | "__radd__") {
@@ -40898,13 +42311,7 @@ impl Vm {
                 type_name(receiver)
             ));
         };
-        let values = self.collect_iterable_values(seq).map_err(|error| {
-            if error.ends_with(" is not iterable") {
-                "TypeError: can only join an iterable".to_string()
-            } else {
-                error
-            }
-        })?;
+        let values = self.collect_iterable_values_with_iter_error(seq, join_iter_error)?;
         let mut parts = Vec::with_capacity(values.len());
         for (index, value) in values.into_iter().enumerate() {
             if let Some(part) = user_string_join_part(&value) {
@@ -40931,7 +42338,8 @@ impl Vm {
                 type_name(receiver)
             ));
         };
-        self.render_str_format(&data.borrow(), positional, keywords, None)
+        let format = data.borrow().clone();
+        self.render_str_format(&format, positional, keywords, None)
     }
 
     fn user_string_format_map_value(
@@ -40945,7 +42353,8 @@ impl Vm {
                 type_name(receiver)
             ));
         };
-        self.render_str_format(&data.borrow(), &[], &[], Some(&mapping))
+        let format = data.borrow().clone();
+        self.render_str_format(&format, &[], &[], Some(&mapping))
     }
 
     fn user_string_mod_value(&mut self, receiver: &Value, args: Value) -> Result<Value, String> {
@@ -41199,7 +42608,11 @@ impl Vm {
             ));
         };
 
-        let text = data.borrow();
+        // CPython reads the string before it converts the bounds, so a bound
+        // that changes the string does not change the search. The copy is
+        // taken before the bounds are converted, so no borrow is held while
+        // the user's `__index__` runs.
+        let text = data.borrow().clone();
         let len = text.chars().count();
         let len_i64 = i64::try_from(len).map_err(|_| "string is too large".to_string())?;
         let start = match start {
@@ -41249,7 +42662,11 @@ impl Vm {
             return Ok(Value::Bool(false));
         }
 
-        let text = data.borrow();
+        // CPython reads the string before it converts the bounds, so a bound
+        // that changes the string does not change the search. The copy is
+        // taken before the bounds are converted, so no borrow is held while
+        // the user's `__index__` runs.
+        let text = data.borrow().clone();
         let len = text.chars().count();
         let len_i64 = i64::try_from(len).map_err(|_| "string is too large".to_string())?;
         let start = match start {
@@ -41282,55 +42699,37 @@ impl Vm {
         Ok(Value::Bool(matched))
     }
 
-    fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
-        let items = data.borrow();
-        (
-            items.clone(),
-            items.iter().map(|item| identity_bits(item)).collect(),
-        )
-    }
-
-    fn deque_state_changed(data: &ListRef, signature: &[u64]) -> bool {
-        let items = data.borrow();
-        items.len() != signature.len()
-            || items
-                .iter()
-                .zip(signature.iter())
-                .any(|(item, identity)| identity_bits(item) != *identity)
-    }
-
     fn deque_mutated_iteration_error(method: &str) -> String {
         if method == "remove" {
             "IndexError: deque mutated during iteration".to_string()
         } else {
-            "RuntimeError: deque mutated during iteration".to_string()
+            DEQUE_MUTATED_DURING_ITERATION.to_string()
         }
     }
 
-    fn deque_contains_rich(&mut self, data: &ListRef, needle: &Value) -> Result<bool, String> {
-        let (items, signature) = Self::deque_search_snapshot(data);
-        for item in items {
-            if self.equal_values(item, needle.clone())? {
-                return Ok(true);
-            }
-            if Self::deque_state_changed(data, &signature) {
-                return Err(Self::deque_mutated_iteration_error("__contains__"));
-            }
-        }
-        Ok(false)
+    fn deque_contains_rich(
+        &mut self,
+        data: &ListRef,
+        state: &Rc<Cell<u64>>,
+        needle: &Value,
+    ) -> Result<bool, String> {
+        let mut items = SequenceReader::new(SequenceItems::Deque(data.clone(), state.clone()));
+        self.container_items_contain(&mut items, needle)
     }
 
-    fn deque_count_rich(&mut self, data: &ListRef, needle: &Value) -> Result<i64, String> {
-        let (items, signature) = Self::deque_search_snapshot(data);
+    fn deque_count_rich(
+        &mut self,
+        data: &ListRef,
+        state: &Rc<Cell<u64>>,
+        needle: &Value,
+    ) -> Result<i64, String> {
+        let mut items = SequenceReader::new(SequenceItems::Deque(data.clone(), state.clone()));
         let mut count = 0_i64;
-        for item in items {
-            if self.equal_values(item, needle.clone())? {
+        while let Some(item) = items.next()? {
+            if self.container_items_equal(&item, needle)? {
                 count = count
                     .checked_add(1)
                     .ok_or_else(|| "count() result is too large".to_string())?;
-            }
-            if Self::deque_state_changed(data, &signature) {
-                return Err(Self::deque_mutated_iteration_error("count"));
             }
         }
         Ok(count)
@@ -41339,31 +42738,43 @@ impl Vm {
     fn deque_find_rich(
         &mut self,
         data: &ListRef,
+        state: &Rc<Cell<u64>>,
         needle: &Value,
         start: usize,
         stop: usize,
     ) -> Result<Option<usize>, String> {
-        let (items, signature) = Self::deque_search_snapshot(data);
-        for (offset, item) in items[start..stop].iter().cloned().enumerate() {
-            if self.equal_values(item, needle.clone())? {
-                return Ok(Some(start + offset));
+        let expected_state = state.get();
+        for index in start..stop {
+            let Some(item) = data.borrow().get(index).cloned() else {
+                break;
+            };
+            if self.container_items_equal(&item, needle)? {
+                return Ok(Some(index));
             }
-            if Self::deque_state_changed(data, &signature) {
+            if state.get() != expected_state {
                 return Err(Self::deque_mutated_iteration_error("index"));
             }
         }
         Ok(None)
     }
 
-    fn deque_remove_rich(&mut self, data: &ListRef, needle: &Value) -> Result<Value, String> {
-        let (items, signature) = Self::deque_search_snapshot(data);
-        for (index, item) in items.iter().cloned().enumerate() {
-            let matched = self.equal_values(item, needle.clone())?;
-            if Self::deque_state_changed(data, &signature) {
+    fn deque_remove_rich(
+        &mut self,
+        data: &ListRef,
+        state: &Rc<Cell<u64>>,
+        needle: &Value,
+    ) -> Result<Value, String> {
+        let expected_state = state.get();
+        let len = data.borrow().len();
+        for index in 0..len {
+            let item = data.borrow()[index].clone();
+            let matched = self.container_items_equal(&item, needle)?;
+            if state.get() != expected_state {
                 return Err(Self::deque_mutated_iteration_error("remove"));
             }
             if matched {
                 data.borrow_mut().remove(index);
+                state.set(state.get().wrapping_add(1));
                 return Ok(Value::None);
             }
         }
@@ -41376,10 +42787,33 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if method_display_name(name) == "__init__" {
+            let Some((receiver, rest)) = args.split_first() else {
+                return Err(
+                    "TypeError: descriptor '__init__' of 'collections.deque' object needs an argument"
+                        .to_string(),
+                );
+            };
+            if !matches!(receiver, Value::Deque { .. }) {
+                return Err(format!(
+                    "TypeError: descriptor '__init__' requires a 'collections.deque' object but received a '{}'",
+                    type_name(receiver)
+                ));
+            }
+            return self.init_deque(receiver, rest.to_vec(), keywords);
+        }
         reject_method_keywords(name, &keywords)?;
         let method = method_display_name(name);
-        let [Value::Deque { data, maxlen }, rest @ ..] = args.as_slice() else {
-            return Err(format!("{method}() expected a deque receiver"));
+        let [
+            Value::Deque {
+                data,
+                maxlen,
+                state,
+            },
+            rest @ ..,
+        ] = args.as_slice()
+        else {
+            return Err(format!("TypeError: {method}() expected a deque receiver"));
         };
         match method {
             "__repr__" | "__str__" => {
@@ -41389,9 +42823,10 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 }
-                repr_value_checked(&Value::Deque {
+                self.repr_value(&Value::Deque {
                     data: data.clone(),
-                    maxlen: *maxlen,
+                    maxlen: maxlen.clone(),
+                    state: state.clone(),
                 })
                 .map(Value::String)
             }
@@ -41404,9 +42839,10 @@ impl Vm {
                 };
                 let format_spec = format_spec_string(format_spec, "object.__format__()")?;
                 if format_spec.is_empty() {
-                    repr_value_checked(&Value::Deque {
+                    self.repr_value(&Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     })
                     .map(Value::String)
                 } else {
@@ -41426,7 +42862,8 @@ impl Vm {
                 deque_concat_value(
                     &Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     },
                     other,
                 )
@@ -41438,8 +42875,11 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let values = self.collect_iterable_values(other.clone())?;
-                deque_extend_values(data, *maxlen, values);
+                self.call_deque_method(
+                    "deque.extend",
+                    vec![args[0].clone(), other.clone()],
+                    Vec::new(),
+                )?;
                 Ok(args[0].clone())
             }
             "__mul__" | "__rmul__" => {
@@ -41453,7 +42893,8 @@ impl Vm {
                 deque_repeat_value(
                     &Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     },
                     count,
                 )
@@ -41466,7 +42907,7 @@ impl Vm {
                     ));
                 };
                 let count = self.deque_repeat_count_operator(count.clone())?;
-                deque_repeat_in_place(data, *maxlen, count)?;
+                deque_repeat_in_place(data, maxlen.get(), state, count)?;
                 Ok(args[0].clone())
             }
             "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
@@ -41476,24 +42917,16 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let Value::Deque { data: right, .. } = other else {
+                let Value::Deque {
+                    data: right,
+                    state: right_state,
+                    ..
+                } = other
+                else {
                     return Ok(Value::NotImplemented);
                 };
-                let left = data.borrow().clone();
-                let right = right.borrow().clone();
-                let result = match method {
-                    "__eq__" => self.rich_sequence_equal(&left, &right)?,
-                    "__ne__" => !self.rich_sequence_equal(&left, &right)?,
-                    "__lt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Less)?,
-                    "__le__" => {
-                        self.rich_sequence_order(&left, &right, SequenceOrder::LessEqual)?
-                    }
-                    "__gt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Greater)?,
-                    "__ge__" => {
-                        self.rich_sequence_order(&left, &right, SequenceOrder::GreaterEqual)?
-                    }
-                    _ => unreachable!("method is filtered above"),
-                };
+                let result =
+                    self.deque_comparison_result(data, state, right, right_state, method)?;
                 Ok(Value::Bool(result))
             }
             "extend" | "extendleft" => {
@@ -41510,7 +42943,7 @@ impl Vm {
                     iterable => iterable.clone(),
                 };
                 let data = data.clone();
-                let maxlen = *maxlen;
+                let maxlen = maxlen.get();
                 let extend_left = method == "extendleft";
                 self.for_each_iterable_value(iterable, |_, value| {
                     let mut items = data.borrow_mut();
@@ -41528,6 +42961,7 @@ impl Vm {
                             items.remove(0);
                         }
                     }
+                    state.set(state.get().wrapping_add(1));
                     Ok(())
                 })?;
                 Ok(Value::None)
@@ -41537,18 +42971,19 @@ impl Vm {
                     return Err(deque_exact_one_arg_error(method, method_arg_count(&args)));
                 };
                 let mut items = data.borrow_mut();
-                if maxlen == &Some(0) {
+                state.set(state.get().wrapping_add(1));
+                if maxlen.get() == Some(0) {
                     return Ok(Value::None);
                 }
                 if method == "append" {
                     items.push(value.clone());
-                    if maxlen.is_some_and(|maxlen| items.len() > maxlen) {
+                    if maxlen.get().is_some_and(|maxlen| items.len() > maxlen) {
                         items.remove(0);
                     }
                 } else {
                     items.insert(0, value.clone());
-                    if let Some(maxlen) = maxlen {
-                        if items.len() > *maxlen {
+                    if let Some(maxlen) = maxlen.get() {
+                        if items.len() > maxlen {
                             items.pop();
                         }
                     }
@@ -41567,6 +43002,9 @@ impl Vm {
                 } else {
                     Some(items.remove(0))
                 };
+                if value.is_some() {
+                    state.set(state.get().wrapping_add(1));
+                }
                 value.ok_or_else(|| "IndexError: pop from an empty deque".to_string())
             }
             "rotate" => {
@@ -41577,20 +43015,20 @@ impl Vm {
                         method_arg_count(&args),
                     ));
                 }
-                let mut items = data.borrow_mut();
-                if items.len() <= 1 {
-                    return Ok(Value::None);
-                }
                 let steps = match rest {
                     [] => 1,
-                    [value] => {
-                        let value = self.index_big_int(value.clone())?;
-                        let len = BigInt::from(items.len());
-                        value.mod_floor(&len).to_usize().unwrap_or(0)
-                    }
+                    [value] => self.deque_rotate_steps(value.clone())?,
                     _ => unreachable!("rotate argument count checked above"),
                 };
-                items.rotate_right(steps);
+                let mut items = data.borrow_mut();
+                if items.len() > 1 {
+                    let steps = BigInt::from(steps)
+                        .mod_floor(&BigInt::from(items.len()))
+                        .to_usize()
+                        .unwrap_or(0);
+                    state.set(state.get().wrapping_add(1));
+                    items.rotate_right(steps);
+                }
                 Ok(Value::None)
             }
             "reverse" => {
@@ -41604,7 +43042,7 @@ impl Vm {
                 let [needle] = rest else {
                     return Err(deque_exact_one_arg_error("count", method_arg_count(&args)));
                 };
-                Ok(Value::Number(self.deque_count_rich(data, needle)?))
+                Ok(Value::Number(self.deque_count_rich(data, state, needle)?))
             }
             "index" => {
                 if rest.is_empty() {
@@ -41637,24 +43075,24 @@ impl Vm {
                     usize::try_from(start).map_err(|_| "deque index out of range".to_string())?;
                 let stop =
                     usize::try_from(stop).map_err(|_| "deque index out of range".to_string())?;
-                match self.deque_find_rich(data, &rest[0], start, stop)? {
+                match self.deque_find_rich(data, state, &rest[0], start, stop)? {
                     Some(index) => i64::try_from(index)
                         .map(Value::Number)
                         .map_err(|_| "deque index out of range".to_string()),
-                    None => Err(format!("ValueError: {} is not in deque", rest[0])),
+                    None => Err("ValueError: deque.index(x): x not in deque".to_string()),
                 }
             }
             "insert" => {
                 let [index, value] = rest else {
                     return Err(deque_exact_args_error("insert", 2, method_arg_count(&args)));
                 };
+                let index = self.index_i64(index.clone(), "deque index")?;
                 let mut items = data.borrow_mut();
-                if maxlen.is_some_and(|maxlen| items.len() >= maxlen) {
+                if maxlen.get().is_some_and(|maxlen| items.len() >= maxlen) {
                     return Err("IndexError: deque already at its maximum size".to_string());
                 }
                 let len =
                     i64::try_from(items.len()).map_err(|_| "deque is too large".to_string())?;
-                let index = self.index_i64(index.clone(), "deque index")?;
                 let index = if index < 0 {
                     index.saturating_add(len).max(0)
                 } else {
@@ -41663,13 +43101,14 @@ impl Vm {
                 let index =
                     usize::try_from(index).map_err(|_| "deque index out of range".to_string())?;
                 items.insert(index, value.clone());
+                state.set(state.get().wrapping_add(1));
                 Ok(Value::None)
             }
             "remove" => {
                 let [needle] = rest else {
                     return Err(deque_exact_one_arg_error("remove", method_arg_count(&args)));
                 };
-                self.deque_remove_rich(data, needle)
+                self.deque_remove_rich(data, state, needle)
             }
             "__contains__" => {
                 let [needle] = rest else {
@@ -41678,7 +43117,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                Ok(Value::Bool(self.deque_contains_rich(data, needle)?))
+                Ok(Value::Bool(self.deque_contains_rich(data, state, needle)?))
             }
             "__copy__" => {
                 if !rest.is_empty() {
@@ -41686,7 +43125,8 @@ impl Vm {
                 }
                 Ok(Value::Deque {
                     data: Rc::new(RefCell::new(data.borrow().clone())),
-                    maxlen: *maxlen,
+                    maxlen: Rc::new(Cell::new(maxlen.get())),
+                    state: Rc::new(Cell::new(0)),
                 })
             }
             "__delitem__" => {
@@ -41696,10 +43136,16 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if matches!(index, Value::Slice { .. }) {
+                    return Err(
+                        "TypeError: 'slice' object cannot be interpreted as an integer".to_string(),
+                    );
+                }
                 delete_subscript(
                     Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     },
                     self.sequence_subscript_index(index.clone())?,
                 )?;
@@ -41712,10 +43158,16 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if matches!(index, Value::Slice { .. }) {
+                    return Err(
+                        "TypeError: 'slice' object cannot be interpreted as an integer".to_string(),
+                    );
+                }
                 load_subscript(
                     Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     },
                     index.clone(),
                 )
@@ -41727,12 +43179,20 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if matches!(index, Value::Slice { .. }) {
+                    return Err(
+                        "TypeError: 'slice' object cannot be interpreted as an integer".to_string(),
+                    );
+                }
+                let subscript_index = self.sequence_subscript_index(index.clone())?;
                 store_subscript(
+                    self,
                     Value::Deque {
                         data: data.clone(),
-                        maxlen: *maxlen,
+                        maxlen: maxlen.clone(),
+                        state: state.clone(),
                     },
-                    self.sequence_subscript_index(index.clone())?,
+                    subscript_index,
                     value.clone(),
                 )?;
                 Ok(Value::None)
@@ -41741,17 +43201,16 @@ impl Vm {
                 if !rest.is_empty() {
                     return Err(deque_no_args_error("__reversed__", method_arg_count(&args)));
                 }
-                let items_ref = data.borrow();
-                i64::try_from(items_ref.len())
-                    .map_err(|_| "__reversed__() length is too large".to_string())?;
-                let items = items_ref.iter().cloned().collect();
-                Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+                Ok(deque_iterator(data.clone(), state.clone(), true))
             }
             "clear" => {
                 if !rest.is_empty() {
                     return Err(deque_no_args_error("clear", method_arg_count(&args)));
                 }
-                data.borrow_mut().clear();
+                if !data.borrow().is_empty() {
+                    data.borrow_mut().clear();
+                    state.set(state.get().wrapping_add(1));
+                }
                 Ok(Value::None)
             }
             "copy" => {
@@ -41760,7 +43219,8 @@ impl Vm {
                 }
                 Ok(Value::Deque {
                     data: Rc::new(RefCell::new(data.borrow().clone())),
-                    maxlen: *maxlen,
+                    maxlen: Rc::new(Cell::new(maxlen.get())),
+                    state: Rc::new(Cell::new(0)),
                 })
             }
             "__iter__" => {
@@ -41770,7 +43230,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 }
-                get_iter(Value::List(data.clone()))
+                Ok(deque_iterator(data.clone(), state.clone(), false))
             }
             "__len__" => {
                 if !rest.is_empty() {
@@ -41795,11 +43255,12 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
-        let Some(right) = list_equality_operand_values(other) else {
+        let Some(right) = list_equality_operand_items(other) else {
             return Ok(Value::NotImplemented);
         };
-        let left = left.borrow().clone();
-        let equal = self.rich_sequence_equal(&left, &right)?;
+        let mut left = SequenceReader::new(SequenceItems::Mutable(left.clone()));
+        let mut right = SequenceReader::new(SequenceItems::Mutable(right));
+        let equal = self.rich_sequence_items_equal(&mut left, &mut right)?;
         Ok(Value::Bool(if method == "__ne__" { !equal } else { equal }))
     }
 
@@ -41809,13 +43270,17 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let [Value::List(items), positional @ ..] = args.as_slice() else {
-            return Err("sort() expected a list receiver".to_string());
+            return Err("TypeError: sort() expected a list receiver".to_string());
         };
         if !positional.is_empty() {
-            return Err("sort() takes no positional arguments".to_string());
+            return Err("TypeError: sort() takes no positional arguments".to_string());
         }
 
-        let options = list_sort_options(self, keywords)?;
+        let options = list_sort_options(keywords)?;
+        let reverse = match options.reverse {
+            Some(value) => sorted_reverse_option(self, value)?,
+            None => false,
+        };
         let values = items.borrow().clone();
         let mut sorted = Vec::new();
         for value in values {
@@ -41823,7 +43288,7 @@ impl Vm {
             sorted.push(SortItem { value, key });
         }
 
-        self.sort_items_by_key(&mut sorted, options.reverse.unwrap_or(false))?;
+        self.sort_items_by_key(&mut sorted, reverse)?;
         *items.borrow_mut() = sorted.into_iter().map(|item| item.value).collect();
         Ok(Value::None)
     }
@@ -41854,14 +43319,34 @@ impl Vm {
     }
 
     fn collect_iterable_values(&mut self, value: Value) -> Result<Vec<Value>, String> {
-        let mut iterator = self.get_iter(value)?;
-        let mut values = Vec::new();
+        self.collect_iterable_values_with_iter_error(value, |_| None)
+    }
 
+    /// Native consumers can replace an error obtaining the iterator (join,
+    /// for example, reports its own TypeError). Capture consumes that object
+    /// before translation; exceptions from advancing the iterator propagate.
+    fn collect_iterable_values_with_iter_error<F>(
+        &mut self,
+        value: Value,
+        translate: F,
+    ) -> Result<Vec<Value>, String>
+    where
+        F: FnOnce(&MiniException) -> Option<String>,
+    {
+        let mut iterator = match self.call_with_exception_capture(|vm| vm.get_iter(value))? {
+            Ok(iterator) => iterator,
+            Err(exception) => {
+                return Err(match translate(&exception) {
+                    Some(message) => message,
+                    None => self.propagate_captured_exception(exception),
+                });
+            }
+        };
+        let mut values = Vec::new();
         loop {
             match self.advance_owned_iterator(&mut iterator)? {
                 IteratorAdvance::Yield(value) => values.push(value),
                 IteratorAdvance::Complete(_) => return Ok(values),
-                IteratorAdvance::Raised => return Ok(values),
             }
         }
     }
@@ -41892,22 +43377,16 @@ impl Vm {
             match self.advance_owned_iterator_capturing(&mut iterator)? {
                 Ok(IteratorAdvance::Yield(value)) => sink(self, value)?,
                 Ok(IteratorAdvance::Complete(_)) => return Ok(()),
-                Ok(IteratorAdvance::Raised) => {
-                    return Err("iterator raised exception".to_string());
-                }
                 Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
     }
 
-    /// Returns a captured exception as an uncaught-error message while
-    /// keeping the exception object as the current exception, the same state
-    /// `raise_exception` leaves when no handler matches. Callers that turn
-    /// error messages back into exceptions then recover the original object
-    /// (user classes, attributes, chaining) instead of re-parsing the text.
+    /// Transfers a captured exception back to the propagation slot. The
+    /// string is the Result carrier; dispatch checks it against this object.
     fn propagate_captured_exception(&mut self, exception: MiniException) -> String {
         let message = format_exception_error(&exception);
-        self.current_exception = Some(exception);
+        self.in_flight_exception = Some(exception);
         message
     }
 
@@ -41937,31 +43416,7 @@ impl Vm {
         &mut self,
         iterator: &mut Value,
     ) -> Result<Result<IteratorAdvance, MiniException>, String> {
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
-        let result = self.advance_owned_iterator(iterator);
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
-
-        match result {
-            Ok(IteratorAdvance::Raised) => match raised_exception {
-                Some(exception) => Ok(Err(exception)),
-                None => Ok(Ok(IteratorAdvance::Raised)),
-            },
-            Ok(advance) => Ok(Ok(advance)),
-            Err(message) => {
-                if let Some(exception) =
-                    runtime_exception_from_current_or_message(raised_exception, &message)
-                {
-                    Ok(Err(exception))
-                } else {
-                    Err(message)
-                }
-            }
-        }
+        self.call_with_exception_capture(|vm| vm.advance_owned_iterator(iterator))
     }
 
     fn call_str_join_method(
@@ -41987,7 +43442,8 @@ impl Vm {
             return Err(format!("TypeError: {method}() expected a str receiver"));
         };
 
-        let values = self.collect_iterable_values(iterable.clone())?;
+        let values =
+            self.collect_iterable_values_with_iter_error(iterable.clone(), join_iter_error)?;
         let mut parts = Vec::with_capacity(values.len());
         for (index, value) in values.into_iter().enumerate() {
             if let Some(part) = str_method_text(&value) {
@@ -42025,15 +43481,8 @@ impl Vm {
         };
         let _receiver_export = bytearray_export_guard(receiver);
         let (separator, kind) = bytes_method_receiver(receiver, method)?;
-        let values = self
-            .collect_iterable_values(iterable.clone())
-            .map_err(|error| {
-                if error.ends_with(" is not iterable") {
-                    "TypeError: can only join an iterable".to_string()
-                } else {
-                    error
-                }
-            })?;
+        let values =
+            self.collect_iterable_values_with_iter_error(iterable.clone(), join_iter_error)?;
         let mut output = Vec::new();
 
         for (index, value) in values.into_iter().enumerate() {
@@ -42104,7 +43553,8 @@ impl Vm {
         for (_, value) in ast_iter_field_pairs(&node)? {
             match value {
                 Value::List(items) => {
-                    for item in items.borrow().iter() {
+                    let snapshot = items.borrow().clone();
+                    for item in &snapshot {
                         if matches!(item, Value::AstNode { .. }) {
                             self.call_ast_visit_method(receiver.clone(), item.clone())?;
                         }
@@ -42164,69 +43614,50 @@ impl Vm {
         self.call_value(method, vec![node])
     }
 
-    fn collect_iterable_values_for_unpack(
-        &mut self,
-        value: Value,
-    ) -> Result<Option<Vec<Value>>, String> {
-        let mut iterator = match self.get_iter_for_unpack(value)? {
-            Some(iterator) => iterator,
-            None => return Ok(None),
-        };
+    fn collect_iterable_values_for_unpack(&mut self, value: Value) -> Result<Vec<Value>, String> {
+        let mut iterator = self.get_iter_for_unpack(value)?;
         let mut values = Vec::new();
-
         loop {
             match self.advance_owned_iterator(&mut iterator)? {
                 IteratorAdvance::Yield(value) => values.push(value),
-                IteratorAdvance::Complete(_) => return Ok(Some(values)),
-                IteratorAdvance::Raised => return Ok(None),
+                IteratorAdvance::Complete(_) => return Ok(values),
             }
         }
     }
 
-    fn get_iter_for_unpack(&mut self, value: Value) -> Result<Option<Value>, String> {
+    fn get_iter_for_unpack(&mut self, value: Value) -> Result<Value, String> {
         if instance_special_method_is_none(&value, "__iter__") {
-            return self.runtime_result_or_raise(Err(format!(
+            return Err(format!(
                 "TypeError: cannot unpack non-iterable {} object",
                 type_name(&value)
-            )));
+            ));
         }
-
         if let Some(method) = instance_special_method(&value, "__iter__") {
-            let iterator = match self.call_value_catching(method, Vec::new())? {
-                Ok(iterator) => iterator,
-                Err(exception) => {
-                    self.raise_exception(exception, true)?;
-                    return Ok(None);
-                }
-            };
+            let iterator = self.call_value(method, Vec::new())?;
             if is_iterator_value(&iterator) {
-                return Ok(Some(iterator));
+                return Ok(iterator);
             }
-            return self.runtime_result_or_raise(Err(format!(
-                "iter() returned non-iterator of type '{}'",
+            return Err(format!(
+                "TypeError: iter() returned non-iterator of type '{}'",
                 type_name(&iterator)
-            )));
+            ));
         }
-
         if instance_special_method(&value, "__getitem__").is_some() {
-            return Ok(Some(shared_iterator(Value::SequenceIterator {
+            return Ok(shared_iterator(Value::SequenceIterator {
                 object: Box::new(value),
                 index: 0,
-            })));
+            }));
         }
-
         if let Some(items) = list_subclass_storage(&value) {
-            return Ok(Some(get_iter(Value::List(items))?));
+            return get_iter(Value::List(items));
         }
-
         let value_type = type_name(&value).to_string();
         match get_iter(value) {
-            Ok(iterator) => Ok(Some(iterator)),
-            Err(message) if message == format!("'{value_type}' object is not iterable") => self
-                .runtime_result_or_raise(Err(format!(
-                    "TypeError: cannot unpack non-iterable {value_type} object"
-                ))),
-            Err(message) => self.runtime_result_or_raise(Err(message)),
+            Ok(iterator) => Ok(iterator),
+            Err(message) if message == format!("'{value_type}' object is not iterable") => Err(
+                format!("TypeError: cannot unpack non-iterable {value_type} object"),
+            ),
+            Err(message) => Err(message),
         }
     }
 
@@ -42235,10 +43666,7 @@ impl Vm {
         value: Value,
         expected: usize,
     ) -> Result<Option<Vec<Value>>, String> {
-        let values = match self.collect_iterable_values_for_unpack(value)? {
-            Some(values) => values,
-            None => return Ok(None),
-        };
+        let values = self.collect_iterable_values_for_unpack(value)?;
         let actual = values.len();
 
         if actual < expected {
@@ -42262,10 +43690,7 @@ impl Vm {
         before_count: usize,
         after_count: usize,
     ) -> Result<Option<(Vec<Value>, Value, Vec<Value>)>, String> {
-        let values = match self.collect_iterable_values_for_unpack(value)? {
-            Some(values) => values,
-            None => return Ok(None),
-        };
+        let values = self.collect_iterable_values_for_unpack(value)?;
         let actual = values.len();
         let minimum = before_count + after_count;
 
@@ -42283,6 +43708,33 @@ impl Vm {
         Ok(Some((before, rest, after)))
     }
 
+    /// The entries a `**` source contributes to a dictionary. A source that
+    /// is not a dictionary is asked for its keys, as CPython does.
+    fn dict_update_source_entries(&mut self, src: Value) -> Result<Vec<(Value, Value)>, String> {
+        let keys = match self.load_attribute_catching(src.clone(), "keys")? {
+            Ok(method) => method,
+            Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
+                // The source is not a mapping: the error names the source, as
+                // the error of a dictionary update always did.
+                return Err(format!("dict update source must be a dict, got {src}"));
+            }
+            // An exception raised by the lookup keeps its identity, so that a
+            // handler of the frame catches the object the source raised.
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
+        };
+        let keys = match self.call_value_catching(keys, Vec::new())? {
+            Ok(keys) => keys,
+            // An exception raised by the call keeps its identity, too.
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
+        };
+        let mut entries = Vec::new();
+        for key in self.collect_iterable_values_propagating(keys)? {
+            let value = self.mapping_abc_get_item_propagating(src.clone(), key.clone())?;
+            entries.push((key, value));
+        }
+        Ok(entries)
+    }
+
     fn advance_owned_iterator(&mut self, iterator: &mut Value) -> Result<IteratorAdvance, String> {
         // Iterators wrapping iterators (`map(f, map(f, ...))`) advance by
         // native recursion; CPython has no guard here and crashes. Leaf
@@ -42290,6 +43742,7 @@ impl Vm {
         if !matches!(
             iterator,
             Value::RangeIterator { .. }
+                | Value::DequeIterator { .. }
                 | Value::ListIterator { .. }
                 | Value::TupleIterator { .. }
                 | Value::StringIterator { .. }
@@ -42301,14 +43754,17 @@ impl Vm {
         }
         match iterator {
             Value::Generator(state) => {
-                return self.advance_generator(state.clone(), GeneratorResume::Send(Value::None));
+                return self.advance_generator(
+                    state.clone(),
+                    GeneratorResume::Send(Value::None),
+                    false,
+                );
             }
             Value::CoroutineAwait(state) => {
                 return match self
                     .resume_coroutine(state.clone(), CoroutineResume::Send(Value::None))?
                 {
                     IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
-                    IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
                     IteratorAdvance::Yield(value) => Ok(IteratorAdvance::Yield(value)),
                 };
             }
@@ -42322,11 +43778,10 @@ impl Vm {
             Value::AsyncGeneratorAthrowMixin { .. } | Value::AsyncGeneratorAcloseMixin { .. } => {
                 return match self.await_value(iterator.clone(), AwaitResume::Send(Value::None))? {
                     AwaitAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
-                    AwaitAdvance::Raised => Ok(IteratorAdvance::Raised),
                     AwaitAdvance::Yield { value, .. } => Ok(IteratorAdvance::Yield(value)),
                 };
             }
-            Value::AwaitIterator(iterator) => {
+            Value::AwaitIterator(iterator, _) => {
                 return self.advance_owned_iterator(iterator.as_mut());
             }
             Value::Iterator(state) => return self.advance_shared_iterator(state.clone()),
@@ -42347,38 +43802,28 @@ impl Vm {
                         Ok(IteratorAdvance::Yield(tuple_value(vec![item_index, value])))
                     }
                     IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
-                    IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
                 };
             }
             Value::ZipIterator { iterators, strict } => {
                 return self.advance_zip_iterator(iterators, *strict);
             }
             Value::ItertoolsChain { iterators, index } => {
-                while *index < iterators.len() {
-                    match self.advance_owned_iterator(&mut iterators[*index])? {
-                        IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
-                        IteratorAdvance::Complete(_) => *index += 1,
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
-                    }
-                }
-                return Ok(IteratorAdvance::Complete(Value::None));
+                return self.advance_itertools_chain(iterators, index);
             }
             Value::ItertoolsChainFromIterable { iterator, current } => loop {
                 if let Some(current_iterator) = current.as_mut() {
                     match self.advance_owned_iterator(current_iterator.as_mut())? {
                         IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
                         IteratorAdvance::Complete(_) => *current = None,
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                 }
                 match self.advance_owned_iterator(iterator.as_mut())? {
                     IteratorAdvance::Yield(iterable) => {
-                        *current = Some(Box::new(get_iter(iterable)?));
+                        *current = Some(Box::new(self.get_iter_propagating(iterable)?));
                     }
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             },
             Value::ItertoolsAccumulate {
@@ -42396,7 +43841,6 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 let next_total = match total.as_ref() {
                     Some(current) if matches!(function.as_ref(), Value::None) => {
@@ -42422,13 +43866,13 @@ impl Vm {
                         IteratorAdvance::Yield(value) => {
                             self.consume_allocation_budget(std::mem::size_of::<Value>())?;
                             self.charge_value_allocation(&value)?;
-                            saved.push(value.clone());
+                            saved.borrow_mut().push(value.clone());
                             return Ok(IteratorAdvance::Yield(value));
                         }
                         IteratorAdvance::Complete(_) => *exhausted = true,
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                 }
+                let saved = saved.borrow();
                 if saved.is_empty() {
                     return Ok(IteratorAdvance::Complete(Value::None));
                 }
@@ -42442,14 +43886,12 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 let selector = match self.advance_owned_iterator(selectors.as_mut())? {
                     IteratorAdvance::Yield(selector) => selector,
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 if self.truth_value(selector)? {
                     return Ok(IteratorAdvance::Yield(value));
@@ -42461,7 +43903,6 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
 
                 let keep = if matches!(function.as_ref(), Value::None) {
@@ -42489,7 +43930,6 @@ impl Vm {
                         *done = true;
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 let predicate_value =
                     self.call_value(predicate.as_ref().clone(), vec![value.clone()])?;
@@ -42510,7 +43950,6 @@ impl Vm {
                         *dropping = false;
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 if *dropping {
                     let predicate_value =
@@ -42528,7 +43967,6 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
                 let args = self.collect_iterable_values(args_value)?;
                 return Ok(IteratorAdvance::Yield(
@@ -42555,7 +43993,6 @@ impl Vm {
                                 *iterator = None;
                                 values.push(fillvalue.as_ref().clone());
                             }
-                            IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                         },
                         None => values.push(fillvalue.as_ref().clone()),
                     }
@@ -42588,7 +44025,6 @@ impl Vm {
                         IteratorAdvance::Complete(value) => {
                             return Ok(IteratorAdvance::Complete(value));
                         }
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                     if stop.is_some_and(|stop| *position >= stop) {
                         return Ok(IteratorAdvance::Complete(Value::None));
@@ -42609,7 +44045,6 @@ impl Vm {
                         IteratorAdvance::Complete(value) => {
                             return Ok(IteratorAdvance::Complete(value));
                         }
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                 }
                 match self.advance_owned_iterator(iterator.as_mut())? {
@@ -42624,7 +44059,6 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
             Value::ItertoolsProduct {
@@ -42782,29 +44216,31 @@ impl Vm {
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
             Value::ItertoolsTee { state, index } => {
-                let mut borrowed = state.borrow_mut();
-                if *index < borrowed.buffer.len() {
-                    let value = borrowed.buffer[*index].clone();
+                let buffered = state.borrow().buffer.borrow().get(*index).cloned();
+                if let Some(value) = buffered {
                     *index += 1;
                     return Ok(IteratorAdvance::Yield(value));
                 }
-                if borrowed.exhausted {
+                if state.borrow().exhausted {
                     return Ok(IteratorAdvance::Complete(Value::None));
                 }
-                match self.advance_owned_iterator(&mut borrowed.iterator)? {
-                    IteratorAdvance::Yield(value) => {
-                        self.consume_allocation_budget(std::mem::size_of::<Value>())?;
-                        self.charge_value_allocation(&value)?;
-                        borrowed.buffer.push(value.clone());
-                        *index += 1;
-                        return Ok(IteratorAdvance::Yield(value));
-                    }
-                    IteratorAdvance::Complete(_) => {
-                        borrowed.exhausted = true;
-                        return Ok(IteratorAdvance::Complete(Value::None));
-                    }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
-                }
+                return self.with_iterator_state(
+                    state,
+                    "RuntimeError: cannot re-enter the tee iterator",
+                    |vm, borrowed| match vm.advance_owned_iterator(&mut borrowed.iterator)? {
+                        IteratorAdvance::Yield(value) => {
+                            vm.consume_allocation_budget(std::mem::size_of::<Value>())?;
+                            vm.charge_value_allocation(&value)?;
+                            borrowed.buffer.borrow_mut().push(value.clone());
+                            *index += 1;
+                            return Ok(IteratorAdvance::Yield(value));
+                        }
+                        IteratorAdvance::Complete(_) => {
+                            borrowed.exhausted = true;
+                            return Ok(IteratorAdvance::Complete(Value::None));
+                        }
+                    },
+                );
             }
             Value::ItertoolsBatched {
                 iterator,
@@ -42824,7 +44260,6 @@ impl Vm {
                             }
                             return Ok(IteratorAdvance::Yield(tuple_value(values)));
                         }
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                 }
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
@@ -42863,7 +44298,6 @@ impl Vm {
                             }
                             return Ok(IteratorAdvance::Complete(value));
                         }
-                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                     }
                 }
 
@@ -42877,7 +44311,6 @@ impl Vm {
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 };
 
                 let keep = if matches!(function.as_ref(), Value::None) {
@@ -42919,7 +44352,6 @@ impl Vm {
                         *done = true;
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
             Value::SequenceIterator { object, index } => {
@@ -42944,7 +44376,6 @@ impl Vm {
                         *index = i64::MAX;
                         Ok(IteratorAdvance::Complete(value))
                     }
-                    IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
                 };
             }
             Value::SequenceReverseIterator { object, index } => {
@@ -42964,7 +44395,6 @@ impl Vm {
                         *index = -1;
                         Ok(IteratorAdvance::Complete(value))
                     }
-                    IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
                 };
             }
             Value::Instance { .. } => {
@@ -42982,10 +44412,115 @@ impl Vm {
         advance_plain_iterator(iterator)
     }
 
+    fn with_iterator_state<T: Clone>(
+        &mut self,
+        state: &Rc<RefCell<T>>,
+        reentry_error: &str,
+        advance: impl FnOnce(&mut Self, &mut T) -> Result<IteratorAdvance, String>,
+    ) -> Result<IteratorAdvance, String> {
+        let identity = Rc::as_ptr(state) as usize;
+        if !self.active_iterator_states.borrow_mut().insert(identity) {
+            return Err(reentry_error.to_string());
+        }
+        // Boxed iterator fields are advanced in an owned working state. A
+        // nested advance cannot merge those fields, but attribute access can
+        // still inspect the shared iterator while callbacks run. The items an
+        // iterator saved live in a shared buffer, so copying the state does
+        // not copy them.
+        let mut iterator = state.borrow().clone();
+        let result = advance(self, &mut iterator);
+        *state.borrow_mut() = iterator;
+        self.active_iterator_states.borrow_mut().remove(&identity);
+        result
+    }
+
     fn advance_shared_iterator(
         &mut self,
         state: Rc<RefCell<Value>>,
     ) -> Result<IteratorAdvance, String> {
+        // These iterators run no user code: they advance in place under the
+        // borrow, so a step costs the same however large the pool is.
+        {
+            let mut iterator = state.borrow_mut();
+            if matches!(
+                &*iterator,
+                Value::ItertoolsCombinations { .. }
+                    | Value::ItertoolsCombinationsWithReplacement { .. }
+                    | Value::ItertoolsPermutations { .. }
+                    | Value::ItertoolsProduct { .. }
+            ) {
+                return self.advance_owned_iterator(&mut iterator);
+            }
+        }
+        // Chain may run user code in its sources. The sources leave the state
+        // while they run, so no borrow is held across that code and a step
+        // does not copy them.
+        if matches!(&*state.borrow(), Value::ItertoolsChain { .. }) {
+            let identity = Rc::as_ptr(&state) as usize;
+            if !self.active_iterator_states.borrow_mut().insert(identity) {
+                return Err("RuntimeError: cannot re-enter this iterator".to_string());
+            }
+            let (mut sources, mut index) = {
+                let mut slot = state.borrow_mut();
+                match &mut *slot {
+                    Value::ItertoolsChain {
+                        iterators, index, ..
+                    } => (std::mem::take(iterators), *index),
+                    _ => (Vec::new(), 0),
+                }
+            };
+            let result = self.advance_itertools_chain(&mut sources, &mut index);
+            {
+                let mut slot = state.borrow_mut();
+                if let Value::ItertoolsChain {
+                    iterators,
+                    index: slot_index,
+                    ..
+                } = &mut *slot
+                {
+                    *iterators = sources;
+                    *slot_index = index;
+                }
+            }
+            self.active_iterator_states.borrow_mut().remove(&identity);
+            return result;
+        }
+        let plain = matches!(
+            &*state.borrow(),
+            Value::RangeIterator { .. }
+                | Value::DequeIterator { .. }
+                | Value::ListIterator { .. }
+                | Value::TupleIterator { .. }
+                | Value::TemplateIterator { .. }
+                | Value::StringIterator { .. }
+                | Value::BytesIterator { .. }
+                | Value::ByteArrayIterator { .. }
+                | Value::ArrayIterator { .. }
+                | Value::SetIterator { .. }
+                | Value::DictIterator { .. }
+                | Value::ReverseIterator { .. }
+                | Value::DictReverseIterator { .. }
+        );
+        if plain {
+            // Plain advancement never dispatches user code and can update
+            // its cursor directly without copying the source on every step.
+            return advance_plain_iterator(&mut state.borrow_mut());
+        }
+        let mut iterator = state.borrow().clone();
+        if matches!(
+            iterator,
+            Value::MapIterator { .. }
+                | Value::FilterIterator { .. }
+                | Value::ZipIterator { .. }
+                | Value::ItertoolsStarmap { .. }
+                | Value::ItertoolsFilterFalse { .. }
+                | Value::ItertoolsCompress { .. }
+                | Value::ItertoolsBatched { .. }
+        ) {
+            // These adapters change only their shared sources, so nested
+            // calls can advance those sources without replacing local fields.
+            return self.advance_owned_iterator(&mut iterator);
+        }
         let call_iterator = {
             let iterator = state.borrow();
             match &*iterator {
@@ -43000,7 +44535,14 @@ impl Vm {
         };
 
         let Some(callable) = call_iterator else {
-            return self.advance_owned_iterator(&mut state.borrow_mut());
+            let error = if matches!(&*state.borrow(), Value::ItertoolsTee { .. }) {
+                "RuntimeError: cannot re-enter the tee iterator"
+            } else {
+                "RuntimeError: cannot re-enter this iterator"
+            };
+            return self.with_iterator_state(&state, error, |vm, iterator| {
+                vm.advance_owned_iterator(iterator)
+            });
         };
 
         let result =
@@ -43031,8 +44573,23 @@ impl Vm {
                 }
                 Ok(IteratorAdvance::Complete(value))
             }
-            IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
         }
+    }
+
+    /// Advances a chain of sources in place, so a step costs the same
+    /// however many sources the chain has.
+    fn advance_itertools_chain(
+        &mut self,
+        iterators: &mut Vec<Value>,
+        index: &mut usize,
+    ) -> Result<IteratorAdvance, String> {
+        while *index < iterators.len() {
+            match self.advance_owned_iterator(&mut iterators[*index])? {
+                IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
+                IteratorAdvance::Complete(_) => *index += 1,
+            }
+        }
+        Ok(IteratorAdvance::Complete(Value::None))
     }
 
     fn advance_zip_iterator(
@@ -43054,7 +44611,6 @@ impl Vm {
                     }
                     return Ok(IteratorAdvance::Complete(value));
                 }
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             }
         }
 
@@ -43068,24 +44624,21 @@ impl Vm {
         completion: Value,
     ) -> Result<IteratorAdvance, String> {
         if completed_index > 0 {
-            self.raise_exception(
+            return self.raise_exception(
                 value_error_exception(&zip_strict_length_error(completed_index + 1, "shorter")),
                 true,
-            )?;
-            return Ok(IteratorAdvance::Raised);
+            );
         }
 
         for index in 1..iterators.len() {
             match self.advance_owned_iterator(&mut iterators[index])? {
                 IteratorAdvance::Yield(_) => {
-                    self.raise_exception(
+                    return self.raise_exception(
                         value_error_exception(&zip_strict_length_error(index + 1, "longer")),
                         true,
-                    )?;
-                    return Ok(IteratorAdvance::Raised);
+                    );
                 }
                 IteratorAdvance::Complete(_) => {}
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             }
         }
 
@@ -43099,24 +44652,21 @@ impl Vm {
         completion: Value,
     ) -> Result<IteratorAdvance, String> {
         if completed_index > 0 {
-            self.raise_exception(
+            return self.raise_exception(
                 value_error_exception(&map_strict_length_error(completed_index + 1, "shorter")),
                 true,
-            )?;
-            return Ok(IteratorAdvance::Raised);
+            );
         }
 
         for index in 1..iterators.len() {
             match self.advance_owned_iterator(&mut iterators[index])? {
                 IteratorAdvance::Yield(_) => {
-                    self.raise_exception(
+                    return self.raise_exception(
                         value_error_exception(&map_strict_length_error(index + 1, "longer")),
                         true,
-                    )?;
-                    return Ok(IteratorAdvance::Raised);
+                    );
                 }
                 IteratorAdvance::Complete(_) => {}
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             }
         }
 
@@ -43192,28 +44742,17 @@ impl Vm {
         args: Vec<Value>,
         stop_types: &[&str],
     ) -> Result<IteratorAdvance, String> {
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
-        let result = self.call_value(method, args);
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
+        let result = self.call_with_exception_capture(|vm| vm.call_value(method, args))?;
 
         match result {
             Ok(value) => Ok(IteratorAdvance::Yield(value)),
-            Err(message) => {
-                if let Some(exception) = raised_exception {
-                    if Self::iterator_exception_matches_stop_type(&exception, stop_types) {
-                        return Ok(IteratorAdvance::Complete(
-                            exception.args.first().cloned().unwrap_or(Value::None),
-                        ));
-                    }
-                    self.raise_exception(exception, true)?;
-                    return Ok(IteratorAdvance::Raised);
+            Err(exception) => {
+                if Self::iterator_exception_matches_stop_type(&exception, stop_types) {
+                    return Ok(IteratorAdvance::Complete(
+                        exception.args.first().cloned().unwrap_or(Value::None),
+                    ));
                 }
-                Err(message)
+                return self.raise_exception(exception, true);
             }
         }
     }
@@ -43228,60 +44767,62 @@ impl Vm {
     }
 
     fn advance_itertools_groupby(&mut self, state: GroupByRef) -> Result<IteratorAdvance, String> {
-        let mut borrowed = state.borrow_mut();
-        if borrowed.exhausted {
-            return Ok(IteratorAdvance::Complete(Value::None));
-        }
-
-        let (key, value) = if let Some((key, value)) = borrowed.lookahead.take() {
-            (key, value)
-        } else if let Some(current_key) = borrowed.current_key.clone() {
-            borrowed.pending_value = None;
-            loop {
-                match self.advance_owned_iterator(&mut borrowed.iterator)? {
-                    IteratorAdvance::Yield(value) => {
-                        let key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
-                        if self.rich_equal_values(&current_key, &key)? {
-                            continue;
-                        }
-                        break (key, value);
-                    }
-                    IteratorAdvance::Complete(_) => {
-                        borrowed.exhausted = true;
-                        borrowed.current_key = None;
-                        return Ok(IteratorAdvance::Complete(Value::None));
-                    }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
-                }
-            }
-        } else {
-            match self.advance_owned_iterator(&mut borrowed.iterator)? {
-                IteratorAdvance::Yield(value) => {
-                    let key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
-                    (key, value)
-                }
-                IteratorAdvance::Complete(_) => {
-                    borrowed.exhausted = true;
+        self.with_iterator_state(
+            &state,
+            "RuntimeError: cannot re-enter groupby state",
+            |vm, borrowed| {
+                if borrowed.exhausted {
                     return Ok(IteratorAdvance::Complete(Value::None));
                 }
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
-            }
-        };
 
-        borrowed.active_group_id = borrowed.active_group_id.saturating_add(1);
-        borrowed.current_key = Some(key.clone());
-        borrowed.pending_value = Some(value);
-        let group_id = borrowed.active_group_id;
-        drop(borrowed);
+                let (key, value) = if let Some((key, value)) = borrowed.lookahead.take() {
+                    (key, value)
+                } else if let Some(current_key) = borrowed.current_key.clone() {
+                    borrowed.pending_value = None;
+                    loop {
+                        match vm.advance_owned_iterator(&mut borrowed.iterator)? {
+                            IteratorAdvance::Yield(value) => {
+                                let key = vm.itertools_groupby_key(&borrowed.key_func, &value)?;
+                                if vm.rich_equal_values(&current_key, &key)? {
+                                    continue;
+                                }
+                                break (key, value);
+                            }
+                            IteratorAdvance::Complete(_) => {
+                                borrowed.exhausted = true;
+                                borrowed.current_key = None;
+                                return Ok(IteratorAdvance::Complete(Value::None));
+                            }
+                        }
+                    }
+                } else {
+                    match vm.advance_owned_iterator(&mut borrowed.iterator)? {
+                        IteratorAdvance::Yield(value) => {
+                            let key = vm.itertools_groupby_key(&borrowed.key_func, &value)?;
+                            (key, value)
+                        }
+                        IteratorAdvance::Complete(_) => {
+                            borrowed.exhausted = true;
+                            return Ok(IteratorAdvance::Complete(Value::None));
+                        }
+                    }
+                };
 
-        Ok(IteratorAdvance::Yield(tuple_value(vec![
-            key.clone(),
-            shared_iterator(Value::ItertoolsGroup {
-                state,
-                key: Box::new(key),
-                group_id,
-            }),
-        ])))
+                borrowed.active_group_id = borrowed.active_group_id.saturating_add(1);
+                borrowed.current_key = Some(key.clone());
+                borrowed.pending_value = Some(value);
+                let group_id = borrowed.active_group_id;
+
+                Ok(IteratorAdvance::Yield(tuple_value(vec![
+                    key.clone(),
+                    shared_iterator(Value::ItertoolsGroup {
+                        state: state.clone(),
+                        key: Box::new(key),
+                        group_id,
+                    }),
+                ])))
+            },
+        )
     }
 
     fn advance_itertools_group(
@@ -43290,39 +44831,43 @@ impl Vm {
         key: Value,
         group_id: usize,
     ) -> Result<IteratorAdvance, String> {
-        let mut borrowed = state.borrow_mut();
-        if borrowed.exhausted || borrowed.active_group_id != group_id {
-            return Ok(IteratorAdvance::Complete(Value::None));
-        }
-        if let Some(value) = borrowed.pending_value.take() {
-            return Ok(IteratorAdvance::Yield(value));
-        }
-        if borrowed.lookahead.is_some() {
-            return Ok(IteratorAdvance::Complete(Value::None));
-        }
-
-        match self.advance_owned_iterator(&mut borrowed.iterator)? {
-            IteratorAdvance::Yield(value) => {
-                let next_key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
-                if self.rich_equal_values(&key, &next_key)? {
-                    Ok(IteratorAdvance::Yield(value))
-                } else {
-                    borrowed.lookahead = Some((next_key, value));
-                    Ok(IteratorAdvance::Complete(Value::None))
+        self.with_iterator_state(
+            &state,
+            "RuntimeError: cannot re-enter groupby state",
+            |vm, borrowed| {
+                if borrowed.exhausted || borrowed.active_group_id != group_id {
+                    return Ok(IteratorAdvance::Complete(Value::None));
                 }
-            }
-            IteratorAdvance::Complete(_) => {
-                borrowed.exhausted = true;
-                borrowed.current_key = None;
-                Ok(IteratorAdvance::Complete(Value::None))
-            }
-            IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
-        }
+                if let Some(value) = borrowed.pending_value.take() {
+                    return Ok(IteratorAdvance::Yield(value));
+                }
+                if borrowed.lookahead.is_some() {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+
+                match vm.advance_owned_iterator(&mut borrowed.iterator)? {
+                    IteratorAdvance::Yield(value) => {
+                        let next_key = vm.itertools_groupby_key(&borrowed.key_func, &value)?;
+                        if vm.rich_equal_values(&key, &next_key)? {
+                            Ok(IteratorAdvance::Yield(value))
+                        } else {
+                            borrowed.lookahead = Some((next_key, value));
+                            Ok(IteratorAdvance::Complete(Value::None))
+                        }
+                    }
+                    IteratorAdvance::Complete(_) => {
+                        borrowed.exhausted = true;
+                        borrowed.current_key = None;
+                        Ok(IteratorAdvance::Complete(Value::None))
+                    }
+                }
+            },
+        )
     }
 
     fn raise_stop_iteration(&mut self, value: Value) -> Result<Value, String> {
         let args = stop_iteration_args(value.clone());
-        self.raise_exception(
+        self.raise_exception::<()>(
             MiniException {
                 type_name: "StopIteration".to_string(),
                 type_hierarchy: builtin_exception_type_hierarchy("StopIteration"),
@@ -43334,7 +44879,7 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             },
             true,
         )?;
@@ -43351,32 +44896,28 @@ impl Vm {
                 self.write_register(dst, value);
                 Ok(())
             }
-            Err(message) if is_zero_division_error_message(&message) => self.raise_exception(
-                MiniException {
-                    type_name: "ZeroDivisionError".to_string(),
-                    type_hierarchy: builtin_exception_type_hierarchy("ZeroDivisionError"),
-                    type_object: None,
-                    message: Some(message.clone()),
-                    args: exception_args_from_message(&message),
-                    attrs: Vec::new(),
-                    cause: None,
-                    context: None,
-                    suppress_context: false,
-                    exceptions: None,
-                    identity: Rc::new(()),
-                },
-                true,
-            ),
-            Err(message) => {
-                if let Some(exception) = runtime_exception_from_current_or_message(
-                    self.current_exception.clone(),
-                    &message,
-                ) {
-                    self.raise_exception(exception, true)
-                } else {
-                    Err(message)
-                }
+            Err(message)
+                if matching_exception(self.in_flight_exception.clone(), &message).is_none()
+                    && is_zero_division_error_message(&message) =>
+            {
+                self.raise_exception(
+                    MiniException {
+                        type_name: "ZeroDivisionError".to_string(),
+                        type_hierarchy: builtin_exception_type_hierarchy("ZeroDivisionError"),
+                        type_object: None,
+                        message: Some(message.clone()),
+                        args: exception_args_from_message(&message),
+                        attrs: Vec::new(),
+                        cause: None,
+                        context: None,
+                        suppress_context: false,
+                        exceptions: None,
+                        identity: Rc::new(crate::value::ExceptionIdentity::default()),
+                    },
+                    true,
+                )
             }
+            Err(message) => Err(message),
         }
     }
 
@@ -43384,33 +44925,12 @@ impl Vm {
         &mut self,
         result: Result<T, String>,
     ) -> Result<Option<T>, String> {
-        match result {
-            Ok(value) => Ok(Some(value)),
-            Err(message) => {
-                crate::terminal::check()?;
-                if let Some(exception) = runtime_exception_from_current_or_message(
-                    self.current_exception.clone(),
-                    &message,
-                ) {
-                    if self
-                        .current_exception
-                        .as_ref()
-                        .is_some_and(|current| Rc::ptr_eq(&current.identity, &exception.identity))
-                    {
-                        self.current_exception = None;
-                    }
-                    self.raise_exception(exception, true)?;
-                    Ok(None)
-                } else {
-                    Err(message)
-                }
-            }
-        }
+        result.map(Some)
     }
 
     fn await_value(&mut self, value: Value, resume: AwaitResume) -> Result<AwaitAdvance, String> {
         match value {
-            Value::AwaitIterator(iterator) => self.advance_await_iterator(*iterator, resume),
+            Value::AwaitIterator(iterator, _) => self.advance_await_iterator(*iterator, resume),
             Value::Coroutine(state) => self.await_coroutine_value(state, resume, true),
             Value::CoroutineAwait(state) => self.await_coroutine_value(state, resume, false),
             Value::Generator(state) if state.borrow().is_iterable_coroutine => {
@@ -43420,8 +44940,7 @@ impl Vm {
                 let iterator = match call_generator_wrapper_await(vec![wrapper]) {
                     Ok(iterator) => iterator,
                     Err(message) => {
-                        self.raise_exception(type_error_exception(&message), true)?;
-                        return Ok(AwaitAdvance::Raised);
+                        return self.raise_exception(type_error_exception(&message), true);
                     }
                 };
                 self.advance_await_iterator(iterator, resume)
@@ -43436,23 +44955,21 @@ impl Vm {
                 .map(AwaitAdvance::Complete),
             Value::AsyncGeneratorThrow { state, exception } => {
                 let exception = exception_from_value(*exception)?;
-                match self.advance_generator(state, GeneratorResume::Throw(exception))? {
+                match self.advance_generator(state, GeneratorResume::Throw(exception), true)? {
                     IteratorAdvance::Yield(value) => Ok(AwaitAdvance::Complete(value)),
                     IteratorAdvance::Complete(_) => self
                         .raise_stop_async_iteration()
                         .map(AwaitAdvance::Complete),
-                    IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
                 }
             }
             Value::AsyncGeneratorClose(state) => {
-                match self.advance_generator(state, GeneratorResume::Close)? {
+                match self.advance_generator(state, GeneratorResume::Close, true)? {
                     IteratorAdvance::Yield(_) => {
                         unreachable!(
                             "async generator close converts yielded values into RuntimeError"
                         )
                     }
                     IteratorAdvance::Complete(_) => Ok(AwaitAdvance::Complete(Value::None)),
-                    IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
                 }
             }
             Value::AsyncGeneratorAthrowMixin { typ, val, tb, done } => {
@@ -43461,7 +44978,9 @@ impl Vm {
             Value::AsyncGeneratorAcloseMixin { receiver, done } => {
                 self.await_async_generator_aclose_mixin(*receiver, done, resume)
             }
-            Value::AnextDefault { awaitable, default } => self
+            Value::AnextDefault {
+                awaitable, default, ..
+            } => self
                 .await_value_with_stop_async_default(*awaitable, *default)
                 .map(AwaitAdvance::Complete),
             value => {
@@ -43485,11 +45004,10 @@ impl Vm {
                         context: None,
                         suppress_context: false,
                         exceptions: None,
-                        identity: Rc::new(()),
+                        identity: Rc::new(crate::value::ExceptionIdentity::default()),
                     },
                     true,
-                )?;
-                Ok(AwaitAdvance::Raised)
+                )
             }
         }
     }
@@ -43500,7 +45018,6 @@ impl Vm {
         loop {
             match self.await_value(value, resume)? {
                 AwaitAdvance::Complete(value) => return Ok(value),
-                AwaitAdvance::Raised => return Ok(Value::None),
                 AwaitAdvance::Yield { pending, .. } => {
                     value = pending;
                     resume = AwaitResume::Send(Value::None);
@@ -43513,27 +45030,7 @@ impl Vm {
         &mut self,
         value: Value,
     ) -> Result<Result<Value, MiniException>, String> {
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
-        let result = self.await_value_to_completion(value);
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
-
-        match result {
-            Ok(value) => Ok(Ok(value)),
-            Err(message) => {
-                if let Some(exception) =
-                    runtime_exception_from_current_or_message(raised_exception, &message)
-                {
-                    Ok(Err(exception))
-                } else {
-                    Err(message)
-                }
-            }
-        }
+        self.call_with_exception_capture(|vm| vm.await_value_to_completion(value))
     }
 
     fn await_coroutine_value(
@@ -43543,7 +45040,7 @@ impl Vm {
         reject_if_already_awaited: bool,
     ) -> Result<AwaitAdvance, String> {
         if reject_if_already_awaited && coroutine_is_suspended_on_await(&state.borrow()) {
-            self.raise_exception(
+            return self.raise_exception(
                 MiniException {
                     type_name: "RuntimeError".to_string(),
                     type_hierarchy: builtin_exception_type_hierarchy("RuntimeError"),
@@ -43555,11 +45052,10 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
-                    identity: Rc::new(()),
+                    identity: Rc::new(crate::value::ExceptionIdentity::default()),
                 },
                 true,
-            )?;
-            return Ok(AwaitAdvance::Raised);
+            );
         }
 
         let advance = match resume {
@@ -43572,7 +45068,6 @@ impl Vm {
         };
         match advance {
             IteratorAdvance::Complete(value) => Ok(AwaitAdvance::Complete(value)),
-            IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
             IteratorAdvance::Yield(value) => Ok(AwaitAdvance::Yield {
                 value,
                 pending: Value::CoroutineAwait(state),
@@ -43589,13 +45084,11 @@ impl Vm {
             Ok(iterator) => match await_iterator_value(iterator) {
                 Ok(iterator) => iterator,
                 Err(message) => {
-                    self.raise_exception(type_error_exception(&message), true)?;
-                    return Ok(AwaitAdvance::Raised);
+                    return self.raise_exception(type_error_exception(&message), true);
                 }
             },
             Err(exception) => {
-                self.raise_exception(exception, true)?;
-                return Ok(AwaitAdvance::Raised);
+                return self.raise_exception(exception, true);
             }
         };
 
@@ -43611,8 +45104,7 @@ impl Vm {
         resume: AwaitResume,
     ) -> Result<AwaitAdvance, String> {
         if done.get() {
-            self.raise_coroutine_reuse_error()?;
-            return Ok(AwaitAdvance::Raised);
+            return self.raise_coroutine_reuse_error();
         }
 
         let exception = match resume {
@@ -43625,8 +45117,7 @@ impl Vm {
                             Ok(value) => value,
                             Err(exception) => {
                                 done.set(true);
-                                self.raise_exception(exception, true)?;
-                                return Ok(AwaitAdvance::Raised);
+                                return self.raise_exception(exception, true);
                             }
                         }
                     }
@@ -43644,8 +45135,7 @@ impl Vm {
                             Ok(value) => value,
                             Err(exception) => {
                                 done.set(true);
-                                self.raise_exception(exception, true)?;
-                                return Ok(AwaitAdvance::Raised);
+                                return self.raise_exception(exception, true);
                             }
                         };
                 }
@@ -43659,8 +45149,7 @@ impl Vm {
             AwaitResume::Throw(exception) => exception,
         };
         done.set(true);
-        self.raise_exception(exception, true)?;
-        Ok(AwaitAdvance::Raised)
+        return self.raise_exception(exception, true);
     }
 
     fn await_async_generator_aclose_mixin(
@@ -43670,14 +45159,12 @@ impl Vm {
         resume: AwaitResume,
     ) -> Result<AwaitAdvance, String> {
         if done.get() {
-            self.raise_coroutine_reuse_error()?;
-            return Ok(AwaitAdvance::Raised);
+            return self.raise_coroutine_reuse_error();
         }
 
         if let AwaitResume::Throw(exception) = resume {
             done.set(true);
-            self.raise_exception(exception, true)?;
-            return Ok(AwaitAdvance::Raised);
+            return self.raise_exception(exception, true);
         }
 
         let athrow = self.load_attribute_without_custom_getattribute(receiver, "athrow")?;
@@ -43700,13 +45187,10 @@ impl Vm {
     ) -> Result<AwaitAdvance, String> {
         done.set(true);
         match result {
-            Ok(_) => {
-                self.raise_exception(
-                    runtime_error_exception("asynchronous generator ignored GeneratorExit"),
-                    true,
-                )?;
-                Ok(AwaitAdvance::Raised)
-            }
+            Ok(_) => self.raise_exception(
+                runtime_error_exception("asynchronous generator ignored GeneratorExit"),
+                true,
+            ),
             Err(exception)
                 if matches!(
                     exception.type_name.as_str(),
@@ -43715,10 +45199,7 @@ impl Vm {
             {
                 Ok(AwaitAdvance::Complete(Value::None))
             }
-            Err(exception) => {
-                self.raise_exception(exception, true)?;
-                Ok(AwaitAdvance::Raised)
-            }
+            Err(exception) => self.raise_exception(exception, true),
         }
     }
 
@@ -43730,10 +45211,9 @@ impl Vm {
         match self.advance_await_owned_iterator(&mut iterator, resume)? {
             IteratorAdvance::Yield(value) => Ok(AwaitAdvance::Yield {
                 value,
-                pending: Value::AwaitIterator(Box::new(iterator)),
+                pending: Value::AwaitIterator(Box::new(iterator), Rc::new(())),
             }),
             IteratorAdvance::Complete(value) => Ok(AwaitAdvance::Complete(value)),
-            IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
         }
     }
 
@@ -43743,15 +45223,17 @@ impl Vm {
         resume: AwaitResume,
     ) -> Result<IteratorAdvance, String> {
         match iterator {
-            Value::Iterator(state) => {
-                self.advance_await_owned_iterator(&mut state.borrow_mut(), resume)
-            }
+            Value::Iterator(state) => self.with_iterator_state(
+                state,
+                "RuntimeError: cannot re-enter this iterator",
+                |vm, iterator| vm.advance_await_owned_iterator(iterator, resume),
+            ),
             Value::Generator(state) => match resume {
                 AwaitResume::Send(value) => {
-                    self.advance_generator(state.clone(), GeneratorResume::Send(value))
+                    self.advance_generator(state.clone(), GeneratorResume::Send(value), false)
                 }
                 AwaitResume::Throw(exception) => {
-                    self.advance_generator(state.clone(), GeneratorResume::Throw(exception))
+                    self.advance_generator(state.clone(), GeneratorResume::Throw(exception), false)
                 }
             },
             Value::CoroutineAwait(state) => match resume {
@@ -43776,10 +45258,7 @@ impl Vm {
             },
             _ => match resume {
                 AwaitResume::Send(_) => self.advance_owned_iterator(iterator),
-                AwaitResume::Throw(exception) => {
-                    self.raise_exception(exception, true)?;
-                    Ok(IteratorAdvance::Raised)
-                }
+                AwaitResume::Throw(exception) => self.raise_exception(exception, true),
             },
         }
     }
@@ -43791,7 +45270,7 @@ impl Vm {
     ) -> Result<Option<Value>, String> {
         if !is_runtime_awaitable_value(&value) {
             let method = context_manager_method_name(is_exit, true);
-            self.raise_exception(
+            self.raise_exception::<()>(
                 type_error_exception(&format!(
                     "'async with' received an object from {method} that does not implement __await__: {}",
                     type_name(&value)
@@ -43811,7 +45290,7 @@ impl Vm {
         default: Option<Value>,
     ) -> Result<Value, String> {
         if state.borrow().ip == 0 && !matches!(send, Value::None) {
-            self.raise_exception(
+            self.raise_exception::<()>(
                 MiniException {
                     type_name: "TypeError".to_string(),
                     type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
@@ -43827,14 +45306,14 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
-                    identity: Rc::new(()),
+                    identity: Rc::new(crate::value::ExceptionIdentity::default()),
                 },
                 true,
             )?;
             return Ok(Value::None);
         }
 
-        match self.advance_generator(state, GeneratorResume::Send(send))? {
+        match self.advance_generator(state, GeneratorResume::Send(send), true)? {
             IteratorAdvance::Yield(value) => Ok(value),
             IteratorAdvance::Complete(_) => {
                 if let Some(default) = default {
@@ -43843,7 +45322,6 @@ impl Vm {
                     self.raise_stop_async_iteration()
                 }
             }
-            IteratorAdvance::Raised => Ok(Value::None),
         }
     }
 
@@ -43854,15 +45332,14 @@ impl Vm {
     ) -> Result<AwaitAdvance, String> {
         let advance = match resume {
             AwaitResume::Send(value) => {
-                self.advance_generator(state.clone(), GeneratorResume::Send(value))?
+                self.advance_generator(state.clone(), GeneratorResume::Send(value), false)?
             }
             AwaitResume::Throw(exception) => {
-                self.advance_generator(state.clone(), GeneratorResume::Throw(exception))?
+                self.advance_generator(state.clone(), GeneratorResume::Throw(exception), false)?
             }
         };
         match advance {
             IteratorAdvance::Complete(value) => Ok(AwaitAdvance::Complete(value)),
-            IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
             IteratorAdvance::Yield(value) => Ok(AwaitAdvance::Yield {
                 value,
                 pending: Value::Generator(state),
@@ -43875,32 +45352,23 @@ impl Vm {
         awaitable: Value,
         default: Value,
     ) -> Result<Value, String> {
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
-        let result = self.await_value_to_completion(awaitable);
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
+        let result =
+            self.call_with_exception_capture(|vm| vm.await_value_to_completion(awaitable))?;
 
         match result {
             Ok(value) => Ok(value),
-            Err(message) => {
-                if let Some(exception) = raised_exception {
-                    if exception_is_builtin_instance(&exception, "StopAsyncIteration") {
-                        return Ok(default);
-                    }
-                    self.raise_exception(exception, true)?;
-                    return Ok(Value::None);
+            Err(exception) => {
+                if exception_is_builtin_instance(&exception, "StopAsyncIteration") {
+                    return Ok(default);
                 }
-                Err(message)
+                self.raise_exception::<()>(exception, true)?;
+                return Ok(Value::None);
             }
         }
     }
 
     fn raise_stop_async_iteration(&mut self) -> Result<Value, String> {
-        self.raise_exception(
+        self.raise_exception::<()>(
             MiniException {
                 type_name: "StopAsyncIteration".to_string(),
                 type_hierarchy: builtin_exception_type_hierarchy("StopAsyncIteration"),
@@ -43912,14 +45380,14 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             },
             true,
         )?;
         Ok(Value::None)
     }
 
-    fn raise_coroutine_reuse_error(&mut self) -> Result<Value, String> {
+    fn raise_coroutine_reuse_error<T>(&mut self) -> Result<T, String> {
         self.raise_exception(
             MiniException {
                 type_name: "RuntimeError".to_string(),
@@ -43932,11 +45400,10 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             },
             true,
-        )?;
-        Ok(Value::None)
+        )
     }
 
     fn call_coroutine_send(&mut self, args: Vec<Value>) -> Result<Value, String> {
@@ -43949,12 +45416,15 @@ impl Vm {
 
         match receiver {
             Value::Coroutine(state) | Value::CoroutineAwait(state) => {
+                if state.borrow().running {
+                    return Err("ValueError: coroutine already executing".to_string());
+                }
                 if state.borrow().done {
                     return self.raise_coroutine_reuse_error();
                 }
 
                 if state.borrow().ip == 0 && !matches!(value, Value::None) {
-                    self.raise_exception(
+                    self.raise_exception::<()>(
                         MiniException {
                             type_name: "TypeError".to_string(),
                             type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
@@ -43970,7 +45440,7 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
-                            identity: Rc::new(()),
+                            identity: Rc::new(crate::value::ExceptionIdentity::default()),
                         },
                         true,
                     )?;
@@ -43979,11 +45449,10 @@ impl Vm {
 
                 match self.resume_coroutine(state.clone(), CoroutineResume::Send(value.clone()))? {
                     IteratorAdvance::Complete(value) => self.raise_stop_iteration(value),
-                    IteratorAdvance::Raised => Ok(Value::None),
                     IteratorAdvance::Yield(value) => Ok(value),
                 }
             }
-            value => Err(format!("{value} is not a coroutine")),
+            value => Err(format!("TypeError: {value} is not a coroutine")),
         }
     }
 
@@ -43998,22 +45467,24 @@ impl Vm {
 
         match receiver {
             Value::Coroutine(state) | Value::CoroutineAwait(state) => {
+                if state.borrow().running {
+                    return Err("ValueError: coroutine already executing".to_string());
+                }
                 if state.borrow().done {
                     return self.raise_coroutine_reuse_error();
                 }
                 if state.borrow().ip == 0 {
                     state.borrow_mut().done = true;
-                    self.raise_exception(exception, true)?;
+                    self.raise_exception::<()>(exception, true)?;
                     return Ok(Value::None);
                 }
 
                 match self.resume_coroutine(state.clone(), CoroutineResume::Throw(exception))? {
                     IteratorAdvance::Complete(value) => self.raise_stop_iteration(value),
-                    IteratorAdvance::Raised => Ok(Value::None),
                     IteratorAdvance::Yield(value) => Ok(value),
                 }
             }
-            value => Err(format!("{value} is not a coroutine")),
+            value => Err(format!("TypeError: {value} is not a coroutine")),
         }
     }
 
@@ -44027,6 +45498,9 @@ impl Vm {
 
         match receiver {
             Value::Coroutine(state) | Value::CoroutineAwait(state) => {
+                if state.borrow().running {
+                    return Err("ValueError: coroutine already executing".to_string());
+                }
                 if state.borrow().done {
                     return Ok(Value::None);
                 }
@@ -44038,9 +45512,9 @@ impl Vm {
                 }
 
                 match self.resume_coroutine(state.clone(), CoroutineResume::Close)? {
-                    IteratorAdvance::Complete(_) | IteratorAdvance::Raised => Ok(Value::None),
+                    IteratorAdvance::Complete(_) => Ok(Value::None),
                     IteratorAdvance::Yield(_) => {
-                        self.raise_exception(
+                        self.raise_exception::<()>(
                             runtime_error_exception("coroutine ignored GeneratorExit"),
                             true,
                         )?;
@@ -44048,7 +45522,7 @@ impl Vm {
                     }
                 }
             }
-            value => Err(format!("{value} is not a coroutine")),
+            value => Err(format!("TypeError: {value} is not a coroutine")),
         }
     }
 
@@ -44063,13 +45537,13 @@ impl Vm {
             ));
         };
         let Some(done) = async_generator_abc_mixin_done(receiver) else {
-            return Err(format!("{receiver} is not a coroutine"));
+            return Err(format!("TypeError: {receiver} is not a coroutine"));
         };
         if done.get() {
             return self.raise_coroutine_reuse_error();
         }
         if !matches!(value, Value::None) {
-            self.raise_exception(
+            self.raise_exception::<()>(
                 MiniException {
                     type_name: "TypeError".to_string(),
                     type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
@@ -44085,7 +45559,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
-                    identity: Rc::new(()),
+                    identity: Rc::new(crate::value::ExceptionIdentity::default()),
                 },
                 true,
             )?;
@@ -44094,7 +45568,6 @@ impl Vm {
 
         match self.await_value(receiver.clone(), AwaitResume::Send(Value::None))? {
             AwaitAdvance::Complete(value) => self.raise_stop_iteration(value),
-            AwaitAdvance::Raised => Ok(Value::None),
             AwaitAdvance::Yield { value, .. } => Ok(value),
         }
     }
@@ -44110,7 +45583,7 @@ impl Vm {
             ));
         };
         let Some(done) = async_generator_abc_mixin_done(receiver) else {
-            return Err(format!("{receiver} is not a coroutine"));
+            return Err(format!("TypeError: {receiver} is not a coroutine"));
         };
         if done.get() {
             return self.raise_coroutine_reuse_error();
@@ -44118,7 +45591,7 @@ impl Vm {
 
         done.set(true);
         let exception = exception_from_value(value.clone())?;
-        self.raise_exception(exception, true)?;
+        self.raise_exception::<()>(exception, true)?;
         Ok(Value::None)
     }
 
@@ -44133,7 +45606,7 @@ impl Vm {
             ));
         };
         let Some(done) = async_generator_abc_mixin_done(receiver) else {
-            return Err(format!("{receiver} is not a coroutine"));
+            return Err(format!("TypeError: {receiver} is not a coroutine"));
         };
 
         done.set(true);
@@ -44151,7 +45624,7 @@ impl Vm {
         match receiver {
             Value::Generator(state) => {
                 if state.borrow().ip == 0 && !matches!(value, Value::None) {
-                    self.raise_exception(
+                    self.raise_exception::<()>(
                         MiniException {
                             type_name: "TypeError".to_string(),
                             type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
@@ -44167,20 +45640,23 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
-                            identity: Rc::new(()),
+                            identity: Rc::new(crate::value::ExceptionIdentity::default()),
                         },
                         true,
                     )?;
                     return Ok(Value::None);
                 }
 
-                match self.advance_generator(state.clone(), GeneratorResume::Send(value.clone()))? {
+                match self.advance_generator(
+                    state.clone(),
+                    GeneratorResume::Send(value.clone()),
+                    false,
+                )? {
                     IteratorAdvance::Yield(value) => Ok(value),
                     IteratorAdvance::Complete(value) => self.raise_stop_iteration(value),
-                    IteratorAdvance::Raised => Ok(Value::None),
                 }
             }
-            value => Err(format!("{value} is not a generator")),
+            value => Err(format!("TypeError: {value} is not a generator")),
         }
     }
 
@@ -44191,17 +45667,29 @@ impl Vm {
                 args.len().saturating_sub(1)
             ));
         };
-        let exception = exception_from_value(value.clone())?;
+        let exception = match exception_from_value(value.clone()) {
+            Ok(exception) => exception,
+            // CPython names the value that is not an exception.
+            Err(_) => {
+                return Err(format!(
+                    "TypeError: exceptions must be classes or instances deriving from BaseException, not {}",
+                    type_name(&value)
+                ));
+            }
+        };
 
         match receiver {
             Value::Generator(state) => {
-                match self.advance_generator(state.clone(), GeneratorResume::Throw(exception))? {
+                match self.advance_generator(
+                    state.clone(),
+                    GeneratorResume::Throw(exception),
+                    false,
+                )? {
                     IteratorAdvance::Yield(value) => Ok(value),
                     IteratorAdvance::Complete(value) => self.raise_stop_iteration(value),
-                    IteratorAdvance::Raised => Ok(Value::None),
                 }
             }
-            value => Err(format!("{value} is not a generator")),
+            value => Err(format!("TypeError: {value} is not a generator")),
         }
     }
 
@@ -44215,14 +45703,14 @@ impl Vm {
 
         match receiver {
             Value::Generator(state) => {
-                match self.advance_generator(state.clone(), GeneratorResume::Close)? {
+                match self.advance_generator(state.clone(), GeneratorResume::Close, false)? {
                     IteratorAdvance::Yield(_) => {
                         unreachable!("generator close converts yielded values into RuntimeError")
                     }
-                    IteratorAdvance::Complete(_) | IteratorAdvance::Raised => Ok(Value::None),
+                    IteratorAdvance::Complete(_) => Ok(Value::None),
                 }
             }
-            value => Err(format!("{value} is not a generator")),
+            value => Err(format!("TypeError: {value} is not a generator")),
         }
     }
 
@@ -44240,7 +45728,7 @@ impl Vm {
 
     fn call_generator_wrapper_throw(&mut self, args: Vec<Value>) -> Result<Value, String> {
         let [receiver, rest @ ..] = args.as_slice() else {
-            return Err("throw() missing _GeneratorWrapper receiver".to_string());
+            return Err("TypeError: throw() missing _GeneratorWrapper receiver".to_string());
         };
         if !(1..=3).contains(&rest.len()) {
             return Err(format!(
@@ -44364,7 +45852,7 @@ impl Vm {
                     .cloned()
                     .unwrap_or_else(|| args[1].clone());
                 let exception = exception_from_value(exception_value)?;
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(Value::None)
             }
             "Coroutine.close" => {
@@ -44380,7 +45868,7 @@ impl Vm {
                     .call_value_catching(throw, vec![Value::Builtin("GeneratorExit".to_string())])?
                 {
                     Ok(_) => {
-                        self.raise_exception(
+                        self.raise_exception::<()>(
                             runtime_error_exception("coroutine ignored GeneratorExit"),
                             true,
                         )?;
@@ -44395,7 +45883,7 @@ impl Vm {
                         Ok(Value::None)
                     }
                     Err(exception) => {
-                        self.raise_exception(exception, true)?;
+                        self.raise_exception::<()>(exception, true)?;
                         Ok(Value::None)
                     }
                 }
@@ -44546,7 +46034,7 @@ impl Vm {
                     .cloned()
                     .unwrap_or_else(|| args[1].clone());
                 let exception = exception_from_value(exception_value)?;
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(Value::None)
             }
             "Generator.close" => {
@@ -44562,7 +46050,7 @@ impl Vm {
                     .call_value_catching(throw, vec![Value::Builtin("GeneratorExit".to_string())])?
                 {
                     Ok(_) => {
-                        self.raise_exception(
+                        self.raise_exception::<()>(
                             runtime_error_exception("generator ignored GeneratorExit"),
                             true,
                         )?;
@@ -44577,7 +46065,7 @@ impl Vm {
                         Ok(Value::None)
                     }
                     Err(exception) => {
-                        self.raise_exception(exception, true)?;
+                        self.raise_exception::<()>(exception, true)?;
                         Ok(Value::None)
                     }
                 }
@@ -44683,7 +46171,7 @@ impl Vm {
         let aiter = match self.load_attribute_catching(iterable.clone(), "__aiter__")? {
             Ok(aiter) => aiter,
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
-                self.raise_exception(
+                self.raise_exception::<()>(
                     type_error_exception(&format!(
                         "'async for' requires an object with __aiter__ method, got {}",
                         type_name(&iterable)
@@ -44693,7 +46181,7 @@ impl Vm {
                 return Ok(None);
             }
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 return Ok(None);
             }
         };
@@ -44701,7 +46189,7 @@ impl Vm {
         let iterator = match self.call_value_catching(aiter, Vec::new())? {
             Ok(iterator) => iterator,
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 return Ok(None);
             }
         };
@@ -44709,7 +46197,7 @@ impl Vm {
         match self.load_attribute_catching(iterator.clone(), "__anext__")? {
             Ok(_) => Ok(Some(iterator)),
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
-                self.raise_exception(
+                self.raise_exception::<()>(
                     type_error_exception(&format!(
                         "'async for' received an object from __aiter__ that does not implement __anext__: {}",
                         type_name(&iterator)
@@ -44719,7 +46207,7 @@ impl Vm {
                 Ok(None)
             }
             Err(exception) => {
-                self.raise_exception(exception, true)?;
+                self.raise_exception::<()>(exception, true)?;
                 Ok(None)
             }
         }
@@ -44729,63 +46217,49 @@ impl Vm {
         let anext = match self.load_attribute_catching(iterator.clone(), "__anext__")? {
             Ok(anext) => anext,
             Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
-                self.raise_exception(
+                return self.raise_exception(
                     type_error_exception(&format!(
                         "'async for' received an object from __aiter__ that does not implement __anext__: {}",
                         type_name(&iterator)
                     )),
                     true,
-                )?;
-                return Ok(IteratorAdvance::Raised);
+                );
             }
             Err(exception) => {
-                self.raise_exception(exception, true)?;
-                return Ok(IteratorAdvance::Raised);
+                return self.raise_exception(exception, true);
             }
         };
         let awaitable = match self.call_value_catching(anext, Vec::new())? {
             Ok(awaitable) => awaitable,
             Err(exception) => {
-                self.raise_exception(exception, true)?;
-                return Ok(IteratorAdvance::Raised);
+                return self.raise_exception(exception, true);
             }
         };
-        let saved_handlers = std::mem::take(&mut self.exception_handlers);
-        let saved_handled = std::mem::take(&mut self.handled_exceptions);
-        let previous_exception = self.current_exception.clone();
-        let result = self.await_value_to_completion(awaitable.clone());
-        let raised_exception = self.current_exception.clone();
-        self.exception_handlers = saved_handlers;
-        self.handled_exceptions = saved_handled;
-        self.current_exception = previous_exception;
+        let result =
+            self.call_with_exception_capture(|vm| vm.await_value_to_completion(awaitable.clone()))?;
 
         match result {
             Ok(value) => Ok(IteratorAdvance::Yield(value)),
-            Err(message) => {
-                if let Some(exception) = raised_exception {
-                    if exception_is_builtin_instance(&exception, "StopAsyncIteration") {
-                        return Ok(IteratorAdvance::Complete(Value::None));
-                    }
-                    if exception.type_name == "TypeError"
-                        && exception
-                            .message
-                            .as_deref()
-                            .is_some_and(is_non_awaitable_error_message)
-                        || is_generic_awaitable_value(&awaitable)
-                    {
-                        let mut type_error = type_error_exception(&format!(
-                            "'async for' received an invalid object from __anext__: {}",
-                            type_name(&awaitable)
-                        ));
-                        type_error.cause = Some(Box::new(exception));
-                        type_error.suppress_context = true;
-                        self.raise_exception(type_error, true)?;
-                        return Ok(IteratorAdvance::Raised);
-                    }
-                    self.raise_exception(exception, true)?;
-                    return Ok(IteratorAdvance::Raised);
+            Err(exception) => {
+                if exception_is_builtin_instance(&exception, "StopAsyncIteration") {
+                    return Ok(IteratorAdvance::Complete(Value::None));
                 }
-                Err(message)
+                if exception.type_name == "TypeError"
+                    && exception
+                        .message
+                        .as_deref()
+                        .is_some_and(is_non_awaitable_error_message)
+                    || is_generic_awaitable_value(&awaitable)
+                {
+                    let mut type_error = type_error_exception(&format!(
+                        "'async for' received an invalid object from __anext__: {}",
+                        type_name(&awaitable)
+                    ));
+                    type_error.cause = Some(Box::new(exception));
+                    type_error.suppress_context = true;
+                    return self.raise_exception(type_error, true);
+                }
+                return self.raise_exception(exception, true);
             }
         }
     }
@@ -44795,9 +46269,11 @@ impl Vm {
         state: Rc<RefCell<CoroutineState>>,
         resume: CoroutineResume,
     ) -> Result<IteratorAdvance, String> {
+        if state.borrow().running {
+            return Err("ValueError: coroutine already executing".to_string());
+        }
         if state.borrow().done {
-            self.raise_coroutine_reuse_error()?;
-            return Ok(IteratorAdvance::Raised);
+            return self.raise_coroutine_reuse_error();
         }
 
         let mut coroutine_vm = {
@@ -44824,6 +46300,7 @@ impl Vm {
                     .cloned()
                     .map(|handlers| ExceptionHandlerFrame { handlers })
                     .collect(),
+                in_flight_exception: None,
                 current_exception: state
                     .current_exception
                     .clone()
@@ -44856,6 +46333,8 @@ impl Vm {
                     &state.line_sequence,
                 ),
                 external_call_handler: self.external_call_handler.clone(),
+                repr_active_containers: self.repr_active_containers.clone(),
+                active_iterator_states: self.active_iterator_states.clone(),
                 future_flags: state.future_flags,
             }
         };
@@ -44867,17 +46346,8 @@ impl Vm {
             CoroutineResume::Throw(exception) => {
                 if coroutine_is_suspended_on_await(&state.borrow()) {
                     coroutine_vm.resume_exception = Some(exception);
-                } else if let Err(message) = coroutine_vm.raise_exception(exception, true) {
-                    self.absorb_output_from(&mut coroutine_vm);
-                    let mut state = state.borrow_mut();
-                    state.done = true;
-                    state.running = false;
-                    state.frame_fields = None;
-                    if let Some(exception) = coroutine_vm.current_exception {
-                        self.raise_exception(exception, true)?;
-                        return Ok(IteratorAdvance::Raised);
-                    }
-                    return Err(message);
+                } else {
+                    let _ = coroutine_vm.raise_exception::<()>(exception, true);
                 }
             }
             CoroutineResume::Close => {
@@ -44892,23 +46362,9 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
-                    identity: Rc::new(()),
+                    identity: Rc::new(crate::value::ExceptionIdentity::default()),
                 };
-                if let Err(message) = coroutine_vm.raise_exception(exception, true) {
-                    self.absorb_output_from(&mut coroutine_vm);
-                    let mut state = state.borrow_mut();
-                    state.done = true;
-                    state.running = false;
-                    state.frame_fields = None;
-                    if let Some(exception) = coroutine_vm.current_exception {
-                        if exception_is_builtin_instance(&exception, "GeneratorExit") {
-                            return Ok(IteratorAdvance::Complete(Value::None));
-                        }
-                        self.raise_exception(exception, true)?;
-                        return Ok(IteratorAdvance::Raised);
-                    }
-                    return Err(message);
-                }
+                let _ = coroutine_vm.raise_exception::<()>(exception, true);
             }
         }
 
@@ -44920,7 +46376,10 @@ impl Vm {
                 state.done = true;
                 state.running = false;
                 state.frame_fields = None;
-                if let Some(exception) = coroutine_vm.current_exception {
+                drop(state);
+                if let Some(exception) =
+                    matching_exception(coroutine_vm.in_flight_exception.take(), &message)
+                {
                     if is_closing
                         && matches!(
                             exception.type_name.as_str(),
@@ -44930,11 +46389,9 @@ impl Vm {
                         return Ok(IteratorAdvance::Complete(Value::None));
                     }
                     let exception = convert_coroutine_stop_iteration(exception);
-                    self.raise_exception(exception, true)?;
-                    return Ok(IteratorAdvance::Raised);
+                    return self.raise_exception(exception, true);
                 }
-                self.raise_frame_start_error(message)?;
-                return Ok(IteratorAdvance::Raised);
+                return self.raise_frame_start_error(message);
             }
         };
 
@@ -44985,14 +46442,28 @@ impl Vm {
         &mut self,
         state: Rc<RefCell<GeneratorState>>,
         resume: GeneratorResume,
+        is_async: bool,
     ) -> Result<IteratorAdvance, String> {
+        if state.borrow().running {
+            if is_async {
+                // CPython names the method that re-entered the generator.
+                let message = match resume {
+                    GeneratorResume::Send(_) => {
+                        "anext(): asynchronous generator is already running"
+                    }
+                    GeneratorResume::Throw(_) => {
+                        "athrow(): asynchronous generator is already running"
+                    }
+                    GeneratorResume::Close => "aclose(): asynchronous generator is already running",
+                };
+                return Err(format!("RuntimeError: {message}"));
+            }
+            return Err("ValueError: generator already executing".to_string());
+        }
         if state.borrow().done {
             return match resume {
                 GeneratorResume::Send(_) => Ok(IteratorAdvance::Complete(Value::None)),
-                GeneratorResume::Throw(exception) => {
-                    self.raise_exception(exception, true)?;
-                    Ok(IteratorAdvance::Raised)
-                }
+                GeneratorResume::Throw(exception) => self.raise_exception(exception, true),
                 GeneratorResume::Close => Ok(IteratorAdvance::Complete(Value::None)),
             };
         }
@@ -45031,6 +46502,7 @@ impl Vm {
                         .cloned()
                         .map(|handlers| ExceptionHandlerFrame { handlers })
                         .collect(),
+                    in_flight_exception: None,
                     current_exception: state
                         .current_exception
                         .clone()
@@ -45060,6 +46532,8 @@ impl Vm {
                         &state.line_sequence,
                     ),
                     external_call_handler: self.external_call_handler.clone(),
+                    repr_active_containers: self.repr_active_containers.clone(),
+                    active_iterator_states: self.active_iterator_states.clone(),
                     future_flags: state.future_flags,
                 },
                 state.resume_dst,
@@ -45076,23 +46550,13 @@ impl Vm {
                 state.borrow_mut().running = true;
                 if let Some(resume_dst) = resume_dst {
                     generator_vm.write_register(resume_dst, sent);
+                } else if generator_vm.yield_from_delegate.is_some() {
+                    generator_vm.resume_value = Some(sent);
                 }
             }
             GeneratorResume::Throw(exception) => {
                 state.borrow_mut().running = true;
-                if let Err(message) = generator_vm.raise_exception(exception, true) {
-                    self.absorb_output_from(&mut generator_vm);
-                    let mut state = state.borrow_mut();
-                    state.done = true;
-                    state.running = false;
-                    state.frame_fields = None;
-                    state.yield_from = None;
-                    if let Some(exception) = generator_vm.current_exception {
-                        self.raise_exception(exception, true)?;
-                        return Ok(IteratorAdvance::Raised);
-                    }
-                    return Err(message);
-                }
+                let _ = generator_vm.raise_exception::<()>(exception, true);
             }
             GeneratorResume::Close => {
                 state.borrow_mut().running = true;
@@ -45107,24 +46571,9 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
-                    identity: Rc::new(()),
+                    identity: Rc::new(crate::value::ExceptionIdentity::default()),
                 };
-                if let Err(message) = generator_vm.raise_exception(exception, true) {
-                    self.absorb_output_from(&mut generator_vm);
-                    let mut state = state.borrow_mut();
-                    state.done = true;
-                    state.running = false;
-                    state.frame_fields = None;
-                    state.yield_from = None;
-                    if let Some(exception) = generator_vm.current_exception {
-                        if exception_is_builtin_instance(&exception, "GeneratorExit") {
-                            return Ok(IteratorAdvance::Complete(Value::None));
-                        }
-                        self.raise_exception(exception, true)?;
-                        return Ok(IteratorAdvance::Raised);
-                    }
-                    return Err(message);
-                }
+                let _ = generator_vm.raise_exception::<()>(exception, true);
             }
         }
 
@@ -45137,7 +46586,10 @@ impl Vm {
                 state.running = false;
                 state.frame_fields = None;
                 state.yield_from = None;
-                if let Some(exception) = generator_vm.current_exception {
+                drop(state);
+                if let Some(exception) =
+                    matching_exception(generator_vm.in_flight_exception.take(), &message)
+                {
                     if is_closing
                         && matches!(
                             exception.type_name.as_str(),
@@ -45146,11 +46598,9 @@ impl Vm {
                     {
                         return Ok(IteratorAdvance::Complete(Value::None));
                     }
-                    self.raise_exception(exception, true)?;
-                    return Ok(IteratorAdvance::Raised);
+                    return self.raise_exception(exception, true);
                 }
-                self.raise_frame_start_error(message)?;
-                return Ok(IteratorAdvance::Raised);
+                return self.raise_frame_start_error(message);
             }
         };
 
@@ -45184,7 +46634,7 @@ impl Vm {
                     state.frame_fields = None;
                     state.yield_from = None;
                     drop(state);
-                    self.raise_exception(
+                    return self.raise_exception(
                         MiniException {
                             type_name: "RuntimeError".to_string(),
                             type_hierarchy: builtin_exception_type_hierarchy("RuntimeError"),
@@ -45196,11 +46646,10 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
-                            identity: Rc::new(()),
+                            identity: Rc::new(crate::value::ExceptionIdentity::default()),
                         },
                         true,
-                    )?;
-                    return Ok(IteratorAdvance::Raised);
+                    );
                 }
                 state.resume_dst = resume_dst;
                 state.running = false;
@@ -45245,11 +46694,7 @@ impl Vm {
                 .as_ref()
                 .is_some_and(|current| Rc::ptr_eq(&current.identity, &exception.identity));
         if !is_reraise {
-            let traceback = new_traceback_value();
-            update_exception_dunders(&exception.identity, |dunders| {
-                dunders.traceback = Some(traceback.clone())
-            });
-            set_exception_traceback_attr(&mut exception.attrs, traceback);
+            prepend_exception_traceback(&mut exception);
         }
 
         if let Some(cause) = cause {
@@ -45260,21 +46705,28 @@ impl Vm {
         self.raise_exception(exception, !is_reraise && !raises_handled)
     }
 
-    fn raise_exception(
+    fn raise_exception<T>(
         &mut self,
+        exception: MiniException,
+        attach_context: bool,
+    ) -> Result<T, String> {
+        crate::terminal::check()?;
+        let exception = self.prepare_exception(exception, attach_context);
+        Err(self.propagate_captured_exception(exception))
+    }
+
+    fn prepare_exception(
+        &self,
         mut exception: MiniException,
         attach_context: bool,
-    ) -> Result<(), String> {
-        // The only place a handler block receives an exception: while a
-        // terminal condition is latched nothing may be caught, whatever
-        // exception the failing native path turned it into.
-        crate::terminal::check()?;
+    ) -> MiniException {
         // Assignments to the exception's dunders since it was last converted;
         // the traceback is the raise's own (see `raise_value`).
         apply_own_exception_dunders(&mut exception, true, false);
         if attach_context && exception.context.is_none() {
             let context = self
                 .handled_exception()
+                .filter(|context| !Rc::ptr_eq(&context.identity, &exception.identity))
                 .cloned()
                 .map(|context| break_context_cycle(context, &exception.identity));
             exception.context = context.map(Box::new);
@@ -45282,21 +46734,7 @@ impl Vm {
         ensure_exception_traceback(&mut exception);
         record_raised_exception_dunders(&exception);
 
-        if let Some(frame) = self.exception_handlers.pop() {
-            // Every handler block catches everything: its bytecode matches
-            // the except clauses and re-raises what they do not handle.
-            let handler = frame
-                .handlers
-                .first()
-                .ok_or_else(|| "exception handler block has no handler".to_string())?;
-            let target = handler.target;
-            self.enter_exception_handler(exception);
-            self.jump_to(target)?;
-            return Ok(());
-        }
-
-        self.current_exception = Some(exception.clone());
-        Err(format_exception_error(&exception))
+        exception
     }
 
     /// The exception being handled: this frame's own, else its caller's.
@@ -45399,14 +46837,66 @@ fn copy_default_dict(
     entries: &DictRef,
     default_factory: &Rc<RefCell<Value>>,
 ) -> Result<Value, String> {
+    let storage = entries.borrow();
     Ok(Value::DefaultDict {
-        entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
+        entries: dict_ref_from_entries_with_stored_hashes(
+            storage.entries.clone(),
+            storage.hashes.clone(),
+        )?,
         default_factory: Rc::new(RefCell::new(default_factory.borrow().clone())),
     })
 }
 
 fn shallow_copy_value(value: &Value) -> Result<Value, String> {
     match value {
+        Value::Unpack(inner) => Ok(Value::Unpack(Rc::new((**inner).clone()))),
+        Value::Template {
+            strings,
+            interpolations,
+            ..
+        } => Ok(Value::Template {
+            identity: Rc::new(()),
+            strings: strings.clone(),
+            interpolations: interpolations.clone(),
+        }),
+        Value::TemplateInterpolation(item) => {
+            let mut copied = (**item).clone();
+            copied.identity = Rc::new(());
+            Ok(Value::TemplateInterpolation(Rc::new(copied)))
+        }
+        Value::Iterator(state) => {
+            // A copy of a tee branch is an independent branch at the same
+            // position, as CPython's copy of a tee is.
+            let tee = match &*state.borrow() {
+                Value::ItertoolsTee { state, index } => Some((state.clone(), *index)),
+                _ => None,
+            };
+            let Some((tee, index)) = tee else {
+                return Ok(value.clone());
+            };
+            let copied = {
+                let borrowed = tee.borrow();
+                Rc::new(RefCell::new(TeeState {
+                    iterator: borrowed.iterator.clone(),
+                    buffer: borrowed.buffer.clone(),
+                    exhausted: borrowed.exhausted,
+                }))
+            };
+            Ok(shared_iterator(Value::ItertoolsTee {
+                state: copied,
+                index,
+            }))
+        }
+        Value::GenericAlias {
+            origin,
+            args,
+            union_unhashable_count,
+            ..
+        } => Ok(generic_alias_value_with_union_unhashable_count(
+            origin.as_ref().clone(),
+            args.clone(),
+            *union_unhashable_count,
+        )),
         Value::Re(_) => Ok(value.clone()),
         Value::String(value) => Ok(Value::IdentityString {
             value: value.clone(),
@@ -45458,19 +46948,32 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             data: Rc::new(RefCell::new(data.borrow().clone())),
             attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
         }),
-        Value::Deque { data, maxlen } => Ok(Value::Deque {
+        Value::Deque { data, maxlen, .. } => Ok(Value::Deque {
             data: Rc::new(RefCell::new(data.borrow().clone())),
-            maxlen: *maxlen,
+            maxlen: Rc::new(Cell::new(maxlen.get())),
+            state: Rc::new(Cell::new(0)),
         }),
         Value::Set(items) => Ok(set_value(items.borrow().clone())),
-        Value::Dict(entries) => Ok(dict_value(entries.borrow().entries.clone())),
+        Value::Dict(entries) => {
+            let storage = entries.borrow();
+            Ok(Value::Dict(dict_ref_from_entries_with_stored_hashes(
+                storage.entries.clone(),
+                storage.hashes.clone(),
+            )?))
+        }
         Value::DefaultDict {
             entries,
             default_factory,
         } => copy_default_dict(entries, default_factory),
-        Value::Counter { entries } => Ok(Value::Counter {
-            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
-        }),
+        Value::Counter { entries } => {
+            let storage = entries.borrow();
+            Ok(Value::Counter {
+                entries: dict_ref_from_entries_with_stored_hashes(
+                    storage.entries.clone(),
+                    storage.hashes.clone(),
+                )?,
+            })
+        }
         Value::UserDict { data, attrs } => Ok(Value::UserDict {
             data: dict_ref_from_entries(data.borrow().entries.clone())?,
             attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
@@ -45495,7 +46998,7 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             identity: Rc::new(()),
         }),
         Value::OperatorItemGetter { items, .. } => Ok(Value::OperatorItemGetter {
-            items: items.clone(),
+            items: Rc::clone(items),
             identity: Rc::new(()),
         }),
         Value::OperatorMethodCaller {
@@ -45505,8 +47008,8 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             ..
         } => Ok(Value::OperatorMethodCaller {
             name: name.clone(),
-            args: args.clone(),
-            keywords: keywords.clone(),
+            args: Rc::clone(args),
+            keywords: Rc::clone(keywords),
             identity: Rc::new(()),
         }),
         Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
@@ -45640,6 +47143,9 @@ impl Drop for DeepCopyFrameBudget {
 
 fn copy_deepcopy_identity_key(value: &Value) -> Option<usize> {
     match value {
+        Value::Unpack(inner) => Some(Rc::as_ptr(inner) as usize),
+        Value::Template { identity, .. } => Some(Rc::as_ptr(identity) as usize),
+        Value::TemplateInterpolation(item) => Some(Rc::as_ptr(&item.identity) as usize),
         Value::AstNode { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         Value::List(items) => Some(Rc::as_ptr(items) as usize),
         Value::UserList { data, .. } => Some(Rc::as_ptr(data) as usize),
@@ -45652,6 +47158,7 @@ fn copy_deepcopy_identity_key(value: &Value) -> Option<usize> {
         Value::UserDict { data, .. } => Some(Rc::as_ptr(data) as usize),
         Value::SimpleNamespace { fields } => Some(Rc::as_ptr(fields) as usize),
         Value::Instance { fields, .. } => Some(Rc::as_ptr(fields) as usize),
+        Value::GenericAlias { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         _ => None,
     }
 }
@@ -45685,6 +47192,69 @@ where
     }
 
     match value {
+        Value::Unpack(inner) => {
+            let copied = Value::Unpack(Rc::new(deep_copy_value_with_hook(inner, memo, hook)?));
+            if let Some(key) = identity_key {
+                memo.insert(key, copied.clone());
+            }
+            Ok(copied)
+        }
+        Value::Template {
+            strings,
+            interpolations,
+            ..
+        } => {
+            let mut args = Vec::with_capacity(strings.len() + interpolations.len());
+            for (index, item) in interpolations.iter().enumerate() {
+                args.push(Value::String(strings[index].clone()));
+                args.push(deep_copy_value_with_hook(
+                    &Value::TemplateInterpolation(item.clone()),
+                    memo,
+                    hook,
+                )?);
+            }
+            args.push(Value::String(strings[interpolations.len()].clone()));
+            let copied = call_template_constructor(args, vec![])?;
+            if let Some(key) = identity_key {
+                memo.insert(key, copied.clone());
+            }
+            Ok(copied)
+        }
+        Value::TemplateInterpolation(item) => {
+            let copied = Value::TemplateInterpolation(Rc::new(TemplateInterpolation {
+                identity: Rc::new(()),
+                value: Box::new(deep_copy_value_with_hook(&item.value, memo, hook)?),
+                expression: item.expression.clone(),
+                conversion: item.conversion.clone(),
+                format_spec: item.format_spec.clone(),
+            }));
+            if let Some(key) = identity_key {
+                memo.insert(key, copied.clone());
+            }
+            Ok(copied)
+        }
+        Value::GenericAlias {
+            origin,
+            args,
+            union_unhashable_count,
+            identity,
+        } => {
+            let key = Rc::as_ptr(identity) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_args = args
+                .iter()
+                .map(|arg| deep_copy_value_with_hook(arg, memo, hook))
+                .collect::<Result<Vec<_>, _>>()?;
+            let copied = generic_alias_value_with_union_unhashable_count(
+                origin.as_ref().clone(),
+                copied_args,
+                *union_unhashable_count,
+            );
+            memo.insert(key, copied.clone());
+            Ok(copied)
+        }
         Value::String(value) => Ok(Value::IdentityString {
             value: value.clone(),
             identity: Rc::new(()),
@@ -45824,7 +47394,7 @@ where
                     .collect::<Result<Vec<_>, _>>()?,
             ),
         }),
-        Value::Deque { data, maxlen } => {
+        Value::Deque { data, maxlen, .. } => {
             let key = Rc::as_ptr(data) as usize;
             if let Some(copied) = memo.get(&key) {
                 return Ok(copied.clone());
@@ -45832,7 +47402,8 @@ where
             let copied_data = Rc::new(RefCell::new(Vec::new()));
             let copied = Value::Deque {
                 data: copied_data.clone(),
-                maxlen: *maxlen,
+                maxlen: Rc::new(Cell::new(maxlen.get())),
+                state: Rc::new(Cell::new(0)),
             };
             memo.insert(key, copied.clone());
             let data = data.borrow().clone();
@@ -45843,13 +47414,15 @@ where
             *copied_data.borrow_mut() = copied_values;
             Ok(copied)
         }
-        Value::Set(items) => Ok(set_value(
-            items
-                .borrow()
-                .iter()
-                .map(|item| deep_copy_value_with_hook(item, memo, hook))
-                .collect::<Result<Vec<_>, _>>()?,
-        )),
+        Value::Set(items) => {
+            let items = items.borrow().clone();
+            Ok(set_value(
+                items
+                    .iter()
+                    .map(|item| deep_copy_value_with_hook(item, memo, hook))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ))
+        }
         Value::FrozenSet(items) => Ok(frozen_set_value(
             items
                 .iter()
@@ -45885,9 +47458,8 @@ where
             if let Value::BytesIO(copied_io) = &copied {
                 let copied_attrs = copied_io.borrow().attrs.clone();
                 for (name, attr_value) in attrs {
-                    copied_attrs
-                        .borrow_mut()
-                        .insert(name, deep_copy_value_with_hook(&attr_value, memo, hook)?);
+                    let attr_value = deep_copy_value_with_hook(&attr_value, memo, hook)?;
+                    copied_attrs.borrow_mut().insert(name, attr_value);
                 }
             }
             Ok(copied)
@@ -46026,11 +47598,10 @@ where
                 class_bases: class_bases.clone(),
             };
             memo.insert(key, copied.clone());
-            for (name, field_value) in fields.borrow().iter() {
-                copied_fields.borrow_mut().insert(
-                    name.clone(),
-                    deep_copy_value_with_hook(field_value, memo, hook)?,
-                );
+            let fields = fields.borrow().clone();
+            for (name, field_value) in &fields {
+                let field_value = deep_copy_value_with_hook(field_value, memo, hook)?;
+                copied_fields.borrow_mut().insert(name.clone(), field_value);
             }
             Ok(copied)
         }
@@ -46039,10 +47610,12 @@ where
             identity: Rc::new(()),
         }),
         Value::OperatorItemGetter { items, .. } => Ok(Value::OperatorItemGetter {
-            items: items
-                .iter()
-                .map(|item| deep_copy_value_with_hook(item, memo, hook))
-                .collect::<Result<Vec<_>, _>>()?,
+            items: Rc::new(
+                items
+                    .iter()
+                    .map(|item| deep_copy_value_with_hook(item, memo, hook))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
             identity: Rc::new(()),
         }),
         Value::OperatorMethodCaller {
@@ -46052,16 +47625,19 @@ where
             ..
         } => Ok(Value::OperatorMethodCaller {
             name: name.clone(),
-            args: args
-                .iter()
-                .map(|arg| deep_copy_value_with_hook(arg, memo, hook))
-                .collect::<Result<Vec<_>, _>>()?,
-            keywords: keywords
-                .iter()
-                .map(|(key, value)| {
-                    Ok((key.clone(), deep_copy_value_with_hook(value, memo, hook)?))
-                })
-                .collect::<Result<Vec<_>, String>>()?,
+            args: Rc::new(
+                args.iter()
+                    .map(|arg| deep_copy_value_with_hook(arg, memo, hook))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            keywords: Rc::new(
+                keywords
+                    .iter()
+                    .map(|(key, value)| {
+                        Ok((key.clone(), deep_copy_value_with_hook(value, memo, hook)?))
+                    })
+                    .collect::<Result<Vec<_>, String>>()?,
+            ),
             identity: Rc::new(()),
         }),
         Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
@@ -46097,8 +47673,8 @@ where
             index,
             exhausted,
         } => {
-            let copied_items = items
-                .borrow()
+            let snapshot = items.borrow().clone();
+            let copied_items = snapshot
                 .iter()
                 .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
@@ -46260,15 +47836,23 @@ where
             saved,
             index,
             exhausted,
-        } => Ok(Value::ItertoolsCycle {
-            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
-            saved: saved
-                .iter()
-                .map(|value| deep_copy_value_with_hook(value, memo, hook))
-                .collect::<Result<Vec<_>, _>>()?,
-            index: *index,
-            exhausted: *exhausted,
-        }),
+        } => {
+            // The saved items leave their buffer before they are copied: a
+            // `__deepcopy__` may advance the cycle, and the buffer must not
+            // be borrowed while that runs.
+            let saved_items = saved.borrow().clone();
+            let copied_iterator = deep_copy_value_with_hook(iterator, memo, hook)?;
+            let mut copied_saved = Vec::with_capacity(saved_items.len());
+            for value in &saved_items {
+                copied_saved.push(deep_copy_value_with_hook(value, memo, hook)?);
+            }
+            Ok(Value::ItertoolsCycle {
+                iterator: Box::new(copied_iterator),
+                saved: Rc::new(RefCell::new(copied_saved)),
+                index: *index,
+                exhausted: *exhausted,
+            })
+        }
         Value::ItertoolsTakewhile {
             predicate,
             iterator,
@@ -46397,9 +47981,9 @@ fn class_prepare_callable(metaclass: &Value) -> Option<Value> {
         return None;
     };
     find_class_attr(attrs, bases, "__prepare__").map(|value| match value {
-        Value::StaticMethod { function, .. } => *function,
+        Value::StaticMethod { function, .. } => function.as_ref().clone(),
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(metaclass.clone()),
             identity: Rc::new(()),
         },
@@ -46416,9 +48000,9 @@ fn metaclass_constructor_attr(metaclass: &Value, name: &str) -> Option<Value> {
 
 fn bind_metaclass_constructor_method(method: Value, receiver: Value) -> Value {
     match method {
-        Value::StaticMethod { function, .. } => *function,
+        Value::StaticMethod { function, .. } => function.as_ref().clone(),
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
         },
@@ -46435,7 +48019,7 @@ fn metaclass_new_constructor_call(
 ) -> (Value, Vec<Value>) {
     match method {
         Value::StaticMethod { function, .. } => (
-            *function,
+            function.as_ref().clone(),
             vec![metaclass, name_arg, bases_arg, namespace_arg],
         ),
         method => (
@@ -52206,7 +53790,7 @@ fn call_ast_helper_constructor(
         return Err(format!("{kind}() does not accept keyword arguments"));
     }
     if !args.is_empty() {
-        return Err(format!("{kind}() takes no arguments"));
+        return Err(format!("TypeError: {kind}() takes no arguments"));
     }
 
     let class_attrs = new_scope();
@@ -52641,7 +54225,7 @@ fn raise_ast_parse_syntax_error(
         return Err(message);
     };
     if type_name == "SyntaxError" && message == "source code string cannot contain null bytes" {
-        vm.raise_exception(syntax_error_exception(message), true)?;
+        vm.raise_exception::<()>(syntax_error_exception(message), true)?;
         return Ok(Value::None);
     }
     let source = ast_parse_source_text_for_error(source).unwrap_or_default();
@@ -52656,7 +54240,7 @@ fn raise_ast_parse_syntax_error(
         1,
         0,
     );
-    vm.raise_exception(exception, true)?;
+    vm.raise_exception::<()>(exception, true)?;
     Ok(Value::None)
 }
 
@@ -60111,6 +61695,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__gt__",
             "__iadd__",
             "__imul__",
+            "__init__",
             "__iter__",
             "__le__",
             "__len__",
@@ -60534,7 +62119,7 @@ fn wrap_dunder_new_as_staticmethod(attrs: &Scope) {
     attrs.borrow_mut().insert(
         "__new__".to_string(),
         Value::StaticMethod {
-            function: Box::new(value),
+            function: Rc::new(value),
             identity: Rc::new(()),
         },
     );
@@ -60548,7 +62133,7 @@ fn wrap_init_subclass_as_classmethod(attrs: &Scope) {
     attrs.borrow_mut().insert(
         "__init_subclass__".to_string(),
         Value::ClassMethod {
-            function: Box::new(value),
+            function: Rc::new(value),
             identity: Rc::new(()),
         },
     );
@@ -60557,7 +62142,7 @@ fn wrap_init_subclass_as_classmethod(attrs: &Scope) {
 fn init_subclass_callable(descriptor: Value, class_value: Value) -> Value {
     match descriptor {
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(class_value),
             identity: Rc::new(()),
         },
@@ -60567,9 +62152,9 @@ fn init_subclass_callable(descriptor: Value, class_value: Value) -> Value {
 
 fn class_new_callable(descriptor: Value, class_value: Value) -> Value {
     match descriptor {
-        Value::StaticMethod { function, .. } => *function,
+        Value::StaticMethod { function, .. } => function.as_ref().clone(),
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(class_value),
             identity: Rc::new(()),
         },
@@ -60629,11 +62214,11 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             owner_class: owner_class.or_else(|| Some(Box::new(class.clone()))),
         },
         Value::StaticMethod { function, identity } => Value::StaticMethod {
-            function: Box::new(attach_owner_class(*function, class)),
+            function: Rc::new(attach_owner_class((*function).clone(), class)),
             identity,
         },
         Value::ClassMethod { function, identity } => Value::ClassMethod {
-            function: Box::new(attach_owner_class(*function, class)),
+            function: Rc::new(attach_owner_class((*function).clone(), class)),
             identity,
         },
         Value::Property {
@@ -60645,9 +62230,9 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             name,
             identity,
         } => Value::Property {
-            fget: fget.map(|value| Box::new(attach_owner_class(*value, class))),
-            fset: fset.map(|value| Box::new(attach_owner_class(*value, class))),
-            fdel: fdel.map(|value| Box::new(attach_owner_class(*value, class))),
+            fget: fget.map(|value| Rc::new(attach_owner_class((*value).clone(), class))),
+            fset: fset.map(|value| Rc::new(attach_owner_class((*value).clone(), class))),
+            fdel: fdel.map(|value| Rc::new(attach_owner_class((*value).clone(), class))),
             doc,
             doc_from_getter,
             name,
@@ -61329,7 +62914,7 @@ fn class_mro(class: &Value) -> Result<Vec<Value>, String> {
             Ok(values)
         }
         Value::Builtin(name) => builtin_class_mro(name),
-        value => Err(format!("expected class, got {value}")),
+        value => Err(format!("TypeError: expected class, got {value}")),
     }
 }
 
@@ -61537,6 +63122,342 @@ fn super_lookup_owner_class(class: &Value, object: &Value) -> Result<Value, Stri
     Err("TypeError: super(type, obj): obj must be an instance or subtype of type".to_string())
 }
 
+/// The comparison method the operand's type provides.
+///
+/// CPython looks the method up in the type's method resolution order, so the
+/// first type that defines the method answers the comparison. A builtin type
+/// in that order answers the comparison itself, which hides the comparison
+/// methods of the classes after it. An attribute explicitly set to `None`
+/// counts: CPython reports the call error instead of skipping the comparison.
+fn comparison_method_for_type(value: &Value, name: &str) -> ComparisonMethod {
+    match value {
+        Value::WeakProxy { target, .. } => comparison_method_for_type(target, name),
+        Value::Instance {
+            class_attrs,
+            class_bases,
+            ..
+        } => {
+            if let Some(method) = class_attrs.borrow().get(name).cloned() {
+                return ComparisonMethod::User(bind_method(method, value.clone()));
+            }
+            let Ok(mro) = mro_for_bases(class_bases) else {
+                return ComparisonMethod::Object;
+            };
+            for base in mro {
+                match &base {
+                    Value::Class { attrs, .. } => {
+                        if let Some(method) = attrs.borrow().get(name).cloned() {
+                            return ComparisonMethod::User(bind_method(method, value.clone()));
+                        }
+                    }
+                    Value::Builtin(base_name) => {
+                        if builtin_comparison_of_name(base_name).is_some() {
+                            return ComparisonMethod::Builtin;
+                        }
+                        if base_name == "object" {
+                            // `object` provides no comparison method of its
+                            // own, but an abstract base class of the
+                            // standard library may provide one, so the
+                            // search continues with the mixin methods
+                            // below.
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            // The abstract base classes of the collections module provide
+            // their own comparison methods.
+            if let Some(method) = set_abc_mixin_method(class_bases, value.clone(), name) {
+                return ComparisonMethod::User(method);
+            }
+            if let Some(method) = mutable_set_abc_mixin_method(class_bases, value.clone(), name) {
+                return ComparisonMethod::User(method);
+            }
+            if let Some(method_name) = collections_abc_mixin_method_from_bases(class_bases, name) {
+                return ComparisonMethod::User(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(method_name.to_string())),
+                    receiver: Box::new(value.clone()),
+                    identity: Rc::new(()),
+                });
+            }
+            ComparisonMethod::Object
+        }
+        Value::Class { .. } => match metaclass_special_method(value, name) {
+            Some(method) => ComparisonMethod::User(method),
+            None => ComparisonMethod::Object,
+        },
+        Value::MagicMock { .. } => match instance_special_method(value, name) {
+            Some(method) => ComparisonMethod::User(method),
+            None => ComparisonMethod::Object,
+        },
+        _ => {
+            if builtin_comparison(value).is_some() {
+                ComparisonMethod::Builtin
+            } else {
+                ComparisonMethod::Object
+            }
+        }
+    }
+}
+
+/// How the type of an operand answers a comparison.
+enum ComparisonMethod {
+    /// The type defines the method itself.
+    User(Value),
+    /// The type inherits the comparison from a builtin type.
+    Builtin,
+    /// The type has no comparison of its own; `object` answers it.
+    Object,
+}
+
+/// The builtin comparison a type provides for its instances.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BuiltinComparison {
+    /// Numbers compare with every other number.
+    Number,
+    /// Text compares with text.
+    Text,
+    /// Byte strings compare with byte strings and memory views.
+    Bytes,
+    /// Lists compare with lists.
+    List,
+    /// Tuples compare with tuples.
+    Tuple,
+    /// Mappings compare with mappings.
+    Mapping,
+    /// Counters compare with counters.
+    Counter,
+    /// Sets compare with sets.
+    Set,
+    /// Set-like mapping views compare with sets and other set-like views.
+    SetView,
+    /// Memory views compare with byte strings and memory views.
+    MemoryView,
+    /// Ranges compare with ranges.
+    Range,
+    /// Slices compare with slices.
+    Slice,
+    /// Arrays compare with arrays.
+    Array,
+    /// Deques compare with deques.
+    Deque,
+    /// Simple namespaces compare with simple namespaces.
+    Namespace,
+    /// Cells compare with cells.
+    Cell,
+    /// Scope dictionaries compare with scope dictionaries.
+    Scope,
+    /// Weak references compare with weak references.
+    WeakRef,
+    /// Forward references compare with forward references.
+    ForwardRef,
+    /// Generic aliases compare with generic aliases.
+    GenericAlias,
+    /// Bound methods compare with bound methods.
+    BoundMethod,
+    /// Chain maps compare with mappings.
+    ChainMap,
+    /// Regular expression patterns compare with patterns.
+    Pattern,
+    /// Code objects compare with code objects.
+    Code,
+}
+
+/// The builtin comparison the value's type provides.
+fn builtin_comparison(value: &Value) -> Option<BuiltinComparison> {
+    match value {
+        Value::Instance { class_bases, .. } => instance_builtin_comparison(class_bases),
+        Value::Number(_)
+        | Value::BigInt(_)
+        | Value::Float(_)
+        | Value::Complex { .. }
+        | Value::Bool(_) => Some(BuiltinComparison::Number),
+        Value::String(_) | Value::IdentityString { .. } | Value::UserString { .. } => {
+            Some(BuiltinComparison::Text)
+        }
+        Value::Bytes(_) | Value::ByteArray(_) => Some(BuiltinComparison::Bytes),
+        Value::List(_) | Value::UserList { .. } => Some(BuiltinComparison::List),
+        Value::Tuple(_) | Value::NamedTuple { .. } => Some(BuiltinComparison::Tuple),
+        Value::Dict(_)
+        | Value::UserDict { .. }
+        | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
+        | Value::MappingProxy { .. }
+        | Value::MappingProxyObject { .. } => Some(BuiltinComparison::Mapping),
+        Value::Counter { .. } => Some(BuiltinComparison::Counter),
+        Value::Set(_) | Value::FrozenSet(_) => Some(BuiltinComparison::Set),
+        // A values view has no comparison of its own; the keys and items
+        // views compare like sets.
+        Value::DictView { kind, .. } | Value::MappingView { kind, .. } => match kind {
+            DictViewKind::Keys | DictViewKind::Items => Some(BuiltinComparison::SetView),
+            DictViewKind::Values => None,
+        },
+        Value::MemoryView(_) => Some(BuiltinComparison::MemoryView),
+        Value::Range { .. } => Some(BuiltinComparison::Range),
+        Value::Slice { .. } => Some(BuiltinComparison::Slice),
+        Value::Deque { .. } => Some(BuiltinComparison::Deque),
+        Value::SimpleNamespace { .. } => Some(BuiltinComparison::Namespace),
+        Value::Cell { .. } => Some(BuiltinComparison::Cell),
+        Value::ScopeDict(_) => Some(BuiltinComparison::Scope),
+        Value::WeakRef { .. } => Some(BuiltinComparison::WeakRef),
+        Value::ForwardRef { .. } => Some(BuiltinComparison::ForwardRef),
+        Value::GenericAlias { .. } | Value::Unpack(_) => Some(BuiltinComparison::GenericAlias),
+        Value::BoundMethod { .. } => Some(BuiltinComparison::BoundMethod),
+        Value::ChainMap { .. } => Some(BuiltinComparison::ChainMap),
+        // Only a pattern compares by its source and its flags; the other
+        // regular expression objects compare by their identity.
+        Value::Re(object) if matches!(object, re::ReObject::Pattern(_)) => {
+            Some(BuiltinComparison::Pattern)
+        }
+        Value::CodeObject { .. } => Some(BuiltinComparison::Code),
+        _ => None,
+    }
+}
+
+/// The builtin comparison a user class inherits.
+fn instance_builtin_comparison(class_bases: &[Value]) -> Option<BuiltinComparison> {
+    for base in class_bases {
+        match base {
+            Value::Builtin(name) => {
+                if let Some(comparison) = builtin_comparison_of_name(name) {
+                    return Some(comparison);
+                }
+            }
+            Value::Class { bases, .. } => {
+                if let Some(comparison) = instance_builtin_comparison(bases) {
+                    return Some(comparison);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The builtin comparison a builtin type provides.
+fn builtin_comparison_of_name(name: &str) -> Option<BuiltinComparison> {
+    match name {
+        "int" | "bool" | "float" | "complex" => Some(BuiltinComparison::Number),
+        "str" => Some(BuiltinComparison::Text),
+        "bytes" | "bytearray" => Some(BuiltinComparison::Bytes),
+        "list" => Some(BuiltinComparison::List),
+        "tuple" => Some(BuiltinComparison::Tuple),
+        "dict" => Some(BuiltinComparison::Mapping),
+        "Counter" => Some(BuiltinComparison::Counter),
+        "set" | "frozenset" => Some(BuiltinComparison::Set),
+        "memoryview" => Some(BuiltinComparison::MemoryView),
+        "range" => Some(BuiltinComparison::Range),
+        "slice" => Some(BuiltinComparison::Slice),
+        "array.array" => Some(BuiltinComparison::Array),
+        "ChainMap" => Some(BuiltinComparison::ChainMap),
+        "re.Pattern" => Some(BuiltinComparison::Pattern),
+        // A generic alias compares with the other generic aliases.
+        "GenericAlias" => Some(BuiltinComparison::GenericAlias),
+        // An enumeration of integers compares like an integer, and an
+        // enumeration of text compares like text.
+        "enum.IntEnum" => Some(BuiltinComparison::Number),
+        "enum.StrEnum" => Some(BuiltinComparison::Text),
+        _ => None,
+    }
+}
+
+/// Whether the builtin comparison of the left operand answers a comparison
+/// with the right operand. CPython's builtin types decline a comparison with
+/// an operand of an unrelated type, which lets the other operand answer.
+fn builtin_comparison_answers(left: &Value, right: &Value) -> bool {
+    let Some(left_comparison) = builtin_comparison(left) else {
+        return false;
+    };
+    let Some(right_comparison) = builtin_comparison(right) else {
+        return false;
+    };
+    match left_comparison {
+        BuiltinComparison::Number => right_comparison == BuiltinComparison::Number,
+        BuiltinComparison::Text => right_comparison == BuiltinComparison::Text,
+        // Byte strings and memory views compare with each other.
+        BuiltinComparison::Bytes | BuiltinComparison::MemoryView => matches!(
+            right_comparison,
+            BuiltinComparison::Bytes | BuiltinComparison::MemoryView
+        ),
+        BuiltinComparison::List => right_comparison == BuiltinComparison::List,
+        BuiltinComparison::Tuple => right_comparison == BuiltinComparison::Tuple,
+        // A counter is a dict, so it compares with the mappings a dict
+        // compares with.
+        BuiltinComparison::Mapping => matches!(
+            right_comparison,
+            BuiltinComparison::Mapping | BuiltinComparison::Counter
+        ),
+        BuiltinComparison::Counter => matches!(
+            right_comparison,
+            BuiltinComparison::Mapping | BuiltinComparison::Counter
+        ),
+        BuiltinComparison::Set => right_comparison == BuiltinComparison::Set,
+        // The keys and items views of a mapping compare like sets.
+        BuiltinComparison::SetView => matches!(
+            right_comparison,
+            BuiltinComparison::Set | BuiltinComparison::SetView
+        ),
+        BuiltinComparison::Range => right_comparison == BuiltinComparison::Range,
+        BuiltinComparison::Slice => right_comparison == BuiltinComparison::Slice,
+        BuiltinComparison::Array => right_comparison == BuiltinComparison::Array,
+        BuiltinComparison::Deque => right_comparison == BuiltinComparison::Deque,
+        BuiltinComparison::Namespace => right_comparison == BuiltinComparison::Namespace,
+        BuiltinComparison::Cell => right_comparison == BuiltinComparison::Cell,
+        // A scope backed mapping is a dictionary, so it compares with the
+        // other mappings.
+        BuiltinComparison::Scope => matches!(
+            right_comparison,
+            BuiltinComparison::Mapping | BuiltinComparison::Counter | BuiltinComparison::Scope
+        ),
+        BuiltinComparison::WeakRef => right_comparison == BuiltinComparison::WeakRef,
+        BuiltinComparison::ForwardRef => right_comparison == BuiltinComparison::ForwardRef,
+        BuiltinComparison::GenericAlias => right_comparison == BuiltinComparison::GenericAlias,
+        BuiltinComparison::BoundMethod => right_comparison == BuiltinComparison::BoundMethod,
+        // A chain map inherits the comparison of the mapping base class, so
+        // it compares with every mapping.
+        BuiltinComparison::ChainMap => matches!(
+            right_comparison,
+            BuiltinComparison::Mapping | BuiltinComparison::Counter | BuiltinComparison::ChainMap
+        ),
+        BuiltinComparison::Pattern => right_comparison == BuiltinComparison::Pattern,
+        BuiltinComparison::Code => right_comparison == BuiltinComparison::Code,
+    }
+}
+
+/// Whether the value's type is the given class.
+fn value_has_type_class(value: &Value, class: &Value) -> bool {
+    match value {
+        Value::Instance {
+            class_name,
+            class_attrs,
+            ..
+        } => match class {
+            Value::Class { name, attrs, .. } => {
+                class_name == name && Rc::ptr_eq(class_attrs, attrs)
+            }
+            _ => false,
+        },
+        _ => match class {
+            Value::Builtin(name) => type_name(value) == name,
+            _ => false,
+        },
+    }
+}
+
+/// Whether the right operand's type is a proper subclass of the left
+/// operand's type. CPython gives the right operand's reflected comparison
+/// method priority in that case.
+fn right_type_is_strict_subclass(left: &Value, right: &Value) -> bool {
+    let Value::Instance { class_bases, .. } = right else {
+        return false;
+    };
+    let Ok(mro) = mro_for_bases(class_bases) else {
+        return false;
+    };
+    mro.iter().any(|base| value_has_type_class(left, base))
+}
+
 /// A special method an instance's class (or a base class) defines.
 fn class_defined_special_method(object: &Value, name: &str) -> Option<Value> {
     let Value::Instance {
@@ -61681,7 +63602,7 @@ fn generator_wrapper_iter_value(receiver: &Value) -> Result<Value, String> {
         ..
     } = receiver
     else {
-        return Err(format!("{receiver} is not a _GeneratorWrapper"));
+        return Err(format!("TypeError: {receiver} is not a _GeneratorWrapper"));
     };
 
     if *exact_generator {
@@ -61693,7 +63614,7 @@ fn generator_wrapper_iter_value(receiver: &Value) -> Result<Value, String> {
 
 fn generator_wrapper_wrapped(receiver: &Value) -> Result<Value, String> {
     let Value::GeneratorWrapper { wrapped, .. } = receiver else {
-        return Err(format!("{receiver} is not a _GeneratorWrapper"));
+        return Err(format!("TypeError: {receiver} is not a _GeneratorWrapper"));
     };
     Ok(wrapped.as_ref().clone())
 }
@@ -61889,6 +63810,7 @@ fn type_object_for_value(value: &Value) -> Value {
         }
         Value::NamedTuple { typ, .. } => Value::NamedTupleType(typ.clone()),
         Value::NamedTupleType(_) => Value::Builtin("type".to_string()),
+        Value::TypeAlias { .. } => Value::Builtin("typing.TypeAliasType".to_string()),
         Value::TypeParam { kind, .. } => Value::Builtin(format!("typing.{kind}")),
         Value::ForwardRef { .. } => Value::Builtin("typing.ForwardRef".to_string()),
         Value::NewType { .. } => Value::Builtin("typing.NewType".to_string()),
@@ -61926,9 +63848,9 @@ fn metaclass_special_method(value: &Value, method_name: &str) -> Option<Value> {
         return None;
     };
     find_class_attr(&attrs, &bases, method_name).map(|method| match method {
-        Value::StaticMethod { function, .. } => *function,
+        Value::StaticMethod { function, .. } => function.as_ref().clone(),
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(value.clone()),
             identity: Rc::new(()),
         },
@@ -62262,8 +64184,9 @@ fn is_iterator_value(value: &Value) -> bool {
             | Value::Generator(_)
             | Value::GeneratorWrapper { .. }
             | Value::CoroutineAwait(_)
-            | Value::AwaitIterator(_)
+            | Value::AwaitIterator(..)
             | Value::RangeIterator { .. }
+            | Value::DequeIterator { .. }
             | Value::ListIterator { .. }
             | Value::TupleIterator { .. }
             | Value::TemplateIterator { .. }
@@ -62301,6 +64224,7 @@ fn is_iterator_abc_value(value: &Value) -> bool {
             | Value::Generator(_)
             | Value::GeneratorWrapper { .. }
             | Value::RangeIterator { .. }
+            | Value::DequeIterator { .. }
             | Value::ListIterator { .. }
             | Value::TupleIterator { .. }
             | Value::TemplateIterator { .. }
@@ -63800,7 +65724,7 @@ fn array_array_unicode_text_bytes(text: &str) -> Vec<u8> {
 
 fn array_array_unicode_string(value: &Value) -> Result<String, String> {
     let bytes = array_array_bytes(value)
-        .ok_or_else(|| "tounicode() expected an array receiver".to_string())?;
+        .ok_or_else(|| "TypeError: tounicode() expected an array receiver".to_string())?;
     array_array_unicode_string_from_bytes(&bytes)
 }
 
@@ -63892,12 +65816,12 @@ fn array_array_item(value: &Value, index: Value) -> Result<Value, String> {
     let index = normalized_index(index, len, "array")?;
     let start = index
         .checked_mul(itemsize)
-        .ok_or_else(|| "array index out of range".to_string())?;
+        .ok_or_else(|| "IndexError: array index out of range".to_string())?;
     let end = start + itemsize;
     bytes
         .get(start..end)
         .map(|chunk| array_array_decode_item(&typecode, chunk))
-        .ok_or_else(|| "array index out of range".to_string())
+        .ok_or_else(|| "IndexError: array index out of range".to_string())
 }
 
 fn array_array_slice(
@@ -63921,7 +65845,7 @@ fn array_array_slice(
     for index in indices {
         let start = index
             .checked_mul(itemsize)
-            .ok_or_else(|| "array index out of range".to_string())?;
+            .ok_or_else(|| "IndexError: array index out of range".to_string())?;
         storage.extend_from_slice(&bytes[start..start + itemsize]);
     }
     Ok(array_array_instance(Some(&typecode), Some(storage)))
@@ -64170,6 +66094,21 @@ fn dict_subclass_method(receiver: Value, name: &str) -> Option<Value> {
         })
     } else {
         None
+    }
+}
+
+/// A subclass that overrides `__getattribute__` answers every attribute
+/// lookup, so a failed lookup is the subclass's own answer.
+fn counter_receiver_overrides_attribute_lookup(receiver: &Value) -> bool {
+    instance_special_method(receiver, "__getattribute__").is_some()
+}
+
+/// The built-in `Counter.update` bound to a counter receiver.
+fn counter_builtin_update_method(receiver: &Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin("Counter.update".to_string())),
+        receiver: Box::new(receiver.clone()),
+        identity: Rc::new(()),
     }
 }
 
@@ -66167,6 +68106,7 @@ fn iterator_has_length_hint(value: &Value) -> bool {
     matches!(
         value,
         Value::RangeIterator { .. }
+            | Value::DequeIterator { .. }
             | Value::ListIterator { .. }
             | Value::TupleIterator { .. }
             | Value::StringIterator { .. }
@@ -67301,7 +69241,7 @@ fn shared_code_constants(instructions: &InstructionsRef) -> Rc<Vec<Value>> {
         let cache = cache.borrow();
         cache.0.get(&key).and_then(|(code, consts)| {
             code.upgrade()
-                .filter(|code| Rc::ptr_eq(code, instructions))
+                .filter(|code| std::rc::Rc::as_ptr(code) == Rc::as_ptr(instructions))
                 .map(|_| consts.clone())
         })
     });
@@ -67402,6 +69342,165 @@ fn code_object_firstlineno(filename: &str, line_spans: &[CodeLineSpan]) -> i64 {
         .filter_map(|span| (span.line > 0).then_some(span.line))
         .min()
         .unwrap_or(1)
+}
+
+/// The comparison of two code objects.
+///
+/// CPython compares the name, the first line, the flags, the arguments, the
+/// instructions, and the constants of two code objects.
+fn code_objects_equal(left: &Value, right: &Value) -> bool {
+    let (
+        Value::CodeObject {
+            mode: left_mode,
+            filename: left_filename,
+            name: left_name,
+            flags: left_flags,
+            instructions: left_instructions,
+            line_spans: left_line_spans,
+            consts: left_consts,
+            varnames: left_varnames,
+            freevars: left_freevars,
+            positional_only: left_positional_only,
+            params: left_params,
+            keyword_only: left_keyword_only,
+            vararg: left_vararg,
+            kwarg: left_kwarg,
+            ..
+        },
+        Value::CodeObject {
+            mode: right_mode,
+            filename: right_filename,
+            name: right_name,
+            flags: right_flags,
+            instructions: right_instructions,
+            line_spans: right_line_spans,
+            consts: right_consts,
+            varnames: right_varnames,
+            freevars: right_freevars,
+            positional_only: right_positional_only,
+            params: right_params,
+            keyword_only: right_keyword_only,
+            vararg: right_vararg,
+            kwarg: right_kwarg,
+            ..
+        },
+    ) = (left, right)
+    else {
+        return false;
+    };
+
+    left_mode == right_mode
+        && left_name == right_name
+        && left_flags == right_flags
+        && left_varnames == right_varnames
+        && left_freevars == right_freevars
+        && left_positional_only == right_positional_only
+        && left_params == right_params
+        && left_keyword_only == right_keyword_only
+        && left_vararg == right_vararg
+        && left_kwarg == right_kwarg
+        && code_object_firstlineno(left_filename, left_line_spans)
+            == code_object_firstlineno(right_filename, right_line_spans)
+        && code_instructions_equal(left_instructions, right_instructions)
+        && code_constants_equal(&left_consts[..], &right_consts[..])
+}
+
+/// The comparison of the instructions of two code objects.
+fn code_instructions_equal(left: &InstructionsRef, right: &InstructionsRef) -> bool {
+    code_instruction_lists_equal(left, right)
+        || code_instruction_lists_equal(
+            &instructions_without_debug_positions(left),
+            &instructions_without_debug_positions(right),
+        )
+}
+
+/// The comparison of two lists of instructions of code objects.
+fn code_instruction_lists_equal(left: &[Instruction], right: &[Instruction]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| code_instruction_equal(left, right))
+}
+
+/// The comparison of two instructions of code objects.
+///
+/// An instruction that loads a constant compares the constants with the
+/// type strict rule of the constants of a code object.
+fn code_instruction_equal(left: &Instruction, right: &Instruction) -> bool {
+    match (left, right) {
+        (
+            Instruction::LoadConst {
+                dst: left_dst,
+                value: left_value,
+            },
+            Instruction::LoadConst {
+                dst: right_dst,
+                value: right_value,
+            },
+        ) => left_dst == right_dst && code_constant_equal(left_value, right_value),
+        _ => left == right,
+    }
+}
+
+/// The comparison of the constants of two code objects.
+fn code_constants_equal(left: &[Value], right: &[Value]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| code_constant_equal(left, right))
+}
+
+/// The comparison of two constants of code objects.
+///
+/// CPython compares the constants of two code objects with a type strict
+/// rule: the constants must have the same type, and a float or a complex
+/// constant must have the same exact value, so `0` and `0.0` and `0.0` and
+/// `-0.0` keep the code objects apart.
+fn code_constant_equal(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::CodeObject { .. }, Value::CodeObject { .. }) => code_objects_equal(left, right),
+        (Value::Tuple(left), Value::Tuple(right)) => code_constants_equal(&left[..], &right[..]),
+        (Value::Float(left), Value::Float(right)) => left.to_bits() == right.to_bits(),
+        (
+            Value::Complex {
+                real: left_real,
+                imag: left_imag,
+                ..
+            },
+            Value::Complex {
+                real: right_real,
+                imag: right_imag,
+                ..
+            },
+        ) => {
+            left_real.to_bits() == right_real.to_bits()
+                && left_imag.to_bits() == right_imag.to_bits()
+        }
+        _ => match (code_constant_kind(left), code_constant_kind(right)) {
+            (Some(left_kind), Some(right_kind)) => left_kind == right_kind && left == right,
+            _ => std::mem::discriminant(left) == std::mem::discriminant(right) && left == right,
+        },
+    }
+}
+
+/// The type of a constant of a code object.
+///
+/// CPython keeps the constants of two code objects apart when their types
+/// differ, so `1` and `True` are different constants.
+fn code_constant_kind(value: &Value) -> Option<u64> {
+    match value {
+        Value::Number(_) | Value::BigInt(_) => Some(1),
+        Value::Bool(_) => Some(2),
+        Value::Float(_) => Some(3),
+        Value::Complex { .. } => Some(4),
+        Value::String(_) | Value::IdentityString { .. } | Value::UserString { .. } => Some(5),
+        Value::Bytes(_) => Some(6),
+        Value::ByteArray(_) => Some(7),
+        Value::None => Some(8),
+        _ => None,
+    }
 }
 
 fn parse_types_class_api_args(
@@ -67567,6 +69666,7 @@ fn class_construction_metaclass(metaclass: Value) -> Result<Value, String> {
             origin,
             args,
             union_unhashable_count,
+            identity,
         } => {
             let candidate = generic_alias_public_origin(&origin);
             if is_classinfo_type(&candidate)
@@ -67578,6 +69678,7 @@ fn class_construction_metaclass(metaclass: Value) -> Result<Value, String> {
                     origin,
                     args,
                     union_unhashable_count,
+                    identity,
                 })
             }
         }
@@ -68023,10 +70124,10 @@ fn set_property_constructor_slot(
     Ok(())
 }
 
-fn optional_property_part(value: Option<Value>) -> Option<Box<Value>> {
+fn optional_property_part(value: Option<Value>) -> Option<Rc<Value>> {
     match value {
         Some(Value::None) | None => None,
-        Some(value) => Some(Box::new(value)),
+        Some(value) => Some(Rc::new(value)),
     }
 }
 
@@ -68077,7 +70178,7 @@ fn property_set_name(property: Value, name: Value) -> Result<Value, String> {
         ..
     } = property
     else {
-        return Err("__set_name__() expected a property receiver".to_string());
+        return Err("TypeError: __set_name__() expected a property receiver".to_string());
     };
     *property_name.borrow_mut() = Some(name);
     Ok(Value::None)
@@ -68095,7 +70196,7 @@ fn property_no_getter_error(property_name: &Rc<RefCell<Option<Value>>>, object: 
 }
 
 fn property_missing_accessor_error(
-    fget: &Option<Box<Value>>,
+    fget: &Option<Rc<Value>>,
     property_name: &Rc<RefCell<Option<Value>>>,
     object: &Value,
     accessor: &str,
@@ -68114,9 +70215,9 @@ fn property_missing_accessor_error(
 }
 
 fn property_is_abstract_method(
-    fget: &Option<Box<Value>>,
-    fset: &Option<Box<Value>>,
-    fdel: &Option<Box<Value>>,
+    fget: &Option<Rc<Value>>,
+    fset: &Option<Rc<Value>>,
+    fdel: &Option<Rc<Value>>,
 ) -> Result<Value, String> {
     for accessor in [fget.as_deref(), fset.as_deref(), fdel.as_deref()]
         .into_iter()
@@ -68133,7 +70234,7 @@ fn property_is_abstract_method(
 }
 
 fn property_name_value(
-    fget: &Option<Box<Value>>,
+    fget: &Option<Rc<Value>>,
     property_name: &Rc<RefCell<Option<Value>>>,
 ) -> Result<Value, String> {
     if let Some(name) = property_name.borrow().clone() {
@@ -68873,9 +70974,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name: property_name,
             identity,
         } => match name {
-            "fget" => Ok(fget.map(|value| *value).unwrap_or(Value::None)),
-            "fset" => Ok(fset.map(|value| *value).unwrap_or(Value::None)),
-            "fdel" => Ok(fdel.map(|value| *value).unwrap_or(Value::None)),
+            "fget" => Ok(fget.as_deref().cloned().unwrap_or(Value::None)),
+            "fset" => Ok(fset.as_deref().cloned().unwrap_or(Value::None)),
+            "fdel" => Ok(fdel.as_deref().cloned().unwrap_or(Value::None)),
             "__doc__" => Ok(doc.borrow().clone().unwrap_or(Value::None)),
             "__isabstractmethod__" => property_is_abstract_method(&fget, &fset, &fdel),
             "__name__" => property_name_value(&fget, &property_name),
@@ -68949,15 +71050,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
                 "staticmethod".to_string(),
             ))),
-            "__func__" | "__wrapped__" => Ok(*function),
-            "__isabstractmethod__" => descriptor_is_abstract_method(*function),
+            "__func__" | "__wrapped__" => Ok(function.as_ref().clone()),
+            "__isabstractmethod__" => descriptor_is_abstract_method(function.as_ref().clone()),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("staticmethod.__get__".to_string())),
                 receiver: Box::new(Value::StaticMethod { function, identity }),
                 identity: Rc::new(()),
             }),
             "__name__" | "__qualname__" | "__module__" | "__doc__" | "__annotations__" => {
-                load_attribute(*function, name)
+                load_attribute(function.as_ref().clone(), name)
             }
             _ => Err(format!(
                 "AttributeError: staticmethod has no attribute '{name}'"
@@ -68967,15 +71068,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__class_getitem__" => Ok(class_getitem_bound_method(Value::Builtin(
                 "classmethod".to_string(),
             ))),
-            "__func__" | "__wrapped__" => Ok(*function),
-            "__isabstractmethod__" => descriptor_is_abstract_method(*function),
+            "__func__" | "__wrapped__" => Ok(function.as_ref().clone()),
+            "__isabstractmethod__" => descriptor_is_abstract_method(function.as_ref().clone()),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("classmethod.__get__".to_string())),
                 receiver: Box::new(Value::ClassMethod { function, identity }),
                 identity: Rc::new(()),
             }),
             "__name__" | "__qualname__" | "__module__" | "__doc__" | "__annotations__" => {
-                load_attribute(*function, name)
+                load_attribute(function.as_ref().clone(), name)
             }
             _ => Err(format!(
                 "AttributeError: classmethod has no attribute '{name}'"
@@ -69083,6 +71184,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name: alias_name,
             type_params,
             value,
+            identity,
         } => match name {
             "__name__" => Ok(Value::String(alias_name)),
             "__type_params__" => Ok(tuple_value(type_params)),
@@ -69090,6 +71192,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "evaluate_value" => Ok(Value::ConstEvaluator {
                 kind: ConstEvaluatorKind::TypeAliasValue,
                 target: Box::new(Value::TypeAlias {
+                    identity,
                     name: alias_name,
                     type_params,
                     value,
@@ -69138,9 +71241,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::Unpack(value) => match name {
-            "__value__" => Ok(*value),
+            "__value__" => Ok((*value).clone()),
             "__origin__" | "__args__" | "__parameters__" | "__name__" => {
-                load_attribute(*value, name)
+                load_attribute((*value).clone(), name)
             }
             _ => Err(format!("AttributeError: unpack has no attribute '{name}'")),
         },
@@ -69245,9 +71348,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .to_string(),
             )),
             "__new__" => Ok(Value::Builtin("slice.__new__".to_string())),
-            "start" => Ok(start.map(|value| *value).unwrap_or(Value::None)),
-            "stop" => Ok(stop.map(|value| *value).unwrap_or(Value::None)),
-            "step" => Ok(step.map(|value| *value).unwrap_or(Value::None)),
+            "start" => Ok(start.map(|value| value.as_ref().clone()).unwrap_or(Value::None)),
+            "stop" => Ok(stop.map(|value| value.as_ref().clone()).unwrap_or(Value::None)),
+            "step" => Ok(step.map(|value| value.as_ref().clone()).unwrap_or(Value::None)),
             "indices" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("slice.indices".to_string())),
                 receiver: Box::new(Value::Slice {
@@ -69703,7 +71806,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )),
             }
         }
-        Value::Deque { data, maxlen } => {
+        Value::Deque { data, maxlen, state } => {
             if name == "__doc__" {
                 return Ok(Value::String(
                     builtin_type_doc("deque")
@@ -69713,7 +71816,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             if name == "maxlen" {
                 return Ok(maxlen
-                    .map(|value| normalize_big_int(BigInt::from(value)))
+                    .get().map(|value| normalize_big_int(BigInt::from(value)))
                     .unwrap_or(Value::None));
             }
             match name {
@@ -69724,11 +71827,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
                 | "__add__" | "__contains__" | "__copy__" | "__delitem__" | "__eq__" | "__ge__"
                 | "__format__" | "__getitem__" | "__gt__" | "__iadd__" | "__imul__"
-                | "__iter__" | "__le__" | "__len__" | "__lt__" | "__mul__" | "__ne__"
+                | "__init__" | "__iter__" | "__le__" | "__len__" | "__lt__" | "__mul__" | "__ne__"
                 | "__repr__" | "__reversed__" | "__rmul__" | "__setitem__" | "__str__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                        receiver: Box::new(Value::Deque { data, maxlen }),
+                        receiver: Box::new(Value::Deque { data, maxlen, state }),
                         identity: Rc::new(()),
                     })
                 }
@@ -69932,6 +72035,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(Value::NamedTupleTypeMethod {
                     typ,
                     name: name.to_string(),
+                    identity: Rc::new(()),
                 });
             }
             if is_sys_structseq_hidden_namedtuple_attr(&typ, name) {
@@ -69962,6 +72066,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "_make" => Ok(Value::NamedTupleTypeMethod {
                     typ,
                     name: name.to_string(),
+                    identity: Rc::new(()),
                 }),
                 "__dict__" => {
                     if is_sys_structseq(&typ) {
@@ -70035,6 +72140,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "_asdict" | "_replace" | "__getnewargs__" => Ok(Value::NamedTupleInstanceMethod {
                     instance: Box::new(Value::NamedTuple { typ, values }),
                     name: name.to_string(),
+                    identity: Rc::new(()),
                 }),
                 "__len__" | "__iter__" | "__getitem__" | "__contains__" | "count" | "index"
                 | "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
@@ -70421,6 +72527,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
+        iterator @ Value::DequeIterator { .. } => iterator_protocol_method(type_name(&iterator), iterator.clone(), name),
         Value::ListIterator {
             items,
             index,
@@ -70737,20 +72844,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Template {
             strings,
             interpolations,
+            ..
         } => match name {
             "strings" => Ok(tuple_value(
-                strings.into_iter().map(Value::String).collect(),
+                strings.iter().cloned().map(Value::String).collect(),
             )),
             "interpolations" => Ok(tuple_value(
                 interpolations
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(Value::TemplateInterpolation)
                     .collect(),
             )),
             "values" => Ok(tuple_value(
                 interpolations
-                    .into_iter()
-                    .map(|interpolation| *interpolation.value)
+                    .iter()
+                    .cloned()
+                    .map(|interpolation| (*interpolation.value).clone())
                     .collect(),
             )),
             _ => Err(format!(
@@ -70758,13 +72868,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::TemplateInterpolation(interpolation) => match name {
-            "value" => Ok(*interpolation.value),
-            "expression" => Ok(Value::String(interpolation.expression)),
+            "value" => Ok((*interpolation.value).clone()),
+            "expression" => Ok(Value::String(interpolation.expression.clone())),
             "conversion" => Ok(interpolation
                 .conversion
+                .clone()
                 .map(Value::String)
                 .unwrap_or(Value::None)),
-            "format_spec" => Ok(Value::String(interpolation.format_spec)),
+            "format_spec" => Ok(Value::String(interpolation.format_spec.clone())),
             _ => Err(format!(
                 "AttributeError: interpolation has no attribute '{name}'"
             )),
@@ -71888,6 +73999,28 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     operator_helper_wrapper_descriptor_text_signature(method_name).to_string(),
                 )),
                 _ => unreachable!("guard checked operator helper wrapper descriptor metadata"),
+            }
+        }
+        Value::Builtin(function_name)
+            if function_name == "deque.__init__"
+                && matches!(
+                    name,
+                    "__class__" | "__qualname__" | "__objclass__" | "__doc__"
+                        | "__text_signature__" | "__module__" | "__self__"
+                ) =>
+        {
+            match name {
+                "__class__" => Ok(Value::Builtin("wrapper_descriptor".to_string())),
+                "__qualname__" => Ok(Value::String("deque.__init__".to_string())),
+                "__objclass__" => Ok(Value::Builtin("deque".to_string())),
+                "__doc__" => Ok(Value::String(
+                    "Initialize self.  See help(type(self)) for accurate signature.".to_string(),
+                )),
+                "__text_signature__" => Ok(Value::String("($self, /, *args, **kwargs)".to_string())),
+                "__module__" | "__self__" => Err(format!(
+                    "AttributeError: 'wrapper_descriptor' object has no attribute '{name}'"
+                )),
+                _ => unreachable!("guard checked deque __init__ wrapper descriptor metadata"),
             }
         }
         Value::Builtin(function_name) if name == "__class__" => {
@@ -73350,6 +75483,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("maxlen".to_string()),
                     Value::Builtin("deque.maxlen.getset_descriptor".to_string()),
+                ));
+                entries.push((
+                    Value::String("__init__".to_string()),
+                    Value::Builtin("deque.__init__".to_string()),
                 ));
             }
             if class_name == "defaultdict" {
@@ -75559,8 +77696,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 }
             }
         }
-        Value::Traceback { .. } => match name {
+        Value::Traceback { identity } => match name {
             "__class__" => Ok(Value::Builtin("traceback".to_string())),
+            "tb_next" => Ok(identity.next.as_ref().map_or(Value::None, |next| Value::Traceback { identity: next.clone() })),
             _ => Err(format!(
                 "AttributeError: 'traceback' object has no attribute '{name}'"
             )),
@@ -75582,7 +77720,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__cause__" | "__context__" | "__suppress_context__" | "__traceback__"
         ) =>
         {
-            let dunders = exception_dunders(&exception_identity).unwrap_or_default();
+            let dunders = exception_dunders(&exception_identity);
             Ok(match name {
                 "__cause__" => dunders
                     .cause
@@ -78288,7 +80426,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
     }
 
     match type_name {
-        "object" => matches!(method, "__format__" | "__getstate__"),
+        "object" => matches!(method, "__format__" | "__getstate__" | "__hash__"),
         "dict" => is_builtin_dict_type_method(method) || is_builtin_dict_union_type_method(method),
         "OrderedDict" => is_builtin_dict_type_method(method),
         "defaultdict" => {
@@ -78368,6 +80506,7 @@ fn is_builtin_deque_type_method(name: &str) -> bool {
             | "__gt__"
             | "__iadd__"
             | "__imul__"
+            | "__init__"
             | "__iter__"
             | "__le__"
             | "__len__"
@@ -78500,6 +80639,7 @@ fn is_builtin_wrapper_descriptor_name(name: &str) -> bool {
         ),
         "tuple" => matches!(method, "__repr__" | "__hash__"),
         "defaultdict" => matches!(method, "__repr__" | "__getattribute__" | "__init__"),
+        "deque" => method == "__init__",
         "function" => matches!(method, "__call__" | "__get__" | "__repr__"),
         "io" => matches!(method, "BytesIO.__iter__" | "BytesIO.__next__"),
         "super" => is_super_wrapper_descriptor_name(method),
@@ -79584,7 +81724,11 @@ fn is_typing_type_object_name(name: &str) -> bool {
         || is_typing_protocol_type_name(name)
         || matches!(
             name,
-            "typing.BinaryIO" | "typing.ForwardRef" | "typing.IO" | "typing.TextIO"
+            "typing.BinaryIO"
+                | "typing.ForwardRef"
+                | "typing.IO"
+                | "typing.TextIO"
+                | "typing.TypeAliasType"
         )
 }
 
@@ -80006,13 +82150,13 @@ fn exception_sequence_values(value: Value) -> Result<Vec<Value>, String> {
         Value::List(items) => {
             let items = items.borrow();
             if items.is_empty() {
-                return Err("second argument must be a non-empty sequence".to_string());
+                return Err("TypeError: second argument must be a non-empty sequence".to_string());
             }
             Ok(items.clone())
         }
         Value::Tuple(items) => {
             if items.is_empty() {
-                return Err("second argument must be a non-empty sequence".to_string());
+                return Err("TypeError: second argument must be a non-empty sequence".to_string());
             }
             Ok(items.as_ref().clone())
         }
@@ -80152,7 +82296,7 @@ fn call_exception_constructor_with_hierarchy(
             cause: None,
             context: None,
             suppress_context: false,
-            identity: Rc::new(()),
+            identity: Rc::new(crate::value::ExceptionIdentity::default()),
         });
     }
 
@@ -80168,7 +82312,7 @@ fn call_exception_constructor_with_hierarchy(
         args,
         attrs,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
         cause: None,
         context: None,
         suppress_context: false,
@@ -80406,8 +82550,32 @@ fn unicode_error_object_attr(value: &Value, bytes_object_attr: bool) -> Value {
 
 fn new_traceback_value() -> Value {
     Value::Traceback {
-        identity: Rc::new(()),
+        identity: Rc::new(TracebackNode { next: None }),
     }
+}
+
+fn set_element_error(value: &Value, error: String) -> String {
+    match error.strip_prefix("TypeError: ") {
+        Some(message) => format!(
+            "TypeError: cannot use '{}' as a set element ({message})",
+            type_name(value)
+        ),
+        None => error,
+    }
+}
+
+fn prepend_exception_traceback(exception: &mut MiniException) {
+    let next = match exception_traceback_value(&exception.attrs) {
+        Value::Traceback { identity } => Some(identity),
+        _ => None,
+    };
+    let traceback = Value::Traceback {
+        identity: Rc::new(TracebackNode { next }),
+    };
+    update_exception_dunders(&exception.identity, |dunders| {
+        dunders.traceback = Some(traceback.clone());
+    });
+    set_exception_traceback_attr(&mut exception.attrs, traceback);
 }
 
 fn is_traceback_or_none(value: &Value) -> bool {
@@ -80462,7 +82630,7 @@ fn exception_value_with_traceback(receiver: Value, traceback: Value) -> Result<V
         identity,
     } = receiver
     else {
-        return Err("with_traceback() receiver must be an exception".to_string());
+        return Err("TypeError: with_traceback() receiver must be an exception".to_string());
     };
     update_exception_dunders(&identity, |dunders| {
         dunders.traceback = Some(traceback.clone())
@@ -80544,67 +82712,45 @@ fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
     exception_value_with_traceback(receiver.clone(), traceback.clone())
 }
 
-fn exception_identity_key(identity: &Rc<()>) -> usize {
+fn exception_identity_key(identity: &Rc<ExceptionIdentity>) -> usize {
     Rc::as_ptr(identity) as usize
 }
 
 /// `__traceback__`, `__cause__`, `__context__`, and `__suppress_context__`
 /// as last set on an exception object. Exception values are copied, so this
-/// identity-keyed table is what makes a raise or an assignment visible
-/// through every reference to the same exception, as in CPython.
+/// shared identity stores these values so a raise or an assignment is visible
+/// through every reference to the same exception.
 #[derive(Debug, Clone, Default)]
-struct ExceptionDunders {
+pub(crate) struct ExceptionDunders {
     traceback: Option<Value>,
     cause: Option<Value>,
     context: Option<Value>,
     suppress_context: Option<bool>,
 }
 
-#[derive(Default)]
-struct ExceptionDunderTable {
-    entries: HashMap<usize, (std::rc::Weak<()>, ExceptionDunders)>,
-    next_prune: usize,
+impl ExceptionDunders {
+    pub(crate) fn into_values(self) -> impl Iterator<Item = Value> {
+        [self.traceback, self.cause, self.context]
+            .into_iter()
+            .flatten()
+    }
 }
 
-fn exception_dunders(identity: &Rc<()>) -> Option<ExceptionDunders> {
-    EXCEPTION_DUNDERS.with(|table| {
-        let table = table.borrow();
-        let (weak, dunders) = table.entries.get(&exception_identity_key(identity))?;
-        weak.upgrade()
-            .is_some_and(|live| Rc::ptr_eq(&live, identity))
-            .then(|| dunders.clone())
-    })
+fn exception_dunders(identity: &Rc<ExceptionIdentity>) -> ExceptionDunders {
+    identity.dunders.borrow().clone()
 }
 
-fn update_exception_dunders(identity: &Rc<()>, update: impl FnOnce(&mut ExceptionDunders)) {
-    EXCEPTION_DUNDERS.with(|table| {
-        let mut table = table.borrow_mut();
-        let key = exception_identity_key(identity);
-        let entry = table
-            .entries
-            .entry(key)
-            .or_insert_with(|| (Rc::downgrade(identity), ExceptionDunders::default()));
-        if !entry
-            .0
-            .upgrade()
-            .is_some_and(|live| Rc::ptr_eq(&live, identity))
-        {
-            // A dead exception's slot reused by a new one.
-            *entry = (Rc::downgrade(identity), ExceptionDunders::default());
-        }
-        update(&mut entry.1);
-        // Drop the entries of exceptions that no longer exist, amortized.
-        if table.entries.len() > table.next_prune {
-            table.entries.retain(|_, (weak, _)| weak.strong_count() > 0);
-            table.next_prune = (table.entries.len() * 2).max(1024);
-        }
-    });
+fn update_exception_dunders(
+    identity: &Rc<ExceptionIdentity>,
+    update: impl FnOnce(&mut ExceptionDunders),
+) {
+    update(&mut identity.dunders.borrow_mut());
 }
 
 /// Raising avoids reference cycles in the context chain: when `raised` becomes
 /// the context of `context`, the first exception in the context chain that
 /// already has `raised` as its context loses it.
-fn break_context_cycle(context: MiniException, raised: &Rc<()>) -> MiniException {
+fn break_context_cycle(context: MiniException, raised: &Rc<ExceptionIdentity>) -> MiniException {
     let mut chain = refreshed_exception(context);
     let mut current = Some(&mut chain);
     let mut seen = Vec::new();
@@ -80661,9 +82807,7 @@ fn apply_own_exception_dunders(
     with_links: bool,
     with_traceback: bool,
 ) {
-    let Some(dunders) = exception_dunders(&exception.identity) else {
-        return;
-    };
+    let dunders = exception_dunders(&exception.identity);
     if with_traceback && let Some(traceback) = dunders.traceback {
         set_exception_traceback_attr(&mut exception.attrs, traceback);
     }
@@ -80703,7 +82847,7 @@ fn exception_bound_method_module_value(identity: &Rc<()>) -> Value {
     EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
         modules
             .borrow()
-            .get(&exception_identity_key(identity))
+            .get(&(Rc::as_ptr(identity) as usize))
             .map(|(_, value)| value.clone())
             .unwrap_or(Value::None)
     })
@@ -80713,7 +82857,7 @@ fn set_exception_bound_method_module_value(identity: &Rc<()>, value: Value) {
     EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
         modules
             .borrow_mut()
-            .insert(exception_identity_key(identity), (identity.clone(), value));
+            .insert(Rc::as_ptr(identity) as usize, (identity.clone(), value));
     });
 }
 
@@ -80721,34 +82865,20 @@ fn delete_exception_bound_method_module_value(identity: &Rc<()>) {
     EXCEPTION_BOUND_METHOD_MODULES.with(|modules| {
         modules
             .borrow_mut()
-            .remove(&exception_identity_key(identity));
+            .remove(&(Rc::as_ptr(identity) as usize));
     });
 }
 
-fn exception_notes_value(identity: &Rc<()>) -> Option<Value> {
-    EXCEPTION_NOTES.with(|notes| {
-        notes
-            .borrow()
-            .get(&exception_identity_key(identity))
-            .map(|(_, value)| value.clone())
-    })
+fn exception_notes_value(identity: &Rc<ExceptionIdentity>) -> Option<Value> {
+    identity.notes.borrow().clone()
 }
 
-fn set_exception_notes_value(identity: &Rc<()>, value: Value) {
-    EXCEPTION_NOTES.with(|notes| {
-        notes
-            .borrow_mut()
-            .insert(exception_identity_key(identity), (identity.clone(), value));
-    });
+fn set_exception_notes_value(identity: &Rc<ExceptionIdentity>, value: Value) {
+    *identity.notes.borrow_mut() = Some(value);
 }
 
-fn delete_exception_notes_value(identity: &Rc<()>) -> bool {
-    EXCEPTION_NOTES.with(|notes| {
-        notes
-            .borrow_mut()
-            .remove(&exception_identity_key(identity))
-            .is_some()
-    })
+fn delete_exception_notes_value(identity: &Rc<ExceptionIdentity>) -> bool {
+    identity.notes.borrow_mut().take().is_some()
 }
 
 fn exception_missing_attribute_error(type_name: &str, name: &str) -> String {
@@ -80959,6 +83089,13 @@ pub(crate) fn type_name(value: &Value) -> &str {
         Value::Range { .. } => "range",
         Value::Slice { .. } => "slice",
         Value::RangeIterator { .. } => "range_iterator",
+        Value::DequeIterator { reversed, .. } => {
+            if *reversed {
+                "_deque_reverse_iterator"
+            } else {
+                "_deque_iterator"
+            }
+        }
         Value::ListIterator { .. } => "list_iterator",
         Value::TupleIterator { .. } => "tuple_iterator",
         Value::TemplateIterator { .. } => "TemplateIter",
@@ -81015,7 +83152,7 @@ pub(crate) fn type_name(value: &Value) -> &str {
         Value::GeneratorWrapper { .. } => "_GeneratorWrapper",
         Value::Coroutine(_) => "coroutine",
         Value::CoroutineAwait(_) => "coroutine_wrapper",
-        Value::AwaitIterator(_) => "await_iterator",
+        Value::AwaitIterator(..) => "await_iterator",
         Value::AsyncGenerator(_) => "async_generator",
         Value::AsyncGeneratorNext { .. } | Value::AsyncGeneratorThrow { .. } => {
             "async_generator_asend"
@@ -81121,16 +83258,43 @@ fn object_format_error_type_name(value: &Value) -> String {
 }
 
 fn class_set_name_error(descriptor: &Value, owner: &Value, name: &str) -> String {
+    format!(
+        "RuntimeError: {}",
+        class_set_name_note(descriptor, owner, name)
+    )
+}
+
+/// CPython's note for a failed `__set_name__` call. The exception the
+/// descriptor raised keeps its type and message; this text is appended to its
+/// `__notes__`.
+fn class_set_name_note(descriptor: &Value, owner: &Value, name: &str) -> String {
     let owner_name = match owner {
         Value::Class { name, .. } => name.as_str(),
         value => type_name(value),
     };
     format!(
-        "RuntimeError: Error calling __set_name__ on '{}' instance '{}' in '{}'",
+        "Error calling __set_name__ on '{}' instance '{}' in '{}'",
         type_name(descriptor),
         name,
         owner_name
     )
+}
+
+/// Appends `note` to an exception's `__notes__`, as `BaseException.add_note`
+/// does. The error is the message of that method when `__notes__` is not a
+/// list.
+fn add_exception_note(exception: &MiniException, note: String) -> Result<(), String> {
+    match exception_notes_value(&exception.identity) {
+        Some(Value::List(notes)) => {
+            notes.borrow_mut().push(Value::String(note));
+            Ok(())
+        }
+        Some(_) => Err("TypeError: Cannot add note: __notes__ is not a list".to_string()),
+        None => {
+            set_exception_notes_value(&exception.identity, list_value(vec![Value::String(note)]));
+            Ok(())
+        }
+    }
 }
 
 fn string_iterator_type_name(chars: &[String]) -> &'static str {
@@ -81160,6 +83324,13 @@ fn dict_view_reverse_iterator_type_name(kind: DictViewKind) -> &'static str {
 fn iterator_type_name(iterator: &Value) -> &'static str {
     match iterator {
         Value::RangeIterator { .. } => "range_iterator",
+        Value::DequeIterator { reversed, .. } => {
+            if *reversed {
+                "_deque_reverse_iterator"
+            } else {
+                "_deque_iterator"
+            }
+        }
         Value::ListIterator { .. } => "list_iterator",
         Value::TupleIterator { .. } => "tuple_iterator",
         Value::TemplateIterator { .. } => "TemplateIter",
@@ -81252,7 +83423,7 @@ fn coroutine_is_suspended_on_await(state: &CoroutineState) -> bool {
 fn is_pending_await_value(value: &Value) -> bool {
     match value {
         Value::Generator(state) if state.borrow().is_iterable_coroutine => true,
-        Value::AwaitIterator(_)
+        Value::AwaitIterator(..)
         | Value::Coroutine(_)
         | Value::CoroutineAwait(_)
         | Value::AsyncGeneratorNext { .. }
@@ -81341,7 +83512,7 @@ fn exception_from_value_without_dunders(value: Value) -> Result<MiniException, S
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             })
         }
         Value::Class {
@@ -81370,7 +83541,7 @@ fn exception_from_value_without_dunders(value: Value) -> Result<MiniException, S
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             })
         }
         Value::Instance {
@@ -81403,7 +83574,7 @@ fn exception_from_value_without_dunders(value: Value) -> Result<MiniException, S
                 context: None,
                 suppress_context: false,
                 exceptions: None,
-                identity: Rc::new(()),
+                identity: Rc::new(crate::value::ExceptionIdentity::default()),
             })
         }
         value => Err(format!(
@@ -81473,7 +83644,7 @@ fn type_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -81489,7 +83660,7 @@ fn value_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -81503,7 +83674,7 @@ fn call_coroutine_await(args: Vec<Value>) -> Result<Value, String> {
 
     match receiver {
         Value::Coroutine(state) => Ok(Value::CoroutineAwait(state.clone())),
-        value => Err(format!("{value} is not a coroutine")),
+        value => Err(format!("TypeError: {value} is not a coroutine")),
     }
 }
 
@@ -81516,9 +83687,12 @@ fn call_async_generator_abc_mixin_coroutine_await(args: Vec<Value>) -> Result<Va
     };
 
     if async_generator_abc_mixin_done(receiver).is_some() {
-        Ok(Value::AwaitIterator(Box::new(receiver.clone())))
+        Ok(Value::AwaitIterator(
+            Box::new(receiver.clone()),
+            Rc::new(()),
+        ))
     } else {
-        Err(format!("{receiver} is not a coroutine"))
+        Err(format!("TypeError: {receiver} is not a coroutine"))
     }
 }
 
@@ -81542,7 +83716,7 @@ fn runtime_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -81703,7 +83877,6 @@ impl Vm {
     /// `ReraiseException`: re-raises a caught exception unchanged.
     fn reraise_exception_value(&mut self, src: Register) -> Result<(), String> {
         let exception = exception_from_value(self.read_register(src)?.clone())?;
-        self.current_exception = Some(exception.clone());
         self.raise_exception(exception, false)
     }
 }
@@ -81862,7 +84035,7 @@ fn unicode_error_exception_from_message(message: &str) -> Option<MiniException> 
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     })
 }
 
@@ -82075,7 +84248,7 @@ fn syntax_error_exception(message: String) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -82109,7 +84282,7 @@ fn syntax_error_exception_with_location_value(
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -82148,7 +84321,7 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
             context: None,
             suppress_context: false,
             exceptions: None,
-            identity: Rc::new(()),
+            identity: Rc::new(crate::value::ExceptionIdentity::default()),
         });
     } else if is_value_error_message(message) {
         ("ValueError", message.to_string())
@@ -82176,7 +84349,7 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     })
 }
 
@@ -82234,12 +84407,15 @@ fn is_value_error_message(message: &str) -> bool {
     message.starts_with("not enough values to unpack")
         || message.starts_with("too many values to unpack")
         || message.starts_with("dictionary update sequence element")
+        || message.starts_with("attempt to assign sequence of size ")
+        || message.starts_with("attempt to assign bytes of size ")
         || message == "negative shift count"
         || message == "range() arg 3 must not be zero"
 }
 
 fn is_type_error_message(message: &str) -> bool {
-    message.ends_with(" is not callable")
+    message.starts_with("dict update source must be a dict")
+        || message.ends_with(" is not callable")
         || message.ends_with(" is not iterable")
         || message.ends_with(" is not subscriptable")
         || message.contains(" takes exactly ")
@@ -82287,6 +84463,11 @@ fn exception_attr_value(attrs: &[(String, Value)], name: &str) -> Option<Value> 
         .find_map(|(attr_name, value)| (attr_name == name).then(|| value.clone()))
 }
 
+fn join_iter_error(exception: &MiniException) -> Option<String> {
+    exception_is_builtin_instance(exception, "TypeError")
+        .then(|| "TypeError: can only join an iterable".to_string())
+}
+
 /// The `TypeError` that `iter()` raises for an object with no iteration
 /// protocol at all.
 fn is_not_iterable_type_error(exception: &MiniException) -> bool {
@@ -82332,25 +84513,24 @@ fn syntax_error_message(message: &dyn std::fmt::Display) -> String {
     }
 }
 
+/// The error CPython raises when `__init__` returns something else than
+/// `None`.
+fn init_should_return_none_error(value: &Value) -> String {
+    format!(
+        "TypeError: __init__() should return None, not '{}'",
+        type_name(value)
+    )
+}
+
+fn matching_exception(exception: Option<MiniException>, message: &str) -> Option<MiniException> {
+    exception.filter(|exception| format_exception_error(exception) == message)
+}
+
 fn format_exception_error(exception: &MiniException) -> String {
     match &exception.message {
         Some(message) => format!("{}: {message}", exception.type_name),
         None => exception.type_name.clone(),
     }
-}
-
-fn runtime_exception_from_current_or_message(
-    current_exception: Option<MiniException>,
-    message: &str,
-) -> Option<MiniException> {
-    // While a terminal condition is latched no error becomes an exception,
-    // even one whose message names a real exception type.
-    if crate::terminal::latched().is_some() {
-        return None;
-    }
-    current_exception
-        .filter(|exception| format_exception_error(exception) == message)
-        .or_else(|| runtime_exception_from_message(message))
 }
 
 fn call_slice(args: Vec<Value>) -> Result<Value, String> {
@@ -82503,15 +84683,15 @@ fn build_slice_value(start: Option<Value>, stop: Option<Value>, step: Option<Val
     }
 }
 
-fn normalize_slice_part(value: Option<Value>) -> Option<Box<Value>> {
+fn normalize_slice_part(value: Option<Value>) -> Option<Rc<Value>> {
     match value {
         Some(Value::None) | None => None,
-        Some(value) => Some(Box::new(value)),
+        Some(value) => Some(Rc::new(value)),
     }
 }
 
-fn unbox_slice_part(value: Option<Box<Value>>) -> Option<Value> {
-    value.map(|value| *value)
+fn unbox_slice_part(value: Option<Rc<Value>>) -> Option<Value> {
+    value.map(|value| value.as_ref().clone())
 }
 
 struct JsonParser<'a> {
@@ -83259,19 +85439,7 @@ fn json_dumps_apply_separators(
                 .clone(),
             None,
         ),
-        value => vm
-            .collect_iterable_values_propagating(value.clone())
-            .map_err(|error| {
-                if error.ends_with(" is not iterable") {
-                    format!(
-                        "TypeError: cannot unpack non-iterable {} object",
-                        type_name(value)
-                    )
-                } else {
-                    error
-                }
-            })
-            .map(|values| (values, None))?,
+        value => (vm.collect_iterable_values_for_unpack(value.clone())?, None),
     };
     let [item_separator, key_separator] = values.as_slice() else {
         let got = values.len();
@@ -83710,28 +85878,22 @@ fn json_dumps_mapping_subclass_items(
         Err(exception) if exception_is_builtin_instance(&exception, "AttributeError") => {
             return Ok(storage.borrow().entries.clone());
         }
-        Err(exception) => return Err(format_exception_error(&exception)),
+        Err(exception) => return Err(vm.propagate_captured_exception(exception)),
     };
     let items = match vm.call_value_catching(items_method, Vec::new())? {
         Ok(items) => items,
-        Err(exception) => return Err(format_exception_error(&exception)),
+        Err(exception) => return Err(vm.propagate_captured_exception(exception)),
     };
     let dict_type_name = type_name(value).to_string();
     let items_type_name = type_name(&items).to_string();
-    let items = vm
-        .collect_iterable_values_propagating(items)
-        .map_err(|error| {
-            if error.starts_with("TypeError: iter() returned non-iterator")
-                || error.ends_with(" is not iterable")
-            {
-                format!(
-                    "TypeError: {}.items() returned a non-iterable (type {})",
-                    dict_type_name, items_type_name
-                )
-            } else {
-                error
-            }
-        })?;
+    let items = vm.collect_iterable_values_with_iter_error(items, |exception| {
+        exception_is_builtin_instance(exception, "TypeError").then(|| {
+            format!(
+                "TypeError: {}.items() returned a non-iterable (type {})",
+                dict_type_name, items_type_name
+            )
+        })
+    })?;
     let mut entries = Vec::new();
     for item in items {
         entries.push(json_dumps_dict_subclass_item_pair(&item)?);
@@ -83775,15 +85937,14 @@ fn json_dumps_iterable_sequence(
     depth: usize,
     default_depth: usize,
 ) -> Result<String, String> {
-    let items = vm
-        .collect_iterable_values_propagating(value.clone())
-        .map_err(|error| {
-            if error.starts_with("TypeError: iter() returned non-iterator") {
-                "TypeError: _iterencode_list needs a sequence".to_string()
-            } else {
-                error
-            }
-        })?;
+    let items = vm.collect_iterable_values_with_iter_error(value.clone(), |exception| {
+        (exception_is_builtin_instance(exception, "TypeError")
+            && exception
+                .message
+                .as_deref()
+                .is_some_and(|message| message.starts_with("iter() returned non-iterator")))
+        .then(|| "TypeError: _iterencode_list needs a sequence".to_string())
+    })?;
     json_dumps_sequence(vm, &items, active, options, depth, default_depth)
 }
 
@@ -85726,7 +87887,9 @@ fn is_builtin_iterable_type_name(name: &str) -> bool {
 #[derive(Default)]
 struct SortedOptions {
     key: Option<Value>,
-    reverse: Option<bool>,
+    // The `reverse` flag as it was given: its truth value is read when the
+    // sort runs, not when the arguments are parsed.
+    reverse: Option<Value>,
 }
 
 #[derive(Clone)]
@@ -85736,7 +87899,6 @@ struct SortItem {
 }
 
 fn sorted_options(
-    vm: &mut Vm,
     positional_count: usize,
     keywords: Vec<(String, Value)>,
 ) -> Result<SortedOptions, String> {
@@ -85757,7 +87919,7 @@ fn sorted_options(
                         "sorted() got multiple values for keyword argument 'reverse'".to_string(),
                     );
                 }
-                options.reverse = Some(sorted_reverse_option(vm, value)?);
+                options.reverse = Some(value);
             }
             "iterable" if positional_count == 0 => {
                 return Err("TypeError: sorted expected 1 argument, got 0".to_string());
@@ -85772,7 +87934,7 @@ fn sorted_options(
     Ok(options)
 }
 
-fn list_sort_options(vm: &mut Vm, keywords: Vec<(String, Value)>) -> Result<SortedOptions, String> {
+fn list_sort_options(keywords: Vec<(String, Value)>) -> Result<SortedOptions, String> {
     let mut options = SortedOptions::default();
     for (keyword, value) in keywords {
         match keyword.as_str() {
@@ -85788,7 +87950,7 @@ fn list_sort_options(vm: &mut Vm, keywords: Vec<(String, Value)>) -> Result<Sort
                         "sort() got multiple values for keyword argument 'reverse'".to_string()
                     );
                 }
-                options.reverse = Some(sorted_reverse_option(vm, value)?);
+                options.reverse = Some(value);
             }
             _ => {
                 return Err(format!(
@@ -85853,7 +88015,7 @@ fn call_template_constructor(
     }
 
     let mut strings: Vec<String> = Vec::new();
-    let mut interpolations: Vec<TemplateInterpolation> = Vec::new();
+    let mut interpolations: Vec<Rc<TemplateInterpolation>> = Vec::new();
     let mut last_was_str = false;
 
     for arg in args {
@@ -85890,8 +88052,9 @@ fn call_template_constructor(
     }
 
     Ok(Value::Template {
-        strings,
-        interpolations,
+        identity: Rc::new(()),
+        strings: Rc::new(strings),
+        interpolations: Rc::new(interpolations),
     })
 }
 
@@ -85942,12 +88105,15 @@ fn call_interpolation_constructor(
         "format_spec",
     )?;
 
-    Ok(Value::TemplateInterpolation(TemplateInterpolation {
-        value: Box::new(value),
-        expression,
-        conversion,
-        format_spec,
-    }))
+    Ok(Value::TemplateInterpolation(Rc::new(
+        TemplateInterpolation {
+            identity: Rc::new(()),
+            value: Box::new(value),
+            expression,
+            conversion,
+            format_spec,
+        },
+    )))
 }
 
 fn interpolation_argument_index(name: &str) -> Option<usize> {
@@ -86700,7 +88866,7 @@ fn call_math_prod(
     loop {
         match vm.advance_owned_iterator(&mut iterator)? {
             IteratorAdvance::Yield(value) => total = multiply_values(total, value)?,
-            IteratorAdvance::Complete(_) | IteratorAdvance::Raised => return Ok(total),
+            IteratorAdvance::Complete(_) => return Ok(total),
         }
     }
 }
@@ -87553,7 +89719,7 @@ fn math_log_operand(vm: &mut Vm, value: Value, op: fn(f64) -> f64) -> Result<f64
                     {
                         return math_log_index_fallback(vm, value, op);
                     }
-                    Err(exception) => return Err(format_exception_error(&exception)),
+                    Err(exception) => return Err(vm.propagate_captured_exception(exception)),
                 }
             }
 
@@ -87572,7 +89738,7 @@ fn math_log_operand(vm: &mut Vm, value: Value, op: fn(f64) -> f64) -> Result<f64
 fn math_log_index_fallback(vm: &mut Vm, value: Value, op: fn(f64) -> f64) -> Result<f64, String> {
     match vm.call_with_exception_capture(|vm| vm.index_integer_value(value))? {
         Ok(integer) => math_log_integer_value(&integer, op),
-        Err(exception) => Err(format_exception_error(&exception)),
+        Err(exception) => Err(vm.propagate_captured_exception(exception)),
     }
 }
 
@@ -88009,13 +90175,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 index,
             }))
         }
-        Value::Deque { data, .. } => {
-            let items_ref = data.borrow();
-            i64::try_from(items_ref.len())
-                .map_err(|_| "reversed() length is too large".to_string())?;
-            let items = items_ref.iter().cloned().collect();
-            Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
-        }
+        Value::Deque { data, state, .. } => Ok(deque_iterator(data, state, true)),
         Value::MemoryView(view) => {
             let index = i64::try_from(memoryview_len(&view)?)
                 .map_err(|_| "reversed() length is too large".to_string())?
@@ -88234,6 +90394,7 @@ fn call_immutable_sequence_method(
                 ))
             } else {
                 Ok(Value::Bool(contains_value(
+                    vm,
                     needle.clone(),
                     receiver.clone(),
                 )?))
@@ -88328,7 +90489,7 @@ fn call_immutable_sequence_method(
                 ));
             };
             let Some(mut items) = tuple_concat_operand_values(receiver) else {
-                return Err("__add__() expected a tuple receiver".to_string());
+                return Err("TypeError: __add__() expected a tuple receiver".to_string());
             };
             let Some(other_items) = tuple_concat_operand_values(other) else {
                 return Err(format!(
@@ -88349,7 +90510,7 @@ fn call_immutable_sequence_method(
             };
             let Some(items) = tuple_concat_operand_values(receiver) else {
                 return Err(format!(
-                    "{}() expected a tuple receiver",
+                    "TypeError: {}() expected a tuple receiver",
                     method_display_name(name)
                 ));
             };
@@ -88367,7 +90528,7 @@ fn call_immutable_sequence_method(
             };
             let Some(left) = tuple_order_operand_values(receiver) else {
                 return Err(format!(
-                    "{}() expected a tuple receiver",
+                    "TypeError: {}() expected a tuple receiver",
                     method_display_name(name)
                 ));
             };
@@ -88397,7 +90558,7 @@ fn call_immutable_sequence_method(
                 _ => unreachable!("method is filtered above"),
             };
             match vm.rich_sequence_order_values(receiver, other, op)? {
-                Some(result) => Ok(Value::Bool(result)),
+                Some(result) => Ok(result),
                 None => Ok(Value::NotImplemented),
             }
         }
@@ -91240,13 +93401,12 @@ fn string_width_argument(value: &Value, method: &str) -> Result<usize, String> {
     match value {
         Value::Bool(value) => Ok(bool_as_i64(*value) as usize),
         Value::Number(value) if *value <= 0 => Ok(0),
-        Value::Number(value) => {
-            usize::try_from(*value).map_err(|_| format!("{method} width is too large"))
-        }
+        Value::Number(value) => usize::try_from(*value)
+            .map_err(|_| "OverflowError: Python int too large to convert to C ssize_t".to_string()),
         Value::BigInt(value) if value.is_negative() => Ok(0),
-        Value::BigInt(value) => value
-            .to_usize()
-            .ok_or_else(|| format!("{method} width is too large")),
+        Value::BigInt(value) => value.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
         value => Err(format!(
             "TypeError: {method} width must be an integer, not {}",
             type_name(value)
@@ -91622,7 +93782,7 @@ fn call_int_from_bytes(
     let mut byteorder = rest.get(1).cloned();
     if rest.len() > 2 {
         return Err(format!(
-            "from_bytes() takes at most 2 positional arguments but {} were given",
+            "TypeError: from_bytes() takes at most 2 positional arguments but {} were given",
             rest.len()
         ));
     }
@@ -91720,11 +93880,11 @@ fn integer_from_bytes(mut bytes: Vec<u8>, little_endian: bool, signed: bool) -> 
 
 fn call_int_to_bytes(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
     let Some((receiver, rest)) = args.split_first() else {
-        return Err("to_bytes() expected an int receiver".to_string());
+        return Err("TypeError: to_bytes() expected an int receiver".to_string());
     };
     if rest.len() > 2 {
         return Err(format!(
-            "to_bytes() takes at most 2 positional arguments but {} were given",
+            "TypeError: to_bytes() takes at most 2 positional arguments but {} were given",
             rest.len()
         ));
     }
@@ -91855,7 +94015,7 @@ fn integer_value(value: Value) -> Result<Value, String> {
         Value::Bool(value) => Ok(Value::Number(bool_as_i64(value))),
         value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
         value => Err(format!(
-            "int method receiver must be int, got {}",
+            "TypeError: int method receiver must be int, got {}",
             type_name(&value)
         )),
     }
@@ -91870,7 +94030,7 @@ fn integer_magnitude(value: &Value) -> Result<num_bigint::BigUint, String> {
         Value::Number(value) => Ok(BigInt::from(*value).magnitude().clone()),
         Value::BigInt(value) => Ok(value.magnitude().clone()),
         value => Err(format!(
-            "int method receiver must be int, got {}",
+            "TypeError: int method receiver must be int, got {}",
             type_name(value)
         )),
     }
@@ -91899,7 +94059,7 @@ fn call_float_method(
                 ));
             };
             let Some(value) = float_receiver_value(receiver) else {
-                return Err("conjugate() expected a float receiver".to_string());
+                return Err("TypeError: conjugate() expected a float receiver".to_string());
             };
             Ok(value)
         }
@@ -91911,7 +94071,7 @@ fn call_float_method(
                 ));
             };
             let Some(value) = float_receiver_f64(receiver) else {
-                return Err("is_integer() expected a float receiver".to_string());
+                return Err("TypeError: is_integer() expected a float receiver".to_string());
             };
             Ok(Value::Bool(value.is_finite() && value.fract() == 0.0))
         }
@@ -91947,7 +94107,7 @@ fn call_float_method(
                 ));
             };
             let Some(value) = float_receiver_f64(receiver) else {
-                return Err("as_integer_ratio() expected a float receiver".to_string());
+                return Err("TypeError: as_integer_ratio() expected a float receiver".to_string());
             };
             float_as_integer_ratio(value)
         }
@@ -92054,7 +94214,7 @@ fn call_float_method(
                 ));
             };
             let Some(value) = float_receiver_f64(receiver) else {
-                return Err("hex() expected a float receiver".to_string());
+                return Err("TypeError: hex() expected a float receiver".to_string());
             };
             Ok(Value::String(float_hex_string(value)))
         }
@@ -92649,7 +94809,7 @@ fn float_as_integer_ratio(value: f64) -> Result<Value, String> {
     ]))
 }
 
-fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+fn call_list_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, String> {
     match name {
         "list.append" => {
             let [Value::List(items), item] = args.as_slice() else {
@@ -92698,12 +94858,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            Ok(Value::Bool(
-                items
-                    .borrow()
-                    .iter()
-                    .any(|item| sequence_items_match(item, needle)),
-            ))
+            Ok(Value::Bool(vm.list_contains_rich(items, needle)?))
         }
         "list.__delitem__" => {
             let [list @ Value::List(_), index] = args.as_slice() else {
@@ -92742,7 +94897,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            store_subscript(list.clone(), index.clone(), value.clone())?;
+            store_subscript(vm, list.clone(), index.clone(), value.clone())?;
             Ok(Value::None)
         }
         "list.count" => {
@@ -92752,14 +94907,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            let count = items
-                .borrow()
-                .iter()
-                .filter(|item| sequence_items_match(item, needle))
-                .count();
-            let count =
-                i64::try_from(count).map_err(|_| "count() result is too large".to_string())?;
-            Ok(Value::Number(count))
+            Ok(Value::Number(vm.list_count_rich(items, needle)?))
         }
         "list.index" => {
             let [Value::List(items), needle, rest @ ..] = args.as_slice() else {
@@ -92775,13 +94923,9 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 ));
             }
 
-            let items = items.borrow();
-            let len = items.len();
+            let len = items.borrow().len();
             let (start, stop) = list_search_bounds(rest, len)?;
-            let found = items[start..stop]
-                .iter()
-                .position(|item| sequence_items_match(item, needle))
-                .map(|index| start + index);
+            let found = vm.list_find_rich(items, needle, start, Some(stop))?;
             match found {
                 Some(index) => {
                     let index = i64::try_from(index)
@@ -92798,7 +94942,8 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            let index = normalized_insert_index(index, items.borrow().len())?;
+            let index = vm.index_i64(index.clone(), "insert index")?;
+            let index = normalized_insert_index(&Value::Number(index), items.borrow().len())?;
             items.borrow_mut().insert(index, value.clone());
             Ok(Value::None)
         }
@@ -92814,7 +94959,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
         }
         "list.pop" => {
             let [Value::List(items), rest @ ..] = args.as_slice() else {
-                return Err("pop() expected a list receiver".to_string());
+                return Err("TypeError: pop() expected a list receiver".to_string());
             };
             if rest.len() > 1 {
                 return Err(format!(
@@ -92921,11 +95066,8 @@ fn call_dict_method(
                 method_arg_count(&args)
             ));
         };
-        return vm.load_default_dict_subscript(
-            entries.clone(),
-            default_factory.borrow().clone(),
-            key.clone(),
-        );
+        let factory = default_factory.borrow().clone();
+        return vm.load_default_dict_subscript(entries.clone(), factory, key.clone());
     }
 
     if name == "OrderedDict.move_to_end" {
@@ -93134,7 +95276,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("clear() expected a dict receiver".to_string());
+                return Err("TypeError: clear() expected a dict receiver".to_string());
             };
             let mut entries = entries.borrow_mut();
             if !entries.is_empty() {
@@ -93152,9 +95294,14 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("copy() expected a dict receiver".to_string());
+                return Err("TypeError: copy() expected a dict receiver".to_string());
             };
-            build_dict(entries.borrow().clone())
+            let storage = entries.borrow();
+            let copied = dict_ref_from_entries_with_stored_hashes(
+                storage.entries.clone(),
+                storage.hashes.clone(),
+            )?;
+            Ok(Value::Dict(copied))
         }
         "dict.__contains__" => {
             reject_method_keywords(name, &keywords)?;
@@ -93165,9 +95312,9 @@ fn call_dict_method(
                 ));
             };
             if dict_receiver_entries(dict).is_none() {
-                return Err("__contains__() expected a dict receiver".to_string());
+                return Err("TypeError: __contains__() expected a dict receiver".to_string());
             }
-            Ok(Value::Bool(contains_value(key.clone(), dict.clone())?))
+            Ok(Value::Bool(contains_value(vm, key.clone(), dict.clone())?))
         }
         "dict.__delitem__" => {
             reject_method_keywords(name, &keywords)?;
@@ -93178,7 +95325,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(dict) else {
-                return Err("__delitem__() expected a dict receiver".to_string());
+                return Err("TypeError: __delitem__() expected a dict receiver".to_string());
             };
             ensure_hashable_key(key)?;
             if remove_mapping_entry(&entries, key)? {
@@ -93202,15 +95349,12 @@ fn call_dict_method(
                 default_factory,
             } = dict
             {
-                vm.load_default_dict_subscript(
-                    entries.clone(),
-                    default_factory.borrow().clone(),
-                    key.clone(),
-                )
+                let factory = default_factory.borrow().clone();
+                vm.load_default_dict_subscript(entries.clone(), factory, key.clone())
             } else if matches!(dict, Value::Dict(_) | Value::OrderedDict(_)) {
                 load_subscript_or_raise_key_error(vm, dict.clone(), key.clone())
             } else {
-                Err("__getitem__() expected a dict receiver".to_string())
+                Err("TypeError: __getitem__() expected a dict receiver".to_string())
             }
         }
         "dict.__iter__" => {
@@ -93222,7 +95366,7 @@ fn call_dict_method(
                 ));
             };
             if dict_receiver_entries(dict).is_none() {
-                return Err("__iter__() expected a dict receiver".to_string());
+                return Err("TypeError: __iter__() expected a dict receiver".to_string());
             }
             get_iter(dict.clone())
         }
@@ -93235,7 +95379,7 @@ fn call_dict_method(
                 ));
             };
             if dict_receiver_entries(dict).is_none() {
-                return Err("__len__() expected a dict receiver".to_string());
+                return Err("TypeError: __len__() expected a dict receiver".to_string());
             }
             let len = i64::try_from(value_len(dict)?)
                 .map_err(|_| "len() result is too large".to_string())?;
@@ -93250,7 +95394,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(dict) else {
-                return Err("__setitem__() expected a dict receiver".to_string());
+                return Err("TypeError: __setitem__() expected a dict receiver".to_string());
             };
             ensure_hashable_key(key)?;
             insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
@@ -93267,7 +95411,7 @@ fn call_dict_method(
             };
             let Some(receiver_entries) = dict_direct_union_entries(dict) else {
                 return Err(format!(
-                    "{}() expected a dict receiver",
+                    "TypeError: {}() expected a dict receiver",
                     method_display_name(name)
                 ));
             };
@@ -93293,7 +95437,7 @@ fn call_dict_method(
                 Value::DefaultDict { entries, .. } => Some(entries.clone()),
                 value => counter_subclass_entries(value).or_else(|| dict_subclass_entries(value)),
             }
-            .ok_or_else(|| "__ior__() expected a dict receiver".to_string())?;
+            .ok_or_else(|| "TypeError: __ior__() expected a dict receiver".to_string())?;
             let updates = vm.dict_entries_from_update_source(other.clone())?;
             let mut entries = entries.borrow_mut();
             for (key, value) in updates {
@@ -93312,7 +95456,7 @@ fn call_dict_method(
             };
             if dict_receiver_entries(dict).is_none() {
                 return Err(format!(
-                    "{}() expected a dict receiver",
+                    "TypeError: {}() expected a dict receiver",
                     method_display_name(name)
                 ));
             }
@@ -93321,10 +95465,10 @@ fn call_dict_method(
         "dict.get" => {
             reject_method_keywords(name, &keywords)?;
             let [receiver, key, rest @ ..] = args.as_slice() else {
-                return Err("get() expected a dict receiver".to_string());
+                return Err("TypeError: get() expected a dict receiver".to_string());
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("get() expected a dict receiver".to_string());
+                return Err("TypeError: get() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
                 return Err(format!(
@@ -93350,7 +95494,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("items() expected a dict receiver".to_string());
+                return Err("TypeError: items() expected a dict receiver".to_string());
             };
             if matches!(receiver, Value::OrderedDict(_)) {
                 Ok(ordered_dict_view_value(
@@ -93370,7 +95514,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("keys() expected a dict receiver".to_string());
+                return Err("TypeError: keys() expected a dict receiver".to_string());
             };
             if matches!(receiver, Value::OrderedDict(_)) {
                 Ok(ordered_dict_view_value(DictViewKind::Keys, entries.clone()))
@@ -93381,10 +95525,10 @@ fn call_dict_method(
         "dict.pop" => {
             reject_method_keywords(name, &keywords)?;
             let [receiver, key, rest @ ..] = args.as_slice() else {
-                return Err("pop() expected a dict receiver".to_string());
+                return Err("TypeError: pop expected at least 1 argument, got 0".to_string());
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("pop() expected a dict receiver".to_string());
+                return Err("TypeError: pop() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
                 return Err(format!(
@@ -93417,7 +95561,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("popitem() expected a dict receiver".to_string());
+                return Err("TypeError: popitem() expected a dict receiver".to_string());
             };
             let mut entries = entries.borrow_mut();
             let Some((key, value)) = entries.pop() else {
@@ -93430,10 +95574,10 @@ fn call_dict_method(
         "dict.setdefault" => {
             reject_method_keywords(name, &keywords)?;
             let [receiver, key, rest @ ..] = args.as_slice() else {
-                return Err("setdefault() expected a dict receiver".to_string());
+                return Err("TypeError: setdefault() expected a dict receiver".to_string());
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("setdefault() expected a dict receiver".to_string());
+                return Err("TypeError: setdefault() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
                 return Err(format!(
@@ -93451,15 +95595,21 @@ fn call_dict_method(
             }
 
             let default = rest.first().cloned().unwrap_or(Value::None);
-            insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), default.clone())?;
+            let hash = vm.stored_key_hash(key)?;
+            insert_live_dict_entry_with_hash(
+                &mut entries.borrow_mut(),
+                key.clone(),
+                default.clone(),
+                hash,
+            )?;
             Ok(default)
         }
         "dict.update" => {
             let [receiver, rest @ ..] = args.as_slice() else {
-                return Err("update() expected a dict receiver".to_string());
+                return Err("TypeError: update() expected a dict receiver".to_string());
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("update() expected a dict receiver".to_string());
+                return Err("TypeError: update() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
                 return Err(format!(
@@ -93468,26 +95618,37 @@ fn call_dict_method(
                 ));
             }
 
-            let mut updates = Vec::new();
+            let mut updates: Vec<(Value, Value, Option<Value>)> = Vec::new();
             if let Some(source) = rest.first() {
                 if Vm::is_dict_update_mapping_source(source) {
-                    updates.extend(vm.dict_entries_from_update_source(source.clone())?);
+                    let (source_entries, source_hashes) =
+                        vm.dict_update_entries_with_hashes(source)?;
+                    for (index, (key, value)) in source_entries.into_iter().enumerate() {
+                        let hash = source_hashes.get(index).cloned().flatten();
+                        updates.push((key, value, hash));
+                    }
                 } else {
                     // Pairs are stored as they are produced, as in CPython.
-                    vm.for_each_dict_update_pair(source.clone(), |_, key, value| {
-                        insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
+                    vm.for_each_dict_update_pair(source.clone(), |vm, key, value| {
+                        let hash = vm.stored_key_hash(&key)?;
+                        insert_live_dict_entry_with_hash(
+                            &mut entries.borrow_mut(),
+                            key,
+                            value,
+                            hash,
+                        )
                     })?;
                 }
             }
             updates.extend(
                 keywords
                     .into_iter()
-                    .map(|(key, value)| (Value::String(key), value)),
+                    .map(|(key, value)| (Value::String(key), value, None)),
             );
 
             let mut entries = entries.borrow_mut();
-            for (key, value) in updates {
-                insert_live_dict_entry(&mut entries, key, value)?;
+            for (key, value, hash) in updates {
+                insert_live_dict_entry_with_hash(&mut entries, key, value, hash)?;
             }
             Ok(Value::None)
         }
@@ -93500,7 +95661,7 @@ fn call_dict_method(
                 ));
             };
             let Some(entries) = dict_receiver_entries(receiver) else {
-                return Err("values() expected a dict receiver".to_string());
+                return Err("TypeError: values() expected a dict receiver".to_string());
             };
             if matches!(receiver, Value::OrderedDict(_)) {
                 Ok(ordered_dict_view_value(
@@ -93523,20 +95684,27 @@ fn call_user_dict_method(
 ) -> Result<Value, String> {
     let method = method_display_name(name);
     let Some((receiver, rest)) = args.split_first() else {
-        return Err(format!("{method}() expected a UserDict receiver"));
+        return Err(format!(
+            "TypeError: {method}() expected a UserDict receiver"
+        ));
     };
     let data = match receiver {
         Value::UserDict { data, .. } => data.clone(),
         value if user_dict_subclass_data(value).is_some() => {
             user_dict_subclass_data(value).expect("UserDict subclass data exists after guard")
         }
-        _ => return Err(format!("{method}() expected a UserDict receiver")),
+        _ => {
+            return Err(format!(
+                "TypeError: {method}() expected a UserDict receiver"
+            ));
+        }
     };
 
     if method == "__init__" {
-        let entries = vm.user_dict_constructor_entries(rest.to_vec(), keywords)?;
+        let (entries, hashes) = vm.user_dict_constructor_entries(rest.to_vec(), keywords)?;
         let mut data = data.borrow_mut();
-        data.entries = entries;
+        data.set_entries(entries);
+        data.hashes = hashes;
         mark_dict_changed(&mut data);
         return Ok(Value::None);
     }
@@ -93724,10 +95892,13 @@ fn call_dict_view_method(
                 ));
             };
             let Some(kind) = dict_view_method_kind(view) else {
-                return Err("__contains__() expected a dict view receiver".to_string());
+                return Err("TypeError: __contains__() expected a dict view receiver".to_string());
             };
             if !dict_view_is_set_like(kind) {
-                return Err("__contains__() expected a dict keys/items view receiver".to_string());
+                return Err(
+                    "TypeError: __contains__() expected a dict keys/items view receiver"
+                        .to_string(),
+                );
             }
             Ok(Value::Bool(
                 vm.contains_value(needle.clone(), view.clone())?,
@@ -93741,10 +95912,12 @@ fn call_dict_view_method(
                 ));
             };
             let Some(kind) = dict_view_method_kind(view) else {
-                return Err("isdisjoint() expected a dict view receiver".to_string());
+                return Err("TypeError: isdisjoint() expected a dict view receiver".to_string());
             };
             if !dict_view_is_set_like(kind) {
-                return Err("isdisjoint() expected a dict keys/items view receiver".to_string());
+                return Err(
+                    "TypeError: isdisjoint() expected a dict keys/items view receiver".to_string(),
+                );
             }
             for value in vm.collect_iterable_values_propagating(iterable.clone())? {
                 if vm.contains_value(value, view.clone())? {
@@ -93766,7 +95939,9 @@ fn call_dict_view_method(
                 ));
             };
             if !dict_view_is_values_hashable_value(view) {
-                return Err("__hash__() expected a dict values view receiver".to_string());
+                return Err(
+                    "TypeError: __hash__() expected a dict values view receiver".to_string()
+                );
             }
             Ok(identity_hash_value(view))
         }
@@ -93778,7 +95953,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__getstate__() expected a dict view receiver".to_string());
+                return Err("TypeError: __getstate__() expected a dict view receiver".to_string());
             }
             Ok(Value::None)
         }
@@ -93790,7 +95965,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__sizeof__() expected a dict view receiver".to_string());
+                return Err("TypeError: __sizeof__() expected a dict view receiver".to_string());
             }
             Ok(Value::Number(24))
         }
@@ -93802,7 +95977,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__reduce__() expected a dict view receiver".to_string());
+                return Err("TypeError: __reduce__() expected a dict view receiver".to_string());
             }
             Err(format!(
                 "TypeError: cannot pickle '{}' object",
@@ -93817,7 +95992,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__reduce_ex__() expected a dict view receiver".to_string());
+                return Err("TypeError: __reduce_ex__() expected a dict view receiver".to_string());
             }
             Err(format!(
                 "TypeError: cannot pickle '{}' object",
@@ -93832,7 +96007,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__len__() expected a dict view receiver".to_string());
+                return Err("TypeError: __len__() expected a dict view receiver".to_string());
             }
             let len = i64::try_from(value_len(view)?)
                 .map_err(|_| "OverflowError: len() result is too large".to_string())?;
@@ -93846,7 +96021,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__format__() expected a dict view receiver".to_string());
+                return Err("TypeError: __format__() expected a dict view receiver".to_string());
             }
             let format_spec = dunder_format_spec_string(format_spec)?;
             if format_spec.is_empty() {
@@ -93865,7 +96040,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__repr__() expected a dict view receiver".to_string());
+                return Err("TypeError: __repr__() expected a dict view receiver".to_string());
             }
             Ok(Value::String(repr_value_checked(view)?))
         }
@@ -93877,7 +96052,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__str__() expected a dict view receiver".to_string());
+                return Err("TypeError: __str__() expected a dict view receiver".to_string());
             }
             Ok(Value::String(repr_value_checked(view)?))
         }
@@ -93889,7 +96064,7 @@ fn call_dict_view_method(
                 ));
             };
             if dict_view_method_kind(view).is_none() {
-                return Err("__reversed__() expected a dict view receiver".to_string());
+                return Err("TypeError: __reversed__() expected a dict view receiver".to_string());
             }
             vm.reversed_value(view.clone())
         }
@@ -93910,11 +96085,13 @@ fn call_dict_view_set_operator_method(
         ));
     };
     let Some(kind) = dict_view_method_kind(view) else {
-        return Err(format!("{method}() expected a dict view receiver"));
+        return Err(format!(
+            "TypeError: {method}() expected a dict view receiver"
+        ));
     };
     if !dict_view_is_set_like(kind) {
         return Err(format!(
-            "{method}() expected a dict keys/items view receiver"
+            "TypeError: {method}() expected a dict keys/items view receiver"
         ));
     }
 
@@ -93957,7 +96134,9 @@ fn call_dict_view_richcompare_method(
         ));
     };
     let Some(kind) = dict_view_method_kind(view) else {
-        return Err(format!("{method}() expected a dict view receiver"));
+        return Err(format!(
+            "TypeError: {method}() expected a dict view receiver"
+        ));
     };
     if !dict_view_is_set_like(kind) {
         return match method {
@@ -94101,7 +96280,7 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
         }
         "set.__init__" => {
             let [Value::Set(items), values @ ..] = args.as_slice() else {
-                return Err("__init__() expected a set receiver".to_string());
+                return Err("TypeError: __init__() expected a set receiver".to_string());
             };
             if values.len() > 1 {
                 return Err(format!(
@@ -94320,14 +96499,14 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
         }
         "set.difference" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("difference() expected a set receiver".to_string());
+                return Err("TypeError: difference() expected a set receiver".to_string());
             };
             let snapshot = items.borrow().clone();
             vm.set_difference_from_iterables_with_kind(SetResultKind::Set, snapshot, iterables)
         }
         "set.difference_update" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("difference_update() expected a set receiver".to_string());
+                return Err("TypeError: difference_update() expected a set receiver".to_string());
             };
             let snapshot = items.borrow().clone();
             let Value::Set(result) = vm.set_difference_from_iterables_with_kind(
@@ -94360,14 +96539,14 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
         }
         "set.intersection" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("intersection() expected a set receiver".to_string());
+                return Err("TypeError: intersection() expected a set receiver".to_string());
             };
             let snapshot = items.borrow().clone();
             vm.set_intersection_from_iterables_with_kind(SetResultKind::Set, snapshot, iterables)
         }
         "set.intersection_update" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("intersection_update() expected a set receiver".to_string());
+                return Err("TypeError: intersection_update() expected a set receiver".to_string());
             };
             let snapshot = items.borrow().clone();
             let Value::Set(result) = vm.set_intersection_from_iterables_with_kind(
@@ -94487,14 +96666,14 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
         }
         "set.union" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("union() expected a set receiver".to_string());
+                return Err("TypeError: union() expected a set receiver".to_string());
             };
             let snapshot = items.borrow().clone();
             vm.set_union_from_iterables_with_kind(SetResultKind::Set, snapshot, iterables)
         }
         "set.update" => {
             let [Value::Set(items), iterables @ ..] = args.as_slice() else {
-                return Err("update() expected a set receiver".to_string());
+                return Err("TypeError: update() expected a set receiver".to_string());
             };
             // Items are inserted as they are produced, so items yielded
             // before an exception stay in the set as in CPython.
@@ -94606,7 +96785,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
         }
         "frozenset.__init__" => {
             let [Value::FrozenSet(_), ..] = args.as_slice() else {
-                return Err("__init__() expected a frozenset receiver".to_string());
+                return Err("TypeError: __init__() expected a frozenset receiver".to_string());
             };
             Ok(Value::None)
         }
@@ -94759,7 +96938,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
         }
         "frozenset.difference" => {
             let [Value::FrozenSet(items), iterables @ ..] = args.as_slice() else {
-                return Err("difference() expected a frozenset receiver".to_string());
+                return Err("TypeError: difference() expected a frozenset receiver".to_string());
             };
             vm.set_difference_from_iterables_with_kind(
                 SetResultKind::FrozenSet,
@@ -94769,7 +96948,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
         }
         "frozenset.intersection" => {
             let [Value::FrozenSet(items), iterables @ ..] = args.as_slice() else {
-                return Err("intersection() expected a frozenset receiver".to_string());
+                return Err("TypeError: intersection() expected a frozenset receiver".to_string());
             };
             vm.set_intersection_from_iterables_with_kind(
                 SetResultKind::FrozenSet,
@@ -94825,7 +97004,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
         }
         "frozenset.union" => {
             let [Value::FrozenSet(items), iterables @ ..] = args.as_slice() else {
-                return Err("union() expected a frozenset receiver".to_string());
+                return Err("TypeError: union() expected a frozenset receiver".to_string());
             };
             vm.set_union_from_iterables_with_kind(
                 SetResultKind::FrozenSet,
@@ -95072,7 +97251,7 @@ fn hash_container_items_match(left: &Value, right: &Value) -> bool {
         return equal;
     }
 
-    left == right
+    values_match_by_equality(left, right)
 }
 
 fn normalized_numeric_keys_match(left: &Value, right: &Value) -> Option<bool> {
@@ -95282,6 +97461,59 @@ fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, 
     }
 }
 
+/// Whether the value is a mapping.
+///
+/// CPython compares a chain map with the other mappings only, so the
+/// comparison of a chain map with a value of another kind answers `False`
+/// instead of failing.
+fn is_mapping_value(value: &Value) -> bool {
+    match value {
+        Value::Dict(_)
+        | Value::OrderedDict(_)
+        | Value::DefaultDict { .. }
+        | Value::MappingProxy { .. }
+        | Value::Counter { .. }
+        | Value::ScopeDict(_)
+        | Value::FrameLocalsProxy { .. }
+        | Value::UserDict { .. }
+        | Value::ChainMap { .. } => true,
+        value => {
+            counter_subclass_entries(value).is_some()
+                || user_dict_subclass_data(value).is_some()
+                || chain_map_subclass_maps(value).is_some()
+                || dict_subclass_entries(value).is_some()
+        }
+    }
+}
+
+/// The entries of a mapping that keeps the hash of its keys, with the hash
+/// of every key.
+///
+/// CPython keeps the hash of a key with its entry, so a copy of a mapping
+/// reuses the stored hash of every key instead of hashing the key again.
+fn stored_mapping_entries(value: &Value) -> Option<(Vec<(Value, Value)>, Vec<Option<Value>>)> {
+    let storage = match value {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::DefaultDict { entries, .. }
+        | Value::MappingProxy { entries, .. }
+        | Value::Counter { entries } => Some(entries.clone()),
+        Value::UserDict { data, .. } => Some(data.clone()),
+        value if user_dict_subclass_data(value).is_some() => {
+            Some(user_dict_subclass_data(value).expect("UserDict subclass data exists after guard"))
+        }
+        value if dict_subclass_entries(value).is_some() => {
+            Some(dict_subclass_entries(value).expect("dict subclass entries exist after guard"))
+        }
+        value if counter_subclass_entries(value).is_some() => Some(
+            counter_subclass_entries(value).expect("Counter subclass entries exist after guard"),
+        ),
+        _ => None,
+    }?;
+    let storage = storage.borrow();
+    Some((storage.entries.clone(), storage.hashes.clone()))
+}
+
 fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
         Value::Dict(entries)
@@ -95310,7 +97542,15 @@ fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
             .expect("dict subclass entries exist after guard")
             .borrow()
             .clone()),
-        value => Err(format!("{} is not a mapping", type_name(value))),
+        value => Err(format!("TypeError: {} is not a mapping", type_name(value))),
+    }
+}
+
+/// The maps of a chain map value or of a chain map subclass instance.
+fn chain_map_maps_if_value(value: &Value) -> Option<Vec<Value>> {
+    match value {
+        Value::ChainMap { maps } => Some(maps.clone()),
+        value => chain_map_subclass_maps(value),
     }
 }
 
@@ -95405,7 +97645,7 @@ fn chain_map_source_get_item_optional(map: &Value, key: &Value) -> Result<Option
             }
             Ok(None)
         }
-        Err(message) if message == format!("{} is not a mapping", type_name(map)) => {
+        Err(message) if message == format!("TypeError: {} is not a mapping", type_name(map)) => {
             match load_subscript(map.clone(), key.clone()) {
                 Ok(value) => Ok(Some(value)),
                 Err(message) if message.starts_with("KeyError: ") => Ok(None),
@@ -95440,7 +97680,15 @@ fn chain_map_receiver_maps(receiver: &Value) -> Result<Vec<Value>, String> {
         value if chain_map_subclass_maps(value).is_some() => {
             Ok(chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard"))
         }
-        value => Err(format!("{} is not a ChainMap", type_name(value))),
+        value => Err(format!("TypeError: {} is not a ChainMap", type_name(value))),
+    }
+}
+
+/// The name a counter renders, as CPython shows the name of its class.
+fn counter_repr_class_name(receiver: &Value) -> String {
+    match receiver {
+        Value::Instance { class_name, .. } => class_name.clone(),
+        _ => "Counter".to_string(),
     }
 }
 
@@ -95450,7 +97698,7 @@ fn counter_receiver_entries(receiver: &Value) -> Result<DictRef, String> {
         value if counter_subclass_entries(value).is_some() => Ok(
             counter_subclass_entries(value).expect("Counter subclass entries exist after guard")
         ),
-        value => Err(format!("{} is not a Counter", type_name(value))),
+        value => Err(format!("TypeError: {} is not a Counter", type_name(value))),
     }
 }
 
@@ -95577,13 +97825,13 @@ fn chain_map_update_child_mapping(
     match vm.load_attribute_catching(child.clone(), "update") {
         Ok(Ok(method)) => match vm.call_value_catching(method, vec![payload]) {
             Ok(Ok(_)) => Ok(()),
-            Ok(Err(exception)) => Err(format_exception_error(&exception)),
+            Ok(Err(exception)) => Err(vm.propagate_captured_exception(exception)),
             Err(message) => Err(message),
         },
         Ok(Err(exception)) if exception_is_builtin_instance(&exception, "AttributeError") => {
             Err(missing_type_attribute_error(type_name(child), "update"))
         }
-        Ok(Err(exception)) => Err(format_exception_error(&exception)),
+        Ok(Err(exception)) => Err(vm.propagate_captured_exception(exception)),
         Err(message) => Err(message),
     }
 }
@@ -96032,7 +98280,10 @@ fn user_dict_union_result_like(
                 class_bases: class_bases.clone(),
             })
         }
-        _ => Err(format!("{} is not a UserDict", type_name(receiver))),
+        _ => Err(format!(
+            "TypeError: {} is not a UserDict",
+            type_name(receiver)
+        )),
     }
 }
 
@@ -97776,6 +100027,7 @@ fn sys_structseq_type_dict(typ: &NamedTupleTypeRef) -> Value {
             Value::NamedTupleTypeMethod {
                 typ: typ.clone(),
                 name: "__repr__".to_string(),
+                identity: Rc::new(()),
             },
         ),
     ];
@@ -98035,17 +100287,16 @@ fn bytes_tabsize_argument(value: &Value) -> Result<i32, String> {
     }
 }
 
-fn bytes_width_argument(value: &Value, method: &str) -> Result<usize, String> {
+fn bytes_width_argument(value: &Value, _method: &str) -> Result<usize, String> {
     match value {
         Value::Bool(value) => Ok(bool_as_i64(*value) as usize),
         Value::Number(value) if *value <= 0 => Ok(0),
-        Value::Number(value) => {
-            usize::try_from(*value).map_err(|_| format!("{method} width is too large"))
-        }
+        Value::Number(value) => usize::try_from(*value)
+            .map_err(|_| "OverflowError: Python int too large to convert to C ssize_t".to_string()),
         Value::BigInt(value) if value.is_negative() => Ok(0),
-        Value::BigInt(value) => value
-            .to_usize()
-            .ok_or_else(|| format!("{method} width is too large")),
+        Value::BigInt(value) => value.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
         value => Err(bytes_integer_argument_error(value)),
     }
 }
@@ -98348,9 +100599,9 @@ fn integer_dunder_result(method: &str, result: Value) -> Result<Value, String> {
 fn integer_value_to_i64(value: Value, context: &str) -> Result<i64, String> {
     match value {
         Value::Number(value) => Ok(value),
-        Value::BigInt(value) => value
-            .to_i64()
-            .ok_or_else(|| format!("{context} is too large")),
+        Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
         value => Err(format!(
             "TypeError: {context} must be an integer, got {}",
             type_name(&value)
@@ -98387,6 +100638,42 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             let value = current.clone();
             *current += step.clone();
             Ok(IteratorAdvance::Yield(normalize_big_int(value)))
+        }
+        Value::DequeIterator {
+            items,
+            state,
+            expected_state,
+            index,
+            remaining,
+            reversed,
+            exhausted,
+            ..
+        } => {
+            if *reversed && (*exhausted || *remaining == 0) {
+                *exhausted = true;
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            if state.get() != *expected_state {
+                *remaining = 0;
+                if *reversed {
+                    *exhausted = true;
+                }
+                return Err(DEQUE_MUTATED_DURING_ITERATION.to_string());
+            }
+            if *remaining == 0 {
+                *exhausted = true;
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            let items = items.borrow();
+            let position = if *reversed {
+                items.len() - 1 - *index
+            } else {
+                *index
+            };
+            let value = items[position].clone();
+            *index += 1;
+            *remaining -= 1;
+            Ok(IteratorAdvance::Yield(value))
         }
         Value::ListIterator {
             items,
@@ -98585,7 +100872,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                     Ok(IteratorAdvance::Yield(tuple_value(vec![item_index, value])))
                 }
                 IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
-                IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
             }
         }
         Value::ZipIterator { iterators, strict } => advance_plain_zip_iterator(iterators, *strict),
@@ -98610,13 +100896,13 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             if !*exhausted {
                 match advance_plain_iterator(iterator.as_mut())? {
                     IteratorAdvance::Yield(value) => {
-                        saved.push(value.clone());
+                        saved.borrow_mut().push(value.clone());
                         return Ok(IteratorAdvance::Yield(value));
                     }
                     IteratorAdvance::Complete(_) => *exhausted = true,
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
+            let saved = saved.borrow();
             if saved.is_empty() {
                 return Ok(IteratorAdvance::Complete(Value::None));
             }
@@ -98629,7 +100915,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                 match advance_plain_iterator(&mut iterators[*index])? {
                     IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
                     IteratorAdvance::Complete(_) => *index += 1,
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
             Ok(IteratorAdvance::Complete(Value::None))
@@ -98639,7 +100924,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                 match advance_plain_iterator(current_iterator.as_mut())? {
                     IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
                     IteratorAdvance::Complete(_) => *current = None,
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
             match advance_plain_iterator(iterator.as_mut())? {
@@ -98647,19 +100931,16 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                     *current = Some(Box::new(get_iter(iterable)?));
                 }
                 IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             }
         },
         Value::ItertoolsCompress { data, selectors } => loop {
             let value = match advance_plain_iterator(data.as_mut())? {
                 IteratorAdvance::Yield(value) => value,
                 IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             };
             let selector = match advance_plain_iterator(selectors.as_mut())? {
                 IteratorAdvance::Yield(selector) => selector,
                 IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
-                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
             };
             if is_truthy(&selector)? {
                 return Ok(IteratorAdvance::Yield(value));
@@ -98688,7 +100969,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
                 if stop.is_some_and(|stop| *position >= stop) {
                     return Ok(IteratorAdvance::Complete(Value::None));
@@ -98709,7 +100989,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                     IteratorAdvance::Complete(value) => {
                         return Ok(IteratorAdvance::Complete(value));
                     }
-                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             }
             match advance_plain_iterator(iterator.as_mut())? {
@@ -98722,7 +101001,6 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
                     Ok(IteratorAdvance::Yield(pair))
                 }
                 IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
-                IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
             }
         }
         value => Err(format!("TypeError: {value} is not an iterator")),
@@ -98747,7 +101025,6 @@ fn advance_plain_zip_iterator(
                 }
                 return Ok(IteratorAdvance::Complete(value));
             }
-            IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
         }
     }
 
@@ -98775,7 +101052,6 @@ fn advance_plain_strict_zip_after_complete(
                 ));
             }
             IteratorAdvance::Complete(_) => {}
-            IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
         }
     }
 
@@ -98878,6 +101154,38 @@ fn build_default_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
     })
 }
 
+/// A mapping that keeps the hash of every key that a user-defined
+/// `__hash__` provides.
+/// A dictionary that keeps the hash of every key.
+///
+/// CPython keeps the hash of a key with its entry, so a dictionary that is
+/// copied from another dictionary reuses the stored hash of every key
+/// instead of hashing the key again.
+fn dict_ref_from_entries_with_stored_hashes(
+    entries: Vec<(Value, Value)>,
+    hashes: Vec<Option<Value>>,
+) -> Result<DictRef, String> {
+    let mut dict = Vec::new();
+    let mut dict_hashes = Vec::new();
+    for (index, (key, value)) in entries.into_iter().enumerate() {
+        let hash = hashes.get(index).cloned().flatten();
+        if insert_dict_entry(&mut dict, key, value)? {
+            dict_hashes.push(hash);
+        }
+    }
+    Ok(dict_ref_from_entries_with_hashes(dict, dict_hashes))
+}
+
+fn dict_ref_from_entries_with_hashes(
+    entries: Vec<(Value, Value)>,
+    hashes: Vec<Option<Value>>,
+) -> DictRef {
+    let Value::Dict(entries) = dict_value_with_hashes(entries, hashes) else {
+        unreachable!("dict_value_with_hashes always returns a dict")
+    };
+    entries
+}
+
 fn dict_ref_from_entries(entries: Vec<(Value, Value)>) -> Result<DictRef, String> {
     let mut dict = Vec::new();
 
@@ -98922,9 +101230,18 @@ fn list_order_operand_values(value: &Value) -> Option<Vec<Value>> {
     }
 }
 
-fn list_equality_operand_values(value: &Value) -> Option<Vec<Value>> {
+/// The store of a list, read one item at a time.
+fn list_order_operand_items(value: &Value) -> Option<ListRef> {
     match value {
-        Value::List(items) => Some(items.borrow().clone()),
+        Value::List(items) | Value::UserList { data: items, .. } => Some(items.clone()),
+        _ => None,
+    }
+}
+
+/// The store of a list, read one item at a time.
+fn list_equality_operand_items(value: &Value) -> Option<ListRef> {
+    match value {
+        Value::List(items) => Some(items.clone()),
         _ => None,
     }
 }
@@ -99130,104 +101447,195 @@ fn counter_union_keys(left: &[(Value, Value)], right: &[(Value, Value)]) -> Vec<
 }
 
 fn counter_binary_value_from_operands(
+    vm: &mut Vm,
     left: &Value,
     right: &Value,
     op: CounterBinaryOp,
 ) -> Result<Option<Value>, String> {
-    let (Some(left), Some(right)) = (
-        counter_entries_if_value(left),
-        counter_entries_if_value(right),
-    ) else {
+    // CPython's counter arithmetic needs a counter on both sides.
+    if counter_entries_if_value(left).is_none() || counter_entries_if_value(right).is_none() {
         return Ok(None);
-    };
-    counter_binary_value(&left, &right, op).map(Some)
-}
-
-fn counter_in_place_value_from_operands(
-    left: &Value,
-    right: &Value,
-    op: CounterBinaryOp,
-) -> Result<Option<Value>, String> {
-    let (Some(left_entries), Some(right_entries)) = (
-        counter_entries_if_value(left),
-        counter_entries_if_value(right),
-    ) else {
-        return Ok(None);
-    };
-    counter_in_place_value(&left_entries, &right_entries, op)?;
+    }
+    let entries = counter_binary_entries(vm, left, right, op)?;
     Ok(Some(Value::Counter {
-        entries: left_entries.clone(),
+        entries: dict_ref_from_entries(entries)?,
     }))
 }
 
-fn counter_binary_value(
-    left: &DictRef,
-    right: &DictRef,
+fn counter_in_place_value_from_operands(
+    vm: &mut Vm,
+    left: &Value,
+    right: &Value,
     op: CounterBinaryOp,
-) -> Result<Value, String> {
-    Ok(Value::Counter {
-        entries: dict_ref_from_entries(counter_binary_entries(left, right, op)?)?,
-    })
-}
-
-fn counter_in_place_value(
-    left: &DictRef,
-    right: &DictRef,
-    op: CounterBinaryOp,
-) -> Result<(), String> {
-    let result = counter_binary_entries(left, right, op)?;
-    let mut left_ref = left.borrow_mut();
-    if !left_ref.entries.is_empty() || !result.is_empty() {
-        left_ref.entries.clear();
-        mark_dict_changed(&mut left_ref);
+) -> Result<Option<Value>, String> {
+    if counter_entries_if_value(left).is_none() {
+        return Ok(None);
     }
-    for (key, value) in result {
-        insert_live_dict_entry(&mut left_ref, key, value)?;
-    }
-    Ok(())
-}
-
-fn counter_binary_entries(
-    left: &DictRef,
-    right: &DictRef,
-    op: CounterBinaryOp,
-) -> Result<Vec<(Value, Value)>, String> {
-    let left_entries = left.borrow().entries.clone();
-    let right_entries = right.borrow().entries.clone();
-    let keys = counter_union_keys(&left_entries, &right_entries);
-    let mut result = Vec::new();
-
-    for key in keys {
-        let left_count = dict_lookup(&left_entries, &key).unwrap_or(Value::Number(0));
-        let right_count = dict_lookup(&right_entries, &key).unwrap_or(Value::Number(0));
-        let count = counter_binary_count(left_count, right_count, op)?;
-        if compare_values(count.clone(), Value::Number(0))?.is_gt() {
-            result.push((key, count));
+    match op {
+        CounterBinaryOp::Intersection => {
+            // CPython reads the other operand through the subscript protocol
+            // and updates every count of the receiver before it drops the
+            // entries that are not positive, so an overridden `__delitem__`
+            // sees the updated counts. Every count is updated as soon as the
+            // receiver reports it, so a later item that raises keeps the
+            // counts CPython already updated.
+            vm.counter_operand_items(left, |vm, (key, count)| {
+                let other_count = vm.counter_operand_count(right, &key)?;
+                // CPython compares the counts with `<`, so a count that
+                // cannot be ordered keeps the count the receiver already
+                // reports, and the right-hand count wins when the
+                // comparison holds.
+                if vm.less_values(other_count.clone(), count.clone())? {
+                    // CPython keeps the count the other operand reports when
+                    // that count is the smaller one, so the counts are never
+                    // compared a second time.
+                    vm.store_subscript_value(left.clone(), key, other_count)?;
+                }
+                Ok(())
+            })?;
+        }
+        CounterBinaryOp::Add | CounterBinaryOp::Subtract | CounterBinaryOp::Union => {
+            // CPython reads the other operand through its `items()` method,
+            // so any mapping works and an overridden `items()` decides what
+            // the other operand owns. Every count is stored as soon as the
+            // other operand reports it, so a later item that raises keeps the
+            // counts CPython already stored.
+            vm.counter_operand_items(right, |vm, (key, count)| {
+                let current = vm.counter_operand_count(left, &key)?;
+                let count = match op {
+                    CounterBinaryOp::Add => add_values(current, count)?,
+                    CounterBinaryOp::Subtract => subtract_values(current, count)?,
+                    CounterBinaryOp::Union => {
+                        // CPython keeps the larger count of the two operands,
+                        // so a count that cannot be ordered keeps the count
+                        // the receiver already reports.
+                        if vm.greater_values(count.clone(), current)? {
+                            count
+                        } else {
+                            return Ok(());
+                        }
+                    }
+                    CounterBinaryOp::Intersection => {
+                        unreachable!("the intersection has its own branch")
+                    }
+                };
+                vm.store_subscript_value(left.clone(), key, count)?;
+                Ok(())
+            })?;
         }
     }
+    // CPython keeps only the positive counts after an in-place operation.
+    vm.counter_drop_non_positive_entries(left)?;
+    // An in-place operation keeps the receiver, so a subclass stays a subclass.
+    Ok(Some(left.clone()))
+}
+
+/// Counter arithmetic reads the operands through their `items()` methods and
+/// through the subscript protocol, so an overridden `items()`, `__getitem__` or
+/// `__missing__` decides what an operand owns.
+fn counter_binary_entries(
+    vm: &mut Vm,
+    left_operand: &Value,
+    right_operand: &Value,
+    op: CounterBinaryOp,
+) -> Result<Vec<(Value, Value)>, String> {
+    let mut result = Vec::new();
+
+    // CPython reads the counts of the left operand one by one and asks the
+    // right operand for the count of the same key right away, so an
+    // overridden `items()` or `__missing__` decides the result while the
+    // operands report it.
+    vm.counter_operand_items(left_operand, |vm, (key, count)| {
+        let other_count = vm.counter_operand_count(right_operand, &key)?;
+        let count = counter_binary_count(vm, count, other_count, op)?;
+        // CPython asks the count itself with `count > 0`, so a count that
+        // defines its own comparison decides whether it stays.
+        if vm.greater_values(count.clone(), Value::Number(0))? {
+            result.push((key, count));
+        }
+        Ok(())
+    })?;
+
+    // An intersection keeps only the keys the left operand owns, so CPython
+    // reads no count the right operand owns alone.
+    if matches!(op, CounterBinaryOp::Intersection) {
+        return Ok(result);
+    }
+
+    // A key the other operand owns alone keeps the count that operand
+    // stores, as CPython reads it from the operand's own items, unless the
+    // left operand claims the key through its membership protocol.
+    vm.counter_operand_items(right_operand, |vm, (key, count)| {
+        if vm.counter_operand_contains(left_operand, &key)? {
+            return Ok(());
+        }
+        let count = match op {
+            CounterBinaryOp::Add | CounterBinaryOp::Union => count,
+            CounterBinaryOp::Subtract => subtract_values(Value::Number(0), count)?,
+            CounterBinaryOp::Intersection => unreachable!("intersection returns early"),
+        };
+        if vm.greater_values(count.clone(), Value::Number(0))? {
+            result.push((key, count));
+        }
+        Ok(())
+    })?;
 
     Ok(result)
 }
 
-fn counter_binary_count(left: Value, right: Value, op: CounterBinaryOp) -> Result<Value, String> {
-    match op {
-        CounterBinaryOp::Add => add_values(left, right),
-        CounterBinaryOp::Subtract => subtract_values(left, right),
-        CounterBinaryOp::Union => counter_max_count(left, right),
-        CounterBinaryOp::Intersection => counter_min_count(left, right),
+/// The message CPython reports when a counter item does not carry exactly
+/// two values. An exact sequence reports its length, while any other
+/// iterable reports the failure without a count.
+fn counter_item_unpack_message(item: &Value, count: usize) -> String {
+    if count < 2 {
+        return format!("ValueError: not enough values to unpack (expected 2, got {count})");
+    }
+    if counter_item_sequence_length(item).is_some() {
+        return format!("ValueError: too many values to unpack (expected 2, got {count})");
+    }
+    "ValueError: too many values to unpack (expected 2)".to_string()
+}
+
+/// The length of an exact sequence, whose length CPython reports when the
+/// unpack of its items fails. Only an exact list or an exact tuple reports
+/// its length, because CPython unpacks every other iterable through its
+/// iterator and names no count.
+fn counter_item_sequence_length(value: &Value) -> Option<usize> {
+    match value {
+        Value::List(items) => Some(items.borrow().len()),
+        Value::Tuple(items) => Some(items.as_ref().len()),
+        _ => None,
     }
 }
 
-fn counter_max_count(left: Value, right: Value) -> Result<Value, String> {
-    if compare_values(left.clone(), right.clone())?.is_lt() {
+fn counter_binary_count(
+    vm: &mut Vm,
+    left: Value,
+    right: Value,
+    op: CounterBinaryOp,
+) -> Result<Value, String> {
+    match op {
+        CounterBinaryOp::Add => add_values(left, right),
+        CounterBinaryOp::Subtract => subtract_values(left, right),
+        CounterBinaryOp::Union => counter_max_count(vm, left, right),
+        CounterBinaryOp::Intersection => counter_min_count(vm, left, right),
+    }
+}
+
+fn counter_max_count(vm: &mut Vm, left: Value, right: Value) -> Result<Value, String> {
+    // CPython keeps the larger count with `<` semantics, so a count that
+    // cannot be ordered keeps the count the left operand reports.
+    if vm.less_values(left.clone(), right.clone())? {
         Ok(right)
     } else {
         Ok(left)
     }
 }
 
-fn counter_min_count(left: Value, right: Value) -> Result<Value, String> {
-    if compare_values(left.clone(), right.clone())?.is_lt() {
+fn counter_min_count(vm: &mut Vm, left: Value, right: Value) -> Result<Value, String> {
+    // CPython keeps the smaller count with `<` semantics, so a count that
+    // cannot be ordered keeps the count the right operand reports.
+    if vm.less_values(left.clone(), right.clone())? {
         Ok(left)
     } else {
         Ok(right)
@@ -99320,7 +101728,26 @@ fn insert_live_dict_entry(
     key: Value,
     value: Value,
 ) -> Result<(), String> {
+    insert_live_dict_entry_with_hash(entries, key, value, None)
+}
+
+/// The insertion of a key into a mapping, with the hash of the key.
+///
+/// CPython keeps the hash of a key with the entry of the key, so a later
+/// comparison of two mappings answers with the stored hash instead of
+/// hashing the key again.
+fn insert_live_dict_entry_with_hash(
+    entries: &mut DictStorage,
+    key: Value,
+    value: Value,
+    hash: Option<Value>,
+) -> Result<(), String> {
+    if entries.hashes.len() != entries.entries.len() {
+        // The mapping was filled without keeping the hashes of its keys.
+        entries.hashes = vec![None; entries.entries.len()];
+    }
     if insert_dict_entry(&mut entries.entries, key, value)? {
+        entries.hashes.push(hash);
         mark_dict_changed(entries);
     }
     Ok(())
@@ -99330,10 +101757,18 @@ fn mark_dict_changed(entries: &mut DictStorage) {
     entries.version = entries.version.wrapping_add(1);
 }
 
-fn dict_entries_from_mapping(value: Value) -> Result<Vec<(Value, Value)>, String> {
+/// The entries of a dictionary with the hash of every key.
+///
+/// CPython keeps the hash of a key with its entry, so a dictionary that
+/// takes over the entries of another dictionary reuses the stored hash of
+/// every key instead of hashing the key again.
+fn dict_entries_and_hashes_from_mapping(
+    value: Value,
+) -> Result<(Vec<(Value, Value)>, Vec<Option<Value>>), String> {
     match value {
         Value::Dict(entries) | Value::OrderedDict(entries) | Value::DefaultDict { entries, .. } => {
-            Ok(entries.borrow().clone())
+            let storage = entries.borrow();
+            Ok((storage.entries.clone(), storage.hashes.clone()))
         }
         value => Err(format!("dict update source must be a dict, got {value}")),
     }
@@ -99427,9 +101862,9 @@ fn class_hash_method(value: &Value) -> Result<Option<Value>, String> {
         return Err(format!("TypeError: unhashable type: '{metaclass_name}'"));
     }
     Ok(Some(match method {
-        Value::StaticMethod { function, .. } => *function,
+        Value::StaticMethod { function, .. } => function.as_ref().clone(),
         Value::ClassMethod { function, .. } => Value::BoundMethod {
-            function,
+            function: Box::new(function.as_ref().clone()),
             receiver: Box::new(class.clone()),
             identity: Rc::new(()),
         },
@@ -99460,14 +101895,6 @@ fn py_hash_to_u64(value: Value) -> Result<u64, String> {
     masked
         .to_u64()
         .ok_or_else(|| "TypeError: __hash__ method should return an integer".to_string())
-}
-
-fn identity_value(value: &Value) -> Value {
-    normalize_big_int(BigInt::from(identity_bits(value)))
-}
-
-fn identity_hash_value(value: &Value) -> Value {
-    python_integer_hash_value(&BigInt::from(identity_bits(value)))
 }
 
 fn direct_numeric_hash_value(value: &Value) -> Option<Value> {
@@ -99563,112 +101990,6 @@ fn truncated_float_bigint(value: f64) -> BigInt {
         integer = -integer;
     }
     integer
-}
-
-fn identity_bits(value: &Value) -> u64 {
-    match value {
-        Value::List(items) => rc_identity_bits(items),
-        Value::UserList { data, .. } => rc_identity_bits(data),
-        Value::IdentityString { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Bytes(bytes) if bytes.is_empty() => empty_bytes_identity_bits(),
-        Value::Bytes(bytes) => rc_plain_identity_bits(bytes),
-        Value::Tuple(items) => rc_plain_identity_bits(items),
-        Value::NamedTuple { values, .. } => rc_plain_identity_bits(values),
-        Value::ByteArray(bytes) => rc_identity_bits(bytes),
-        Value::Set(items) => rc_identity_bits(items),
-        Value::FrozenSet(items) => rc_plain_identity_bits(items),
-        Value::Range { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Dict(entries) => rc_identity_bits(entries),
-        Value::OrderedDict(entries) => rc_identity_bits(entries),
-        Value::DefaultDict { entries, .. } => rc_identity_bits(entries),
-        Value::Counter { entries } => rc_identity_bits(entries),
-        Value::ScopeDict(scope) => scope_identity_bits(scope),
-        Value::FrameLocalsProxy { identity, .. } => rc_plain_identity_bits(identity),
-        Value::DictView { identity, .. } => rc_plain_identity_bits(identity),
-        Value::MappingView { identity, .. } => rc_plain_identity_bits(identity),
-        Value::MappingProxy { identity, .. } => rc_plain_identity_bits(identity),
-        Value::MappingProxyObject { identity, .. } => rc_plain_identity_bits(identity),
-        Value::ChainMap { maps } => maps.as_ptr() as usize as u64,
-        Value::UserDict { data, .. } => rc_identity_bits(data),
-        Value::SimpleNamespace { fields } => rc_identity_bits(fields),
-        Value::TypesCoroutineFunction { identity, .. } => rc_plain_identity_bits(identity),
-        Value::WeakRef { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Generator(state) => rc_identity_bits(state),
-        Value::GeneratorWrapper { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Coroutine(state) => rc_identity_bits(state),
-        Value::CoroutineAwait(state) => rc_identity_bits(state),
-        Value::AsyncGenerator(state) => rc_identity_bits(state),
-        Value::AsyncGeneratorNext { identity, .. } => rc_plain_identity_bits(identity),
-        Value::AsyncGeneratorThrow { state, .. } => rc_identity_bits(state),
-        Value::AsyncGeneratorClose(state) => rc_identity_bits(state),
-        Value::Iterator(value) => rc_identity_bits(value),
-        Value::Class { attrs, .. } => scope_identity_bits(attrs),
-        Value::NamedTupleFieldDescriptor { typ, index } => {
-            let mut hasher = DefaultHasher::new();
-            "namedtuple_field_descriptor".hash(&mut hasher);
-            rc_plain_identity_bits(&typ.identity).hash(&mut hasher);
-            index.hash(&mut hasher);
-            hasher.finish()
-        }
-        Value::Instance { fields, .. } => scope_identity_bits(fields),
-        Value::Exception { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Module { attrs, .. } => scope_identity_bits(attrs),
-        Value::Function { identity, .. } => rc_plain_identity_bits(identity),
-        Value::CodeObject { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Cell { identity, .. } => rc_plain_identity_bits(identity),
-        Value::TypeParam { identity, .. } => rc_plain_identity_bits(identity),
-        Value::ParamSpecAccess { identity, .. } => rc_plain_identity_bits(identity),
-        Value::DeferredTypeParamExpr(deferred) => rc_plain_identity_bits(&deferred.identity),
-        Value::NewType { identity, .. } => rc_plain_identity_bits(identity),
-        Value::Frame { fields } => rc_identity_bits(fields),
-        Value::Traceback { identity } => rc_plain_identity_bits(identity),
-        Value::Float(value) => rc_plain_identity_bits(value),
-        Value::Complex { identity, .. } => rc_plain_identity_bits(identity),
-        Value::MemoryView(view) => rc_identity_bits(view),
-        Value::Re(object) => object.identity() as u64,
-        Value::BytesIO(bytes_io) => rc_identity_bits(bytes_io),
-        Value::StringIOBuffer(buffer) => rc_identity_bits(buffer),
-        Value::PartialMethod { identity, .. }
-        | Value::PartialMethodCall { identity, .. }
-        | Value::RecursiveReprDecorator { identity, .. }
-        | Value::RecursiveReprWrapper { identity, .. }
-        | Value::SingleDispatch { identity, .. }
-        | Value::SingleDispatchRegister { identity, .. }
-        | Value::SingleDispatchMethod { identity, .. }
-        | Value::SingleDispatchMethodCallable { identity, .. }
-        | Value::CachedProperty { identity, .. }
-        | Value::CmpToKey { identity, .. }
-        | Value::CmpToKeyObject { identity, .. } => rc_plain_identity_bits(identity),
-        Value::OperatorAttrGetter { identity, .. }
-        | Value::OperatorItemGetter { identity, .. }
-        | Value::OperatorMethodCaller { identity, .. } => rc_plain_identity_bits(identity),
-        _ => stable_identity_bits(value),
-    }
-}
-
-fn stable_identity_bits(value: &Value) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    "id".hash(&mut hasher);
-    format!("{value:?}").hash(&mut hasher);
-    hasher.finish()
-}
-
-fn scope_identity_bits(scope: &Scope) -> u64 {
-    Rc::as_ptr(scope) as usize as u64
-}
-
-fn rc_identity_bits<T>(value: &Rc<RefCell<T>>) -> u64 {
-    Rc::as_ptr(value) as usize as u64
-}
-
-fn rc_plain_identity_bits<T>(value: &Rc<T>) -> u64 {
-    Rc::as_ptr(value) as usize as u64
-}
-
-fn empty_bytes_identity_bits() -> u64 {
-    let mut hasher = DefaultHasher::new();
-    "empty-bytes-singleton".hash(&mut hasher);
-    hasher.finish()
 }
 
 fn hash_value(value: &Value) -> Result<Value, String> {
@@ -99818,7 +102139,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         }
         Value::Coroutine(state) => hash_rc_identity("coroutine", state, hasher),
         Value::CoroutineAwait(state) => hash_rc_identity("coroutine_wrapper", state, hasher),
-        Value::AwaitIterator(value) => {
+        Value::AwaitIterator(value, _) => {
             "await_iterator".hash(hasher);
             hash_value_into(value, hasher)?;
         }
@@ -99842,7 +102163,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             "coroutine".hash(hasher);
             (Rc::as_ptr(done) as usize).hash(hasher);
         }
-        Value::AnextDefault { awaitable, default } => {
+        Value::AnextDefault {
+            awaitable, default, ..
+        } => {
             "anext_awaitable".hash(hasher);
             hash_value_into(awaitable, hasher)?;
             hash_value_into(default, hasher)?;
@@ -99861,12 +102184,12 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             rc_plain_identity_bits(&typ.identity).hash(hasher);
             index.hash(hasher);
         }
-        Value::NamedTupleTypeMethod { typ, name } => {
+        Value::NamedTupleTypeMethod { typ, name, .. } => {
             "namedtuple_type_method".hash(hasher);
             rc_plain_identity_bits(&typ.identity).hash(hasher);
             name.hash(hasher);
         }
-        Value::NamedTupleInstanceMethod { instance, name } => {
+        Value::NamedTupleInstanceMethod { instance, name, .. } => {
             "namedtuple_instance_method".hash(hasher);
             hash_value_into(instance, hasher)?;
             name.hash(hasher);
@@ -99895,7 +102218,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             "forward_ref".hash(hasher);
             arg.hash(hasher);
         }
-        Value::ConstEvaluator { kind, target } => {
+        Value::ConstEvaluator { kind, target, .. } => {
             "const_evaluator".hash(hasher);
             kind.hash(hasher);
             hash_value_into(target, hasher)?;
@@ -100057,7 +102380,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::FrameLocalsProxy { .. } => {
             return Err("TypeError: unhashable type: 'FrameLocalsProxy'".to_string());
         }
-        Value::Traceback { identity } => {
+        Value::Traceback { identity, .. } => {
             "traceback".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
         }
@@ -100096,6 +102419,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::Template { .. }
         | Value::Exception { .. }
         | Value::RangeIterator { .. }
+        | Value::DequeIterator { .. }
         | Value::ListIterator { .. }
         | Value::TupleIterator { .. }
         | Value::TemplateIterator { .. }
@@ -100167,7 +102491,7 @@ fn hash_bytes_like(value: &[u8], hasher: &mut DefaultHasher) {
 }
 
 fn hash_optional_slice_part(
-    value: &Option<Box<Value>>,
+    value: &Option<Rc<Value>>,
     hasher: &mut DefaultHasher,
 ) -> Result<(), String> {
     match value {
@@ -100244,7 +102568,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::GeneratorWrapper { .. }
         | Value::Coroutine(_)
         | Value::CoroutineAwait(_)
-        | Value::AwaitIterator(_)
+        | Value::AwaitIterator(..)
         | Value::AsyncGenerator(_)
         | Value::AsyncGeneratorNext { .. }
         | Value::AsyncGeneratorThrow { .. }
@@ -100333,6 +102657,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Template { .. }
         | Value::Exception { .. }
         | Value::RangeIterator { .. }
+        | Value::DequeIterator { .. }
         | Value::ListIterator { .. }
         | Value::TupleIterator { .. }
         | Value::TemplateIterator { .. }
@@ -100377,7 +102702,7 @@ fn is_hashable_key(value: &Value) -> bool {
     }
 }
 
-fn optional_slice_part_is_hashable(value: &Option<Box<Value>>) -> bool {
+fn optional_slice_part_is_hashable(value: &Option<Rc<Value>>) -> bool {
     value.as_deref().map(is_hashable_key).unwrap_or(true)
 }
 
@@ -100422,7 +102747,7 @@ fn key_error_exception(key: Value) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -100438,7 +102763,7 @@ fn key_error_empty_exception() -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     }
 }
 
@@ -100457,12 +102782,12 @@ fn raise_key_error_string(vm: &mut Vm, message: String) -> Result<Value, String>
 }
 
 fn raise_key_error_value(vm: &mut Vm, key: Value) -> Result<Value, String> {
-    vm.raise_exception(key_error_exception(key), true)?;
+    vm.raise_exception::<()>(key_error_exception(key), true)?;
     Ok(Value::None)
 }
 
 fn raise_key_error_empty(vm: &mut Vm) -> Result<Value, String> {
-    vm.raise_exception(key_error_empty_exception(), true)?;
+    vm.raise_exception::<()>(key_error_empty_exception(), true)?;
     Ok(Value::None)
 }
 
@@ -100477,6 +102802,21 @@ fn load_subscript_or_raise_key_error(
         Err(message) if message.starts_with("KeyError: ") => raise_key_error_value(vm, key),
         Err(message) => Err(message),
     }
+}
+
+fn deque_iterator(items: ListRef, state: Rc<Cell<u64>>, reversed: bool) -> Value {
+    let remaining = items.borrow().len();
+    let expected_state = state.get();
+    shared_iterator(Value::DequeIterator {
+        items,
+        state,
+        expected_state,
+        index: 0,
+        remaining,
+        reversed,
+        exhausted: false,
+        identity: Rc::new(()),
+    })
 }
 
 fn get_iter(value: Value) -> Result<Value, String> {
@@ -100498,11 +102838,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             index: 0,
             exhausted: false,
         })),
-        Value::Deque { data, .. } => Ok(shared_iterator(Value::ListIterator {
-            items: data,
-            index: 0,
-            exhausted: false,
-        })),
+        Value::Deque { data, state, .. } => Ok(deque_iterator(data, state, false)),
         Value::Tuple(items) => Ok(shared_iterator(Value::TupleIterator {
             items: items.as_ref().clone(),
             index: 0,
@@ -100522,8 +102858,9 @@ fn get_iter(value: Value) -> Result<Value, String> {
         Value::Template {
             strings,
             interpolations,
+            ..
         } => Ok(shared_iterator(Value::TemplateIterator {
-            items: template_iter_values(strings, interpolations),
+            items: template_iter_values((*strings).clone(), (*interpolations).clone()),
             index: 0,
         })),
         Value::String(value) | Value::IdentityString { value, .. } => {
@@ -100567,14 +102904,16 @@ fn get_iter(value: Value) -> Result<Value, String> {
             origin,
             args,
             union_unhashable_count,
+            identity,
         } => {
             let alias = Value::GenericAlias {
                 origin,
                 args,
                 union_unhashable_count,
+                identity,
             };
             Ok(shared_iterator(Value::TupleIterator {
-                items: vec![Value::Unpack(Box::new(alias))],
+                items: vec![Value::Unpack(Rc::new(alias))],
                 index: 0,
             }))
         }
@@ -100650,6 +102989,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             stop,
             step,
         })),
+        iterator @ Value::DequeIterator { .. } => Ok(shared_iterator(iterator)),
         Value::ListIterator {
             items,
             index,
@@ -100934,7 +103274,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
         Value::Generator(state) => Ok(Value::Generator(state)),
         wrapper @ Value::GeneratorWrapper { .. } => generator_wrapper_iter_value(&wrapper),
         Value::CoroutineAwait(state) => Ok(Value::CoroutineAwait(state)),
-        Value::AwaitIterator(iterator) => Ok(Value::AwaitIterator(iterator)),
+        Value::AwaitIterator(iterator, identity) => Ok(Value::AwaitIterator(iterator, identity)),
         value => Err(format!("'{}' object is not iterable", type_name(&value))),
     }
 }
@@ -101226,6 +103566,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             matches!(subject, Value::TypeParam { kind, .. } if kind == "ParamSpec")
         }
         "typing.ForwardRef" | "ForwardRef" => matches!(subject, Value::ForwardRef { .. }),
+        "typing.TypeAliasType" => matches!(subject, Value::TypeAlias { .. }),
         "ParamSpecArgs" => {
             matches!(subject, Value::ParamSpecAccess { is_kwargs, .. } if !*is_kwargs)
         }
@@ -101687,6 +104028,7 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
             .map(normalize_big_int)
             .collect()),
         Value::RangeIterator { .. }
+        | Value::DequeIterator { .. }
         | Value::ListIterator { .. }
         | Value::TupleIterator { .. }
         | Value::TemplateIterator { .. }
@@ -103229,7 +105571,7 @@ fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, Stri
     loop {
         match advance_plain_iterator(&mut iterator)? {
             IteratorAdvance::Yield(value) => values.push(value),
-            IteratorAdvance::Complete(_) | IteratorAdvance::Raised => return Ok(values),
+            IteratorAdvance::Complete(_) => return Ok(values),
         }
     }
 }
@@ -103522,17 +105864,20 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             origin: Box::new(Value::Builtin(name)),
             args: generic_alias_args(index),
             union_unhashable_count: 0,
+            identity: Rc::new(()),
         }),
         Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::GenericAlias {
             origin: Box::new(Value::Builtin(name)),
             args: generic_alias_args(index),
             union_unhashable_count: 0,
+            identity: Rc::new(()),
         }),
         Value::NamedTupleType(_) => Ok(generic_alias_value(object, generic_alias_args(index))),
         Value::Class { .. } => Ok(Value::GenericAlias {
             origin: Box::new(object),
             args: generic_alias_args(index),
             union_unhashable_count: 0,
+            identity: Rc::new(()),
         }),
         value => Err(format!("{value} is not subscriptable")),
     }
@@ -103655,9 +106000,10 @@ fn substitute_type_params(value: Value, replacements: &[(Value, Value)]) -> Valu
                 generic_alias_value(origin, args)
             }
         }
-        Value::Unpack(value) => {
-            Value::Unpack(Box::new(substitute_type_params(*value, replacements)))
-        }
+        Value::Unpack(value) => Value::Unpack(Rc::new(substitute_type_params(
+            (*value).clone(),
+            replacements,
+        ))),
         Value::Tuple(items) => tuple_value(
             items
                 .as_ref()
@@ -103678,7 +106024,12 @@ fn substitute_type_params(value: Value, replacements: &[(Value, Value)]) -> Valu
     }
 }
 
-fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, String> {
+fn store_subscript(
+    vm: &mut Vm,
+    object: Value,
+    index: Value,
+    value: Value,
+) -> Result<Value, String> {
     match object {
         Value::List(items) => match index {
             Value::Slice {
@@ -103703,17 +106054,28 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             }
         },
         Value::UserList { data, attrs } => {
-            store_subscript(Value::List(data.clone()), index, value)?;
+            store_subscript(vm, Value::List(data.clone()), index, value)?;
             Ok(Value::UserList { data, attrs })
         }
-        Value::Deque { data, maxlen } => {
+        Value::Deque {
+            data,
+            maxlen,
+            state,
+        } => {
+            if matches!(index, Value::Slice { .. }) {
+                return Err("TypeError: sequence index must be integer, not 'slice'".to_string());
+            }
             let mut borrowed = data.borrow_mut();
             let index =
                 normalized_index(index, borrowed.len(), "deque").map_err(deque_index_error)?;
             if let Some(slot) = borrowed.get_mut(index) {
                 *slot = value;
                 drop(borrowed);
-                Ok(Value::Deque { data, maxlen })
+                Ok(Value::Deque {
+                    data,
+                    maxlen,
+                    state,
+                })
             } else {
                 Err("IndexError: deque index out of range".to_string())
             }
@@ -103779,12 +106141,14 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
         },
         Value::Dict(entries) => {
             ensure_hashable_key(&index)?;
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(Value::Dict(entries))
         }
         Value::OrderedDict(entries) => {
             ensure_hashable_key(&index)?;
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(Value::OrderedDict(entries))
         }
         Value::DefaultDict {
@@ -103792,7 +106156,8 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             default_factory,
         } => {
             ensure_hashable_key(&index)?;
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(Value::DefaultDict {
                 entries,
                 default_factory,
@@ -103800,25 +106165,29 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
         }
         Value::Counter { entries } => {
             ensure_hashable_key(&index)?;
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(Value::Counter { entries })
         }
         object if counter_subclass_entries(&object).is_some() => {
             ensure_hashable_key(&index)?;
             let entries = counter_subclass_entries(&object)
                 .expect("Counter subclass entries exist after guard");
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(object)
         }
         object if dict_subclass_entries(&object).is_some() => {
             let entries =
                 dict_subclass_entries(&object).expect("dict subclass entries exist after guard");
-            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut entries.borrow_mut(), index, value, hash)?;
             Ok(object)
         }
         Value::UserDict { data, attrs } => {
             ensure_hashable_key(&index)?;
-            insert_live_dict_entry(&mut data.borrow_mut(), index, value)?;
+            let hash = vm.stored_key_hash(&index)?;
+            insert_live_dict_entry_with_hash(&mut data.borrow_mut(), index, value, hash)?;
             Ok(Value::UserDict { data, attrs })
         }
         Value::ChainMap { maps } => {
@@ -103879,13 +106248,25 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
             delete_subscript(Value::List(data.clone()), index)?;
             Ok(Value::UserList { data, attrs })
         }
-        Value::Deque { data, maxlen } => {
+        Value::Deque {
+            data,
+            maxlen,
+            state,
+        } => {
+            if matches!(index, Value::Slice { .. }) {
+                return Err("TypeError: sequence index must be integer, not 'slice'".to_string());
+            }
             let mut borrowed = data.borrow_mut();
             let index =
                 normalized_index(index, borrowed.len(), "deque").map_err(deque_index_error)?;
             borrowed.remove(index);
+            state.set(state.get().wrapping_add(1));
             drop(borrowed);
-            Ok(Value::Deque { data, maxlen })
+            Ok(Value::Deque {
+                data,
+                maxlen,
+                state,
+            })
         }
         Value::ByteArray(bytes) => match index {
             Value::Slice {
@@ -104496,11 +106877,15 @@ fn normalized_index(index: Value, len: usize, type_name: &str) -> Result<usize, 
         return Err(match type_name {
             "string" => "string index out of range".to_string(),
             "range" => "range object index out of range".to_string(),
+            "array" => "IndexError: array index out of range".to_string(),
             _ => format!("{type_name} index out of range"),
         });
     }
 
-    usize::try_from(normalized).map_err(|_| format!("{type_name} index out of range"))
+    usize::try_from(normalized).map_err(|_| match type_name {
+        "array" => "IndexError: array index out of range".to_string(),
+        _ => format!("{type_name} index out of range"),
+    })
 }
 
 fn deque_index_error(error: String) -> String {
@@ -104624,10 +107009,6 @@ fn add_complex_zero_preserving(left: f64, right: f64) -> f64 {
 }
 
 fn add_values(left: Value, right: Value) -> Result<Value, String> {
-    if let Some(value) = counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Add)? {
-        return Ok(value);
-    }
-
     let original_left = left.clone();
     let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
@@ -104688,16 +107069,18 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             Value::Template {
                 strings: left_strings,
                 interpolations: left_interpolations,
+                ..
             },
             Value::Template {
                 strings: right_strings,
                 interpolations: right_interpolations,
+                ..
             },
         ) => Ok(concatenate_templates(
-            left_strings,
-            left_interpolations,
-            right_strings,
-            right_interpolations,
+            (*left_strings).clone(),
+            (*left_interpolations).clone(),
+            (*right_strings).clone(),
+            (*right_interpolations).clone(),
         )),
         (Value::Template { .. }, _) => Err(format!(
             "TypeError: can only concatenate string.templatelib.Template (not \"{}\") to string.templatelib.Template",
@@ -104769,11 +107152,6 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn in_place_add_values(left: Value, right: Value) -> Result<Value, String> {
-    if let Some(value) = counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Add)?
-    {
-        return Ok(value);
-    }
-
     match left {
         Value::List(items) => {
             let values = sequence_values(right)?;
@@ -104832,9 +107210,9 @@ fn bytearray_repeat_in_place(bytes: &ByteArrayRef, count: i64) -> Result<(), Str
 
 fn concatenate_templates(
     mut left_strings: Vec<String>,
-    mut left_interpolations: Vec<TemplateInterpolation>,
+    mut left_interpolations: Vec<Rc<TemplateInterpolation>>,
     right_strings: Vec<String>,
-    right_interpolations: Vec<TemplateInterpolation>,
+    right_interpolations: Vec<Rc<TemplateInterpolation>>,
 ) -> Value {
     let mut right_strings = right_strings.into_iter();
 
@@ -104849,14 +107227,15 @@ fn concatenate_templates(
     left_strings.extend(right_strings);
 
     Value::Template {
-        strings: left_strings,
-        interpolations: left_interpolations,
+        identity: Rc::new(()),
+        strings: Rc::new(left_strings),
+        interpolations: Rc::new(left_interpolations),
     }
 }
 
 fn template_iter_values(
     strings: Vec<String>,
-    interpolations: Vec<TemplateInterpolation>,
+    interpolations: Vec<Rc<TemplateInterpolation>>,
 ) -> Vec<Value> {
     let mut values = Vec::new();
     let mut interpolations = interpolations.into_iter();
@@ -105198,8 +107577,8 @@ fn repeat_values(values: Vec<Value>, count: i64) -> Result<Vec<Value>, String> {
 }
 
 fn deque_concat_value(left: &Value, right: &Value) -> Result<Value, String> {
-    let Value::Deque { data, maxlen } = left else {
-        return Err("__add__() expected a deque receiver".to_string());
+    let Value::Deque { data, maxlen, .. } = left else {
+        return Err("TypeError: __add__() expected a deque receiver".to_string());
     };
     let Value::Deque {
         data: right_data, ..
@@ -105213,11 +107592,12 @@ fn deque_concat_value(left: &Value, right: &Value) -> Result<Value, String> {
 
     let mut values = data.borrow().clone();
     for value in right_data.borrow().iter().cloned() {
-        deque_push_back_with_maxlen_vec(&mut values, *maxlen, value);
+        deque_push_back_with_maxlen_vec(&mut values, maxlen.get(), value);
     }
     Ok(Value::Deque {
         data: Rc::new(RefCell::new(values)),
-        maxlen: *maxlen,
+        maxlen: Rc::new(Cell::new(maxlen.get())),
+        state: Rc::new(Cell::new(0)),
     })
 }
 
@@ -105266,42 +107646,90 @@ fn deque_maxlen_value(value: Value) -> Result<usize, String> {
         Value::BigInt(value) => value,
         _ => unreachable!("deque_maxlen_value keeps only integer values"),
     };
-    if value.is_negative() {
-        return Err("ValueError: maxlen must be non-negative".to_string());
-    }
-    value
-        .to_usize()
-        .ok_or_else(|| "OverflowError: maxlen is too large".to_string())
+    let value = value
+        .to_isize()
+        .ok_or_else(|| "OverflowError: Python int too large to convert to C ssize_t".to_string())?;
+    usize::try_from(value).map_err(|_| "ValueError: maxlen must be non-negative".to_string())
 }
 
 fn deque_repeat_value(receiver: &Value, count: i64) -> Result<Value, String> {
-    let Value::Deque { data, maxlen } = receiver else {
-        return Err("__mul__() expected a deque receiver".to_string());
+    let Value::Deque { data, maxlen, .. } = receiver else {
+        return Err("TypeError: __mul__() expected a deque receiver".to_string());
     };
-    let mut values = repeat_values(data.borrow().clone(), count)?;
-    deque_truncate_left_to_maxlen(&mut values, *maxlen);
+    let values = match maxlen.get() {
+        Some(maxlen) => deque_repeated_items(&data.borrow(), maxlen, count)?,
+        None => repeat_values(data.borrow().clone(), count)?,
+    };
     Ok(Value::Deque {
         data: Rc::new(RefCell::new(values)),
-        maxlen: *maxlen,
+        maxlen: Rc::new(Cell::new(maxlen.get())),
+        state: Rc::new(Cell::new(0)),
     })
 }
 
-fn deque_repeat_in_place(data: &ListRef, maxlen: Option<usize>, count: i64) -> Result<(), String> {
-    let mut values = repeat_values(data.borrow().clone(), count)?;
-    deque_truncate_left_to_maxlen(&mut values, maxlen);
-    *data.borrow_mut() = values;
-    Ok(())
-}
-
-fn deque_extend_values(data: &ListRef, maxlen: Option<usize>, values: Vec<Value>) {
-    let mut items = data.borrow_mut();
-    for value in values {
-        deque_push_back_with_maxlen(&mut items, maxlen, value);
+/// The number of items of a repeated deque, which CPython keeps in a size.
+fn deque_repeated_length(length: usize, count: i64) -> Result<i64, String> {
+    if count <= 0 {
+        return Ok(0);
     }
+    (length as i64)
+        .checked_mul(count)
+        .ok_or_else(|| "MemoryError".to_string())
 }
 
-fn deque_push_back_with_maxlen(items: &mut Vec<Value>, maxlen: Option<usize>, value: Value) {
-    deque_push_back_with_maxlen_vec(items, maxlen, value);
+/// The items of a bounded deque that is repeated `count` times: the last
+/// items of the repeated sequence, as many as the deque can hold.
+fn deque_repeated_items(items: &[Value], maxlen: usize, count: i64) -> Result<Vec<Value>, String> {
+    let length = items.len();
+    let repeated = deque_repeated_length(length, count)?;
+    if repeated <= 0 || length == 0 {
+        return Ok(Vec::new());
+    }
+    let keep = repeated.min(maxlen as i64) as usize;
+    checked_byte_sequence_alloc_length(keep)?;
+    let start = (repeated - keep as i64) as usize % length;
+    Ok((0..keep)
+        .map(|offset| items[(start + offset) % length].clone())
+        .collect())
+}
+
+fn deque_repeat_in_place(
+    data: &ListRef,
+    maxlen: Option<usize>,
+    state: &Rc<Cell<u64>>,
+    count: i64,
+) -> Result<(), String> {
+    let length = data.borrow().len();
+    if count == 1 || length == 0 {
+        return Ok(());
+    }
+    if count <= 0 {
+        // The repeated sequence is empty, so the deque is emptied.
+        data.borrow_mut().clear();
+        state.set(state.get().wrapping_add(1));
+        return Ok(());
+    }
+    if let Some(maxlen) = maxlen {
+        deque_repeated_length(length, count)?;
+        if length == maxlen {
+            if length > 1 {
+                // The deque is full, so it keeps the same items and does not
+                // count as changed.
+                return Ok(());
+            }
+            // A deque with a single item keeps its item, but CPython counts
+            // it as changed.
+            state.set(state.get().wrapping_add(1));
+            return Ok(());
+        }
+        let values = deque_repeated_items(&data.borrow(), maxlen, count)?;
+        *data.borrow_mut() = values;
+    } else {
+        let values = repeat_values(data.borrow().clone(), count)?;
+        *data.borrow_mut() = values;
+    }
+    state.set(state.get().wrapping_add(1));
+    Ok(())
 }
 
 fn deque_push_back_with_maxlen_vec(items: &mut Vec<Value>, maxlen: Option<usize>, value: Value) {
@@ -105984,7 +108412,7 @@ fn percent_mapping_value(
         return match vm.load_subscript_value_catching(mapping.clone(), key)? {
             Ok(value) => Ok(PercentMappingValue::Value(value)),
             Err(exception) => {
-                vm.raise_exception(exception, true)?;
+                vm.raise_exception::<()>(exception, true)?;
                 Ok(PercentMappingValue::Raised)
             }
         };
@@ -105996,7 +108424,7 @@ fn percent_mapping_value(
             let Some(vm) = vm else {
                 return Err(message);
             };
-            vm.raise_exception(key_error_exception(key), true)?;
+            vm.raise_exception::<()>(key_error_exception(key), true)?;
             Ok(PercentMappingValue::Raised)
         }
         Err(message) => Err(message),
@@ -106173,7 +108601,7 @@ fn percent_format_bytes_char(
             let result = match vm.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
                 Err(exception) => {
-                    vm.raise_exception(exception, true)?;
+                    vm.raise_exception::<()>(exception, true)?;
                     return Ok(PercentProtocolResult::Raised);
                 }
             };
@@ -106527,7 +108955,7 @@ fn percent_integer_protocol_result(
     let result = match vm.call_value_catching(method, Vec::new())? {
         Ok(result) => result,
         Err(exception) => {
-            vm.raise_exception(exception, true)?;
+            vm.raise_exception::<()>(exception, true)?;
             return Ok(PercentIntegerProtocolResult::Raised);
         }
     };
@@ -106656,7 +109084,7 @@ fn percent_format_char(
             let result = match vm.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,
                 Err(exception) => {
-                    vm.raise_exception(exception, true)?;
+                    vm.raise_exception::<()>(exception, true)?;
                     return Ok(PercentProtocolResult::Raised);
                 }
             };
@@ -106767,7 +109195,7 @@ fn percent_float_value(
         let result = match vm.call_value_catching(method, Vec::new())? {
             Ok(result) => result,
             Err(exception) => {
-                vm.raise_exception(exception, true)?;
+                vm.raise_exception::<()>(exception, true)?;
                 return Ok(PercentProtocolResult::Raised);
             }
         };
@@ -106779,7 +109207,7 @@ fn percent_float_value(
     let result = match vm.call_value_catching(method, Vec::new())? {
         Ok(result) => result,
         Err(exception) => {
-            vm.raise_exception(exception, true)?;
+            vm.raise_exception::<()>(exception, true)?;
             return Ok(PercentProtocolResult::Raised);
         }
     };
@@ -108064,40 +110492,6 @@ fn ordered_compare_values(left: Value, right: Value, op: &str) -> Result<Orderin
     })
 }
 
-fn object_direct_ne_uses_rich_equality(left: &Value, right: &Value) -> bool {
-    if matches!(left, Value::UserString { .. }) {
-        return true;
-    }
-    object_direct_ne_rich_operand(left) && object_direct_ne_rich_operand(right)
-}
-
-fn object_direct_ne_rich_operand(value: &Value) -> bool {
-    matches!(
-        value,
-        Value::Number(_)
-            | Value::BigInt(_)
-            | Value::Float(_)
-            | Value::Complex { .. }
-            | Value::String(_)
-            | Value::IdentityString { .. }
-            | Value::Bytes(_)
-            | Value::ByteArray(_)
-            | Value::Bool(_)
-            | Value::List(_)
-            | Value::Tuple(_)
-            | Value::Set(_)
-            | Value::FrozenSet(_)
-            | Value::Dict(_)
-            | Value::OrderedDict(_)
-            | Value::DefaultDict { .. }
-            | Value::Range { .. }
-            | Value::Deque { .. }
-            | Value::UserList { .. }
-            | Value::UserDict { .. }
-            | Value::SimpleNamespace { .. }
-    )
-}
-
 fn less_values(left: Value, right: Value) -> Result<bool, String> {
     if let Some(message) = mappingproxy_order_type_error(&left, &right, "<") {
         return Err(message);
@@ -108196,28 +110590,33 @@ fn numeric_order_operand_is_nan(value: &Value) -> Option<bool> {
     }
 }
 
-fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
+fn contains_value(vm: &mut Vm, needle: Value, haystack: Value) -> Result<bool, String> {
     match haystack {
-        Value::List(items) => Ok(items
-            .borrow()
-            .iter()
-            .any(|item| sequence_items_match(item, &needle))),
-        Value::UserList { data, .. } => Ok(data
-            .borrow()
-            .iter()
-            .any(|item| sequence_items_match(item, &needle))),
-        Value::Deque { data, .. } => Ok(data
-            .borrow()
-            .iter()
-            .any(|item| sequence_items_match(item, &needle))),
-        Value::Tuple(items) => Ok(items.iter().any(|item| sequence_items_match(item, &needle))),
-        Value::NamedTuple { values, .. } => Ok(values
-            .iter()
-            .any(|item| sequence_items_match(item, &needle))),
+        Value::List(items) => {
+            let mut items = SequenceReader::new(SequenceItems::Mutable(items));
+            vm.container_items_contain(&mut items, &needle)
+        }
+        Value::UserList { data, .. } => {
+            let mut items = SequenceReader::new(SequenceItems::Mutable(data));
+            vm.container_items_contain(&mut items, &needle)
+        }
+        Value::Deque { data, state, .. } => {
+            let mut items = SequenceReader::new(SequenceItems::Deque(data, state));
+            vm.container_items_contain(&mut items, &needle)
+        }
+        Value::Tuple(items) => {
+            let mut items = SequenceReader::new(SequenceItems::Fixed(items));
+            vm.container_items_contain(&mut items, &needle)
+        }
+        Value::NamedTuple { values, .. } => {
+            let mut items = SequenceReader::new(SequenceItems::Fixed(values));
+            vm.container_items_contain(&mut items, &needle)
+        }
         value if tuple_subclass_items(&value).is_some() => {
             let items =
                 tuple_subclass_items(&value).expect("tuple subclass items exist after guard");
-            Ok(items.iter().any(|item| sequence_items_match(item, &needle)))
+            let mut items = SequenceReader::new(SequenceItems::Fixed(items));
+            vm.container_items_contain(&mut items, &needle)
         }
         Value::Set(items) => {
             ensure_set_lookup_key(&needle)?;
@@ -108423,14 +110822,16 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                     .iter()
                     .any(|(key, _)| dict_keys_equal(key, &needle)))
             }
-            DictViewKind::Values => Ok(entries
-                .borrow()
-                .iter()
-                .any(|(_, value)| sequence_items_match(value, &needle))),
-            DictViewKind::Items => Ok(entries
-                .borrow()
-                .iter()
-                .any(|(key, value)| dict_view_item_matches(&needle, key, value))),
+            DictViewKind::Values => vm.dict_view_contains_value(&entries, &needle),
+            DictViewKind::Items => {
+                let entries = entries.borrow().entries.clone();
+                for (key, value) in entries {
+                    if dict_view_item_matches(vm, &needle, &key, &value)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
         },
         Value::PicklePayload(_) => match needle {
             Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => Ok(false),
@@ -108443,8 +110844,16 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
     }
 }
 
-fn sequence_items_match(left: &Value, right: &Value) -> bool {
-    is_identical(left, right) || left == right
+/// The equality of two values for the container operations that CPython
+/// answers with the rich comparison.
+///
+/// The comparison of two code objects decides by their name as well, which
+/// the derived equality of the values does not know.
+fn values_match_by_equality(left: &Value, right: &Value) -> bool {
+    if let (Value::CodeObject { .. }, Value::CodeObject { .. }) = (left, right) {
+        return code_objects_equal(left, right);
+    }
+    left == right
 }
 
 fn dict_view_item_pair(needle: &Value) -> Option<(&Value, &Value)> {
@@ -108454,10 +110863,19 @@ fn dict_view_item_pair(needle: &Value) -> Option<(&Value, &Value)> {
     }
 }
 
-fn dict_view_item_matches(needle: &Value, key: &Value, value: &Value) -> bool {
-    dict_view_item_pair(needle).is_some_and(|(needle_key, needle_value)| {
-        dict_keys_equal(key, needle_key) && sequence_items_match(value, needle_value)
-    })
+fn dict_view_item_matches(
+    vm: &mut Vm,
+    needle: &Value,
+    key: &Value,
+    value: &Value,
+) -> Result<bool, String> {
+    let Some((needle_key, needle_value)) = dict_view_item_pair(needle) else {
+        return Ok(false);
+    };
+    if !dict_keys_equal(key, needle_key) {
+        return Ok(false);
+    }
+    vm.container_items_equal(value, needle_value)
 }
 
 fn bound_methods_directly_equal(left: &Value, right: &Value) -> Option<bool> {
@@ -108478,495 +110896,6 @@ fn bound_methods_directly_equal(left: &Value, right: &Value) -> Option<bool> {
     };
 
     Some(is_identical(left_function, right_function) && is_identical(left_receiver, right_receiver))
-}
-
-fn is_identical(left: &Value, right: &Value) -> bool {
-    match (left, right) {
-        (Value::None, Value::None)
-        | (Value::NotImplemented, Value::NotImplemented)
-        | (Value::Ellipsis, Value::Ellipsis)
-        | (Value::FunctoolsPlaceholder, Value::FunctoolsPlaceholder)
-        | (Value::Bool(true), Value::Bool(true))
-        | (Value::Bool(false), Value::Bool(false)) => true,
-        (Value::Number(left), Value::Number(right)) => left == right && (-5..=256).contains(left),
-        (Value::Bytes(left), Value::Bytes(right)) => {
-            (left.is_empty() && right.is_empty()) || Rc::ptr_eq(left, right)
-        }
-        (Value::Float(left), Value::Float(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::Complex {
-                identity: left_identity,
-                ..
-            },
-            Value::Complex {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (Value::List(left), Value::List(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::UserList {
-                data: left_data, ..
-            },
-            Value::UserList {
-                data: right_data, ..
-            },
-        ) => Rc::ptr_eq(left_data, right_data),
-        (Value::Tuple(left), Value::Tuple(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::NamedTuple {
-                values: left_values,
-                ..
-            },
-            Value::NamedTuple {
-                values: right_values,
-                ..
-            },
-        ) => Rc::ptr_eq(left_values, right_values),
-        (Value::ByteArray(left), Value::ByteArray(right)) => Rc::ptr_eq(left, right),
-        (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) => {
-            Rc::ptr_eq(left, right)
-        }
-        (Value::Set(left), Value::Set(right)) => Rc::ptr_eq(left, right),
-        (Value::FrozenSet(left), Value::FrozenSet(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::Range {
-                identity: left_identity,
-                ..
-            },
-            Value::Range {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),
-        (Value::OrderedDict(left), Value::OrderedDict(right)) => Rc::ptr_eq(left, right),
-        (Value::Counter { entries: left }, Value::Counter { entries: right }) => {
-            Rc::ptr_eq(left, right)
-        }
-        (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::DictView {
-                kind: left_kind,
-                identity: left_identity,
-                ..
-            },
-            Value::DictView {
-                kind: right_kind,
-                identity: right_identity,
-                ..
-            },
-        ) => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::MappingView {
-                kind: left_kind,
-                identity: left_identity,
-                ..
-            },
-            Value::MappingView {
-                kind: right_kind,
-                identity: right_identity,
-                ..
-            },
-        ) => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::MappingProxy {
-                identity: left_identity,
-                ..
-            },
-            Value::MappingProxy {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::MappingProxyObject {
-                identity: left_identity,
-                ..
-            },
-            Value::MappingProxyObject {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::UserDict {
-                data: left_data, ..
-            },
-            Value::UserDict {
-                data: right_data, ..
-            },
-        ) => Rc::ptr_eq(left_data, right_data),
-        (
-            Value::DefaultDict {
-                entries: left_entries,
-                ..
-            },
-            Value::DefaultDict {
-                entries: right_entries,
-                ..
-            },
-        ) => Rc::ptr_eq(left_entries, right_entries),
-        (
-            Value::SimpleNamespace {
-                fields: left_fields,
-            },
-            Value::SimpleNamespace {
-                fields: right_fields,
-            },
-        ) => Rc::ptr_eq(left_fields, right_fields),
-        (
-            Value::Frame {
-                fields: left_fields,
-            },
-            Value::Frame {
-                fields: right_fields,
-            },
-        ) => Rc::ptr_eq(left_fields, right_fields),
-        (
-            Value::Class {
-                attrs: left_attrs, ..
-            },
-            Value::Class {
-                attrs: right_attrs, ..
-            },
-        ) => Rc::ptr_eq(left_attrs, right_attrs),
-        (Value::NamedTupleType(left), Value::NamedTupleType(right)) => {
-            Rc::ptr_eq(&left.identity, &right.identity)
-        }
-        (
-            Value::TypeParam {
-                identity: left_identity,
-                ..
-            },
-            Value::TypeParam {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::ParamSpecAccess {
-                identity: left_identity,
-                ..
-            },
-            Value::ParamSpecAccess {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::NamedTupleFieldDescriptor {
-                typ: left_typ,
-                index: left_index,
-            },
-            Value::NamedTupleFieldDescriptor {
-                typ: right_typ,
-                index: right_index,
-            },
-        ) => Rc::ptr_eq(left_typ, right_typ) && left_index == right_index,
-        (
-            Value::Instance {
-                fields: left_fields,
-                ..
-            },
-            Value::Instance {
-                fields: right_fields,
-                ..
-            },
-        ) => Rc::ptr_eq(left_fields, right_fields),
-        (
-            Value::Exception {
-                identity: left_identity,
-                ..
-            },
-            Value::Exception {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::Module {
-                attrs: left_attrs, ..
-            },
-            Value::Module {
-                attrs: right_attrs, ..
-            },
-        ) => Rc::ptr_eq(left_attrs, right_attrs),
-        (
-            Value::Function {
-                identity: left_identity,
-                ..
-            },
-            Value::Function {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::MagicMock {
-                identity: left_identity,
-                ..
-            },
-            Value::MagicMock {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::MockMethod {
-                identity: left_identity,
-                ..
-            },
-            Value::MockMethod {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::Super {
-                identity: left_identity,
-                ..
-            },
-            Value::Super {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::BoundMethod {
-                identity: left_identity,
-                ..
-            },
-            Value::BoundMethod {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::Partial {
-                identity: left_identity,
-                ..
-            },
-            Value::Partial {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::LruCacheWrapper {
-                identity: left_identity,
-                ..
-            },
-            Value::LruCacheWrapper {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::SingleDispatch {
-                identity: left_identity,
-                ..
-            },
-            Value::SingleDispatch {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::SingleDispatchRegister {
-                identity: left_identity,
-                ..
-            },
-            Value::SingleDispatchRegister {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::SingleDispatchMethod {
-                identity: left_identity,
-                ..
-            },
-            Value::SingleDispatchMethod {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::SingleDispatchMethodCallable {
-                identity: left_identity,
-                ..
-            },
-            Value::SingleDispatchMethodCallable {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::PartialMethod {
-                identity: left_identity,
-                ..
-            },
-            Value::PartialMethod {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::PartialMethodCall {
-                identity: left_identity,
-                ..
-            },
-            Value::PartialMethodCall {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::CachedProperty {
-                identity: left_identity,
-                ..
-            },
-            Value::CachedProperty {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::OperatorAttrGetter {
-                identity: left_identity,
-                ..
-            },
-            Value::OperatorAttrGetter {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::OperatorItemGetter {
-                identity: left_identity,
-                ..
-            },
-            Value::OperatorItemGetter {
-                identity: right_identity,
-                ..
-            },
-        )
-        | (
-            Value::OperatorMethodCaller {
-                identity: left_identity,
-                ..
-            },
-            Value::OperatorMethodCaller {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::TypesCoroutineFunction {
-                identity: left_identity,
-                ..
-            },
-            Value::TypesCoroutineFunction {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::CodeObject {
-                identity: left_identity,
-                ..
-            },
-            Value::CodeObject {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::Cell {
-                identity: left_identity,
-                ..
-            },
-            Value::Cell {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::AstNode {
-                identity: left_identity,
-                ..
-            },
-            Value::AstNode {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::Traceback {
-                identity: left_identity,
-            },
-            Value::Traceback {
-                identity: right_identity,
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::IdentityString {
-                identity: left_identity,
-                ..
-            },
-            Value::IdentityString {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (Value::String(left), Value::IdentityString { value: right, .. })
-        | (Value::IdentityString { value: left, .. }, Value::String(right)) => left == right,
-        (
-            Value::MemberDescriptor {
-                name: left_name,
-                owner_name: left_owner_name,
-                ..
-            },
-            Value::MemberDescriptor {
-                name: right_name,
-                owner_name: right_owner_name,
-                ..
-            },
-        ) => left_name == right_name && left_owner_name == right_owner_name,
-        (Value::Iterator(left), Value::Iterator(right)) => Rc::ptr_eq(left, right),
-        (Value::Generator(left), Value::Generator(right)) => Rc::ptr_eq(left, right),
-        (
-            Value::GeneratorWrapper {
-                identity: left_identity,
-                ..
-            },
-            Value::GeneratorWrapper {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (
-            Value::WeakRef {
-                identity: left_identity,
-                ..
-            },
-            Value::WeakRef {
-                identity: right_identity,
-                ..
-            },
-        ) => Rc::ptr_eq(left_identity, right_identity),
-        (Value::Coroutine(left), Value::Coroutine(right)) => Rc::ptr_eq(left, right),
-        (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
-        (Value::AwaitIterator(left), Value::AwaitIterator(right)) => left == right,
-        (Value::AsyncGenerator(left), Value::AsyncGenerator(right)) => Rc::ptr_eq(left, right),
-        (Value::MemoryView(left), Value::MemoryView(right)) => Rc::ptr_eq(left, right),
-        (Value::Re(left), Value::Re(right)) => left.identity() == right.identity(),
-        (Value::BytesIO(left), Value::BytesIO(right)) => Rc::ptr_eq(left, right),
-        (Value::StringIOBuffer(left), Value::StringIOBuffer(right)) => Rc::ptr_eq(left, right),
-        (Value::Builtin(left), Value::Builtin(right)) => left == right,
-        _ => false,
-    }
 }
 
 fn is_truthy(value: &Value) -> Result<bool, String> {
@@ -109028,6 +110957,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
             start, stop, step, ..
         } => Ok(!range_is_exhausted(start, stop, step)),
         Value::RangeIterator { .. } => Ok(true),
+        Value::DequeIterator { .. } => Ok(true),
         Value::ListIterator { .. } => Ok(true),
         Value::TupleIterator { .. } => Ok(true),
         Value::TemplateIterator { .. } => Ok(true),
@@ -109081,7 +111011,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::GeneratorWrapper { .. } => Ok(true),
         Value::Coroutine(_) => Ok(true),
         Value::CoroutineAwait(_) => Ok(true),
-        Value::AwaitIterator(_) => Ok(true),
+        Value::AwaitIterator(..) => Ok(true),
         Value::AsyncGenerator(_) => Ok(true),
         Value::AsyncGeneratorNext { .. }
         | Value::AsyncGeneratorThrow { .. }
@@ -109139,6 +111069,152 @@ mod tests {
     use super::Vm;
     use crate::bytecode::{FormatConversion, Instruction};
     use crate::value::{Value, float_value, list_value};
+
+    #[test]
+    fn template_allocation_counts_payload_once_per_identity() {
+        let mut seen = std::collections::HashSet::new();
+        let template = Value::Template {
+            identity: crate::rc::Rc::new(()),
+            strings: crate::rc::Rc::new(vec!["literal".into()]),
+            interpolations: crate::rc::Rc::new(vec![crate::rc::Rc::new(
+                crate::value::TemplateInterpolation {
+                    identity: crate::rc::Rc::new(()),
+                    value: Box::new(Value::String("payload".into())),
+                    expression: "x".into(),
+                    conversion: None,
+                    format_spec: String::new(),
+                },
+            )]),
+        };
+        let first = super::estimated_value_allocation(&template, &mut seen);
+        assert!(first >= "literal".len() + "payload".len() + 1);
+        assert_eq!(
+            super::estimated_value_allocation(&template.clone(), &mut seen),
+            0
+        );
+        let mut distinct = template.clone();
+        let Value::Template { identity, .. } = &mut distinct else {
+            unreachable!()
+        };
+        *identity = crate::rc::Rc::new(());
+        assert!(super::estimated_value_allocation(&distinct, &mut seen) > 0);
+    }
+
+    #[test]
+    fn interpolation_clones_share_payload_and_are_charged_once() {
+        use crate::rc::Rc;
+        let item = Rc::new(crate::value::TemplateInterpolation {
+            identity: Rc::new(()),
+            value: Box::new(Value::String("payload".repeat(1000))),
+            expression: "expression".repeat(1000),
+            conversion: None,
+            format_spec: "format".repeat(1000),
+        });
+        let interpolation = Value::TemplateInterpolation(Rc::clone(&item));
+        let template = Value::Template {
+            identity: Rc::new(()),
+            strings: Rc::new(vec![String::new()]),
+            interpolations: Rc::new(vec![Rc::clone(&item)]),
+        };
+        let mut seen = std::collections::HashSet::new();
+        assert!(super::estimated_value_allocation(&interpolation, &mut seen) >= 23_000);
+        assert_eq!(
+            super::estimated_value_allocation(&interpolation.clone(), &mut seen),
+            0
+        );
+        assert_eq!(
+            super::estimated_value_allocation(&template, &mut seen),
+            std::mem::size_of::<String>()
+                + std::mem::size_of::<Rc<crate::value::TemplateInterpolation>>()
+        );
+        let Value::TemplateInterpolation(copy) = interpolation.clone() else {
+            unreachable!()
+        };
+        assert!(Rc::ptr_eq(&item, &copy));
+        let mut seen = std::collections::HashSet::new();
+        assert!(super::estimated_value_allocation(&template, &mut seen) >= 23_000);
+        assert_eq!(
+            super::estimated_value_allocation(&interpolation, &mut seen),
+            0
+        );
+    }
+
+    #[test]
+    fn template_clones_share_the_allocated_payload() {
+        use crate::rc::Rc;
+        let template = Value::Template {
+            identity: Rc::new(()),
+            strings: Rc::new(vec!["literal".repeat(100)]),
+            interpolations: Rc::new(vec![]),
+        };
+        let copy = template.clone();
+        let (
+            Value::Template {
+                strings: a,
+                interpolations: x,
+                ..
+            },
+            Value::Template {
+                strings: b,
+                interpolations: y,
+                ..
+            },
+        ) = (&template, &copy)
+        else {
+            unreachable!()
+        };
+        assert!(Rc::ptr_eq(a, b));
+        assert!(Rc::ptr_eq(x, y));
+        let mut seen = std::collections::HashSet::new();
+        assert!(super::estimated_value_allocation(&template, &mut seen) >= 700);
+        assert_eq!(super::estimated_value_allocation(&copy, &mut seen), 0);
+    }
+
+    #[test]
+    fn distinct_templates_charge_shared_interpolation_vector_storage() {
+        use crate::rc::Rc;
+        let item = Rc::new(crate::value::TemplateInterpolation {
+            identity: Rc::new(()),
+            value: Box::new(Value::None),
+            expression: String::new(),
+            conversion: None,
+            format_spec: String::new(),
+        });
+        let items = Rc::new(vec![item; 1000]);
+        let make = || Value::Template {
+            identity: Rc::new(()),
+            strings: Rc::new(vec![]),
+            interpolations: items.clone(),
+        };
+        let (first, second) = (make(), make());
+        let mut seen = std::collections::HashSet::new();
+        let minimum = 1000 * std::mem::size_of::<Rc<crate::value::TemplateInterpolation>>();
+        assert!(super::estimated_value_allocation(&first, &mut seen) >= minimum);
+        assert!(super::estimated_value_allocation(&second, &mut seen) >= minimum);
+    }
+
+    #[test]
+    fn wrapper_identities_do_not_visit_contents() {
+        use crate::rc::Rc;
+        use std::cell::RefCell;
+        let items = Rc::new(RefCell::new(Vec::new()));
+        let cycle = Value::List(items.clone());
+        items.borrow_mut().push(cycle.clone());
+        let values = [
+            Value::Unpack(Rc::new(cycle.clone())),
+            Value::PicklePayload(Rc::new(cycle.clone())),
+            Value::AwaitIterator(Box::new(cycle), Rc::new(())),
+        ];
+        for value in &values {
+            let copy = value.clone();
+            let before = super::identity_bits(value);
+            assert_eq!(before, super::identity_bits(&copy));
+            assert!(super::is_identical(value, &copy));
+            items.borrow_mut().push(Value::None);
+            assert_eq!(before, super::identity_bits(value));
+        }
+        items.borrow_mut().clear();
+    }
 
     #[test]
     fn runs_print_number_program() {

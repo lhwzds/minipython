@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"copied\": true, \"equal\": true, \"kind\": \"alias\", \"same\": true}\n"
+  ]
+}

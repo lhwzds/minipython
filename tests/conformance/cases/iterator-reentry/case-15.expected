@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "inner 0\n",
+    "outer 0\n"
+  ]
+}

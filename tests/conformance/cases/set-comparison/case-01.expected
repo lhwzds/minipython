@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"different_members\": false, \"equal\": true, \"kind\": \"result\"}\n"
+  ]
+}

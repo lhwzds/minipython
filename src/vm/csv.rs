@@ -235,7 +235,7 @@ fn class_getitem() -> (String, Value) {
     (
         "__class_getitem__".to_string(),
         Value::ClassMethod {
-            function: Box::new(Value::Builtin("GenericAlias".to_string())),
+            function: Rc::new(Value::Builtin("GenericAlias".to_string())),
             identity: Rc::new(()),
         },
     )
@@ -1161,7 +1161,7 @@ impl Vm {
                 let mut error = exception_from_value(error)?;
                 error.context = Some(Box::new(exception));
                 error.suppress_context = true;
-                Err(self.remember_runtime_exception_error(error))
+                self.raise_exception(error, true)
             }
             Err(exception) => Err(self.propagate_captured_exception(exception)),
         }

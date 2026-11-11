@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"calls\": [\"left\", \"right\"], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"result\", \"size\": 1, \"values\": [\"second\"]}\n",
+    "{\"kind\": \"result\", \"merged\": {\"a\": 3, \"b\": 3}}\n",
+    "{\"counter\": {\"a\": 3, \"b\": 3}, \"kind\": \"result\"}\n"
+  ]
+}

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 
 use minipython::{
     DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES, DEFAULT_SANDBOX_MAX_CALL_DEPTH,
     DEFAULT_SANDBOX_MAX_INSTRUCTIONS, DEFAULT_SANDBOX_MAX_OUTPUT_BYTES, ExecutionStatus,
-    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, serve_python_binding,
-    serve_session_worker, serve_worker_once,
+    INTERNAL_WORKER_ENV, Sandbox, SandboxInputs, SandboxLimits, SandboxMode, TerminalKind,
+    serve_python_binding, serve_session_worker, serve_worker_once,
 };
 
 const DEFAULT_MAX_PROCESS_MEMORY_BYTES: u64 = 256 * 1_048_576;
@@ -28,6 +28,7 @@ struct Config {
     max_allocated_bytes: usize,
     bytes_warning: i64,
     root: Option<PathBuf>,
+    status_file: Option<PathBuf>,
     mode: ExecutionMode,
     argv: Vec<String>,
 }
@@ -51,6 +52,7 @@ impl Default for Config {
             max_allocated_bytes: DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES,
             bytes_warning: 0,
             root: None,
+            status_file: None,
             mode: ExecutionMode::Exec,
             argv: Vec::new(),
         }
@@ -123,6 +125,12 @@ fn parse_args(args: &[String]) -> (Config, SourceInput) {
             }
             "--root" => {
                 config.root = Some(PathBuf::from(
+                    args.get(index + 1).unwrap_or_else(|| usage()),
+                ));
+                index += 2;
+            }
+            "--status-file" => {
+                config.status_file = Some(PathBuf::from(
                     args.get(index + 1).unwrap_or_else(|| usage()),
                 ));
                 index += 2;
@@ -203,6 +211,7 @@ fn print_help() -> ! {
         "  --max-allocated-bytes n  VM materialization limit (default: {DEFAULT_SANDBOX_MAX_ALLOCATED_BYTES})"
     );
     println!("  --root path              import Python modules below a canonical sandbox root");
+    println!("  --status-file path       write the run's result status as JSON to path");
     println!("  -V, --version            print the mnpy version and exit");
     println!("  -h, --help               show this help");
     process::exit(0);
@@ -246,8 +255,70 @@ fn read_source(input: SourceInput, limit: usize) -> Result<String, String> {
     }
 }
 
+/// The JSON object mnpy writes to its `--status-file` path: the run's
+/// `ExecutionStatus`, and the terminal condition when the sandbox, not the
+/// program, ended the run.
+fn status_file_contents(status: ExecutionStatus, terminal: Option<TerminalKind>) -> String {
+    let payload = serde_json::json!({
+        "status": status,
+        "terminal": terminal,
+    });
+    let mut contents = serde_json::to_string(&payload).expect("the status payload serializes");
+    contents.push('\n');
+    contents
+}
+
+/// Write the run's status to the `--status-file` path, replacing any file
+/// there.
+///
+/// The write is separate from the report of its failure: a run writes its
+/// status before it prints any output, so the caller can report a failed
+/// write once the output is out.
+fn try_write_status_file(
+    path: Option<&Path>,
+    status: ExecutionStatus,
+    terminal: Option<TerminalKind>,
+) -> io::Result<()> {
+    let Some(path) = path else {
+        return Ok(());
+    };
+    fs::write(path, status_file_contents(status, terminal))
+}
+
+/// Report a status file that could not be written. A status file that
+/// cannot be written is fatal: the run's result cannot be reported any
+/// other way, so mnpy exits 2 instead of the exit code the run would
+/// have had.
+fn report_status_file_failure(path: &Path, error: &io::Error) -> ! {
+    eprintln!("mnpy: cannot write status file {}: {error}", path.display());
+    process::exit(2);
+}
+
+/// Write the run's status to the `--status-file` path, replacing any file
+/// there. A status file that cannot be written is fatal: the run's result
+/// cannot be reported any other way, so mnpy exits 2 instead of the exit
+/// code the run would have had.
+fn write_status_file(path: Option<&Path>, status: ExecutionStatus, terminal: Option<TerminalKind>) {
+    let Some(path) = path else {
+        return;
+    };
+    if let Err(error) = try_write_status_file(Some(path), status, terminal) {
+        report_status_file_failure(path, &error);
+    }
+}
+
 fn run_parent(config: Config, source: String) -> ! {
+    let status_file = config.status_file.clone();
     let executable = env::current_exe().unwrap_or_else(|error| {
+        // The status file is written before the message is printed: a
+        // print can fail (a closed stderr pipe panics), and the status
+        // file is the only record of how the run ended, so it must not
+        // be lost to a failed print.
+        write_status_file(
+            status_file.as_deref(),
+            ExecutionStatus::WorkerCrash,
+            Some(TerminalKind::WorkerFailure),
+        );
         eprintln!("sandbox error: cannot locate worker executable: {error}");
         process::exit(2);
     });
@@ -273,23 +344,38 @@ fn run_parent(config: Config, source: String) -> ! {
         ExecutionMode::Check => SandboxMode::Check,
     };
     let result = sandbox.execute(mode, &source, SandboxInputs::new());
+    // The exit code is decided, and the status file written, before any of
+    // the run's output: printing can fail (a closed stdout pipe panics),
+    // and the status file is the only record of how the run ended, so it
+    // must not be lost to a failed print.
+    let exited = result.exit_code.is_some();
+    let exit_code = match result.exit_code {
+        Some(code) => code,
+        None if result.status == ExecutionStatus::Success => 0,
+        None => 1,
+    };
+    let status_written =
+        try_write_status_file(status_file.as_deref(), result.status, result.terminal);
     print!("{}", result.stdout);
     eprint!("{}", result.stderr);
-    if let Some(code) = result.exit_code {
+    if exited {
         // An uncaught SystemExit already wrote any message to stderr.
         let _ = io::stdout().flush();
-        process::exit(code);
-    }
-    if result.status == ExecutionStatus::Success {
+    } else if result.status == ExecutionStatus::Success {
         if mode == SandboxMode::Eval {
             println!("{}", result.value_display.unwrap_or_default());
         }
-        process::exit(0);
+    } else {
+        // Uncaught Python exceptions get CPython's traceback shape; sandbox,
+        // worker, and syntax failures keep their one-line phase prefix.
+        eprint!("{}", result.error_report());
     }
-    // Uncaught Python exceptions get CPython's traceback shape; sandbox,
-    // worker, and syntax failures keep their one-line phase prefix.
-    eprint!("{}", result.error_report());
-    process::exit(1);
+    if let Err(error) = status_written {
+        if let Some(path) = status_file.as_deref() {
+            report_status_file_failure(path, &error);
+        }
+    }
+    process::exit(exit_code);
 }
 
 fn infer_file_root(config: &mut Config, input: &SourceInput) {
@@ -333,6 +419,11 @@ pub(crate) fn main() {
     let (mut config, input) = parse_args(&args);
     infer_file_root(&mut config, &input);
     let source = read_source(input, config.max_source_bytes).unwrap_or_else(|error| {
+        // The status file is written before the message is printed: a
+        // print can fail (a closed stderr pipe panics), and the status
+        // file is the only record of how the run ended, so it must not
+        // be lost to a failed print.
+        write_status_file(config.status_file.as_deref(), ExecutionStatus::Error, None);
         eprintln!("{error}");
         process::exit(1);
     });

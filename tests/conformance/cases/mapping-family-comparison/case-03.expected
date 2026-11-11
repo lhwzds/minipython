@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"different_key\": false, \"kind\": \"result\", \"name\": \"Counter\", \"reverse\": false}\n",
+    "{\"different_key\": false, \"kind\": \"result\", \"name\": \"OrderedDict\", \"reverse\": false}\n",
+    "{\"different_key\": false, \"kind\": \"result\", \"name\": \"ChainMap\", \"reverse\": false}\n",
+    "{\"different_key\": false, \"kind\": \"result\", \"name\": \"UserDict\", \"reverse\": false}\n"
+  ]
+}

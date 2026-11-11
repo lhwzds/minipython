@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "caught Boom boom\n",
+    "caught Boom boom\n",
+    "caught Boom boom\n",
+    "caught Boom boom\n"
+  ]
+}

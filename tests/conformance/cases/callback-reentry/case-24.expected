@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "1\n",
+    "buffered peer 1\n",
+    "2\n",
+    "2\n"
+  ]
+}

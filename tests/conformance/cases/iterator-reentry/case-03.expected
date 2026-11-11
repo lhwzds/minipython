@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "chain.from_iterable\n",
+    "inner 1\n",
+    "outer 0\n"
+  ]
+}

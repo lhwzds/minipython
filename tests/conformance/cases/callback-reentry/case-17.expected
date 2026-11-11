@@ -1,0 +1,24 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "no close\n",
+    "no close\n",
+    "[1, 2]\n",
+    "no close\n",
+    "no close\n",
+    "[1, 2]\n",
+    "no close\n",
+    "no close\n",
+    "[(1,), (2,)]\n",
+    "no close\n",
+    "no close\n",
+    "[(0, 1), (1, 2)]\n",
+    "no close\n",
+    "no close\n",
+    "[1, 2]\n",
+    "no close\n",
+    "no close\n",
+    "[1, 3]\n"
+  ]
+}

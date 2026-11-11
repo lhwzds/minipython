@@ -1174,7 +1174,7 @@ impl Vm {
                     let indent = self.ap_int_attr(receiver, "_current_indent")?;
                     lengths.push(length + indent);
                 }
-                IteratorAdvance::Complete(_) | IteratorAdvance::Raised => break,
+                IteratorAdvance::Complete(_) => break,
             }
         }
         let action_length = lengths.into_iter().max().unwrap_or(0);
@@ -1270,7 +1270,7 @@ impl Vm {
                     let formatted = self.ap_method(receiver, "_format_action", vec![subaction])?;
                     parts.push(formatted);
                 }
-                IteratorAdvance::Complete(_) | IteratorAdvance::Raised => break,
+                IteratorAdvance::Complete(_) => break,
             }
         }
         self.ap_method(receiver, "_join_parts", vec![list_value(parts)])

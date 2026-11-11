@@ -263,3 +263,8 @@ mod tests {
         );
     }
 }
+
+#[cfg(unix)]
+pub(crate) fn is_kill_signal(signal: i32) -> bool {
+    signal == libc::SIGKILL
+}

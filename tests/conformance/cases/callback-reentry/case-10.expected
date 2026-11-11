@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "deque([t, 1], maxlen=5)\n",
+    "deque([42], maxlen=5)\n",
+    "deque([[...]], maxlen=5)\n"
+  ]
+}

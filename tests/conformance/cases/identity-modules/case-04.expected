@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"identity\", \"repeated\": true, \"repeated_not\": false, \"self\": true}\n",
+    "{\"kind\": \"module_operation\", \"module\": \"itertools\", \"result\": [false, false]}\n"
+  ]
+}

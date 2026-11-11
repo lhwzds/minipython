@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"alias\": true, \"alias_not\": false, \"fresh\": false, \"fresh_not\": true, \"kind\": \"identity\"}\n"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"result\", \"lists\": false, \"tuples\": false}\n"
+  ]
+}

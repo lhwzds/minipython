@@ -1,0 +1,22 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"maxlen must be non-negative\", \"type\": \"ValueError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"Python int too large to convert to C ssize_t\", \"type\": \"OverflowError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"Python int too large to convert to C ssize_t\", \"type\": \"OverflowError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"Python int too large to convert to C ssize_t\", \"type\": \"OverflowError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"Python int too large to convert to C ssize_t\", \"type\": \"OverflowError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"an integer is required\", \"type\": \"TypeError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"kind\": \"exception\", \"message\": \"an integer is required\", \"type\": \"TypeError\"}\n",
+    "{\"first\": 1, \"items\": [1, 2], \"kind\": \"unchanged\", \"maxlen\": 3}\n",
+    "{\"items\": [7], \"kind\": \"result\", \"maxlen\": 1}\n",
+    "{\"items\": [7], \"kind\": \"result\", \"maxlen\": null}\n"
+  ]
+}

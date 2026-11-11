@@ -1,0 +1,24 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"count\": 1099511627776, \"items\": [0, 0], \"kind\": \"repeat\", \"length\": 1, \"maxlen\": 2, \"next\": \"RuntimeError\"}\n",
+    "{\"count\": 4611686018427387904, \"items\": [0, 0], \"kind\": \"repeat\", \"length\": 1, \"maxlen\": 2, \"next\": \"RuntimeError\"}\n",
+    "{\"count\": 9223372036854775808, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 1, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 1180591620717411303424, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 1, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 1099511627776, \"items\": [0, 1], \"kind\": \"repeat\", \"length\": 2, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 4611686018427387904, \"items\": \"error MemoryError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 9223372036854775808, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 1180591620717411303424, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": 2, \"next\": 0}\n",
+    "{\"count\": 1099511627776, \"items\": [0, 1, 2], \"kind\": \"repeat\", \"length\": 3, \"maxlen\": 3, \"next\": 0}\n",
+    "{\"count\": 4611686018427387904, \"items\": \"error MemoryError\", \"kind\": \"repeat\", \"length\": 3, \"maxlen\": 3, \"next\": 0}\n",
+    "{\"count\": 9223372036854775808, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 3, \"maxlen\": 3, \"next\": 0}\n",
+    "{\"count\": 1180591620717411303424, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 3, \"maxlen\": 3, \"next\": 0}\n",
+    "{\"count\": 9223372036854775808, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 1, \"maxlen\": null, \"next\": 0}\n",
+    "{\"count\": 1180591620717411303424, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 1, \"maxlen\": null, \"next\": 0}\n",
+    "{\"count\": 4611686018427387904, \"items\": \"error MemoryError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": null, \"next\": 0}\n",
+    "{\"count\": 9223372036854775808, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": null, \"next\": 0}\n",
+    "{\"count\": 1180591620717411303424, \"items\": \"error OverflowError\", \"kind\": \"repeat\", \"length\": 2, \"maxlen\": null, \"next\": 0}\n",
+    "{\"items\": [0, 1, 2], \"kind\": \"product\", \"maxlen\": 3}\n"
+  ]
+}

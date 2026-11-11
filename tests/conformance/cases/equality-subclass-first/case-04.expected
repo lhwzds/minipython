@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"call\", \"receiver\": \"child\", \"value\": 9223372036854775807}\n",
+    "{\"kind\": \"result\", \"result\": false}\n"
+  ]
+}

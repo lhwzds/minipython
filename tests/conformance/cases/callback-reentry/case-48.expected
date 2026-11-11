@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "caught Custom orig True\n",
+    "caught Custom orig True\n",
+    "caught Custom orig True\n"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "caught TypeError sequence index must be integer, not 'slice'\n",
+    "[1, 2, 3]\n",
+    "caught TypeError sequence index must be integer, not 'slice'\n",
+    "[1, 2, 3]\n"
+  ]
+}

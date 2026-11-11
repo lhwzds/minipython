@@ -73,6 +73,27 @@ Out of scope by default:
 - locale-sensitive behavior unless it is explicitly promoted into the sandbox
   runtime requirements.
 
+<!-- conformance-status:start -->
+
+## Conformance status
+
+Oracle: CPython 3.14.6.
+
+Snapshot from one macOS release-build run.
+
+Totals: 59 leaves, 392 cases, 291 matching, 101 differing, 0 unsupported, 0 crash, 0 timeout.
+
+| Protocol | Leaves | Cases | Matching | Differing | Unsupported | Crash | Timeout |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| callback | 2 | 93 | 77 | 16 | 0 | 0 | 0 |
+| hash | 13 | 71 | 35 | 36 | 0 | 0 | 0 |
+| identity | 15 | 79 | 71 | 8 | 0 | 0 | 0 |
+| rich-comparison | 29 | 149 | 108 | 41 | 0 | 0 | 0 |
+
+A differing case is a known mismatch that still has to be fixed; the goal is that every case matches.
+
+<!-- conformance-status:end -->
+
 ## Install
 
 Version 0.1.0 is not released yet; until it is, build from source (see
@@ -110,6 +131,22 @@ mnpy -e "1 + 2 * 3"     # evaluate an expression
 echo "print(1)" | mnpy  # pipe input
 mnpy --version          # mnpy 0.1.0
 ```
+
+`--status-file PATH` writes the run's result to `PATH` as one JSON object
+followed by a newline, replacing any file there: `{"status": S, "terminal": T}`.
+`S` names the run's status (`Success`, `Error`, `TimeLimit`, `MemoryLimit` or
+`WorkerCrash`); `T` names the terminal condition that ended the run
+(`InstructionLimit`, `AllocationLimit`, `OutputLimit`, `NativeStackExhausted`,
+`TimeLimit`, `MemoryLimit` or `WorkerFailure`), or is `null` when the sandbox
+did not end the run: a program that ended on its own, and a source `mnpy`
+could not read. The file is written on every exit path after the options are
+parsed, so a caller can tell a worker crash from an ordinary Python error
+without reading stderr, which the program's own output shares with mnpy's
+report. A usage error, `-h` and `-V` end before that, so they write no
+file. If the file cannot be written, `mnpy` prints
+`mnpy: cannot write status file ...` and exits 2, because the run's result
+cannot be reported any other way. Without the option, `mnpy` writes no file
+and behaves exactly as before.
 
 As with CPython, everything after the program (`file`, `-c cmd`, or `-` for
 stdin) becomes `sys.argv`, and an uncaught `SystemExit` (for example
@@ -158,7 +195,7 @@ sandbox. On macOS the parent monitors the worker's physical footprint; on other
 Unix hosts it uses kernel process limits (`RLIMIT_AS` and `RLIMIT_DATA`), under
 which running out of memory makes an allocation fail and the worker abort.
 Either way the run ends with the memory limit (`ExecutionStatus::MemoryLimit`,
-`sandbox error: worker exceeded process limits or crashed`). The Linux limit
+`sandbox error: worker memory limit exceeded`). The Linux limit
 counts address space, including the whole interpreter stack reservation, so
 the worker keeps GNU libc to a single malloc arena instead of reserving 64 MiB
 per thread. File execution uses the script's

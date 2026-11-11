@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use crate::rc::Rc;
 
 use crate::value::Value;
 

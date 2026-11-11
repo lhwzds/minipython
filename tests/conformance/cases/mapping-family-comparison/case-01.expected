@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"forward\": true, \"kind\": \"result\", \"name\": \"Counter\", \"reverse\": true}\n",
+    "{\"forward\": false, \"kind\": \"result\", \"name\": \"Counter\", \"reverse\": false}\n",
+    "{\"forward\": true, \"kind\": \"result\", \"name\": \"OrderedDict\", \"reverse\": true}\n",
+    "{\"forward\": false, \"kind\": \"result\", \"name\": \"OrderedDict\", \"reverse\": false}\n"
+  ]
+}

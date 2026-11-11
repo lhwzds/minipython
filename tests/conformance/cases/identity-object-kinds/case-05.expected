@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"deque\", \"length\": 1, \"text\": \"deque([[...]])\"}\n"
+  ]
+}

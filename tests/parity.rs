@@ -10048,6 +10048,509 @@ print([first_nan in ValuesView({'a': first_nan}), second_nan in ValuesView({'a':
 }
 
 #[test]
+fn cpython_rich_comparison_identity_shortcut_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-identity-shortcut",
+        source: r#"class Always:
+    def __init__(self, name):
+        self.name = name
+    def __eq__(self, other):
+        print('eq', self.name, getattr(other, 'name', other))
+        return False
+    def __ne__(self, other):
+        print('ne', self.name, getattr(other, 'name', other))
+        return True
+
+x = Always('x')
+print(x == x)
+print(x != x)
+print(x is x)
+
+class Declines:
+    def __eq__(self, other):
+        print('declines-eq')
+        return NotImplemented
+    def __ne__(self, other):
+        print('declines-ne')
+        return NotImplemented
+
+d = Declines()
+print(d == d)
+print(d != d)
+
+nan = float('nan')
+print(nan == nan)
+print(nan in [nan])
+print([nan] == [nan])
+
+class Keyed:
+    def __init__(self, name):
+        self.name = name
+    def __eq__(self, other):
+        print('keyed-eq', self.name, getattr(other, 'name', other))
+        return False
+    def __ne__(self, other):
+        print('keyed-ne', self.name, getattr(other, 'name', other))
+        return True
+    def __hash__(self):
+        return 7
+
+k = Keyed('k')
+print(k in [k])
+print([k] == [k])
+print([k].count(k))
+print({k: 1}[k])"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_reflected_priority_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-reflected-priority",
+        source: r#"class A:
+    def __eq__(self, other):
+        print('A.eq')
+        return False
+    def __ne__(self, other):
+        print('A.ne')
+        return False
+
+class B(A):
+    def __eq__(self, other):
+        print('B.eq')
+        return True
+    def __ne__(self, other):
+        print('B.ne')
+        return True
+
+a = A()
+b = B()
+print(a == b)
+print(a != b)
+print(b == a)
+print(b != a)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_tuple_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-tuple-subclass",
+        source: r#"class T(tuple):
+    def __eq__(self, other):
+        print('T.eq')
+        return False
+    def __ne__(self, other):
+        print('T.ne')
+        return True
+
+t = T((1, 2))
+print(t == t)
+print(t != t)
+print(t == (1, 2))
+print((1, 2) == t)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_inherited_ne_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-inherited-ne",
+        source: r#"class I(int):
+    def __eq__(self, other):
+        print('I.eq')
+        return NotImplemented
+
+print(I(1) != 1)
+print(I(1) == 1)
+print(I(1) != I(1))
+
+class F(float):
+    def __eq__(self, other):
+        print('F.eq')
+        return NotImplemented
+
+print(F(1.0) != 1.0)
+print(F(1.0) == 1.0)
+
+class C(complex):
+    def __eq__(self, other):
+        print('C.eq')
+        return NotImplemented
+
+print(C(1j) != 1j)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_container_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-container-identity",
+        source: r#"class X:
+    def __eq__(self, other):
+        print('X.eq')
+        return False
+    def __ne__(self, other):
+        print('X.ne')
+        return True
+
+x = X()
+print({'a': x} == {'a': x})
+print([x, 1] < [x, 2])
+print([x, 1] == [x, 1])
+print([x, 1] <= [x, 1])"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_object_ne_delegates_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-object-ne-delegates",
+        source: r#"class A:
+    def __eq__(self, other):
+        print('A.eq')
+        return NotImplemented
+
+class B:
+    def __eq__(self, other):
+        print('B.eq')
+        return True
+    def __ne__(self, other):
+        print('B.ne')
+        return True
+
+print(A() != B())
+print(A() == B())"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_inherited_ne_declines_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-inherited-ne-declines",
+        source: r#"class I(int):
+    def __eq__(self, other):
+        print('I.eq')
+        return NotImplemented
+
+class X:
+    def __ne__(self, other):
+        print('X.ne')
+        return False
+
+print(I(1) != X())
+print(I(1) == X())"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_operand_dispatch_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-operand-dispatch",
+        source: r#"class L(list):
+    pass
+
+class R(list):
+    def __eq__(self, other):
+        print('R.eq')
+        return False
+
+l = L([1])
+r = R([1])
+print(l == r)
+print(r == l)
+print(l == L([1]))"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_none_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-none-method",
+        source: r#"class NoneEq:
+    __eq__ = None
+
+n = NoneEq()
+try:
+    print(n == n)
+except TypeError as error:
+    print(type(error).__name__, error)
+
+class NoneNe:
+    __ne__ = None
+
+m = NoneNe()
+try:
+    print(m != m)
+except TypeError as error:
+    print(type(error).__name__, error)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_builtin_range_slice_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-builtin-range-slice",
+        source: r#"print(range(3) == range(3))
+print(range(3) == range(4))
+print(range(3) != range(3))
+print(range(0, 6, 2) == range(0, 6, 2))
+print(range(0, 6, 2) == range(0, 7, 2))
+print(range(3) == [0, 1, 2])
+print(range(3) == 'range')
+print(slice(1, 2) == slice(1, 2))
+print(slice(1, 2) == slice(1, 3))
+print(slice(1, 2) != slice(1, 2))
+print(slice(1, 2) == (1, 2))"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_builtin_cross_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-builtin-cross-type",
+        source: r#"print(memoryview(b'a') == b'a')
+print(b'a' == memoryview(b'a'))
+print(memoryview(b'a') == bytearray(b'a'))
+print(bytearray(b'a') == memoryview(b'a'))
+print(memoryview(b'a') == 'a')
+print({1: 2}.keys() == {1})
+print({1: 2}.keys() == {1, 2})
+print({1: 2}.keys() == {2})
+print({1: 2}.keys() == frozenset({1}))
+print({1: 2}.values() == {2})
+print({1: 2}.items() == {(1, 2)})
+print({1: 2}.items() == {(1, 3)})"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_mro_order_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython data model rich comparison protocol public subset",
+        name: "rich-comparison-mro-order",
+        source: r#"class M:
+    def __eq__(self, other):
+        print('M.eq')
+        return False
+    def __ne__(self, other):
+        print('M.ne')
+        return True
+
+class C(int, M):
+    pass
+
+c = C(1)
+print(c == c)
+print(c != c)
+print(c == 1)
+print(c != 1)
+
+class D(M, int):
+    pass
+
+d = D(1)
+print(d == d)
+print(d != d)
+
+class S(str, M):
+    pass
+
+s = S('a')
+print(s == s)
+print(s != s)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_counter_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython collections Counter comparison public subset",
+        name: "rich-comparison-counter-mapping",
+        source: r#"from collections import Counter
+
+counter = Counter(a=1)
+print(counter == {'a': 1})
+print({'a': 1} == counter)
+print(counter != {'a': 1})
+print({'a': 1} != counter)
+print(counter == {'a': 2})
+print({'a': 2} == counter)
+print(counter == Counter(a=1))
+print(counter == Counter(a=1, b=0))
+print(counter == Counter(b=1))
+print(Counter() == {})
+print(Counter(a=0) == {})
+
+class MyCounter(Counter):
+    pass
+
+mine = MyCounter(a=1)
+print(mine == counter)
+print(counter == mine)
+print(mine == {'a': 1})
+print({'a': 1} == mine)
+print(mine != {'a': 1})"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_chain_map_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython collections ChainMap comparison public subset",
+        name: "rich-comparison-chain-map",
+        source: r#"from collections import ChainMap, UserDict
+
+first = ChainMap({1: 2})
+second = ChainMap({1: 2})
+print(first == second)
+print(first != second)
+print(first == ChainMap({1: 3}))
+print(first == {1: 2})
+print({1: 2} == first)
+print(ChainMap() == ChainMap())
+print(first == [1, 2])
+print(first == 'chain')
+print(first == UserDict({1: 2}))
+print(UserDict({1: 2}) == first)
+print(ChainMap({'a': 1}, {'b': 2}) == ChainMap({'b': 2}, {'a': 1}))
+print(ChainMap({'a': 1}, {'b': 2}) == ChainMap({'b': 3}, {'a': 1}))
+
+class MyChainMap(ChainMap):
+    pass
+
+mine = MyChainMap({1: 2})
+print(mine == second)
+print(second == mine)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_pattern_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython re pattern comparison public subset",
+        name: "rich-comparison-pattern",
+        source: r#"import re
+
+first = re.compile('a+')
+second = re.compile('a+')
+print(first == second)
+print(first != second)
+print(first == re.compile('b+'))
+print(first == re.compile('a+', re.IGNORECASE))
+print(first == 'a+')
+print(first == None)
+print(first == first)
+re.purge()
+third = re.compile('a+')
+print(first == third)
+print(third == second)
+print(re.compile('a+') in {re.compile('a+')})
+print({re.compile('a+'): 1}[re.compile('a+')])"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_code_object_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython code object comparison public subset",
+        name: "rich-comparison-code-object",
+        source: r#"def first():
+    pass
+
+def second():
+    pass
+
+first_code = first.__code__
+second_code = second.__code__
+print(first_code == first_code)
+print(first_code != first_code)
+print(first_code == second_code)
+print(first_code != second_code)
+print([first_code] == [first_code])
+print([first_code] == [second_code])
+print((first_code,) == (second_code,))
+print({first_code: 1}[first_code])
+print(first_code in [first_code])
+print(first_code in [second_code])
+print(first_code == 'code')
+
+try:
+    print({first_code: 1}[second_code])
+except KeyError as error:
+    print(type(error).__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_chain_map_keys_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython collections ChainMap comparison with custom keys public subset",
+        name: "rich-comparison-chain-map-keys",
+        source: r#"from collections import ChainMap
+
+class Key:
+    def __init__(self, tag, value):
+        self.tag = tag
+        self.value = value
+    def __eq__(self, other):
+        print('eq', self.tag, getattr(other, 'tag', None))
+        return isinstance(other, Key) and self.value == other.value
+    def __hash__(self):
+        return hash(self.value)
+
+first = ChainMap({Key('a', 1): 'x'})
+second = ChainMap({Key('b', 1): 'x'})
+print('equal', first == second)
+print('notequal', first != second)
+merged = ChainMap({Key('c', 1): 'x'}, {Key('d', 1): 'y'})
+print('merged', merged == ChainMap({Key('e', 1): 'x'}))
+print('notmapping', first == [1])
+
+class Boom:
+    def __eq__(self, other):
+        print('boom eq')
+        raise ValueError('boom')
+    def __hash__(self):
+        return 7
+
+try:
+    print(ChainMap({Boom(): 1}) == ChainMap({Boom(): 2}))
+except Exception as error:
+    print('raised', type(error).__name__, error)"#,
+    });
+}
+
+#[test]
+fn cpython_rich_comparison_code_constant_types_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython code object constant comparison public subset",
+        name: "rich-comparison-code-constant-types",
+        source: r#"first = compile('x=1', 'a', 'exec')
+second = compile('x=True', 'a', 'exec')
+third = compile('x=1', 'a', 'exec')
+print('int vs bool', first == second)
+print('same source', first == third)
+print('int vs float', compile('x=1', 'a', 'exec') == compile('x=1.0', 'a', 'exec'))
+print('zero vs negzero', compile('x=0.0', 'a', 'exec') == compile('x=-0.0', 'a', 'exec'))
+print('str vs bytes', compile('x="a"', 'a', 'exec') == compile("x=b'a'", 'a', 'exec'))
+print('hash', hash(first) == hash(third))
+print('in list', first in [first], second in [first])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_set_noncomparable_comparison_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestCollectionABCs::test_issue16373 public subset",
@@ -30880,6 +31383,922 @@ print(d == c, d is c)
 print(d['missing'])
 d['a'] += 10
 print(c['a'], d['a'])"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_super_init_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass super().__init__ subset",
+        name: "collections-counter-subclass-super-init",
+        source: r#"from collections import Counter
+
+class IterableCounter(Counter):
+    def __init__(self, iterable=None, **kwargs):
+        super().__init__(iterable, **kwargs)
+        self.tag = 'iterable'
+
+class MappingCounter(Counter):
+    def __init__(self, mapping=None, **kwargs):
+        super().__init__(mapping, **kwargs)
+        self.tag = 'mapping'
+
+class KeywordCounter(Counter):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.tag = 'keyword'
+
+class EmptyCounter(Counter):
+    def __init__(self):
+        super().__init__()
+        self.tag = 'empty'
+
+class ChainedCounter(IterableCounter):
+    def __init__(self, iterable=None, **kwargs):
+        super().__init__(iterable, **kwargs)
+        self.extra = 'chained'
+
+print(IterableCounter('aab'), IterableCounter('aab').tag)
+print(MappingCounter({'x': 2, 'y': 3}), MappingCounter({'x': 2, 'y': 3}).tag)
+print(KeywordCounter(x=1, y=2), KeywordCounter(x=1, y=2).tag)
+print(EmptyCounter(), EmptyCounter().tag)
+print(IterableCounter('aab', c=3))
+print(ChainedCounter('aab'), ChainedCounter('aab').tag, ChainedCounter('aab').extra)
+print(IterableCounter('aab') == Counter('aab'), isinstance(IterableCounter('aab'), Counter))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_inherited_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass inherited methods subset",
+        name: "collections-counter-subclass-inherited-methods",
+        source: r#"from collections import Counter
+
+class MissingCounter(Counter):
+    def __init__(self, iterable=None, **kwargs):
+        super().__init__(iterable, **kwargs)
+        self.tag = 'missing'
+    def __missing__(self, key):
+        return ('missing', key)
+
+counter = MissingCounter('aab')
+print(counter['a'], counter['zz'])
+print(counter.most_common(), counter.most_common(1))
+print(list(counter.elements()))
+counter.update('c')
+print(counter)
+counter.subtract('a')
+print(counter)
+print(counter + Counter('a'), counter - Counter('a'))
+print(counter & Counter('a'), counter | Counter('a'))
+print(type(counter + Counter('a')).__name__, type(counter - Counter('a')).__name__)
+print(type(counter & Counter('a')).__name__, type(counter | Counter('a')).__name__)
+print(type(counter.most_common()).__name__, type(counter.elements()).__name__)
+print(type(counter.update('x')).__name__, type(counter.subtract('x')).__name__)
+print(type(counter).__name__, counter.tag)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_super_init_update_dispatch_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass super().__init__ dispatch subset",
+        name: "collections-counter-subclass-super-init-update-dispatch",
+        source: r#"from collections import Counter
+
+class MappingCounter(Counter):
+    def __init__(self, mapping=None, **kwargs):
+        super().__init__(mapping, **kwargs)
+        self.tag = 'mapping'
+
+class UpdateCounter(Counter):
+    def __init__(self, iterable=None, **kwargs):
+        super().__init__(iterable, **kwargs)
+    def update(self, iterable=None, **kwds):
+        print('update', iterable, kwds)
+        super().update(iterable, **kwds)
+
+counter = MappingCounter({'a': 'text'})
+print(counter, counter['a'], counter.tag)
+print(MappingCounter({'a': 2, 'b': 3}))
+filled = MappingCounter({'a': 1})
+try:
+    filled.update({'b': 'text'})
+except TypeError as error:
+    print(type(error).__name__, error)
+print(UpdateCounter('aab'))
+print(UpdateCounter())
+print(UpdateCounter(a=2))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_missing_arithmetic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass missing arithmetic subset",
+        name: "collections-counter-subclass-missing-arithmetic",
+        source: r#"from collections import Counter
+
+class MissingCounter(Counter):
+    def __init__(self, iterable=None, **kwargs):
+        super().__init__(iterable, **kwargs)
+    def __missing__(self, key):
+        return 10
+
+left = Counter(b=3)
+right = MissingCounter(a=2)
+print(left + right, left - right, left & right, left | right)
+print(type(left + right).__name__, type(left - right).__name__)
+print(type(left & right).__name__, type(left | right).__name__)
+counter = MissingCounter(b=3)
+same = counter
+counter += Counter(b=3)
+print(type(counter).__name__, counter, counter is same)
+counter -= Counter(b=1)
+print(type(counter).__name__, counter, counter is same)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_in_place_arithmetic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass in-place arithmetic subset",
+        name: "collections-counter-subclass-in-place-arithmetic",
+        source: r#"from collections import Counter
+
+class MissingCounter(Counter):
+    def __missing__(self, key):
+        return 10
+
+class GetItemCounter(Counter):
+    def __getitem__(self, key):
+        return 100
+
+left = Counter(b=3)
+left += MissingCounter(a=2)
+print('add-missing', sorted(left.items()))
+left = Counter(b=3)
+left -= MissingCounter(a=2)
+print('sub-missing', sorted(left.items()))
+left = Counter(b=3)
+left |= MissingCounter(a=2)
+print('or-missing', sorted(left.items()))
+left = Counter(b=3)
+left &= MissingCounter(a=2)
+print('and-missing', sorted(left.items()))
+
+missing = MissingCounter(b=3)
+same = missing
+missing += Counter(a=2)
+print('add-receiver', sorted(missing.items()), type(missing).__name__, missing is same)
+missing = MissingCounter(b=3)
+missing -= Counter(a=2)
+print('sub-receiver', sorted(missing.items()))
+missing = MissingCounter(b=3)
+missing |= Counter(a=2)
+print('or-receiver', sorted(missing.items()))
+missing = MissingCounter(b=3)
+missing &= Counter(a=2)
+print('and-receiver', sorted(missing.items()))
+
+receiver = GetItemCounter(a=5)
+receiver += Counter(a=2)
+print('add-getitem', sorted(receiver.items()))
+
+left = Counter(a=5, b=3)
+left &= Counter(a=2)
+print('and', sorted(left.items()))
+left = Counter(a=1, b=3)
+left |= Counter(a=2)
+print('or', sorted(left.items()))
+left = Counter(a=0, b=3)
+left |= Counter(a=0)
+print('or-zero', sorted(left.items()))
+left = Counter(a=5, b=3)
+left -= Counter(a=8)
+print('sub-remove', sorted(left.items()))
+left = Counter(a=5, b=3)
+left += Counter(a=2)
+print('add', sorted(left.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_operand_arithmetic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass operand arithmetic subset",
+        name: "collections-counter-subclass-operand-arithmetic",
+        source: r#"from collections import Counter
+
+class MissingCounter(Counter):
+    def __missing__(self, key):
+        return 10
+
+class GetItemCounter(Counter):
+    def __getitem__(self, key):
+        return 100
+
+left = Counter(b=3)
+right = MissingCounter(a=2)
+print('add', sorted((left + right).items()))
+print('sub', sorted((left - right).items()))
+print('and', sorted((left & right).items()))
+print('or', sorted((left | right).items()))
+
+left = Counter(a=2)
+right = GetItemCounter(a=3)
+print('add-getitem', sorted((left + right).items()))
+print('sub-getitem', sorted((left - right).items()))
+print('and-getitem', sorted((left & right).items()))
+print('or-getitem', sorted((left | right).items()))
+
+left = Counter(b=3)
+right = GetItemCounter(a=2)
+print('add-getitem-other', sorted((left + right).items()))
+print('or-getitem-other', sorted((left | right).items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_instance_update_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass instance update subset",
+        name: "collections-counter-subclass-instance-update",
+        source: r#"from collections import Counter
+
+holder = {}
+
+def record_update(*args, **kwargs):
+    print('instance-update', args, kwargs)
+    Counter.update(holder['counter'], *args, **kwargs)
+
+class InstanceUpdateCounter(Counter):
+    def __init__(self, iterable=None, **kwargs):
+        self.update = record_update
+        holder['counter'] = self
+        super().__init__(iterable, **kwargs)
+
+counter = InstanceUpdateCounter('aab')
+print('iterable', sorted(counter.items()))
+counter = InstanceUpdateCounter(a=2)
+print('keyword', sorted(counter.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_bool_update_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass bool update subset",
+        name: "collections-counter-subclass-bool-update",
+        source: r#"from collections import Counter
+
+class TruthyCounter(Counter):
+    def __bool__(self):
+        return True
+
+try:
+    TruthyCounter({'x': 'text'})
+except TypeError as error:
+    print('typeerror', error)
+
+counter = TruthyCounter()
+print('empty', sorted(counter.items()))
+counter.update({'x': 1})
+print('updated', sorted(counter.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_getattribute_update_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass getattribute update subset",
+        name: "collections-counter-subclass-getattribute-update",
+        source: r#"from collections import Counter
+
+class GuardedCounter(Counter):
+    def __getattribute__(self, name):
+        if name == 'update':
+            raise AttributeError(name)
+        return object.__getattribute__(self, name)
+
+try:
+    GuardedCounter()
+except AttributeError as error:
+    print('attributeerror', error)
+
+try:
+    GuardedCounter('aab')
+except AttributeError as error:
+    print('attributeerror', error)
+
+class RefusedCounter(Counter):
+    def __getattribute__(self, name):
+        if name == 'update':
+            raise ValueError('no update')
+        return object.__getattribute__(self, name)
+
+try:
+    RefusedCounter()
+except ValueError as error:
+    print('valueerror', error)
+
+class DelegatingCounter(Counter):
+    def __getattribute__(self, name):
+        return object.__getattribute__(self, name)
+
+counter = DelegatingCounter('aab')
+print('delegating', sorted(counter.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_contains_arithmetic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass contains arithmetic subset",
+        name: "collections-counter-subclass-contains-arithmetic",
+        source: r#"from collections import Counter
+
+class ContainsCounter(Counter):
+    def __contains__(self, key):
+        return True
+
+print('add', sorted((ContainsCounter() + Counter(a=2)).items()))
+print('sub', sorted((ContainsCounter() - Counter(a=2)).items()))
+print('or', sorted((ContainsCounter() | Counter(a=2)).items()))
+print('and', sorted((ContainsCounter() & Counter(a=2)).items()))
+print('add-own', sorted((ContainsCounter(b=1) + Counter(a=2)).items()))
+print('sub-own', sorted((ContainsCounter(b=1) - Counter(a=2)).items()))
+print('or-own', sorted((ContainsCounter(b=1) | Counter(a=2)).items()))
+print('plain-add', sorted((Counter(b=1) + Counter(a=2)).items()))
+print('plain-or', sorted((Counter(b=1) | Counter(a=2)).items()))
+
+class PlainCounter(Counter):
+    pass
+
+print('member', 'a' in PlainCounter('aab'), 'z' in PlainCounter('aab'))
+print('override-member', 'z' in ContainsCounter('aab'))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_intersection_counts_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass intersection counts subset",
+        name: "collections-counter-subclass-intersection-counts",
+        source: r#"from collections import Counter
+
+print('and-empty', sorted((Counter() & Counter(a='text')).items()))
+print('and-other', sorted((Counter(b=1) & Counter(a='text')).items()))
+print('and-missing', sorted((Counter(a=2) & Counter(b=3)).items()))
+print('and-shared', sorted((Counter(a=2) & Counter(a=3)).items()))
+print('and-zero', sorted((Counter(a=2) & Counter(a=0)).items()))
+print('type', type(Counter() & Counter(a=2)).__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_intersection_delitem_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass intersection delitem subset",
+        name: "collections-counter-subclass-intersection-delitem",
+        source: r#"from collections import Counter
+
+class RaisingCounter(Counter):
+    def __delitem__(self, key):
+        print('delete', key, sorted(self.items()))
+        super().__delitem__(key)
+        self['b'] = 50
+
+counter = RaisingCounter(a=2, b=3)
+same = counter
+counter &= Counter(a=0, b=5)
+print('raising', sorted(counter.items()), counter is same, type(counter).__name__)
+
+class LoweringCounter(Counter):
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self['b'] = -5
+
+counter = LoweringCounter(a=2, b=3)
+counter &= Counter(a=0, b=5)
+print('lowering', sorted(counter.items()))
+
+class AddingCounter(Counter):
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self['z'] = 0
+
+counter = AddingCounter(a=2, b=3)
+counter &= Counter(a=0, b=5)
+print('adding', sorted(counter.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_in_place_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass in-place mapping subset",
+        name: "collections-counter-subclass-in-place-mapping",
+        source: r#"from collections import Counter
+
+class MappingCounter(Counter):
+    def __init__(self, mapping=None, **kwargs):
+        super().__init__(mapping, **kwargs)
+        self.tag = 'mapping'
+
+counter = Counter(a=1)
+counter += {'b': 2}
+print('add', sorted(counter.items()), type(counter).__name__)
+
+counter = Counter(a=1)
+counter -= {'b': 2}
+print('sub', sorted(counter.items()), type(counter).__name__)
+
+counter = Counter(a=1)
+counter |= {'b': 2}
+print('or', sorted(counter.items()), type(counter).__name__)
+
+counter = Counter(a=1)
+counter &= Counter(b=2)
+print('and', sorted(counter.items()), type(counter).__name__)
+
+subclass = MappingCounter(a=1)
+same = subclass
+subclass += {'b': 2}
+print('subclass-add', sorted(subclass.items()), subclass is same, type(subclass).__name__, subclass.tag)
+
+subclass = MappingCounter(a=1)
+subclass -= {'b': 2}
+print('subclass-sub', sorted(subclass.items()), type(subclass).__name__, subclass.tag)
+
+subclass = MappingCounter(a=1)
+subclass |= {'b': 2}
+print('subclass-or', sorted(subclass.items()), type(subclass).__name__, subclass.tag)
+
+subclass = MappingCounter(a=1)
+subclass &= Counter(b=2)
+print('subclass-and', sorted(subclass.items()), type(subclass).__name__, subclass.tag)
+
+counter = Counter(a=1)
+try:
+    counter += 5
+except AttributeError as error:
+    print('add-int', type(error).__name__, error)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_in_place_items_override_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass in-place items override subset",
+        name: "collections-counter-subclass-in-place-items-override",
+        source: r#"from collections import Counter
+
+class ItemsCounter(Counter):
+    def items(self):
+        return [('z', 7)]
+
+receiver = Counter()
+receiver += ItemsCounter()
+print('add', sorted(receiver.items()))
+
+receiver = Counter()
+receiver -= ItemsCounter()
+print('sub', sorted(receiver.items()))
+
+receiver = Counter()
+receiver |= ItemsCounter()
+print('or', sorted(receiver.items()))
+
+receiver = Counter(a=1)
+receiver &= ItemsCounter()
+print('and', sorted(receiver.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_arithmetic_items_override_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass arithmetic items override subset",
+        name: "collections-counter-subclass-arithmetic-items-override",
+        source: r#"from collections import Counter
+
+class ItemsCounter(Counter):
+    def items(self):
+        return [('z', 7)]
+
+left = Counter(a=1)
+right = ItemsCounter()
+print('add', sorted((left + right).items()))
+print('sub', sorted((left - right).items()))
+print('or', sorted((left | right).items()))
+print('and', sorted((left & right).items()))
+
+other = ItemsCounter()
+plain = Counter(b=2)
+print('add-own', sorted((other + plain).items()))
+print('sub-own', sorted((other - plain).items()))
+print('or-own', sorted((other | plain).items()))
+print('and-own', sorted((other & plain).items()))
+print('types', type(left + right).__name__, type(left - right).__name__)
+print('types', type(left | right).__name__, type(left & right).__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_in_place_counts_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass in-place counts subset",
+        name: "collections-counter-subclass-in-place-counts",
+        source: r#"from collections import Counter
+
+class LoggingCounter(Counter):
+    def __setitem__(self, key, value):
+        print('set', key, value)
+        super().__setitem__(key, value)
+    def __delitem__(self, key):
+        print('del', key)
+        super().__delitem__(key)
+
+counter = LoggingCounter(a=0, b=5)
+counter += {'b': 1}
+print('add', sorted(counter.items()))
+
+counter = LoggingCounter(a=0, b=5)
+counter -= {'b': 1}
+print('sub', sorted(counter.items()))
+
+counter = LoggingCounter(a=0, b=5)
+counter |= {'b': 5}
+print('or', sorted(counter.items()))
+
+counter = LoggingCounter(a=0, b=5)
+counter &= Counter(b=5)
+print('and', sorted(counter.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_in_place_streaming_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass in-place streaming subset",
+        name: "collections-counter-subclass-in-place-streaming",
+        source: r#"from collections import Counter
+
+class Failing:
+    def __init__(self, first):
+        self.first = first
+    def items(self):
+        yield self.first
+        raise ValueError('boom')
+
+counter = Counter(b=1)
+try:
+    counter += Failing(('a', 2))
+except ValueError as error:
+    print('add', type(error).__name__, error)
+print('add-counts', sorted(counter.items()))
+
+counter = Counter(b=1)
+try:
+    counter -= Failing(('a', 2))
+except ValueError as error:
+    print('sub', type(error).__name__, error)
+print('sub-counts', sorted(counter.items()))
+
+counter = Counter(b=1)
+try:
+    counter |= Failing(('a', 2))
+except ValueError as error:
+    print('or', type(error).__name__, error)
+print('or-counts', sorted(counter.items()))
+
+class FailingItems(Counter):
+    def items(self):
+        yield ('a', 2)
+        raise ValueError('boom')
+
+receiver = FailingItems()
+try:
+    receiver &= Counter(a=1)
+except ValueError as error:
+    print('and', type(error).__name__, error)
+print('and-counts', dict(receiver))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_items_unpacking_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass items unpacking subset",
+        name: "collections-counter-subclass-items-unpacking",
+        source: r#"from collections import Counter
+
+class Pair:
+    def __init__(self, key, count):
+        self.key = key
+        self.count = count
+    def __iter__(self):
+        return iter((self.key, self.count))
+
+class Pairs:
+    def __init__(self, pairs):
+        self.pairs = pairs
+    def __iter__(self):
+        return iter(self.pairs)
+    def __len__(self):
+        return len(self.pairs)
+    def __getitem__(self, index):
+        return self.pairs[index]
+
+class Items:
+    def items(self):
+        return Pairs([Pair('a', 2), Pair('b', 3)])
+
+class ItemsCounter(Counter):
+    def items(self):
+        return Pairs([Pair('a', 2), Pair('b', 3)])
+
+counter = Counter()
+counter += Items()
+print('add', sorted(counter.items()))
+
+counter = Counter()
+counter |= Items()
+print('or', sorted(counter.items()))
+
+left = Counter(z=1)
+print('plus', sorted((left + ItemsCounter()).items()))
+print('minus', sorted((left - ItemsCounter()).items()))
+print('and', sorted((left & ItemsCounter()).items()))
+print('pipe', sorted((left | ItemsCounter()).items()))
+
+def pairs():
+    yield 'c'
+    yield 4
+
+class GeneratorItems(Counter):
+    def items(self):
+        return [pairs()]
+
+counter = Counter()
+counter += GeneratorItems()
+print('generator', sorted(counter.items()))
+
+class Three:
+    def items(self):
+        return [('a', 1, 2)]
+
+class One:
+    def items(self):
+        return [('a',)]
+
+class NotIterable:
+    def items(self):
+        return [5]
+
+def three():
+    yield 1
+    yield 2
+    yield 3
+
+class Generic:
+    def items(self):
+        return [three()]
+
+for view in (Three(), One(), NotIterable(), Generic()):
+    counter = Counter()
+    try:
+        counter += view
+        print('ok', sorted(counter.items()))
+    except Exception as error:
+        print(type(error).__name__, error)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_items_unpack_third_value_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass items unpack third value subset",
+        name: "collections-counter-subclass-items-unpack-third-value",
+        source: r#"from collections import Counter
+
+def three_values():
+    yield 'a'
+    yield 1
+    yield 'extra'
+    raise RuntimeError('boom')
+
+class Items:
+    def items(self):
+        return [three_values()]
+
+counter = Counter()
+try:
+    counter += Items()
+except Exception as error:
+    print('add', type(error).__name__, error)
+print('counts', sorted(counter.items()))
+
+class ItemsCounter(Counter):
+    def items(self):
+        return [three_values()]
+
+left = Counter(z=1)
+try:
+    print('plus', sorted((left + ItemsCounter()).items()))
+except Exception as error:
+    print('plus', type(error).__name__, error)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_non_positive_counts_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass non-positive counts subset",
+        name: "collections-counter-subclass-non-positive-counts",
+        source: r#"from collections import Counter
+
+class BadCounts(Counter):
+    def items(self):
+        yield ('a', 'text')
+        raise ValueError('boom')
+
+receiver = BadCounts()
+try:
+    receiver += Counter(b=1)
+except Exception as error:
+    print('add', type(error).__name__, error)
+print('counts', dict(receiver))
+
+receiver = BadCounts()
+try:
+    receiver -= Counter(b=1)
+except Exception as error:
+    print('sub', type(error).__name__, error)
+print('counts', dict(receiver))
+
+receiver = BadCounts()
+try:
+    receiver |= Counter(b=1)
+except Exception as error:
+    print('or', type(error).__name__, error)
+print('counts', dict(receiver))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_items_exception_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass items exception subset",
+        name: "collections-counter-subclass-items-exception",
+        source: r#"from collections import Counter
+
+class Boom(Exception):
+    pass
+
+class RaisingItems(dict):
+    def items(self):
+        raise Boom('items failed')
+
+class RaisingItemsCounter(Counter):
+    def items(self):
+        raise Boom('items failed')
+
+class RaisingGetItem(Counter):
+    def __getitem__(self, key):
+        raise Boom('getitem failed')
+
+counter = Counter()
+try:
+    counter += RaisingItems()
+except Boom as error:
+    print('add', type(error).__name__, error)
+
+counter = Counter()
+try:
+    counter += RaisingItemsCounter()
+except Boom as error:
+    print('add-counter', type(error).__name__, error)
+
+left = Counter(a=1)
+try:
+    print('plus', sorted((left + RaisingGetItem()).items()))
+except Boom as error:
+    print('plus', type(error).__name__, error)
+
+receiver = Counter(a=1)
+try:
+    receiver &= RaisingGetItem()
+except Boom as error:
+    print('and', type(error).__name__, error)
+
+receiver = Counter(a=1)
+try:
+    receiver += RaisingItems()
+except Boom as error:
+    print('update', type(error).__name__, error)
+print('counts', sorted(receiver.items()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_count_comparison_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass count comparison subset",
+        name: "collections-counter-subclass-count-comparison",
+        source: r#"from collections import Counter
+
+class Keep:
+    def __gt__(self, other):
+        return True
+
+class Drop:
+    def __gt__(self, other):
+        return False
+
+class Boom(Exception):
+    pass
+
+class Raising:
+    def __gt__(self, other):
+        raise Boom('gt failed')
+
+counter = Counter(a=Keep())
+counter += Counter()
+print('keep', list(counter.keys()))
+
+counter = Counter(a=Drop())
+counter += Counter()
+print('drop', list(counter.keys()))
+
+counter = Counter(a=Raising())
+try:
+    counter += Counter()
+except Boom as error:
+    print('raising', type(error).__name__, error)
+
+counter = Counter(a=Keep())
+counter -= Counter()
+print('keep-sub', list(counter.keys()))
+
+counter = Counter(a=Keep())
+counter |= Counter()
+print('keep-or', list(counter.keys()))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_nan_intersection_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass NaN intersection subset",
+        name: "collections-counter-subclass-nan-intersection",
+        source: r#"from collections import Counter
+
+nan = float('nan')
+
+counter = Counter(a=nan)
+counter &= {'a': 1}
+print('iand', repr(counter))
+
+counter = Counter(a=nan)
+counter &= Counter({'a': 1})
+print('iand-counter', repr(counter))
+
+print('and', repr(Counter({'a': nan}) & Counter({'a': 1})))
+print('and-reversed', repr(Counter({'a': 1}) & Counter({'a': nan})))
+print('or', repr(Counter({'a': nan}) | Counter({'a': 1})))
+print('or-reversed', repr(Counter({'a': 1}) | Counter({'a': nan})))
+
+counter = Counter(a=nan)
+counter |= Counter({'a': 1})
+print('ior', repr(counter))
+
+counter = Counter(a=nan)
+counter += Counter({'a': 1})
+print('iadd', repr(counter))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_subclass_nested_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subclass nested repr subset",
+        name: "collections-counter-subclass-nested-repr",
+        source: r#"class Count:
+    def __gt__(self, other):
+        return True
+
+    def __repr__(self):
+        return 'Count()'
+
+count = Count()
+print(repr([count]))
+print(repr((count,)))
+print(repr({'key': count}))
+print(str([count]))
+print(repr([count, count]))"#,
     });
 }
 
@@ -68380,6 +69799,346 @@ except PermissionError as err:
     });
 }
 
+/// A container that shows an item asks the item for its repr, and the
+/// exception the item raises keeps its own class, so the handler that
+/// catches it sees the exception the item raised.
+#[test]
+fn cpython_builtin_container_element_repr_exception_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr container element exception subset",
+        name: "builtin-container-element-repr-exception",
+        source: r#"class Boom(Exception):
+    pass
+
+class Bad:
+    def __repr__(self):
+        raise Boom('boom')
+
+try:
+    print([Bad()])
+except Boom as error:
+    print('caught list', type(error).__name__, error)
+except Exception as error:
+    print('wrong list', type(error).__name__, error)
+
+try:
+    print({'key': Bad()})
+except Boom as error:
+    print('caught dict', type(error).__name__, error)
+except Exception as error:
+    print('wrong dict', type(error).__name__, error)
+
+try:
+    print(repr((Bad(),)))
+except Boom as error:
+    print('caught tuple', type(error).__name__, error)
+except Exception as error:
+    print('wrong tuple', type(error).__name__, error)
+
+try:
+    print({Bad()})
+except Boom as error:
+    print('caught set', type(error).__name__, error)
+except Exception as error:
+    print('wrong set', type(error).__name__, error)
+
+try:
+    print(str([Bad()]))
+except Boom as error:
+    print('caught str', type(error).__name__, error)
+except Exception as error:
+    print('wrong str', type(error).__name__, error)"#,
+    });
+}
+
+/// A set and a frozen set show their own type in their repr, and an empty
+/// set shows the type alone.
+#[test]
+fn cpython_builtin_set_and_frozenset_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "builtins set and frozenset repr (CPython 3.14.6 oracle)",
+        name: "builtin-set-and-frozenset-repr",
+        source: r#"print(repr(set()))
+print(repr(frozenset()))
+print(repr(frozenset([1])))
+print(repr({1, 2}))
+print(repr(frozenset({1, 2})))
+print(str(set()), str(frozenset([1])))
+print(repr([set()]), repr([frozenset([1])]))
+print(repr({'k': set()}), repr({'k': frozenset([1])}))
+print(repr((set(),)), repr((frozenset([1]),)))
+print(f'{set()}', f'{frozenset([1])}')"#,
+    });
+}
+
+/// A container that shows itself again stops the repr that would not end,
+/// also when the item that shows the container asks for its repr.
+#[test]
+fn cpython_builtin_container_repr_recursion_state_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr recursive container subset",
+        name: "builtin-container-repr-recursion-state",
+        source: r#"class ShowList:
+    def __init__(self, container):
+        self.container = container
+
+    def __repr__(self):
+        return repr(self.container)
+
+container = []
+item = ShowList(container)
+container.append(item)
+print(repr(container))
+print(container)
+
+a = []
+a.append(a)
+print(repr(a))
+
+d = {}
+d[0] = d
+print(repr(d))
+
+class ShowDict:
+    def __init__(self, container):
+        self.container = container
+
+    def __repr__(self):
+        return repr(self.container)
+
+mapping = {}
+mapping['self'] = ShowDict(mapping)
+print(repr(mapping))"#,
+    });
+}
+
+#[test]
+fn cpython_builtin_tuple_repr_recursion_marker_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr recursive tuple subset",
+        name: "builtin-tuple-repr-recursion-marker",
+        source: r#"class ShowTuple:
+    def __repr__(self):
+        return repr(holder)
+
+holder = (ShowTuple(),)
+print(repr(holder))
+
+nested = []
+through_list = (nested,)
+nested.append(through_list)
+print(repr(through_list))
+
+single = (ShowTuple(),)
+print(repr(single))"#,
+    });
+}
+
+#[test]
+fn cpython_builtin_set_repr_recursion_marker_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr recursive set subset",
+        name: "builtin-set-repr-recursion-marker",
+        source: r#"class ShowSet:
+    def __repr__(self):
+        return repr(holder)
+
+holder = {ShowSet()}
+print(repr(holder))
+
+class ShowFrozenSet:
+    def __repr__(self):
+        return repr(frozen)
+
+frozen = frozenset([ShowFrozenSet()])
+print(repr(frozen))"#,
+    });
+}
+
+#[test]
+fn cpython_builtin_container_repr_reads_current_items_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr container mutation subset",
+        name: "builtin-container-repr-reads-current-items",
+        source: r#"class Appender:
+    def __repr__(self):
+        target.append(42)
+        return 'X'
+
+target = []
+target.append(Appender())
+print(repr(target))
+
+class Adder:
+    def __repr__(self):
+        mapping['k'] = 1
+        return 'X'
+
+mapping = {'a': Adder()}
+print(repr(mapping))
+
+class Replacer:
+    def __repr__(self):
+        items[0] = 'zzz'
+        return 'X'
+
+items = [Replacer()]
+print(repr(items))
+
+class Remover:
+    def __repr__(self):
+        del later['b']
+        return 'X'
+
+later = {'a': Remover(), 'b': 2}
+print(repr(later))
+
+class SelfRemover:
+    def __repr__(self):
+        del own['a']
+        return 'X'
+
+own = {'a': SelfRemover(), 'b': 2}
+print(repr(own))
+
+class ListRemover:
+    def __repr__(self):
+        del listed[0]
+        return 'X'
+
+listed = [ListRemover(), 'b']
+print(repr(listed))"#,
+    });
+}
+
+/// A comparison of two dictionaries looks the key of every entry of the
+/// left dictionary up in the right dictionary: the hash of the key decides
+/// whether the keys are compared at all, and the `__eq__` of the key that
+/// the lookup finds answers the comparison.
+#[test]
+fn cpython_dict_equality_user_defined_keys_diff() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "objects/dictobject.c dict comparison (CPython 3.14.6 oracle)",
+        name: "dict-equality-user-defined-keys",
+        source: r#"class K:
+    def __init__(self, tag, digest=7):
+        self.tag = tag
+        self.digest = digest
+        self.hashes = 0
+        self.equals = 0
+    def __hash__(self):
+        self.hashes += 1
+        return self.digest
+    def __eq__(self, other):
+        self.equals += 1
+        return isinstance(other, K)
+
+k1 = K('one')
+k2 = K('two')
+left = {k1: 1}
+right = {k2: 1}
+before = (k1.hashes, k2.hashes, k1.equals, k2.equals)
+print(left == right)
+print(k1.hashes - before[0], k2.hashes - before[1], k1.equals - before[2], k2.equals - before[3])
+before = (k1.hashes, k2.hashes, k1.equals, k2.equals)
+print(left != right)
+print(k1.hashes - before[0], k2.hashes - before[1], k1.equals - before[2], k2.equals - before[3])
+
+# A key with another hash stays a different key, so the dictionaries differ
+# without a comparison of the keys.
+a = K('a', 1)
+b = K('b', 2)
+first = {a: 1}
+second = {b: 1}
+before = (a.hashes, b.hashes, a.equals, b.equals)
+print(first == second)
+print(a.hashes - before[0], b.hashes - before[1], a.equals - before[2], b.equals - before[3])
+
+# The lookup finds the same key object, so the keys are not compared.
+same = {k1: 1}
+before = (k1.hashes, k1.equals)
+print(same == left)
+print(k1.hashes - before[0], k1.equals - before[1])
+"#,
+    });
+}
+
+/// The hash of a key decides whether the keys of two dictionaries are
+/// compared, and a copy of a dictionary keeps the hash of every key.
+#[test]
+fn cpython_dict_equality_stored_hash_diff() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "objects/dictobject.c dict comparison (CPython 3.14.6 oracle)",
+        name: "dict-equality-stored-hash",
+        source: r#"class K:
+    def __init__(self, tag, digest=7):
+        self.tag = tag
+        self.digest = digest
+        self.hashes = 0
+        self.equals = 0
+    def __hash__(self):
+        self.hashes += 1
+        return self.digest
+    def __eq__(self, other):
+        self.equals += 1
+        return isinstance(other, K)
+
+# The hash of a key decides whether the keys are compared, so a key whose
+# hash changed after the insertion is a different key.
+key = K('key', 1)
+first = {key: 1}
+key.digest = 2
+second = {key: 1}
+before = key.hashes
+print(first == second)
+print(first != second)
+print(key.hashes - before)
+
+# A copy of a dictionary keeps the hash of every key, so the comparison of
+# the copy with the source does not hash the key again.
+other = K('other', 3)
+source = {other: 1}
+before = other.hashes
+copies = [dict(source), dict([(other, 1)]), {**source}, source.copy()]
+print([copy == source for copy in copies])
+print(other.hashes - before)
+"#,
+    });
+}
+
+#[test]
+fn cpython_chain_map_equality_hash_calls_diff() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "collections.ChainMap comparison (CPython 3.14.6 oracle)",
+        name: "chain-map-equality-hash-calls",
+        source: r#"from collections import ChainMap
+
+class K:
+    def __init__(self, tag):
+        self.tag = tag
+        self.hashes = 0
+        self.equals = 0
+    def __hash__(self):
+        self.hashes += 1
+        return 7
+    def __eq__(self, other):
+        self.equals += 1
+        return isinstance(other, K)
+
+k1 = K('one')
+k2 = K('two')
+left = ChainMap({k1: 1})
+right = ChainMap({k2: 1})
+before = (k1.hashes, k2.hashes, k1.equals, k2.equals)
+print(left == right)
+print(k1.hashes - before[0], k2.hashes - before[1], k1.equals - before[2], k2.equals - before[3])
+before = (k1.hashes, k2.hashes, k1.equals, k2.equals)
+print(left != right)
+print(k1.hashes - before[0], k2.hashes - before[1], k1.equals - before[2], k2.equals - before[3])
+"#,
+    });
+}
+
 }
 
 #[rustfmt::skip]
@@ -68959,8 +70718,8 @@ mod manifest {
         .collect::<BTreeSet<_>>();
 
         assert_eq!(files, expected);
-        // Release-gate inputs run by `tests/run.sh --release-gate`; neither
-        // holds Rust test targets.
+        // Release-gate inputs run by `tests/run.sh --release-gate`, and the
+        // conformance corpus; none holds Rust test targets.
         let directories = fs::read_dir(&tests)
             .expect("read tests directory")
             .filter_map(Result::ok)
@@ -68970,7 +70729,7 @@ mod manifest {
             .collect::<BTreeSet<_>>();
         assert_eq!(
             directories,
-            ["oracles", "release_gate"]
+            ["conformance", "oracles", "release_gate"]
                 .into_iter()
                 .map(str::to_owned)
                 .collect::<BTreeSet<_>>()
@@ -68984,7 +70743,7 @@ mod manifest {
         let inventory = source_section("mod inventory {", Some("mod manifest {"));
         let subset = source_section("mod subset {", None);
 
-        assert_eq!(test_count(diff), 1499, "CPython diff count drifted");
+        assert_eq!(test_count(diff), 1550, "CPython diff count drifted");
         assert_eq!(test_count(inventory), 3, "grammar inventory count drifted");
         assert_eq!(test_count(subset), 1973, "CPython subset count drifted");
     }
@@ -68992,7 +70751,7 @@ mod manifest {
     #[test]
     fn runtime_sandbox_and_product_keep_test_counts() {
         assert_eq!(RUNTIME_SOURCE.matches("#[test]").count(), 419);
-        assert_eq!(SANDBOX_SOURCE.matches("#[test]").count(), 54);
+        assert_eq!(SANDBOX_SOURCE.matches("#[test]").count(), 68);
         assert_eq!(PRODUCT_SOURCE.matches("#[test]").count(), 37);
         for required in [
             "sandbox_policy",
@@ -69127,6 +70886,15 @@ mod manifest {
         }
         assert!(CARGO_TOML.contains("name = \"mnpy\""));
         assert!(!CARGO_TOML.contains("mnpy-sandbox"));
+    }
+
+    #[test]
+    fn the_release_gate_keeps_its_conformance_step() {
+        let gate = include_str!("release_gate/gate.py");
+        assert!(
+            gate.contains("(\"conformance\", "),
+            "the release gate lost its conformance step"
+        );
     }
 }
 
@@ -113129,9 +114897,9 @@ fn cpython_ast_slice_assignment_subset() {
         "items = ([0, 1],)\nitems[0][0:2] = [9]\nprint(items[0])",
         &["[9]"],
     );
-    assert_error(
-        "items = [0, 1, 2]\nitems[::2] = [9]",
-        "runtime error: attempt to assign sequence of size 1 to extended slice of size 2",
+    assert_output(
+        "items = [0, 1, 2]\ntry:\n    items[::2] = [9]\nexcept ValueError as error:\n    print(type(error).__name__, error)",
+        &["ValueError attempt to assign sequence of size 1 to extended slice of size 2"],
     );
 }
 
@@ -113347,11 +115115,11 @@ fn cpython_dict_display_unpacking_subset() {
     assert_output("print({0: 1, **{0: 2}, 0: 3, 0: 4})", &["{0: 4}"]);
     assert_error(
         "print({**1})",
-        "runtime error: dict update source must be a dict, got 1",
+        "runtime error: TypeError: dict update source must be a dict, got 1",
     );
     assert_error(
         "print({**[]})",
-        "runtime error: dict update source must be a dict, got []",
+        "runtime error: TypeError: dict update source must be a dict, got []",
     );
 }
 
@@ -131524,7 +133292,7 @@ fn cpython_frozenset_basic_subset() {
         ),
         &[
             "['a', 'b', 'c'] 3 True False",
-            "True True True",
+            "False False False",
             "None True",
             "True True frozenset",
             "True True False False True",
@@ -136854,8 +138622,8 @@ fn cpython_functools_cached_property_subset() {
             "set-too-many TypeError cached_property.__set_name__() takes 3 positional arguments but 4 were given True",
             "set-duplicate TypeError cached_property.__set_name__() got multiple values for argument 'owner' True",
             "set-unknown TypeError cached_property.__set_name__() got an unexpected keyword argument 'bad' True",
-            "RuntimeError Error calling __set_name__ on 'Boom' instance 'field' in 'X'",
-            "RuntimeError Error calling __set_name__ on 'Boom' instance 'field' in 'Dynamic'",
+            "RuntimeError boom-X-field",
+            "RuntimeError boom-Dynamic-field",
         ],
     );
 }
@@ -139164,6 +140932,21 @@ fn cpython_t_string_templatelib_iteration_subset() {
 // and the builtin type metadata CPython exposes for t-string runtime objects.
 #[test]
 fn cpython_templatelib_constructor_subset() {
+    assert_output_matches_cpython(
+        r#"import copy
+from string.templatelib import Interpolation
+t = t"a{1}b{2}c"
+i = t.interpolations[0]
+for value in (42, [], "X", Interpolation(9, "replacement")):
+    try:
+        replacement = copy.deepcopy(t, {id(i): value})
+        print(replacement.strings, [item.value for item in replacement.interpolations])
+    except TypeError as e:
+        print(type(e).__name__, str(e))
+print(copy.copy(t) is t, copy.deepcopy(t) is t)
+print(copy.copy(i) is i, copy.deepcopy(i) is i)
+"#,
+    );
     assert_output(
         concat!(
             "from string.templatelib import Template, Interpolation, convert\n",
@@ -160390,3 +162173,18 @@ fn future_module_exposes_native_feature_objects() {
     );
 }
 }
+#[rustfmt::skip]
+mod deferred_drop_regressions { macro_rules! case { ($name:ident, $memory:literal, $depth:literal, $construct:literal, $teardown:literal) => { #[test] fn $name() { let source = format!("import types\nclass Holder: pass\nh = Holder()\nx = None\nfor i in range({}):\n    x = {}\n{}\n", $depth, $construct, $teardown); let output = std::process::Command::new(env!("CARGO_BIN_EXE_mnpy")).args(["--max-memory-bytes", $memory, "--max-steps", "80000000000", "--max-time-ms", "80000", "-c", &source]).output().expect("run real worker"); let stderr = String::from_utf8_lossy(&output.stderr); assert!(output.status.success() || stderr.contains("sandbox error: allocation limit exceeded") || stderr.contains("sandbox error: worker memory limit exceeded"), "unexpected worker result: {}: {stderr}", output.status); assert!(!stderr.contains("worker crashed") && !stderr.contains("native stack exhausted"), "worker crashed: {stderr}"); } }; }
+macro_rules! strict_case { ($name:ident, $memory:literal, $depth:literal, $construct:literal, $teardown:literal) => { #[test] fn $name() { let source = format!("import types\nclass Holder: pass\nh = Holder()\nx = None\nfor i in range({}):\n    x = {}\n{}\nprint('end')\n", $depth, $construct, $teardown); let output = std::process::Command::new(env!("CARGO_BIN_EXE_mnpy")).args(["--max-memory-bytes", $memory, "--max-steps", "80000000000", "--max-time-ms", "80000", "-c", &source]).output().expect("run real worker"); let stderr = String::from_utf8_lossy(&output.stderr); let stdout = String::from_utf8_lossy(&output.stdout); assert!(!stderr.contains("worker crashed") && !stderr.contains("native stack exhausted"), "worker crashed: {stderr}"); let clean = output.status.success() && stdout == "end\n"; let stopped = stderr.contains("sandbox error: worker memory limit exceeded") || stderr.contains("sandbox error: allocation limit exceeded"); assert!(clean || stopped, "unexpected worker result: {}: {stdout:?}: {stderr}", output.status); } }; }
+case!(dict_values_del, "33554432", 5000, "{0: x}.values()", "del x");
+case!(dict_values_clear, "33554432", 5000, "{0: x}.values()", "l = [x]; del x; l.clear()");
+case!(dict_values_attribute, "33554432", 5000, "{0: x}.values()", "h.x = x; del x; h.x = None");
+case!(mapping_proxy_pop, "33554432", 5000, "types.MappingProxyType({0: x})", "l = [x]; del x; l.pop()");
+case!(dict_values_attribute_larger, "67108864", 10000, "{0: x}.values()", "h.x = x; del x; h.x = None");
+strict_case!(staticmethod_chain_del, "33554432", 10000, "staticmethod(x)", "del x");
+strict_case!(classmethod_chain_del, "33554432", 10000, "classmethod(x)", "del x");
+strict_case!(cmp_to_key_chain_del, "33554432", 10000, "__import__('functools').cmp_to_key(x)", "del x");
+strict_case!(property_chain_del, "33554432", 10000, "property(x)", "del x");
+strict_case!(slice_chain_del, "33554432", 10000, "slice(x, None)", "del x");
+strict_case!(itemgetter_chain_del, "33554432", 10000, "__import__('operator').itemgetter(x)", "del x");
+strict_case!(methodcaller_chain_del, "33554432", 10000, "__import__('operator').methodcaller('m', x)", "del x"); }

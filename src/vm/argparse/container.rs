@@ -1039,7 +1039,7 @@ impl Vm {
                     return self
                         .ap_error("ValueError", "length of metavar tuple does not match nargs");
                 }
-                Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             }
         }
         self.ap_method(receiver, "_check_help", vec![action.clone()])?;
@@ -1159,7 +1159,7 @@ impl Vm {
             {
                 self.ap_error("ValueError", "badly formed help string")
             }
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 

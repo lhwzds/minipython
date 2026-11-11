@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "pairwise\n",
+    "inner (1, 2)\n",
+    "outer StopIteration\n"
+  ]
+}

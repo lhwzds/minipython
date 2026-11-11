@@ -1,0 +1,13 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"operation\", \"name\": \"copy\"}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"operation\", \"name\": \"dict\"}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"operation\", \"name\": \"update\"}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"lengths\", \"lengths\": [1, 1, 1]}\n"
+  ]
+}

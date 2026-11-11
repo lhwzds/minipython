@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"membership\", \"result\": false, \"tuple_present\": true}\n",
+    "{\"calls\": [[\"__hash__\", \"x\"], [\"__hash__\", \"y\"], [\"__eq__\", \"x\", \"y\"], [\"__eq__\", \"y\", \"x\"]], \"kind\": \"calls\"}\n"
+  ]
+}

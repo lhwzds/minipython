@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"key\": \"p\", \"kind\": \"identity\", \"same\": true, \"self_not\": false}\n",
+    "{\"key\": \"s\", \"kind\": \"identity\", \"same\": true, \"self_not\": false}\n",
+    "{\"key\": \"c\", \"kind\": \"identity\", \"same\": true, \"self_not\": false}\n",
+    "{\"class_value\": -3, \"kind\": \"descriptor_value\", \"property_value\": -3, \"static_value\": -3}\n"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"result\", \"size\": 1, \"values\": [\"second\"]}\n"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"operation\", \"matched\": false, \"method\": \"contains\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"operation\", \"matched\": true, \"method\": \"contains\"}\n",
+    "{\"kind\": \"result\", \"value\": true}\n",
+    "{\"kind\": \"operation\", \"matched\": false, \"method\": \"count\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"operation\", \"matched\": true, \"method\": \"count\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"operation\", \"matched\": false, \"method\": \"index\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"operation\", \"matched\": true, \"method\": \"index\"}\n",
+    "{\"kind\": \"result\", \"value\": 0}\n",
+    "{\"kind\": \"operation\", \"matched\": false, \"method\": \"remove\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"IndexError\"}\n",
+    "{\"kind\": \"operation\", \"matched\": true, \"method\": \"remove\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"IndexError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque.index(x): x not in deque\", \"type\": \"ValueError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque.remove(x): x not in deque\", \"type\": \"ValueError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque.index(x): x not in deque\", \"type\": \"ValueError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque.remove(x): x not in deque\", \"type\": \"ValueError\"}\n"
+  ]
+}

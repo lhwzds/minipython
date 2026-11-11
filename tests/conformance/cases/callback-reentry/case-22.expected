@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{'copy'} 0\n",
+    "['copy'] 0\n",
+    "copy True\n"
+  ]
+}

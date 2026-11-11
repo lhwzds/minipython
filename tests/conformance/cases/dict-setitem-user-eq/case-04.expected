@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"calls\": [\"child\"], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"result\", \"size\": 2, \"values\": [\"first\", \"second\"]}\n"
+  ]
+}

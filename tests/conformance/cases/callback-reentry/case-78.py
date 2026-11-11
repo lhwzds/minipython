@@ -1,0 +1,18 @@
+type A = int
+T = type(A)
+print(isinstance(A, T))
+print(issubclass(T, object))
+print(isinstance(T, type))
+print(type(T).__name__)
+print(T.__name__)
+print(isinstance(1, T))
+
+TypeAliasType = type(A)
+X = TypeAliasType("X", int)
+T = type(X)
+print(isinstance(X, T))
+print(issubclass(T, object))
+print(isinstance(T, type))
+print(type(T).__name__)
+print(T.__name__)
+print(isinstance(1, T))

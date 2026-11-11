@@ -990,7 +990,7 @@ impl Vm {
             self.load_subscript_value(
                 argv,
                 Value::Slice {
-                    start: Some(Box::new(Value::Number(1))),
+                    start: Some(Rc::new(Value::Number(1))),
                     stop: None,
                     step: None,
                     identity: Rc::new(()),
@@ -1037,7 +1037,7 @@ impl Vm {
                 Ok(result) => self.ap_unpack_pair(&result)?,
                 Err(exception) => {
                     if !self.ap_exception_matches_class(&exception, "ArgumentError")? {
-                        return Err(self.remember_runtime_exception_error(exception));
+                        return Err(self.propagate_captured_exception(exception));
                     }
                     let message = self.ap_str(&value_from_exception(&exception))?;
                     self.ap_method(receiver, "error", vec![str_value(message)])?;
@@ -2012,7 +2012,7 @@ impl Vm {
                     )?;
                     return self.ap_raise_argument_error(action.clone(), message);
                 }
-                Err(self.remember_runtime_exception_error(exception))
+                Err(self.propagate_captured_exception(exception))
             }
         }
     }
@@ -2104,7 +2104,7 @@ impl Vm {
             let path = self.load_subscript_value(
                 arg_string,
                 Value::Slice {
-                    start: Some(Box::new(Value::Number(1))),
+                    start: Some(Rc::new(Value::Number(1))),
                     stop: None,
                     step: None,
                     identity: Rc::new(()),
@@ -2126,7 +2126,7 @@ impl Vm {
                     let message = self.ap_str(&value_from_exception(&exception))?;
                     return self.ap_raise_argument_error(Value::None, message);
                 }
-                Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             let content = self.ap_method(&file, "read", Vec::new())?;
             let _ = self
@@ -2190,7 +2190,7 @@ impl Vm {
             {
                 return Ok(());
             }
-            Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         match self.call_value_catching(write, vec![message])? {
             Ok(_) => Ok(()),
@@ -2200,7 +2200,7 @@ impl Vm {
             {
                 Ok(())
             }
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 }

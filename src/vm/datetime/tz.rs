@@ -294,7 +294,7 @@ impl Vm {
             {
                 Ok(None)
             }
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 

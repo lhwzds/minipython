@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "Custom repr True\n",
+    "Custom repr True\n",
+    "Custom repr True\n"
+  ]
+}

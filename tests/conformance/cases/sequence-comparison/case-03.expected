@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"cross\": false, \"equal\": true, \"kind\": \"result\", \"unequal\": false}\n"
+  ]
+}

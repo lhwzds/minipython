@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"count\": 2, \"index\": 0, \"kind\": \"search\"}\n",
+    "{\"kind\": \"remaining\", \"length\": 1}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n"
+  ]
+}

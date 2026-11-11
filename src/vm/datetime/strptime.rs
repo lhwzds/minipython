@@ -880,7 +880,7 @@ impl Vm {
                         exception.suppress_context = true;
                         exception.context =
                             Some(Box::new(key_error_exception(Value::String(directive))));
-                        Err(self.remember_runtime_exception_error(exception))
+                        Err(self.propagate_captured_exception(exception))
                     }
                     None => Err(message),
                 };

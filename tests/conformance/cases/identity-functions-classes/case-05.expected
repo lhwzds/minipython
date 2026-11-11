@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"different\": false, \"kind\": \"identity\", \"returned\": 1000000000000000000000000000000, \"same\": [true, true, true], \"self_not\": [false, false, false]}\n"
+  ]
+}

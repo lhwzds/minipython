@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+use crate::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::rc::Rc;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -26,11 +26,96 @@ pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
 pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
 pub type BytesIORef = Rc<RefCell<BytesIOState>>;
 pub type TeeRef = Rc<RefCell<TeeState>>;
+/// The items an iterator has saved so far. The buffer is shared, so that
+/// copying the state of an iterator does not copy the items it saved.
+pub type IteratorBuffer = Rc<RefCell<Vec<Value>>>;
 pub type GroupByRef = Rc<RefCell<GroupByState>>;
 pub type NamedTupleTypeRef = Rc<NamedTupleType>;
 pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
 pub type MockCallsRef = Rc<RefCell<Vec<Vec<Value>>>>;
 pub type MockSideEffectRef = Rc<RefCell<Option<Value>>>;
+
+#[derive(Default)]
+pub struct ExceptionIdentity {
+    pub(crate) dunders: RefCell<crate::vm::ExceptionDunders>,
+    pub(crate) notes: RefCell<Option<Value>>,
+}
+
+thread_local! {
+    // None means no drain is active on this thread.
+    static PENDING_EXCEPTION_VALUES: RefCell<Option<Vec<Value>>> = const { RefCell::new(None) };
+}
+
+impl fmt::Debug for ExceptionIdentity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ExceptionIdentity")
+    }
+}
+
+impl Drop for ExceptionIdentity {
+    fn drop(&mut self) {
+        let dunders = std::mem::take(self.dunders.get_mut());
+        let notes = self.notes.get_mut().take();
+        let mut values = dunders.into_values().chain(notes).peekable();
+        if values.peek().is_none() {
+            return;
+        }
+        // If the thread-local is already being destroyed, the remaining
+        // values are dropped directly when this iterator goes out of scope.
+        let _ = PENDING_EXCEPTION_VALUES.try_with(|pending| {
+            {
+                let mut pending = pending.borrow_mut();
+                if let Some(active) = pending.as_mut() {
+                    active.extend(&mut values);
+                    return;
+                }
+                *pending = Some(values.by_ref().collect());
+            }
+            loop {
+                let value = {
+                    let mut pending = pending.borrow_mut();
+                    let value = pending.as_mut().unwrap().pop();
+                    if value.is_none() {
+                        *pending = None;
+                    }
+                    value
+                };
+                match value {
+                    Some(value) => release_value(value),
+                    None => break,
+                }
+            }
+        });
+    }
+}
+
+impl PartialEq for ExceptionIdentity {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+pub struct TracebackNode {
+    pub next: Option<Rc<TracebackNode>>,
+}
+
+impl fmt::Debug for TracebackNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("TracebackNode")
+    }
+}
+
+impl Drop for TracebackNode {
+    fn drop(&mut self) {
+        let mut next = self.next.take();
+        while let Some(mut node) = next {
+            match Rc::get_mut(&mut node) {
+                Some(unique) => next = unique.next.take(),
+                None => break,
+            }
+        }
+    }
+}
 
 pub const EXCEPTION_TRACEBACK_ATTR: &str = "\0minipython_traceback";
 pub const INT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_int_storage";
@@ -43,6 +128,7 @@ pub const COMPLEX_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_complex_storage";
 pub const NAMED_TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_namedtuple_storage";
 pub const TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_tuple_storage";
 pub const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
+pub const COUNTER_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_counter_storage";
 pub const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
 pub const GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_genericalias_storage";
 const CLASS_QUALNAME_ATTR: &str = "\0class_qualname";
@@ -95,6 +181,12 @@ pub struct ByteArrayStorage {
 #[derive(Debug)]
 pub struct DictStorage {
     pub entries: Vec<(Value, Value)>,
+    /// The hash of every key, when the hash of the key is known.
+    ///
+    /// CPython keeps the hash of a key with its entry, so a lookup and a
+    /// comparison of two mappings answer with the stored hash instead of
+    /// hashing the key again.
+    pub hashes: Vec<Option<Value>>,
     pub version: usize,
 }
 
@@ -135,7 +227,7 @@ pub struct BytesIOState {
 #[derive(Debug, Clone)]
 pub struct TeeState {
     pub iterator: Value,
-    pub buffer: Vec<Value>,
+    pub buffer: IteratorBuffer,
     pub exhausted: bool,
 }
 
@@ -218,10 +310,65 @@ impl Eq for ByteArrayStorage {}
 
 impl DictStorage {
     pub fn new(entries: Vec<(Value, Value)>) -> Self {
+        let hashes = vec![None; entries.len()];
         Self {
             entries,
+            hashes,
             version: 0,
         }
+    }
+
+    /// A mapping that keeps the hash of every key.
+    pub fn with_hashes(entries: Vec<(Value, Value)>, hashes: Vec<Option<Value>>) -> Self {
+        let mut hashes = hashes;
+        hashes.resize(entries.len(), None);
+        Self {
+            entries,
+            hashes,
+            version: 0,
+        }
+    }
+
+    /// The number of entries of the mapping.
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Whether the mapping holds no entries.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Remove the entry at an index.
+    pub fn remove(&mut self, index: usize) -> (Value, Value) {
+        if index < self.hashes.len() {
+            self.hashes.remove(index);
+        }
+        self.entries.remove(index)
+    }
+
+    /// Remove the last entry.
+    pub fn pop(&mut self) -> Option<(Value, Value)> {
+        self.hashes.pop();
+        self.entries.pop()
+    }
+
+    /// Add an entry at an index.
+    pub fn insert(&mut self, index: usize, item: (Value, Value)) {
+        self.hashes.insert(index, None);
+        self.entries.insert(index, item)
+    }
+
+    /// Remove every entry.
+    pub fn clear(&mut self) {
+        self.hashes.clear();
+        self.entries.clear()
+    }
+
+    /// Replace every entry.
+    pub fn set_entries(&mut self, entries: Vec<(Value, Value)>) {
+        self.hashes = vec![None; entries.len()];
+        self.entries = entries;
     }
 }
 
@@ -288,8 +435,11 @@ fn owns_nested_value(value: &Value) -> bool {
         | Value::DefaultDict { entries, .. }
         | Value::SimpleNamespace { fields: entries } => Rc::strong_count(entries) == 1,
         Value::Instance { fields, .. } => Rc::strong_count(fields) == 1,
+        Value::Unpack(value) | Value::PicklePayload(value) => Rc::strong_count(value) == 1,
+        Value::Template { interpolations, .. } => Rc::strong_count(interpolations) == 1,
+        Value::TemplateInterpolation(item) => Rc::strong_count(item) == 1,
         Value::UserList { .. } | Value::UserDict { .. } => true,
-        Value::Exception { cause, context, .. } => cause.is_some() || context.is_some(),
+        Value::Exception { .. } => true,
         _ => false,
     }
 }
@@ -313,6 +463,10 @@ fn is_container_value(value: &Value) -> bool {
             | Value::UserList { .. }
             | Value::UserDict { .. }
             | Value::Exception { .. }
+            | Value::Unpack(_)
+            | Value::PicklePayload(_)
+            | Value::Template { .. }
+            | Value::TemplateInterpolation(_)
     )
 }
 
@@ -369,6 +523,23 @@ fn detach_owned_children(value: Value, pending: &mut Vec<Value>) {
             }
             drop(class_attrs);
             class_bases.into_iter().for_each(&mut push);
+        }
+        Value::Unpack(value) | Value::PicklePayload(value) => {
+            if let Ok(value) = Rc::try_unwrap(value) {
+                push(value);
+            }
+        }
+        Value::Template { interpolations, .. } => {
+            if let Ok(items) = Rc::try_unwrap(interpolations) {
+                for item in items {
+                    push(Value::TemplateInterpolation(item));
+                }
+            }
+        }
+        Value::TemplateInterpolation(item) => {
+            if let Ok(item) = Rc::try_unwrap(item) {
+                push(*item.value);
+            }
         }
         Value::Exception {
             args,
@@ -447,6 +618,12 @@ pub fn list_value(items: Vec<Value>) -> Value {
 }
 
 pub fn tuple_value(items: Vec<Value>) -> Value {
+    if items.is_empty() {
+        // CPython hands out its one empty tuple for every empty tuple, so two
+        // empty tuples are the same object.
+        return EMPTY_TUPLE.with(|items| Value::Tuple(items.clone()));
+    }
+
     Value::Tuple(Rc::new(items))
 }
 
@@ -459,15 +636,21 @@ pub fn set_value(items: Vec<Value>) -> Value {
 }
 
 thread_local! {
-    static EMPTY_FROZEN_SET: FrozenSetRef = Rc::new(Vec::new());
+    static EMPTY_TUPLE: TupleRef = Rc::new(Vec::new());
 }
 
 pub fn frozen_set_value(items: Vec<Value>) -> Value {
-    if items.is_empty() {
-        return EMPTY_FROZEN_SET.with(|items| Value::FrozenSet(items.clone()));
-    }
-
+    // CPython builds a fresh frozenset for every `frozenset()` call, so empty
+    // frozensets are distinct objects.
     Value::FrozenSet(Rc::new(items))
+}
+
+/// A dictionary that keeps the hash of every key that a user-defined
+/// `__hash__` provides.
+pub fn dict_value_with_hashes(entries: Vec<(Value, Value)>, hashes: Vec<Option<Value>>) -> Value {
+    Value::Dict(Rc::new(RefCell::new(DictStorage::with_hashes(
+        entries, hashes,
+    ))))
 }
 
 pub fn dict_value(entries: Vec<(Value, Value)>) -> Value {
@@ -726,6 +909,7 @@ pub struct CoroutineState {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TemplateInterpolation {
+    pub identity: Rc<()>,
     pub value: Box<Value>,
     pub expression: String,
     pub conversion: Option<String>,
@@ -821,7 +1005,8 @@ pub enum Value {
     },
     Deque {
         data: ListRef,
-        maxlen: Option<usize>,
+        maxlen: Rc<Cell<Option<usize>>>,
+        state: Rc<Cell<u64>>,
     },
     UserDict {
         data: DictRef,
@@ -839,15 +1024,17 @@ pub enum Value {
     NamedTupleTypeMethod {
         typ: NamedTupleTypeRef,
         name: String,
+        identity: Rc<()>,
     },
     NamedTupleInstanceMethod {
         instance: Box<Value>,
         name: String,
+        identity: Rc<()>,
     },
     SimpleNamespace {
         fields: DictRef,
     },
-    PicklePayload(Box<Value>),
+    PicklePayload(Rc<Value>),
     AstNode {
         kind: String,
         fields: Vec<String>,
@@ -886,12 +1073,12 @@ pub enum Value {
         identity: Rc<()>,
     },
     Traceback {
-        identity: Rc<()>,
+        identity: Rc<TracebackNode>,
     },
     Slice {
-        start: Option<Box<Value>>,
-        stop: Option<Box<Value>>,
-        step: Option<Box<Value>>,
+        start: Option<Rc<Value>>,
+        stop: Option<Rc<Value>>,
+        step: Option<Rc<Value>>,
         identity: Rc<()>,
     },
     Range {
@@ -904,6 +1091,16 @@ pub enum Value {
         current: BigInt,
         stop: BigInt,
         step: BigInt,
+    },
+    DequeIterator {
+        items: ListRef,
+        state: Rc<Cell<u64>>,
+        expected_state: u64,
+        index: usize,
+        remaining: usize,
+        reversed: bool,
+        exhausted: bool,
+        identity: Rc<()>,
     },
     ListIterator {
         items: ListRef,
@@ -987,7 +1184,7 @@ pub enum Value {
     },
     ItertoolsCycle {
         iterator: Box<Value>,
-        saved: Vec<Value>,
+        saved: IteratorBuffer,
         index: usize,
         exhausted: bool,
     },
@@ -1162,7 +1359,7 @@ pub enum Value {
     },
     Coroutine(Rc<RefCell<CoroutineState>>),
     CoroutineAwait(Rc<RefCell<CoroutineState>>),
-    AwaitIterator(Box<Value>),
+    AwaitIterator(Box<Value>, Rc<()>),
     AsyncGenerator(Rc<RefCell<GeneratorState>>),
     AsyncGeneratorNext {
         state: Rc<RefCell<GeneratorState>>,
@@ -1186,6 +1383,7 @@ pub enum Value {
         done: Rc<Cell<bool>>,
     },
     AnextDefault {
+        identity: Rc<()>,
         awaitable: Box<Value>,
         default: Box<Value>,
     },
@@ -1213,6 +1411,7 @@ pub enum Value {
         identity: Rc<()>,
     },
     TypeAlias {
+        identity: Rc<()>,
         name: String,
         type_params: Vec<Value>,
         value: Box<Value>,
@@ -1234,13 +1433,15 @@ pub enum Value {
         origin: Box<Value>,
         args: Vec<Value>,
         union_unhashable_count: usize,
+        identity: Rc<()>,
     },
-    Unpack(Box<Value>),
+    Unpack(Rc<Value>),
     Template {
-        strings: Vec<String>,
-        interpolations: Vec<TemplateInterpolation>,
+        identity: Rc<()>,
+        strings: Rc<Vec<String>>,
+        interpolations: Rc<Vec<Rc<TemplateInterpolation>>>,
     },
-    TemplateInterpolation(TemplateInterpolation),
+    TemplateInterpolation(Rc<TemplateInterpolation>),
     Instance {
         class_name: String,
         fields: Scope,
@@ -1248,9 +1449,9 @@ pub enum Value {
         class_bases: Vec<Value>,
     },
     Property {
-        fget: Option<Box<Value>>,
-        fset: Option<Box<Value>>,
-        fdel: Option<Box<Value>>,
+        fget: Option<Rc<Value>>,
+        fset: Option<Rc<Value>>,
+        fdel: Option<Rc<Value>>,
         doc: Rc<RefCell<Option<Value>>>,
         doc_from_getter: bool,
         name: Rc<RefCell<Option<Value>>>,
@@ -1262,11 +1463,11 @@ pub enum Value {
         identity: Rc<()>,
     },
     StaticMethod {
-        function: Box<Value>,
+        function: Rc<Value>,
         identity: Rc<()>,
     },
     ClassMethod {
-        function: Box<Value>,
+        function: Rc<Value>,
         identity: Rc<()>,
     },
     Super {
@@ -1350,11 +1551,11 @@ pub enum Value {
         identity: Rc<()>,
     },
     CmpToKey {
-        comparator: Box<Value>,
+        comparator: Rc<Value>,
         identity: Rc<()>,
     },
     CmpToKeyObject {
-        comparator: Box<Value>,
+        comparator: Rc<Value>,
         object: Rc<RefCell<Value>>,
         identity: Rc<()>,
     },
@@ -1363,13 +1564,13 @@ pub enum Value {
         identity: Rc<()>,
     },
     OperatorItemGetter {
-        items: Vec<Value>,
+        items: Rc<Vec<Value>>,
         identity: Rc<()>,
     },
     OperatorMethodCaller {
         name: String,
-        args: Vec<Value>,
-        keywords: Vec<(String, Value)>,
+        args: Rc<Vec<Value>>,
+        keywords: Rc<Vec<(String, Value)>>,
         identity: Rc<()>,
     },
     InspectSignature {
@@ -1390,7 +1591,7 @@ pub enum Value {
         cause: Option<Box<Value>>,
         context: Option<Box<Value>>,
         suppress_context: bool,
-        identity: Rc<()>,
+        identity: Rc<ExceptionIdentity>,
     },
     /// A `re` pattern, match, or scanner (`src/vm/re.rs`).
     Re(crate::vm::re::ReObject),
@@ -1475,9 +1676,9 @@ impl fmt::Display for Value {
                 write!(f, "[{}]", format_list_items(&data))
             }
             Value::UserString { data, .. } => write!(f, "{}", data.borrow()),
-            Value::Deque { data, maxlen } => {
+            Value::Deque { data, maxlen, .. } => {
                 let data = data.borrow();
-                if let Some(maxlen) = maxlen {
+                if let Some(maxlen) = maxlen.get() {
                     write!(f, "deque([{}], maxlen={maxlen})", format_list_items(&data))
                 } else {
                     write!(f, "deque([{}])", format_list_items(&data))
@@ -1494,10 +1695,10 @@ impl fmt::Display for Value {
                 let field = namedtuple_field_name(typ, *index);
                 write!(f, "<namedtuple field '{field}' of '{}'>", typ.name)
             }
-            Value::NamedTupleTypeMethod { typ, name } => {
+            Value::NamedTupleTypeMethod { typ, name, .. } => {
                 write!(f, "<bound method {}.{name}>", typ.name)
             }
-            Value::NamedTupleInstanceMethod { instance, name } => {
+            Value::NamedTupleInstanceMethod { instance, name, .. } => {
                 write!(f, "<bound method {instance}.{name}>")
             }
             Value::SimpleNamespace { fields } => write!(f, "{}", format_simple_namespace(fields)),
@@ -1529,6 +1730,9 @@ impl fmt::Display for Value {
                 format_slice_part(step)
             ),
             Value::RangeIterator { .. } => write!(f, "<range_iterator>"),
+            Value::DequeIterator {
+                reversed, identity, ..
+            } => write!(f, "{}", deque_iterator_repr(*reversed, identity)),
             Value::ListIterator { .. } => write!(f, "<list_iterator>"),
             Value::TupleIterator { .. } => write!(f, "<tuple_iterator>"),
             Value::TemplateIterator { .. } => {
@@ -1578,7 +1782,15 @@ impl fmt::Display for Value {
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
-            Value::Iterator(_) => write!(f, "<iterator>"),
+            Value::Iterator(state) => match state.try_borrow() {
+                Ok(iterator) => match &*iterator {
+                    Value::DequeIterator { .. } | Value::CallIterator { .. } => {
+                        write!(f, "{iterator}")
+                    }
+                    _ => write!(f, "<iterator>"),
+                },
+                Err(_) => write!(f, "<iterator>"),
+            },
             Value::Function {
                 name,
                 attrs,
@@ -1605,7 +1817,7 @@ impl fmt::Display for Value {
             Value::GeneratorWrapper { .. } => write!(f, "<types._GeneratorWrapper object>"),
             Value::Coroutine(state) => write!(f, "<coroutine object {}>", state.borrow().name),
             Value::CoroutineAwait(_) => write!(f, "<coroutine_wrapper object>"),
-            Value::AwaitIterator(_) => write!(f, "<await_iterator object>"),
+            Value::AwaitIterator(..) => write!(f, "<await_iterator object>"),
             Value::AsyncGenerator(state) => {
                 write!(f, "<async_generator object {}>", state.borrow().name)
             }
@@ -1631,7 +1843,7 @@ impl fmt::Display for Value {
             Value::NewType { name, module, .. } => {
                 write!(f, "{}", format_new_type_name(module, name))
             }
-            Value::ConstEvaluator { kind, target } => {
+            Value::ConstEvaluator { kind, target, .. } => {
                 write!(f, "{}", format_const_evaluator(*kind, target))
             }
             Value::GenericAlias { origin, args, .. } if is_union_origin(origin) => {
@@ -1644,6 +1856,7 @@ impl fmt::Display for Value {
             Value::Template {
                 strings,
                 interpolations,
+                ..
             } => write!(
                 f,
                 "Template(strings={}, interpolations={})",
@@ -1674,6 +1887,8 @@ impl fmt::Display for Value {
                 } else if let Some(rendered) = format_set_subclass(class_name, fields) {
                     write!(f, "{rendered}")
                 } else if let Some(rendered) = format_frozen_set_subclass(class_name, fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_counter_subclass(class_name, fields) {
                     write!(f, "{rendered}")
                 } else if let Some(rendered) = format_generic_alias_subclass(fields) {
                     write!(f, "{rendered}")
@@ -1869,6 +2084,12 @@ impl fmt::Display for Value {
                 write!(
                     f,
                     "<slot wrapper '__getattribute__' of 'collections.defaultdict' objects>"
+                )
+            }
+            Value::Builtin(name) if name == "deque.__init__" => {
+                write!(
+                    f,
+                    "<slot wrapper '__init__' of 'collections.deque' objects>"
                 )
             }
             Value::Builtin(name) if is_defaultdict_init_wrapper_descriptor(name) => {
@@ -2645,9 +2866,9 @@ fn format_value_repr(value: &Value) -> String {
             format!("[{}]", format_list_items(&data))
         }
         Value::UserString { data, .. } => repr_string(&data.borrow()),
-        Value::Deque { data, maxlen } => {
+        Value::Deque { data, maxlen, .. } => {
             let data = data.borrow();
-            if let Some(maxlen) = maxlen {
+            if let Some(maxlen) = maxlen.get() {
                 format!("deque([{}], maxlen={maxlen})", format_list_items(&data))
             } else {
                 format!("deque([{}])", format_list_items(&data))
@@ -2691,7 +2912,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::GeneratorWrapper { .. } => "<types._GeneratorWrapper object>".to_string(),
         Value::Coroutine(state) => format!("<coroutine object {}>", state.borrow().name),
         Value::CoroutineAwait(_) => "<coroutine_wrapper object>".to_string(),
-        Value::AwaitIterator(_) => "<await_iterator object>".to_string(),
+        Value::AwaitIterator(..) => "<await_iterator object>".to_string(),
         Value::AsyncGenerator(state) => format!("<async_generator object {}>", state.borrow().name),
         Value::AsyncGeneratorNext { .. } | Value::AsyncGeneratorThrow { .. } => {
             "<async_generator_asend object>".to_string()
@@ -2715,7 +2936,7 @@ fn format_value_repr(value: &Value) -> String {
         ),
         Value::Builtin(name) if is_typing_special_form_name(name) => name.clone(),
         Value::NewType { name, module, .. } => format_new_type_name(module, name),
-        Value::ConstEvaluator { kind, target } => format_const_evaluator(*kind, target),
+        Value::ConstEvaluator { kind, target, .. } => format_const_evaluator(*kind, target),
         Value::GenericAlias { origin, args, .. } if is_union_origin(origin) => {
             format_union_args(args)
         }
@@ -2724,6 +2945,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::Template {
             strings,
             interpolations,
+            ..
         } => format!(
             "Template(strings={}, interpolations={})",
             format_string_tuple(strings),
@@ -2743,6 +2965,7 @@ fn format_value_repr(value: &Value) -> String {
             .or_else(|| format_tuple_subclass(fields))
             .or_else(|| format_set_subclass(class_name, fields))
             .or_else(|| format_frozen_set_subclass(class_name, fields))
+            .or_else(|| format_counter_subclass(class_name, fields))
             .or_else(|| format_generic_alias_subclass(fields))
             .unwrap_or_else(|| format_instance_object_repr(class_name, fields, class_attrs)),
         Value::Property { .. } => "<property object>".to_string(),
@@ -2876,6 +3099,7 @@ fn format_value_repr(value: &Value) -> String {
 
 pub(crate) fn format_iterator_repr(iterator: &Value) -> Option<String> {
     match iterator {
+        Value::CallIterator { .. } => Some("<callable_iterator object>".to_string()),
         Value::ItertoolsCount { current, step } => {
             let current = format_value_repr(current);
             if itertools_count_step_is_default(step) {
@@ -2914,8 +3138,25 @@ pub(crate) fn format_iterator_repr(iterator: &Value) -> Option<String> {
         Value::ItertoolsBatched { .. } => Some(itertools_object_repr("batched")),
         Value::ItertoolsGroupBy { .. } => Some(itertools_object_repr("groupby")),
         Value::ItertoolsGroup { .. } => Some(itertools_object_repr("_grouper")),
+        Value::DequeIterator {
+            reversed, identity, ..
+        } => Some(deque_iterator_repr(*reversed, identity)),
         _ => None,
     }
+}
+
+/// The repr of a deque iterator, which CPython shows with the name of the
+/// type of the iterator and the address of the object.
+fn deque_iterator_repr(reversed: bool, identity: &Rc<()>) -> String {
+    let name = if reversed {
+        "_deque_reverse_iterator"
+    } else {
+        "_deque_iterator"
+    };
+    format!(
+        "<collections.{name} object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
+    )
 }
 
 fn itertools_count_step_is_default(step: &Value) -> bool {
@@ -3323,6 +3564,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
                     | "NewType"
                     | "ParamSpec"
                     | "TextIO"
+                    | "TypeAliasType"
                     | "TypeVar"
                     | "TypeVarTuple"
                     | "Protocol"
@@ -3456,7 +3698,7 @@ fn operator_helper_type_public_name(name: &str) -> Option<&'static str> {
     }
 }
 
-fn format_slice_part(value: &Option<Box<Value>>) -> String {
+fn format_slice_part(value: &Option<Rc<Value>>) -> String {
     value
         .as_deref()
         .map(format_value_repr)
@@ -3559,7 +3801,7 @@ fn format_const_evaluator_target(kind: ConstEvaluatorKind, target: &Value) -> St
         (ConstEvaluatorKind::TypeParamConstraints, Value::TypeParam { bound, .. }) => {
             match bound.borrow().as_ref() {
                 Some(Value::Tuple(items)) => Some(Value::Tuple(items.clone())),
-                _ => Some(Value::Tuple(Rc::new(Vec::new()))),
+                _ => Some(tuple_value(Vec::new())),
             }
         }
         (ConstEvaluatorKind::TypeParamDefault, Value::TypeParam { default, .. }) => {
@@ -4428,7 +4670,7 @@ impl PartialEq for Value {
                 },
             ) => {
                 left_iterator == right_iterator
-                    && left_saved == right_saved
+                    && *left_saved.borrow() == *right_saved.borrow()
                     && left_index == right_index
                     && left_exhausted == right_exhausted
             }
@@ -4542,7 +4784,7 @@ impl PartialEq for Value {
             ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::Coroutine(left), Value::Coroutine(right)) => Rc::ptr_eq(left, right),
             (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
-            (Value::AwaitIterator(left), Value::AwaitIterator(right)) => left == right,
+            (Value::AwaitIterator(left, _), Value::AwaitIterator(right, _)) => left == right,
             (Value::AsyncGenerator(left), Value::AsyncGenerator(right)) => Rc::ptr_eq(left, right),
             (
                 Value::AsyncGeneratorNext {
@@ -4587,10 +4829,12 @@ impl PartialEq for Value {
                 Value::AnextDefault {
                     awaitable: left_awaitable,
                     default: left_default,
+                    ..
                 },
                 Value::AnextDefault {
                     awaitable: right_awaitable,
                     default: right_default,
+                    ..
                 },
             ) => left_awaitable == right_awaitable && left_default == right_default,
             (
@@ -4632,11 +4876,13 @@ impl PartialEq for Value {
                     name: left_name,
                     type_params: left_type_params,
                     value: left_value,
+                    ..
                 },
                 Value::TypeAlias {
                     name: right_name,
                     type_params: right_type_params,
                     value: right_value,
+                    ..
                 },
             ) => {
                 left_name == right_name
@@ -4648,10 +4894,12 @@ impl PartialEq for Value {
                 Value::ConstEvaluator {
                     kind: left_kind,
                     target: left_target,
+                    ..
                 },
                 Value::ConstEvaluator {
                     kind: right_kind,
                     target: right_target,
+                    ..
                 },
             ) => left_kind == right_kind && left_target == right_target,
             (
@@ -4702,10 +4950,12 @@ impl PartialEq for Value {
                 Value::Template {
                     strings: left_strings,
                     interpolations: left_interpolations,
+                    ..
                 },
                 Value::Template {
                     strings: right_strings,
                     interpolations: right_interpolations,
+                    ..
                 },
             ) => left_strings == right_strings && left_interpolations == right_interpolations,
             (Value::TemplateInterpolation(left), Value::TemplateInterpolation(right)) => {
@@ -4818,9 +5068,11 @@ impl PartialEq for Value {
             (
                 Value::Traceback {
                     identity: left_identity,
+                    ..
                 },
                 Value::Traceback {
                     identity: right_identity,
+                    ..
                 },
             ) => Rc::ptr_eq(left_identity, right_identity),
             (
@@ -5113,6 +5365,18 @@ fn format_set_subclass_items(class_name: &str, items: &[Value]) -> String {
     }
 }
 
+fn format_counter_subclass(class_name: &str, fields: &Scope) -> Option<String> {
+    let storage = fields
+        .borrow()
+        .get(COUNTER_SUBCLASS_STORAGE_FIELD)
+        .cloned()?;
+    let Value::Counter { entries } = storage else {
+        return None;
+    };
+    let entries = entries.borrow();
+    Some(format_named_counter(class_name, &entries))
+}
+
 fn format_generic_alias_subclass(fields: &Scope) -> Option<String> {
     let alias = fields
         .borrow()
@@ -5201,7 +5465,7 @@ fn format_string_tuple(items: &[String]) -> String {
     }
 }
 
-fn format_interpolation_tuple(items: &[TemplateInterpolation]) -> String {
+fn format_interpolation_tuple(items: &[Rc<TemplateInterpolation>]) -> String {
     match items {
         [] => "()".to_string(),
         [item] => format!("({},)", format_template_interpolation(item)),
@@ -5209,7 +5473,7 @@ fn format_interpolation_tuple(items: &[TemplateInterpolation]) -> String {
             "({})",
             items
                 .iter()
-                .map(format_template_interpolation)
+                .map(|item| format_template_interpolation(item))
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -5384,8 +5648,13 @@ fn format_ordered_dict(entries: &[(Value, Value)]) -> String {
 }
 
 fn format_counter(entries: &[(Value, Value)]) -> String {
+    format_named_counter("Counter", entries)
+}
+
+/// A `Counter` renders its class name, so a subclass shows its own name.
+fn format_named_counter(name: &str, entries: &[(Value, Value)]) -> String {
     if entries.is_empty() {
-        return "Counter()".to_string();
+        return format!("{name}()");
     }
 
     let mut indexed = entries.iter().enumerate().collect::<Vec<_>>();
@@ -5403,7 +5672,7 @@ fn format_counter(entries: &[(Value, Value)]) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ");
-    format!("Counter({{{rendered}}})")
+    format!("{name}({{{rendered}}})")
 }
 
 fn dict_entries_equal(left: &[(Value, Value)], right: &[(Value, Value)]) -> bool {
@@ -5472,4 +5741,267 @@ fn sets_equal(left: &[Value], right: &[Value]) -> bool {
         && left
             .iter()
             .all(|item| right.iter().any(|other| other == item))
+}
+
+#[cfg(test)]
+mod exception_drop_tests {
+    use super::*;
+
+    fn interpolation(value: Value) -> Rc<TemplateInterpolation> {
+        Rc::new(TemplateInterpolation {
+            identity: Rc::new(()),
+            value: Box::new(value),
+            expression: String::new(),
+            conversion: None,
+            format_spec: String::new(),
+        })
+    }
+
+    fn check_deep_release(wrap: fn(Value) -> Value) {
+        std::thread::Builder::new()
+            .stack_size(256 * 1024)
+            .spawn(move || {
+                let shared = Rc::new(Value::String("tail".into()));
+                let mut nested = Value::Unpack(Rc::clone(&shared));
+                for _ in 0..100_000 {
+                    nested = wrap(nested);
+                }
+                release_value(nested);
+                assert_eq!(Rc::strong_count(&shared), 1);
+                assert!(matches!(&*shared, Value::String(value) if value == "tail"));
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    #[test]
+    fn release_deep_template_chain() {
+        check_deep_release(|value| Value::Template {
+            identity: Rc::new(()),
+            strings: Rc::new(vec![String::new(), String::new()]),
+            interpolations: Rc::new(vec![interpolation(value)]),
+        });
+    }
+
+    #[test]
+    fn release_deep_interpolation_chain() {
+        check_deep_release(|value| Value::TemplateInterpolation(interpolation(value)));
+    }
+
+    #[test]
+    fn release_deep_unpack_chain() {
+        check_deep_release(|value| Value::Unpack(Rc::new(value)));
+    }
+
+    #[test]
+    fn release_preserves_shared_nested_values() {
+        let item = interpolation(Value::String("kept".into()));
+        let interpolations = Rc::new(vec![Rc::clone(&item)]);
+        release_value(Value::Template {
+            identity: Rc::new(()),
+            strings: Rc::new(vec![String::new(), String::new()]),
+            interpolations: Rc::clone(&interpolations),
+        });
+        assert_eq!(interpolations.len(), 1);
+        assert!(matches!(&*item.value, Value::String(value) if value == "kept"));
+        release_value(Value::TemplateInterpolation(Rc::clone(&item)));
+        assert!(matches!(&*item.value, Value::String(value) if value == "kept"));
+        let shared = Rc::new(Value::String("kept".into()));
+        release_value(Value::Unpack(Rc::clone(&shared)));
+        release_value(Value::PicklePayload(Rc::clone(&shared)));
+        assert!(matches!(&*shared, Value::String(value) if value == "kept"));
+    }
+
+    #[test]
+    fn release_deep_pickle_payload_chain() {
+        check_deep_release(|value| Value::PicklePayload(Rc::new(value)));
+    }
+
+    #[test]
+    fn exception_notes_release_deep_identity_chain_iteratively() {
+        std::thread::Builder::new()
+            .stack_size(256 * 1024)
+            .spawn(|| {
+                let tail = Rc::new(ExceptionIdentity::default());
+                let mut identity = Rc::clone(&tail);
+                for _ in 0..100_000 {
+                    let next = Rc::new(ExceptionIdentity::default());
+                    *next.notes.borrow_mut() = Some(Value::Exception {
+                        type_name: "ValueError".into(),
+                        type_hierarchy: Vec::new(),
+                        type_object: None,
+                        message: None,
+                        args: Vec::new(),
+                        attrs: Vec::new(),
+                        exceptions: None,
+                        cause: None,
+                        context: None,
+                        suppress_context: false,
+                        identity,
+                    });
+                    identity = next;
+                }
+                drop(identity);
+                assert_eq!(Rc::strong_count(&tail), 1);
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    #[test]
+    fn exception_notes_release_deep_containers_iteratively() {
+        std::thread::Builder::new()
+            .stack_size(256 * 1024)
+            .spawn(|| {
+                let shared = Rc::new(RefCell::new(vec![Value::None]));
+                let mut nested = Value::List(Rc::clone(&shared));
+                for depth in 0..100_000 {
+                    nested = if depth % 2 == 0 {
+                        Value::List(Rc::new(RefCell::new(vec![nested])))
+                    } else {
+                        Value::Tuple(Rc::new(vec![nested]))
+                    };
+                }
+                let identity = ExceptionIdentity::default();
+                *identity.notes.borrow_mut() = Some(nested);
+                drop(identity);
+                assert_eq!(Rc::strong_count(&shared), 1);
+                assert!(matches!(shared.borrow().as_slice(), [Value::None]));
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    #[test]
+    fn release_deep_static_method_chain() {
+        check_deep_release(|value| Value::StaticMethod {
+            function: Rc::new(value),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_class_method_chain() {
+        check_deep_release(|value| Value::ClassMethod {
+            function: Rc::new(value),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_cmp_to_key_chain() {
+        check_deep_release(|value| Value::CmpToKey {
+            comparator: Rc::new(value),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_cmp_to_key_object_chain() {
+        check_deep_release(|value| Value::CmpToKeyObject {
+            comparator: Rc::new(value),
+            object: Rc::new(RefCell::new(Value::None)),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_property_getter_chain() {
+        check_deep_release(|value| Value::Property {
+            fget: Some(Rc::new(value)),
+            fset: None,
+            fdel: None,
+            doc: Rc::new(RefCell::new(None)),
+            doc_from_getter: false,
+            name: Rc::new(RefCell::new(None)),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_property_setter_chain() {
+        check_deep_release(|value| Value::Property {
+            fget: None,
+            fset: Some(Rc::new(value)),
+            fdel: None,
+            doc: Rc::new(RefCell::new(None)),
+            doc_from_getter: false,
+            name: Rc::new(RefCell::new(None)),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_property_deleter_chain() {
+        check_deep_release(|value| Value::Property {
+            fget: None,
+            fset: None,
+            fdel: Some(Rc::new(value)),
+            doc: Rc::new(RefCell::new(None)),
+            doc_from_getter: false,
+            name: Rc::new(RefCell::new(None)),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_slice_start_chain() {
+        check_deep_release(|value| Value::Slice {
+            start: Some(Rc::new(value)),
+            stop: None,
+            step: None,
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_slice_stop_chain() {
+        check_deep_release(|value| Value::Slice {
+            start: None,
+            stop: Some(Rc::new(value)),
+            step: None,
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_slice_step_chain() {
+        check_deep_release(|value| Value::Slice {
+            start: None,
+            stop: None,
+            step: Some(Rc::new(value)),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_item_getter_chain() {
+        check_deep_release(|value| Value::OperatorItemGetter {
+            items: Rc::new(vec![value, Value::None]),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_method_caller_args_chain() {
+        check_deep_release(|value| Value::OperatorMethodCaller {
+            name: "method".to_string(),
+            args: Rc::new(vec![value]),
+            keywords: Rc::new(Vec::new()),
+            identity: Rc::new(()),
+        });
+    }
+
+    #[test]
+    fn release_deep_method_caller_keywords_chain() {
+        check_deep_release(|value| Value::OperatorMethodCaller {
+            name: "method".to_string(),
+            args: Rc::new(Vec::new()),
+            keywords: Rc::new(vec![("keyword".to_string(), value)]),
+            identity: Rc::new(()),
+        });
+    }
 }

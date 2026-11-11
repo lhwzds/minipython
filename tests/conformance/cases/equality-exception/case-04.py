@@ -1,0 +1,5 @@
+log = CallLogger(); a = Raises('a', log)
+b = Normal('b', log)
+try: emit('result', result=b == a)
+except Exception as exc: emit_exception(exc)
+emit_calls(log)

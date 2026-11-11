@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"result\", \"popped\": \"(<__main__.K object at <addr>>, 1)\"}\n"
+  ]
+}

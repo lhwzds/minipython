@@ -1,0 +1,30 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"doc\": \"Initialize self.  See help(type(self)) for accurate signature.\", \"kind\": \"descriptor\", \"name\": \"__init__\", \"owner\": true, \"qualname\": \"deque.__init__\", \"signature\": \"($self, /, *args, **kwargs)\", \"text\": \"<slot wrapper '__init__' of 'collections.deque' objects>\", \"type\": \"wrapper_descriptor\"}\n",
+    "{\"class_name\": \"wrapper_descriptor\", \"dict_text\": \"<slot wrapper '__init__' of 'collections.deque' objects>\", \"in_dict\": true, \"in_dir\": true, \"kind\": \"visible\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"descriptor '__init__' of 'collections.deque' object needs an argument\", \"type\": \"TypeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"descriptor '__init__' requires a 'collections.deque' object but received a 'NoneType'\", \"type\": \"TypeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"descriptor '__init__' requires a 'collections.deque' object but received a 'list'\", \"type\": \"TypeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"descriptor '__init__' requires a 'collections.deque' object but received a 'int'\", \"type\": \"TypeError\"}\n",
+    "{\"kind\": \"call\", \"result\": null}\n",
+    "{\"items\": [], \"kind\": \"state\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"call\", \"result\": null}\n",
+    "{\"items\": [7, 8], \"kind\": \"state\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"call\", \"result\": null}\n",
+    "{\"items\": [8, 9], \"kind\": \"state\", \"maxlen\": 2}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"call\", \"result\": null}\n",
+    "{\"items\": [9], \"kind\": \"state\", \"maxlen\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"maxlen must be non-negative\", \"type\": \"ValueError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"'int' object is not iterable\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [], \"kind\": \"state\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n"
+  ]
+}

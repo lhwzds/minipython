@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"equality\", \"name\": \"Result\"}\n",
+    "{\"kind\": \"operator\", \"name\": \"Result\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"truth tested\", \"type\": \"ValueError\"}\n"
+  ]
+}

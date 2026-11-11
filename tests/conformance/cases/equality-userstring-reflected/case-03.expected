@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"text\", \"unequal\": true}\n",
+    "{\"equal\": true, \"kind\": \"string\", \"unequal\": true}\n",
+    "{\"equal\": true, \"kind\": \"reflected\", \"unequal\": false}\n"
+  ]
+}

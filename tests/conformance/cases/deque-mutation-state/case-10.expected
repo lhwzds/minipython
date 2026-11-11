@@ -1,0 +1,16 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"result\", \"length\": 3, \"method\": \"contains\", \"value\": true}\n",
+    "{\"kind\": \"result\", \"length\": 3, \"method\": \"count\", \"value\": 2}\n",
+    "{\"kind\": \"result\", \"length\": 3, \"method\": \"index\", \"value\": 1}\n",
+    "{\"kind\": \"result\", \"length\": 2, \"method\": \"remove\", \"value\": null}\n",
+    "{\"backward\": false, \"end\": \"end\", \"first\": 1, \"kind\": \"exhaust\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"backward\": true, \"end\": \"end\", \"first\": 1, \"kind\": \"exhaust\"}\n",
+    "{\"kind\": \"next\", \"value\": \"end\"}\n",
+    "{\"kind\": \"next\", \"value\": \"end\"}\n"
+  ]
+}

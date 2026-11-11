@@ -237,7 +237,18 @@ step's numbers and logs under `reports/release-gate/logs/`:
    in CPython and `mnpy` apart from the exclusions listed in
    `tests/oracles/corpora.toml`, each with its reason; an exclusion that
    starts matching is stale and fails the step.
-4. (d) `tests/release_gate/leak_scan.py` over every tracked file and over the
+4. (conformance) The layer-zero conformance corpus of `tests/conformance/`:
+   `tests/conformance/run.py` compares the release `mnpy` with the recorded
+   CPython 3.14.6 observations of `tests/conformance/cases/` and must exit 0
+   (every difference is a reviewed entry of `expected-failures.toml`);
+   `tests/conformance/status.py --check` must find the conformance status
+   block of the root `README.md` up to date; `tests/conformance/run.py
+   --check-oracle --cpython P` compares the recorded observations with the
+   pinned CPython, writes no oracle or report (the cases it executes are
+   trusted, tracked code), and must exit 0, so a difference of the official
+   CPython 3.14.6 on a host fails the step as oracle drift; and
+   the unit tests of the corpus, which cover the step itself, must pass.
+5. (d) `tests/release_gate/leak_scan.py` over every tracked file and over the
    messages and identities of every commit since the last `v*` tag (since the
    root while there is none): home directories, `/Volumes`, `/private`
    temporary paths, private host names (`ts.net`, `.local`, `.lan`,
@@ -245,7 +256,7 @@ step's numbers and logs under `reports/release-gate/logs/`:
    email addresses other than the author's and documentation domains, and
    token shapes. Only entries of `tests/release_gate/leak-allowlist.toml`,
    each with its reason, are accepted, and an unused entry fails.
-5. (licensing) The dual licence (`tests/release_gate/licensing.py`, step key
+6. (licensing) The dual licence (`tests/release_gate/licensing.py`, step key
    `licensing`): every tracked source file (`*.rs`, `*.py`, `*.sh`, `*.js`,
    and `*.toml` under `src/`, `tests/`, `ci/`, `npm/`, `python/`,
    `examples/`, and `homebrew-tap-template/`) carries an
@@ -283,7 +294,7 @@ step's numbers and logs under `reports/release-gate/logs/`:
    derived from CPython after all, so it fails the step unless it is
    declared as `PSF-2.0 AND MIT` and listed in NOTICE. The step runs the
    unit tests of `tests/release_gate/test_licensing.py` first.
-6. (e) Packaging smoke: `cargo build --release --locked` for the host's
+7. (e) Packaging smoke: `cargo build --release --locked` for the host's
    release target (on Linux the musl target the release ships), the release
    archive from `ci/package-release.sh` with its `checksums.txt`,
    `npm test`, `npm pack`, and a global install of the packed tarball into a
@@ -302,7 +313,7 @@ step's numbers and logs under `reports/release-gate/logs/`:
    block and the same smoke runs, audited with `brew audit --strict`, and
    removed again; the real tap is never touched. On Linux the rendered formula
    is only syntax-checked when Ruby is present; the macOS gate covers it.
-7. (f) The manual checklist the script cannot do is written into the report
+8. (f) The manual checklist the script cannot do is written into the report
    with blanks to fill in: the real-program corpus rerun on the candidate (no
    regressions against the previous release), the two independent reviews of
    the release diff with verified findings and fixed blockers, and the Linux
@@ -809,3 +820,22 @@ while preserving its differential failure signature. Minimized reproducers are
 written only under ignored `reports/differential-repros/`; a repaired root cause
 must be promoted into a checked-in focused regression test rather than relying
 on a generated report.
+
+## Layer-zero conformance
+
+The separate black-box identity, rich-comparison and hash corpus and its
+runner are documented in [conformance/README.md](conformance/README.md).
+
+The conformance status block of the root `README.md` is generated from a
+runner report:
+
+```sh
+python3 -I tests/conformance/run.py --mnpy path/to/mnpy --out path/to/report.json
+python3 -I tests/conformance/status.py --report path/to/report.json
+```
+
+`status.py --report path/to/report.json --check` writes nothing and exits 1
+when the block of `README.md` differs from the one the report implies; the
+release gate runs it, so a stale block fails the gate. The block names the
+oracle and states where the numbers were measured; that line is fixed, so the
+same report implies the same block on every host.

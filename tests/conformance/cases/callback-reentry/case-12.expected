@@ -1,0 +1,11 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "ValueError generator already executing\n",
+    "ValueError generator already executing\n",
+    "ValueError generator already executing\n",
+    "ValueError generator already executing\n",
+    "42\n"
+  ]
+}

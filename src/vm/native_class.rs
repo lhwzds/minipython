@@ -42,10 +42,8 @@ pub(crate) fn binds_like_function(name: &str) -> bool {
 }
 
 impl Vm {
-    /// Entry point for every native class builtin. Exception handlers of the
-    /// calling frame are isolated so an exception raised anywhere in the
-    /// native code (including Python code it calls back) propagates out of
-    /// it instead of jumping to a handler.
+    /// Entry point for every native class builtin. Native errors and callback
+    /// exceptions retain their objects until the calling frame dispatches.
     pub(super) fn call_native_builtin(
         &mut self,
         name: &str,
@@ -55,7 +53,7 @@ impl Vm {
         let name = name.to_string();
         match self.call_with_exception_capture(|vm| vm.native_dispatch(&name, args, keywords))? {
             Ok(value) => Ok(value),
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -75,7 +73,7 @@ impl Vm {
     pub(super) fn native_raise<T>(&mut self, class: Value, message: String) -> Result<T, String> {
         let error = self.call_value(class, vec![Value::String(message)])?;
         let exception = exception_from_value(error)?;
-        Err(self.remember_runtime_exception_error(exception))
+        self.raise_exception(exception, true)
     }
 
     /// `x.__index__()` as a signed machine-size integer.
@@ -175,8 +173,8 @@ impl NativeClass<'_> {
 /// builtins.
 pub(super) fn native_property(name: &str, getter: String, setter: Option<String>) -> Value {
     Value::Property {
-        fget: Some(Box::new(Value::Builtin(getter))),
-        fset: setter.map(|setter| Box::new(Value::Builtin(setter))),
+        fget: Some(Rc::new(Value::Builtin(getter))),
+        fset: setter.map(|setter| Rc::new(Value::Builtin(setter))),
         fdel: None,
         doc: Rc::new(RefCell::new(None)),
         doc_from_getter: false,

@@ -140,7 +140,7 @@ impl Vm {
         loop {
             let line = match self.advance_owned_iterator_capturing(&mut input)? {
                 Ok(IteratorAdvance::Yield(line)) => line,
-                Ok(IteratorAdvance::Complete(_)) | Ok(IteratorAdvance::Raised) => {
+                Ok(IteratorAdvance::Complete(_)) => {
                     if parser.field_len != 0 || parser.state == State::InQuotedField {
                         if config.strict {
                             return self.csv_error("unexpected end of data");

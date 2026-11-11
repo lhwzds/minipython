@@ -13,6 +13,7 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 import tomllib
@@ -839,11 +840,6 @@ DEFAULT_LAYER_BY_SCOPE = {
 # accepted gap, even for wont_fix discovery cases.
 ALWAYS_FAILING_STATUSES = {"CRASH", "EXPECTED_CONTRACT_DIFF"}
 
-# mnpy reports a worker that died mid-protocol (for example a native stack
-# overflow) with this text and exit status 1, so the exit code alone cannot
-# separate it from an ordinary Python error.
-WORKER_CRASH_MARKERS = ("sandbox error: invalid worker response",)
-
 NON_FAILING_STATUSES = {
     "MATCH",
     "INTENTIONAL_SANDBOX_BLOCK",
@@ -862,6 +858,16 @@ class RunResult:
     timeout: bool
     exception_class: str | None
     exception_message: str | None
+    # The status mnpy wrote to its status file: "Success", "Error",
+    # "TimeLimit", "MemoryLimit" or "WorkerCrash". None when there was no
+    # status file, when it held no string status, or for a CPython run.
+    status: str | None = None
+    # The terminal condition mnpy wrote to its status file: the sandbox
+    # condition that ended the run, such as "InstructionLimit" or
+    # "NativeStackExhausted". None when the sandbox did not end the run,
+    # when there was no status file, when it held no string terminal, or
+    # for a CPython run.
+    terminal: str | None = None
 
 
 @dataclass
@@ -995,7 +1001,61 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_command(command: list[str], source: str, timeout: float) -> RunResult:
+class StatusFiles:
+    """Fresh status file paths inside one temporary directory.
+
+    Every mnpy run gets its own path, so a run never reads the status a
+    previous run wrote.
+    """
+
+    def __init__(self, directory: Path) -> None:
+        self._directory = directory
+        self._count = 0
+
+    def next(self) -> Path:
+        """Return a path no run has used yet."""
+        self._count += 1
+        return self._directory / f"status-{self._count:04d}.json"
+
+
+def read_status_file(path: Path | None) -> tuple[str | None, str | None]:
+    """Return the status and terminal condition mnpy wrote to its status file.
+
+    Both are None when there is no status file, when the file does not hold
+    valid JSON, or when the JSON holds no string for that field.
+    """
+    if path is None:
+        return None, None
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+    status = payload.get("status")
+    terminal = payload.get("terminal")
+    return (
+        status if isinstance(status, str) else None,
+        terminal if isinstance(terminal, str) else None,
+    )
+
+
+def run_command(
+    command: list[str],
+    source: str,
+    timeout: float,
+    status_path: Path | None = None,
+) -> RunResult:
+    """Run a command on a program read from stdin.
+
+    With a status path, the command is mnpy and is asked to write the
+    run's status to that path; the status it wrote is read back into the
+    result. CPython runs pass no status path and always report None.
+    """
+    if status_path is not None:
+        # The option goes before the program's own arguments: mnpy reads
+        # its options first and hands the rest to the program.
+        command = [command[0], "--status-file", str(status_path), *command[1:]]
     try:
         completed = subprocess.run(
             command,
@@ -1013,6 +1073,8 @@ def run_command(command: list[str], source: str, timeout: float) -> RunResult:
             timeout=True,
             exception_class=None,
             exception_message=None,
+            status=None,
+            terminal=None,
         )
     except OSError as error:
         return RunResult(
@@ -1022,8 +1084,11 @@ def run_command(command: list[str], source: str, timeout: float) -> RunResult:
             timeout=False,
             exception_class=error.__class__.__name__,
             exception_message=str(error),
+            status=None,
+            terminal=None,
         )
     exception_class = extract_exception_class(completed.stderr)
+    status, terminal = read_status_file(status_path)
     return RunResult(
         exit_code=completed.returncode,
         stdout=completed.stdout,
@@ -1031,7 +1096,76 @@ def run_command(command: list[str], source: str, timeout: float) -> RunResult:
         timeout=False,
         exception_class=exception_class,
         exception_message=extract_exception_message(completed.stderr, exception_class),
+        status=status,
+        terminal=terminal,
     )
+
+
+# The message mnpy prints when it cannot write its `--status-file`.
+STATUS_WRITE_FAILURE = "mnpy: cannot write status file"
+
+
+def status_write_failure(result: RunResult) -> str | None:
+    """Return the error when a run ended because its status file was lost.
+
+    None for every other run. A status file that cannot be written is a
+    harness failure, not a crash: mnpy cannot report how the run ended,
+    so the sweep must stop instead of classifying the run.
+
+    A run that left a readable status file did not lose it: mnpy writes
+    the status file before it prints anything, so a program that prints
+    the failure message itself cannot forge a write failure.
+    """
+    if result.exit_code != 2:
+        return None
+    if result.status is not None:
+        return None
+    for line in result.stderr.splitlines():
+        if STATUS_WRITE_FAILURE in line:
+            return line.strip()
+    return None
+
+
+def check_status_write(result: RunResult, minipython: str) -> None:
+    """Stop the sweep when a run ended because its status file was lost."""
+    failure = status_write_failure(result)
+    if failure is None:
+        return
+    raise SystemExit(f"mnpy at {minipython} could not write its status file: {failure}")
+
+
+def run_minipython(
+    command: list[str], source: str, timeout: float, status_path: Path
+) -> RunResult:
+    """Run mnpy with a status file, and stop the sweep when that file is lost.
+
+    A status file that cannot be written is a harness failure, not a
+    crash: mnpy cannot report how the run ended, so the sweep must stop
+    instead of classifying the run.
+    """
+    result = run_command(command, source, timeout, status_path)
+    check_status_write(result, command[0])
+    return result
+
+
+def check_status_file_support(minipython: str, status_path: Path, timeout: float) -> None:
+    """Fail unless mnpy writes the status file the sweep depends on.
+
+    The sweep reads every mnpy run's status from its status file, so a
+    binary that does not support `--status-file` cannot be swept at all:
+    every case would look like a crash.
+
+    The preflight runs the binary the way the sweep runs a case: the
+    program comes in on stdin, and the arguments are the ones the sweep
+    uses, so the preflight exercises the path the sweep depends on.
+    """
+    result = run_command([minipython], "pass\n", timeout, status_path)
+    check_status_write(result, minipython)
+    if result.status is not None:
+        return
+    # No status file: the binary cannot be swept, and every case would
+    # look like a crash. The sweep stops instead.
+    raise SystemExit(f"mnpy at {minipython} does not write --status-file; rebuild it")
 
 
 # Both interpreters print uncaught exceptions in CPython's traceback shape and
@@ -1101,7 +1235,30 @@ def normalized_diff(cpython: RunResult, minipython: RunResult) -> str:
 
 
 def worker_crashed(result: RunResult) -> bool:
-    return any(marker in result.stderr for marker in WORKER_CRASH_MARKERS)
+    """Report whether a run ended in a worker or sandbox crash.
+
+    The rule reads mnpy's status file, not its stderr: mnpy prints the
+    program's own output to the same stderr it uses for its report, so a
+    program can write "sandbox error: worker crashed" to fake a crash, or
+    write a limit message to hide one. Only mnpy's own status file says
+    what the run was.
+
+    - a negative exit code means mnpy died from a signal: a crash;
+    - the terminal condition `NativeStackExhausted` means the native stack
+      guard tripped: a crash, whatever status the run reported;
+    - no status at all means mnpy wrote no status file, for example
+      because the parent panicked before it could report: a crash;
+    - the status `WorkerCrash` means the worker itself failed: a crash;
+    - every other status is a run that ended on its own terms, so it is
+      not a crash, whatever its stderr holds.
+    """
+    if result.exit_code is not None and result.exit_code < 0:
+        return True
+    if result.terminal == "NativeStackExhausted":
+        return True
+    if result.status is None:
+        return True
+    return result.status == "WorkerCrash"
 
 
 def classify(cpython: RunResult, minipython: RunResult, expected: str | None) -> str:
@@ -1109,13 +1266,16 @@ def classify(cpython: RunResult, minipython: RunResult, expected: str | None) ->
         return "TIMEOUT"
     if cpython.exit_code is None or minipython.exit_code is None:
         return "CRASH"
-    if worker_crashed(minipython):
-        return "CRASH"
     same_exit = cpython.exit_code == minipython.exit_code
     same_stdout = cpython.stdout == minipython.stdout
     same_stderr = cpython.stderr == minipython.stderr
     if same_exit and same_stdout and same_stderr:
+        # A run that matches CPython exactly is a match, whatever status
+        # mnpy reported: the program and mnpy agree, so there is nothing
+        # to triage.
         return "MATCH"
+    if worker_crashed(minipython):
+        return "CRASH"
     if expected in EXPECTED_STATUS_BY_MARKER:
         return EXPECTED_STATUS_BY_MARKER[expected]
     cpython_ok = cpython.exit_code == 0
@@ -1317,57 +1477,75 @@ def run_sweep(args: argparse.Namespace) -> tuple[dict[str, Any], list[SweepResul
     shrunk_root_causes: set[str] = set()
     cpython_command = [args.cpython, "-I", "-B", "-"]
     minipython_command = [minipython]
-    for case in cases:
-        source = textwrap.dedent(case["source"]).lstrip("\n")
-        cpython = run_command(cpython_command, source, args.timeout)
-        mini = run_command(minipython_command, source, args.timeout)
-        status, diff = classify_case(cpython, mini, case)
-        result = SweepResult(
-            name=case["name"],
-            scope=case["scope"],
-            category=case["category"],
-            root_cause=case["root_cause"],
-            modules=case["modules"],
-            priority=case["priority"],
-            status=status,
-            triage_status=triage_status(status),
-            expected=case.get("expected"),
-            diff=diff,
-            cpython=cpython,
-            minipython=mini,
-            layer=case["layer"],
-            origin=case.get("origin", "corpus"),
-            seed=case.get("seed"),
-            source=source,
-        )
-        if (
-            args.shrink
-            and result.origin == "generated"
-            and result.triage_status == "needs_triage"
-            and result.root_cause not in shrunk_root_causes
-        ):
-            shrunk_root_causes.add(result.root_cause)
-            signature = failure_signature(status, cpython, mini)
-
-            def preserves_failure(candidate: str) -> bool:
-                candidate_cpython = run_command(cpython_command, candidate, args.timeout)
-                candidate_mini = run_command(minipython_command, candidate, args.timeout)
-                candidate_status, _ = classify_case(
-                    candidate_cpython, candidate_mini, case
-                )
-                return failure_signature(
-                    candidate_status, candidate_cpython, candidate_mini
-                ) == signature
-
-            minimized, attempts = minimize_source(
+    # The status files live in one temporary directory that lasts for the
+    # whole sweep and is removed with it, so the sweep leaves nothing
+    # behind in the temporary directory.
+    with tempfile.TemporaryDirectory(prefix="minipython-gap-sweep-") as status_dir:
+        status_files = StatusFiles(Path(status_dir))
+        # The sweep reads every run's status from its status file, so a
+        # binary that cannot write one cannot be swept at all.
+        check_status_file_support(minipython, status_files.next(), args.timeout)
+        for case in cases:
+            source = textwrap.dedent(case["source"]).lstrip("\n")
+            cpython = run_command(cpython_command, source, args.timeout)
+            mini = run_minipython(
+                minipython_command,
                 source,
-                preserves_failure,
-                max_attempts=args.shrink_max_attempts,
+                args.timeout,
+                status_files.next(),
             )
-            result.minimized_source = minimized
-            result.shrink_attempts = attempts
-            write_repro(Path(args.repro_dir), result)
-        results.append(result)
+            status, diff = classify_case(cpython, mini, case)
+            result = SweepResult(
+                name=case["name"],
+                scope=case["scope"],
+                category=case["category"],
+                root_cause=case["root_cause"],
+                modules=case["modules"],
+                priority=case["priority"],
+                status=status,
+                triage_status=triage_status(status),
+                expected=case.get("expected"),
+                diff=diff,
+                cpython=cpython,
+                minipython=mini,
+                layer=case["layer"],
+                origin=case.get("origin", "corpus"),
+                seed=case.get("seed"),
+                source=source,
+            )
+            if (
+                args.shrink
+                and result.origin == "generated"
+                and result.triage_status == "needs_triage"
+                and result.root_cause not in shrunk_root_causes
+            ):
+                shrunk_root_causes.add(result.root_cause)
+                signature = failure_signature(status, cpython, mini)
+
+                def preserves_failure(candidate: str) -> bool:
+                    candidate_cpython = run_command(cpython_command, candidate, args.timeout)
+                    candidate_mini = run_minipython(
+                        minipython_command,
+                        candidate,
+                        args.timeout,
+                        status_files.next(),
+                    )
+                    candidate_status, _ = classify_case(
+                        candidate_cpython, candidate_mini, case
+                    )
+                    return failure_signature(
+                        candidate_status, candidate_cpython, candidate_mini
+                    ) == signature
+
+                minimized, attempts = minimize_source(
+                    source,
+                    preserves_failure,
+                    max_attempts=args.shrink_max_attempts,
+                )
+                result.minimized_source = minimized
+                result.shrink_attempts = attempts
+                write_repro(Path(args.repro_dir), result)
+            results.append(result)
 
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"result\", \"merged\": {\"a\": 2, \"b\": 2}}\n",
+    "{\"counter\": {\"a\": 2, \"b\": 2}, \"kind\": \"result\"}\n"
+  ]
+}

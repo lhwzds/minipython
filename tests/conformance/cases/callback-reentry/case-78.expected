@@ -1,0 +1,18 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "True\n",
+    "True\n",
+    "True\n",
+    "type\n",
+    "TypeAliasType\n",
+    "False\n",
+    "True\n",
+    "True\n",
+    "True\n",
+    "type\n",
+    "TypeAliasType\n",
+    "False\n"
+  ]
+}

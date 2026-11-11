@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "[42]\n",
+    "TypeError 'object' object cannot be interpreted as an integer\n",
+    "TypeError pop expected at least 1 argument, got 0\n"
+  ]
+}

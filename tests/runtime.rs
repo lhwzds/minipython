@@ -4933,7 +4933,7 @@ fn runs_dict_display_unpacking() {
     );
     assert_eq!(
         run_source("print({**1})"),
-        Err("runtime error: dict update source must be a dict, got 1".to_string())
+        Err("runtime error: TypeError: dict update source must be a dict, got 1".to_string())
     );
 }
 
@@ -5884,7 +5884,7 @@ fn reports_slice_assignment_errors() {
     assert_eq!(
         run_source("items = [0, 1, 2]\nitems[::2] = [9]"),
         Err(
-            "runtime error: attempt to assign sequence of size 1 to extended slice of size 2"
+            "runtime error: ValueError: attempt to assign sequence of size 1 to extended slice of size 2"
                 .to_string()
         )
     );

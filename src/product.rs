@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
+use crate::rc::Rc;
 use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, ExitStatus, Stdio};
-use std::rc::Rc;
+use std::process::{self, Child, Command, ExitStatus, Stdio};
 use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -630,44 +630,17 @@ impl Sandbox {
             return worker_error("worker response reader panicked".to_string());
         }
         let worker_stderr = match stderr_reader.join() {
-            Ok(Ok(bytes)) => String::from_utf8_lossy(&bytes).trim().to_string(),
+            Ok(Ok(bytes)) => worker_diagnostics(&bytes),
             Ok(Err(error)) => format!("failed to read worker diagnostics: {error}"),
             Err(_) => "worker diagnostics reader panicked".to_string(),
         };
 
-        let mut result = match outcome.termination {
-            WorkerTermination::TimeLimit => parent_terminal(TerminalKind::TimeLimit),
-            WorkerTermination::MemoryLimit => parent_terminal(TerminalKind::MemoryLimit),
-            WorkerTermination::Completed if outcome.status.success() => outcome
-                .result
-                .unwrap_or_else(|| worker_error("worker exited without a result".to_string())),
-            WorkerTermination::Completed if outcome.stream_ended => {
-                if worker_ran_out_of_memory(outcome.status, &worker_stderr) {
-                    parent_terminal(TerminalKind::MemoryLimit)
-                } else {
-                    worker_error(format!("invalid worker response: {PROTOCOL_STREAM_ENDED}"))
-                }
-            }
-            WorkerTermination::Completed => {
-                let detail = if outcome.status.code().is_none()
-                    || outcome.status.code().is_some_and(|code| code >= 125)
-                {
-                    "worker exceeded process limits or crashed".to_string()
-                } else if worker_stderr.is_empty() {
-                    outcome
-                        .status
-                        .code()
-                        .map(|code| format!("worker exited with status {code}"))
-                        .unwrap_or_else(|| "worker terminated without an exit status".to_string())
-                } else {
-                    worker_stderr
-                };
-                let mut result =
-                    sandbox_error(ExecutionStatus::WorkerCrash, "WorkerCrashed", detail);
-                result.terminal = Some(TerminalKind::WorkerFailure);
-                result
-            }
-        };
+        let mut result = classify_worker_outcome(
+            outcome,
+            &worker_stderr,
+            Some(self.limits.max_process_memory_bytes),
+            true,
+        );
         result.usage.wall_time_micros =
             u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
         result
@@ -832,21 +805,19 @@ impl SandboxSession {
         };
         let mut result = match outcome {
             Ok(SessionExecutionOutcome::Complete(result)) => result,
-            Ok(SessionExecutionOutcome::TimeLimit) => {
-                self.finish_worker();
-                parent_terminal(TerminalKind::TimeLimit)
-            }
-            Ok(SessionExecutionOutcome::MemoryLimit) => {
-                self.finish_worker();
-                parent_terminal(TerminalKind::MemoryLimit)
-            }
-            Ok(SessionExecutionOutcome::Exited(status)) => {
+            Ok(SessionExecutionOutcome::Exited(status, termination)) => {
                 let diagnostics = self.finish_worker();
-                if worker_ran_out_of_memory(status, &diagnostics) {
-                    parent_terminal(TerminalKind::MemoryLimit)
-                } else {
-                    worker_error(worker_exit_detail(status, &diagnostics))
-                }
+                classify_worker_outcome(
+                    WorkerOutcome {
+                        status,
+                        termination,
+                        result: None,
+                        stream_ended: true,
+                    },
+                    &diagnostics,
+                    Some(self.limits.max_process_memory_bytes),
+                    false,
+                )
             }
             Err(error) => {
                 let _ = self.shutdown();
@@ -871,7 +842,7 @@ impl SandboxSession {
             .take()
             .and_then(|reader| reader.join().ok())
             .and_then(Result::ok)
-            .map(|bytes| String::from_utf8_lossy(&bytes).trim().to_string())
+            .map(|bytes| worker_diagnostics(&bytes))
             .unwrap_or_default()
     }
 
@@ -1140,7 +1111,7 @@ fn run_worker_bridge(receiver: mpsc::Receiver<WorkerBridgeCommand>) -> Result<()
 
 fn worker_external_call_handler(sender: mpsc::Sender<WorkerBridgeCommand>) -> ExternalCallHandler {
     let next_call_id = Rc::new(Cell::new(1_u64));
-    Rc::new(move |name, args, keywords| {
+    std::rc::Rc::new(move |name, args, keywords| {
         let args = args
             .iter()
             .map(sandbox_value_from_internal_checked)
@@ -1748,42 +1719,97 @@ fn parent_terminal(kind: TerminalKind) -> ExecutionResult {
 /// How often the parent polls a worker whose output has ended.
 const WORKER_EXIT_POLL: Duration = Duration::from_millis(2);
 
-/// Whether the worker died of a failed allocation. Where the process memory
-/// limit is a kernel limit (`RLIMIT_AS` and `RLIMIT_DATA` on Linux), running
-/// out of it makes an allocation fail, and Rust reports that on stderr and
-/// aborts; the parent reports it as the memory limit, exactly as it reports
-/// the worker it kills for its polled footprint where there is no kernel
-/// limit (macOS).
-fn worker_ran_out_of_memory(status: ExitStatus, stderr: &str) -> bool {
+fn worker_diagnostics(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).into_owned()
+}
+
+// The wait status is authoritative even when a monitor and an exit race.
+fn classify_worker_outcome(
+    outcome: WorkerOutcome,
+    stderr: &str,
+    process_memory_limit: Option<u64>,
+    one_shot: bool,
+) -> ExecutionResult {
+    #[cfg(not(unix))]
+    let _ = process_memory_limit;
+    if outcome.status.success() {
+        return outcome
+            .result
+            .unwrap_or_else(|| worker_error("worker exited without a result".to_string()));
+    }
     #[cfg(unix)]
     {
         use std::os::unix::process::ExitStatusExt;
-        status.signal() == Some(libc::SIGABRT)
-            && stderr.lines().any(|line| {
-                line.strip_prefix("memory allocation of ")
-                    .and_then(|rest| rest.strip_suffix(" bytes failed"))
-                    .is_some_and(|size| {
-                        !size.is_empty() && size.bytes().all(|b| b.is_ascii_digit())
+        if let Some(signal) = outcome.status.signal() {
+            if crate::host::worker::is_kill_signal(signal) {
+                match outcome.termination {
+                    WorkerTermination::MemoryLimit => {
+                        return parent_terminal(TerminalKind::MemoryLimit);
+                    }
+                    WorkerTermination::TimeLimit => {
+                        return parent_terminal(TerminalKind::TimeLimit);
+                    }
+                    WorkerTermination::Completed => {}
+                }
+            }
+            if signal == libc::SIGABRT {
+                if stderr.contains("has overflowed its stack") {
+                    return parent_terminal(TerminalKind::NativeStackExhausted);
+                }
+                if process_memory_limit.is_some()
+                    && stderr.lines().any(|line| {
+                        line.strip_prefix("memory allocation of ")
+                            .and_then(|line| line.strip_suffix(" bytes failed"))
+                            .is_some_and(|size| {
+                                !size.is_empty() && size.bytes().all(|byte| byte.is_ascii_digit())
+                            })
                     })
-            })
+                {
+                    return parent_terminal(TerminalKind::MemoryLimit);
+                }
+            }
+            return worker_exit_error(format!("worker crashed (signal {signal})"), one_shot);
+        }
     }
     #[cfg(not(unix))]
-    {
-        let _ = (status, stderr);
-        false
+    if let Some(kind) = non_unix_parent_termination(outcome.termination) {
+        return parent_terminal(kind);
     }
-}
-
-fn worker_exit_detail(status: ExitStatus, stderr: &str) -> String {
-    if status.code().is_none() || status.code().is_some_and(|code| code >= 125) {
-        "worker exceeded process limits or crashed".to_string()
+    let stderr = stderr.trim();
+    let detail = if outcome.stream_ended && stderr.is_empty() {
+        format!("invalid worker response: {PROTOCOL_STREAM_ENDED}")
     } else if stderr.is_empty() {
-        status
+        outcome
+            .status
             .code()
             .map(|code| format!("worker exited with status {code}"))
             .unwrap_or_else(|| "worker terminated without an exit status".to_string())
     } else {
         stderr.to_string()
+    };
+    worker_exit_error(detail, one_shot && !outcome.stream_ended)
+}
+
+fn worker_exit_error(detail: String, crashed: bool) -> ExecutionResult {
+    let mut result = worker_error(detail);
+    if crashed {
+        result
+            .exception
+            .as_mut()
+            .expect("worker exception")
+            .type_name = "WorkerCrashed".to_string();
+    }
+    result
+}
+
+// On platforms without Unix signal statuses, a successful parent termination
+// is the available evidence for the limit that ended the worker.
+#[cfg(any(not(unix), test))]
+fn non_unix_parent_termination(reason: WorkerTermination) -> Option<TerminalKind> {
+    match reason {
+        WorkerTermination::Completed => None,
+        WorkerTermination::MemoryLimit => Some(TerminalKind::MemoryLimit),
+        WorkerTermination::TimeLimit => Some(TerminalKind::TimeLimit),
     }
 }
 
@@ -1974,9 +2000,34 @@ struct WorkerOutcome {
 
 enum SessionExecutionOutcome {
     Complete(ExecutionResult),
-    MemoryLimit,
-    TimeLimit,
-    Exited(ExitStatus),
+    Exited(ExitStatus, WorkerTermination),
+}
+
+// A monitor can race with an independent worker exit. Record the limit only
+// when this parent actually requested termination of a still-running child.
+fn terminate_monitored_worker(
+    child: &mut Child,
+    reason: WorkerTermination,
+) -> Result<(ExitStatus, WorkerTermination), String> {
+    if let Some(status) = child
+        .try_wait()
+        .map_err(|error| format!("failed to poll worker: {error}"))?
+    {
+        return Ok((status, WorkerTermination::Completed));
+    }
+    if let Err(error) = child.kill() {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("failed to poll worker: {error}"))?
+        {
+            return Ok((status, WorkerTermination::Completed));
+        }
+        return Err(format!("failed to terminate worker: {error}"));
+    }
+    let status = child
+        .wait()
+        .map_err(|error| format!("failed to reap worker: {error}"))?;
+    Ok((status, reason))
 }
 
 fn drive_session_execution(
@@ -1990,29 +2041,39 @@ fn drive_session_execution(
     let started = Instant::now();
     let time_limit = Duration::from_millis(max_time_ms);
     loop {
-        if started.elapsed() >= time_limit {
-            child.kill().map_err(|error| {
-                format!("failed to terminate timed-out session worker: {error}")
-            })?;
-            child
-                .wait()
-                .map_err(|error| format!("failed to reap timed-out session worker: {error}"))?;
-            return Ok(SessionExecutionOutcome::TimeLimit);
-        }
-        if worker_memory_limit_exceeded(child, max_memory_bytes)? {
-            child.kill().map_err(|error| {
-                format!("failed to terminate oversized session worker: {error}")
-            })?;
-            child
-                .wait()
-                .map_err(|error| format!("failed to reap oversized session worker: {error}"))?;
-            return Ok(SessionExecutionOutcome::MemoryLimit);
+        let termination = if started.elapsed() >= time_limit {
+            Some(WorkerTermination::TimeLimit)
+        } else if worker_memory_limit_exceeded(child, max_memory_bytes)? {
+            Some(WorkerTermination::MemoryLimit)
+        } else {
+            None
+        };
+        if let Some(reason) = termination {
+            let (status, reason) = terminate_monitored_worker(child, reason)?;
+            if status.success() {
+                while let Ok(message) = messages.recv() {
+                    if let Ok(WorkerMessage::Complete(result)) = message {
+                        return Ok(SessionExecutionOutcome::Complete(result));
+                    }
+                }
+            }
+            return Ok(SessionExecutionOutcome::Exited(status, reason));
         }
         match messages.recv_timeout(Duration::from_millis(2)) {
             Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
                 respond_to_external_call(worker_stdin, external_functions, call_id, call)?;
             }
             Ok(Ok(WorkerMessage::Complete(result))) => {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|error| format!("failed to poll session worker: {error}"))?
+                    .filter(|status| !status.success())
+                {
+                    return Ok(SessionExecutionOutcome::Exited(
+                        status,
+                        WorkerTermination::Completed,
+                    ));
+                }
                 return Ok(SessionExecutionOutcome::Complete(result));
             }
             // The worker is exiting; its status decides the outcome below.
@@ -2025,6 +2086,12 @@ fn drive_session_execution(
             .try_wait()
             .map_err(|error| format!("failed to poll session worker: {error}"))?
         {
+            if !status.success() {
+                return Ok(SessionExecutionOutcome::Exited(
+                    status,
+                    WorkerTermination::Completed,
+                ));
+            }
             loop {
                 match messages.recv() {
                     Ok(Ok(WorkerMessage::ExternalCall { call_id, call })) => {
@@ -2033,7 +2100,12 @@ fn drive_session_execution(
                     Ok(Ok(WorkerMessage::Complete(result))) => {
                         return Ok(SessionExecutionOutcome::Complete(result));
                     }
-                    Ok(Err(_)) | Err(_) => return Ok(SessionExecutionOutcome::Exited(status)),
+                    Ok(Err(_)) | Err(_) => {
+                        return Ok(SessionExecutionOutcome::Exited(
+                            status,
+                            WorkerTermination::Completed,
+                        ));
+                    }
                 }
             }
         }
@@ -2053,32 +2125,28 @@ fn drive_worker(
     let mut result = None;
     let mut stream_ended = false;
     loop {
-        if started.elapsed() >= time_limit {
-            child
-                .kill()
-                .map_err(|error| format!("failed to terminate timed-out worker: {error}"))?;
-            let status = child
-                .wait()
-                .map_err(|error| format!("failed to reap timed-out worker: {error}"))?;
+        let termination = if started.elapsed() >= time_limit {
+            Some(WorkerTermination::TimeLimit)
+        } else if worker_memory_limit_exceeded(child, max_memory_bytes)? {
+            Some(WorkerTermination::MemoryLimit)
+        } else {
+            None
+        };
+        if let Some(reason) = termination {
+            let (status, reason) = terminate_monitored_worker(child, reason)?;
+            if status.success() && result.is_none() {
+                while let Ok(message) = messages.recv() {
+                    if let Ok(WorkerMessage::Complete(execution_result)) = message {
+                        result = Some(execution_result);
+                        break;
+                    }
+                }
+            }
             return Ok(WorkerOutcome {
                 status,
-                termination: WorkerTermination::TimeLimit,
-                result: None,
-                stream_ended: false,
-            });
-        }
-        if worker_memory_limit_exceeded(child, max_memory_bytes)? {
-            child
-                .kill()
-                .map_err(|error| format!("failed to terminate oversized worker: {error}"))?;
-            let status = child
-                .wait()
-                .map_err(|error| format!("failed to reap oversized worker: {error}"))?;
-            return Ok(WorkerOutcome {
-                status,
-                termination: WorkerTermination::MemoryLimit,
-                result: None,
-                stream_ended: false,
+                termination: reason,
+                result,
+                stream_ended,
             });
         }
         match messages.recv_timeout(Duration::from_millis(2)) {
@@ -2261,3 +2329,11 @@ fn worker_memory_limit_exceeded(
 ) -> Result<bool, String> {
     Ok(false)
 }
+
+#[cfg(all(test, unix))]
+#[path = "host/worker_exit_tests.rs"]
+mod worker_exit_classification_tests;
+
+#[cfg(test)]
+#[path = "host/worker_non_unix_tests.rs"]
+mod non_unix_termination_tests;

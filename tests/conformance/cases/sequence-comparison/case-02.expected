@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"first_only\": false, \"ge\": false, \"gt\": true, \"kind\": \"result\", \"le\": true, \"ordering\": true, \"prefix\": true, \"reverse\": false, \"tuple_equal\": true}\n"
+  ]
+}

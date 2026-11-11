@@ -817,7 +817,7 @@ impl Vm {
         let name = name.to_string();
         match self.call_with_exception_capture(|vm| vm.argparse_dispatch(&name, args, keywords))? {
             Ok(value) => Ok(value),
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -879,7 +879,7 @@ impl Vm {
         match self.load_attribute_catching(object.clone(), name)? {
             Ok(value) => Ok(Some(value)),
             Err(exception) if exception_is(&exception, "AttributeError") => Ok(None),
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 
@@ -1119,7 +1119,7 @@ impl Vm {
         let class = self.ap_class("ArgumentError")?;
         let error = self.call_value(class, vec![argument, Value::String(message.into())])?;
         let exception = exception_from_value(error)?;
-        Err(self.remember_runtime_exception_error(exception))
+        self.raise_exception(exception, true)
     }
 
     /// Whether a caught exception is an instance of the module class `name`.
@@ -1632,9 +1632,9 @@ impl Vm {
                     vec![str_value(format!("can't open '{filename}': {error}"))],
                 )?;
                 let exception = exception_from_value(error)?;
-                Err(self.remember_runtime_exception_error(exception))
+                self.raise_exception(exception, true)
             }
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 }
@@ -1701,7 +1701,7 @@ impl Vm {
         let argument_name =
             match self.call_with_exception_capture(|vm| vm.ap_action_name(&argument))? {
                 Ok(name) => name,
-                Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
         let display = argument_error_display(self, &argument_name, &message)?;
         Ok(Value::Exception {
@@ -1718,7 +1718,7 @@ impl Vm {
             cause: None,
             context: None,
             suppress_context: false,
-            identity: Rc::new(()),
+            identity: Rc::new(crate::value::ExceptionIdentity::default()),
         })
     }
 }

@@ -1,0 +1,15 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "[<probe>]\n",
+    "{'key': <probe>}\n",
+    "OrderedDict({'key': <probe>})\n",
+    "odict_items([('key', <probe>)])\n",
+    "ChainMap({'key': <probe>})\n",
+    "Counter({'key': <probe>})\n",
+    "defaultdict(<class 'list'>, {'key': <probe>})\n",
+    "{'key': <probe>}\n",
+    "[<probe>]\n"
+  ]
+}

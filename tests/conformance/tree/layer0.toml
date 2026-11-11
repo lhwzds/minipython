@@ -1,0 +1,297 @@
+# Each leaf records behaviour of CPython 3.14.6, observed as a black box by its cases.
+# A rule names the leaf's topic; the recorded output of the cases is the observation.
+
+[[leaf]]
+id = "identity-alias"
+protocol = "identity"
+rule = "Identity of an object with itself"
+
+[[leaf]]
+id = "identity-containers"
+protocol = "identity"
+rule = "Identity of container aliases and freshly constructed containers"
+
+[[leaf]]
+id = "identity-immutable"
+protocol = "identity"
+rule = "Identity of singletons and separately constructed immutable values"
+
+[[leaf]]
+id = "identity-functions-classes"
+protocol = "identity"
+rule = "Identity of functions, classes and instances"
+
+[[leaf]]
+id = "identity-bound-method"
+protocol = "identity"
+rule = "Identity of bound methods across accesses"
+
+[[leaf]]
+id = "identity-descriptors"
+protocol = "identity"
+rule = "Identity of descriptors read from a class dictionary"
+
+[[leaf]]
+id = "identity-modules"
+protocol = "identity"
+rule = "Identity of imported modules"
+
+[[leaf]]
+id = "identity-generic-alias"
+protocol = "identity"
+rule = "Identity and equality of builtin generic aliases"
+
+[[leaf]]
+id = "identity-namedtuple-methods"
+protocol = "identity"
+rule = "Identity of named tuple bound methods across accesses"
+
+[[leaf]]
+id = "identity-computed-scalars"
+protocol = "identity"
+rule = "Identity of integers and strings computed separately from one value"
+
+[[leaf]]
+id = "identity-iterator"
+protocol = "identity"
+rule = "Identity of an iterator under iter()"
+
+[[leaf]]
+id = "identity-descriptor-containers"
+protocol = "identity"
+rule = "Descriptors in containers, and containers that share one item object"
+
+[[leaf]]
+id = "identity-alias-deepcopy"
+protocol = "identity"
+rule = "Deep copies of generic aliases"
+
+[[leaf]]
+id = "equality-self-calls"
+protocol = "rich-comparison"
+rule = "Equality of an object with itself"
+
+[[leaf]]
+id = "equality-reflected"
+protocol = "rich-comparison"
+rule = "Reflected equality after NotImplemented"
+
+[[leaf]]
+id = "equality-subclass-first"
+protocol = "rich-comparison"
+rule = "Subclass priority in reflected equality"
+
+[[leaf]]
+id = "equality-notimplemented"
+protocol = "rich-comparison"
+rule = "Equality when equality methods return NotImplemented"
+
+[[leaf]]
+id = "ordering-notimplemented"
+protocol = "rich-comparison"
+rule = "Ordering when both operands decline"
+
+[[leaf]]
+id = "inequality-default"
+protocol = "rich-comparison"
+rule = "The default inequality method"
+
+[[leaf]]
+id = "membership-identity"
+protocol = "rich-comparison"
+rule = "Container membership of the stored element object itself"
+
+[[leaf]]
+id = "sequence-identity"
+protocol = "rich-comparison"
+rule = "List and tuple equality with shared element objects"
+
+[[leaf]]
+id = "sequence-search-identity"
+protocol = "rich-comparison"
+rule = "List count, index and remove with shared element objects"
+
+[[leaf]]
+id = "dict-identity"
+protocol = "rich-comparison"
+rule = "Dictionary lookup with the stored key object itself"
+
+[[leaf]]
+id = "nan-comparison"
+protocol = "rich-comparison"
+rule = "NaN in comparisons and in sequences"
+
+[[leaf]]
+id = "equality-exception"
+protocol = "rich-comparison"
+rule = "Exceptions raised by equality"
+
+[[leaf]]
+id = "dict-insertion-equality-exception"
+protocol = "rich-comparison"
+rule = "Key equality exceptions during dictionary insertion"
+
+[[leaf]]
+id = "dict-lookup-equality-exception"
+protocol = "rich-comparison"
+rule = "Key equality exceptions during dictionary lookup"
+
+[[leaf]]
+id = "sequence-comparison"
+protocol = "rich-comparison"
+rule = "Comparison of lists and tuples"
+
+[[leaf]]
+id = "mapping-comparison"
+protocol = "rich-comparison"
+rule = "Dictionary equality"
+
+[[leaf]]
+id = "set-comparison"
+protocol = "rich-comparison"
+rule = "Comparison of sets and frozen sets"
+
+[[leaf]]
+id = "mapping-family-comparison"
+protocol = "rich-comparison"
+rule = "Equality across dict, Counter, OrderedDict, ChainMap and UserDict"
+
+[[leaf]]
+id = "equality-wrong-type"
+protocol = "rich-comparison"
+rule = "Non-boolean results of equality"
+
+[[leaf]]
+id = "equality-mutation"
+protocol = "rich-comparison"
+rule = "Comparison methods that change the list being searched"
+
+[[leaf]]
+id = "equality-userstring-reflected"
+protocol = "rich-comparison"
+rule = "UserString comparisons and reflected operands"
+
+[[leaf]]
+id = "equality-raw-result"
+protocol = "rich-comparison"
+rule = "Non-boolean comparison results in container operations"
+
+[[leaf]]
+id = "hash-builtins"
+protocol = "hash"
+rule = "Hashing of immutable builtins"
+
+[[leaf]]
+id = "hash-unhashable-builtins"
+protocol = "hash"
+rule = "Hashing of mutable builtin containers"
+
+[[leaf]]
+id = "hash-none"
+protocol = "hash"
+rule = "Instances of classes that set __hash__ to None"
+
+[[leaf]]
+id = "hash-eq-disables"
+protocol = "hash"
+rule = "Hashing of classes that define equality without __hash__"
+
+[[leaf]]
+id = "hash-tuple-elements"
+protocol = "hash"
+rule = "Hashing of tuple elements"
+
+[[leaf]]
+id = "hash-dict-insert-lookup"
+protocol = "hash"
+rule = "Hashing during dictionary insertion and lookup"
+
+[[leaf]]
+id = "hash-dict-setdefault"
+protocol = "hash"
+rule = "Hashing during dictionary setdefault"
+
+[[leaf]]
+id = "hash-dict-copy-update"
+protocol = "hash"
+rule = "Hashing when copying, building or updating from a dictionary"
+
+[[leaf]]
+id = "hash-set-operations"
+protocol = "hash"
+rule = "Hashing in set insertion, membership, copy and update"
+
+[[leaf]]
+id = "hash-changes"
+protocol = "hash"
+rule = "Dictionaries whose keys change their hash"
+
+[[leaf]]
+id = "hash-equal-numbers"
+protocol = "hash"
+rule = "Hashes of numerically matching integers, floats and booleans"
+
+[[leaf]]
+id = "hash-invalid-return"
+protocol = "hash"
+rule = "__hash__ methods that return a non-integer"
+
+[[leaf]]
+id = "dict-setitem-user-eq"
+protocol = "rich-comparison"
+rule = "Dictionary insertion with colliding keys that define equality"
+
+[[leaf]]
+id = "userdict-popitem"
+protocol = "rich-comparison"
+rule = "UserDict popitem"
+
+[[leaf]]
+id = "ordereddict-move-to-end"
+protocol = "rich-comparison"
+rule = "OrderedDict move_to_end"
+
+[[leaf]]
+id = "userdict-subclass-getitem"
+protocol = "rich-comparison"
+rule = "UserDict subclasses that override __getitem__"
+
+[[leaf]]
+id = "counter-eq-operand-order"
+protocol = "rich-comparison"
+rule = "Order of key equality checks in Counter and dictionary equality"
+
+[[leaf]]
+id = "dict-setitem-hash-once"
+protocol = "hash"
+rule = "Hashing during dictionary item assignment"
+
+[[leaf]]
+id = "identity-class-attribute-sets"
+protocol = "identity"
+rule = "Identity of a frozenset class attribute across repeated access"
+
+[[leaf]]
+id = "identity-object-kinds"
+protocol = "identity"
+rule = "Identity of objects of many kinds, and id() of a deque"
+
+[[leaf]]
+id = "container-mutation-during-compare"
+protocol = "rich-comparison"
+rule = "Containers changed during comparison or search"
+
+[[leaf]]
+id = "deque-mutation-state"
+protocol = "rich-comparison"
+rule = "Deques changed during searches, comparisons and iteration, and deque arguments, rotation, repetition, copies, iterator reprs and the __init__ descriptor"
+
+[[leaf]]
+id = "callback-reentry"
+protocol = "callback"
+rule = "User callbacks that re-enter the interpreter through builtins, generators and itertools, exception context, causes, notes and tracebacks, attribute lookup through raising properties, and identity of iterators and templates, and identity and types of type aliases"
+
+[[leaf]]
+id = "iterator-reentry"
+protocol = "callback"
+rule = "Iterator adapters advanced by their own callbacks"

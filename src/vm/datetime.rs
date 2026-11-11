@@ -1005,12 +1005,12 @@ fn builtin_name(kind: Kind, member: &str) -> String {
 
 fn getter_property(kind: Kind, name: &str) -> Value {
     Value::Property {
-        fget: Some(Box::new(Value::Builtin(builtin_name(kind, name)))),
-        fset: Some(Box::new(Value::Builtin(builtin_name(
+        fget: Some(Rc::new(Value::Builtin(builtin_name(kind, name)))),
+        fset: Some(Rc::new(Value::Builtin(builtin_name(
             kind,
             &format!("{name}:set"),
         )))),
-        fdel: Some(Box::new(Value::Builtin(builtin_name(
+        fdel: Some(Rc::new(Value::Builtin(builtin_name(
             kind,
             &format!("{name}:del"),
         )))),
@@ -1062,7 +1062,7 @@ pub(crate) fn datetime_module_value() -> Value {
                 insert(
                     "__new__",
                     Value::StaticMethod {
-                        function: Box::new(Value::Builtin(builtin_name(spec.kind, "__new__"))),
+                        function: Rc::new(Value::Builtin(builtin_name(spec.kind, "__new__"))),
                         identity: Rc::new(()),
                     },
                 );
@@ -1075,7 +1075,7 @@ pub(crate) fn datetime_module_value() -> Value {
                     Member::ClassMethod(name) => insert(
                         name,
                         Value::ClassMethod {
-                            function: Box::new(Value::Builtin(builtin_name(spec.kind, name))),
+                            function: Rc::new(Value::Builtin(builtin_name(spec.kind, name))),
                             identity: Rc::new(()),
                         },
                     ),
@@ -1627,9 +1627,8 @@ impl Vm {
     // Dispatch.
     // ------------------------------------------------------------------
 
-    /// Entry point for every `datetime.*` builtin. Exception handlers of
-    /// the calling frame are isolated so an exception raised inside the
-    /// native code propagates out of it.
+    /// Entry point for every `datetime.*` builtin. Captured exceptions keep
+    /// their objects until the calling frame dispatches.
     pub(super) fn call_datetime_builtin(
         &mut self,
         name: &str,
@@ -1639,7 +1638,7 @@ impl Vm {
         let name = name.to_string();
         match self.call_with_exception_capture(|vm| vm.datetime_dispatch(&name, args, keywords))? {
             Ok(value) => Ok(value),
-            Err(exception) => Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => Err(self.propagate_captured_exception(exception)),
         }
     }
 

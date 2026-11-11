@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"comparison\"}\n",
+    "{\"kind\": \"operands\", \"names\": [\"str\"]}\n"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"copied\": true, \"deep\": true, \"kind\": \"argument\"}\n",
+    "{\"kind\": \"alias\", \"same\": true}\n"
+  ]
+}

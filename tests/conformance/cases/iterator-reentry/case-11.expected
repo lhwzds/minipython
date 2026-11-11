@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "groupby\n",
+    "inner (1, 'iterator')\n",
+    "outer (0, 'iterator')\n"
+  ]
+}

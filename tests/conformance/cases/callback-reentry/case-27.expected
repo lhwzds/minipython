@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "OverflowError Python int too large to convert to C ssize_t 0\n",
+    "OverflowError Python int too large to convert to C ssize_t 0\n",
+    "OverflowError Python int too large to convert to C ssize_t 0\n",
+    "OverflowError Python int too large to convert to C ssize_t 0\n"
+  ]
+}

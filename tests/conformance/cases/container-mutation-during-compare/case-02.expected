@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"count\": 0, \"kind\": \"result\", \"length\": 0}\n",
+    "{\"calls\": [[\"__eq__\", \"x\", 0]], \"kind\": \"calls\"}\n"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"count\": 1, \"kind\": \"same\", \"list_equal\": true, \"member\": true}\n",
+    "{\"count\": 0, \"kind\": \"other\", \"list_equal\": false, \"member\": false}\n"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"operation\", \"name\": \"setitem\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"reverse\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"extend-empty\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"extendleft-empty\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"iadd-empty\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"imul-one\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"copy\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"count\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n",
+    "{\"kind\": \"operation\", \"name\": \"read\"}\n",
+    "{\"found\": false, \"kind\": \"result\", \"length\": 3}\n"
+  ]
+}

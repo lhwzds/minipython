@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"calls\", \"left\": \"d\", \"right\": \"c\"}\n",
+    "{\"equal\": false, \"kind\": \"result\"}\n"
+  ]
+}

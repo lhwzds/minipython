@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"identity\", \"same\": true, \"self_not\": false, \"separate\": false, \"separate_not\": true}\n",
+    "{\"declined\": false, \"kind\": \"result\", \"result\": \"truthy\"}\n",
+    "{\"calls\": [[\"__eq__\", \"wrong\", \"other\"]], \"kind\": \"calls\"}\n"
+  ]
+}

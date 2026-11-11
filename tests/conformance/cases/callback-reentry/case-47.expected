@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "TypeError cannot use 'list' as a set element (unhashable type: 'list')\n",
+    "KeyError 'first'\n"
+  ]
+}

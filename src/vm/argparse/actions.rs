@@ -1071,7 +1071,7 @@ impl Vm {
         let arg_strings = self.load_subscript_value(
             values,
             Value::Slice {
-                start: Some(Box::new(Value::Number(1))),
+                start: Some(Rc::new(Value::Number(1))),
                 stop: None,
                 step: None,
                 identity: Rc::new(()),
@@ -1098,7 +1098,7 @@ impl Vm {
                     format!("unknown parser {rendered} (choices: {})", names.join(", ")),
                 );
             }
-            Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+            Err(exception) => return Err(self.propagate_captured_exception(exception)),
         };
         let deprecated_names = self.ap_get(receiver, "_deprecated")?;
         if self.ap_contains(&deprecated_names, &parser_name)? {

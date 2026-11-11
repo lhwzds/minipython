@@ -31,7 +31,7 @@ enum ExceptionGroupMatcher {
     /// A callable called with each exception and group.
     Predicate(Value),
     /// Leaf exceptions with these identities (groups never match).
-    LeafIdentities(Vec<Rc<()>>),
+    LeafIdentities(Vec<Rc<ExceptionIdentity>>),
 }
 
 fn exception_group_matcher(value: Value) -> Result<ExceptionGroupMatcher, String> {
@@ -78,7 +78,7 @@ fn new_exception_group(message: Value, excs: Value) -> Result<MiniException, Str
         context: None,
         suppress_context: false,
         exceptions: Some(exceptions),
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     })
 }
 
@@ -148,9 +148,12 @@ fn is_same_exception_metadata(exception: &MiniException, orig: &MiniException) -
         exception_traceback_value(&orig.attrs),
     ) {
         (Value::None, Value::None) => true,
-        (Value::Traceback { identity: left }, Value::Traceback { identity: right }) => {
-            Rc::ptr_eq(&left, &right)
-        }
+        (
+            Value::Traceback { identity: left, .. },
+            Value::Traceback {
+                identity: right, ..
+            },
+        ) => Rc::ptr_eq(&left, &right),
         _ => false,
     };
     // CPython compares the exceptions' C-level `notes` slots, which stay
@@ -161,7 +164,10 @@ fn is_same_exception_metadata(exception: &MiniException, orig: &MiniException) -
         && same_optional_exception(&exception.context, &orig.context)
 }
 
-fn collect_exception_leaf_identities(exception: &MiniException, identities: &mut Vec<Rc<()>>) {
+fn collect_exception_leaf_identities(
+    exception: &MiniException,
+    identities: &mut Vec<Rc<ExceptionIdentity>>,
+) {
     match &exception.exceptions {
         Some(children) => {
             for child in children {
@@ -345,7 +351,7 @@ impl Vm {
             .take()
             .ok_or_else(|| "except* clause raised no exception".to_string())?;
         let Value::List(items) = self.read_register(raised)?.clone() else {
-            return Err("except* raised exceptions are not a list".to_string());
+            return Err("TypeError: except* raised exceptions are not a list".to_string());
         };
         items.borrow_mut().push(value_from_exception(&exception));
         // The clause's collect handler is done; the clause's matched group
@@ -365,7 +371,7 @@ impl Vm {
     ) -> Result<(), String> {
         let orig = exception_from_value(self.read_register(orig)?.clone())?;
         let Value::List(items) = self.read_register(raised)?.clone() else {
-            return Err("except* raised exceptions are not a list".to_string());
+            return Err("TypeError: except* raised exceptions are not a list".to_string());
         };
         let mut excs = items.borrow().clone();
         excs.push(self.read_register(rest)?.clone());

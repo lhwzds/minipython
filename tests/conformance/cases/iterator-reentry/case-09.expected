@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "islice\n",
+    "inner 1\n",
+    "outer 0\n"
+  ]
+}

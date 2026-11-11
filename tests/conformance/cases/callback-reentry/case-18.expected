@@ -1,0 +1,27 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "inner 11\n",
+    "outer 10\n",
+    "tail [12]\n",
+    "inner 1\n",
+    "outer 0\n",
+    "tail [2]\n",
+    "inner (1,)\n",
+    "outer (0,)\n",
+    "tail [(2,)]\n",
+    "inner 1\n",
+    "outer 0\n",
+    "tail [2]\n",
+    "inner 1\n",
+    "outer 0\n",
+    "tail [2]\n",
+    "inner 1\n",
+    "outer 0\n",
+    "tail [2]\n",
+    "inner (1,)\n",
+    "outer (0,)\n",
+    "tail [(2,)]\n"
+  ]
+}

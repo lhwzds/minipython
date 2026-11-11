@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "caught ValueError coroutine already executing\n"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "False\n",
+    "True\n",
+    "False\n",
+    "True\n",
+    "END\n"
+  ]
+}

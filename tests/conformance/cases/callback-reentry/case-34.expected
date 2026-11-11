@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "caught TypeError\n",
+    "caught TypeError\n"
+  ]
+}

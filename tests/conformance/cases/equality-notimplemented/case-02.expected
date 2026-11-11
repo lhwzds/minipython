@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"distinct\": false, \"kind\": \"result\"}\n",
+    "{\"calls\": [[\"__eq__\", \"a\", \"b\"], [\"__eq__\", \"b\", \"a\"]], \"kind\": \"calls\"}\n"
+  ]
+}

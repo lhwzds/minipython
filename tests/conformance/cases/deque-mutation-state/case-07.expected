@@ -1,0 +1,30 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"items\": [], \"kind\": \"result\", \"maxlen\": null, \"operation\": \"empty\", \"value\": null}\n",
+    "{\"items\": [10], \"kind\": \"alias\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"items\": [7, 8], \"kind\": \"result\", \"maxlen\": null, \"operation\": \"values\", \"value\": null}\n",
+    "{\"items\": [7, 8, 10], \"kind\": \"alias\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"items\": [8, 9], \"kind\": \"result\", \"maxlen\": 2, \"operation\": \"bounded\", \"value\": null}\n",
+    "{\"items\": [9, 10], \"kind\": \"alias\", \"maxlen\": 2}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"items\": [7, 8], \"kind\": \"result\", \"maxlen\": null, \"operation\": \"unbounded\", \"value\": null}\n",
+    "{\"items\": [7, 8, 10], \"kind\": \"alias\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"items\": [9], \"kind\": \"result\", \"maxlen\": 1, \"operation\": \"keyword\", \"value\": null}\n",
+    "{\"items\": [10], \"kind\": \"alias\", \"maxlen\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"items\": [], \"kind\": \"result\", \"maxlen\": null, \"operation\": \"self\", \"value\": null}\n",
+    "{\"items\": [10], \"kind\": \"alias\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n"
+  ]
+}

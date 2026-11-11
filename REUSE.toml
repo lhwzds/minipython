@@ -8,6 +8,12 @@
 # LICENSES/, as the REUSE specification asks.
 version = 1
 
+# Independently written, black-box conformance corpus.
+[[annotations]]
+path = "tests/conformance/**"
+precedence = "override"
+SPDX-License-Identifier = "MIT"
+
 # The documentation: our own prose.
 [[annotations]]
 path = "**/*.md"

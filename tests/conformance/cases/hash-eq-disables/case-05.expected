@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"cannot use 'C' as a set element (unhashable type: 'C')\", \"type\": \"TypeError\"}\n"
+  ]
+}

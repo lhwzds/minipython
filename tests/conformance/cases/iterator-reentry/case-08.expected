@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "zip_longest\n",
+    "inner (1,)\n",
+    "outer (0,)\n"
+  ]
+}

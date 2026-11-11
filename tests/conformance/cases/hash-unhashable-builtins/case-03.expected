@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"unhashable type: 'set'\", \"type\": \"TypeError\"}\n"
+  ]
+}

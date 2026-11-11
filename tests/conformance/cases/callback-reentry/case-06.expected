@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "length 2\n",
+    "deque([8, 42], maxlen=3)\n"
+  ]
+}

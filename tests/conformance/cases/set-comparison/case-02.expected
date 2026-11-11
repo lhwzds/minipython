@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"gt\": true, \"kind\": \"result\", \"le\": true, \"reverse\": false, \"subset\": true}\n"
+  ]
+}

@@ -14,12 +14,12 @@ use crate::future::{
     CO_FUTURE_ANNOTATIONS, FUTURE_IMPORT_POSITION_ERROR, PYCF_MASK, body_has_annotated_assignment,
     is_future_import, scan_future_statements, validate_string_annotations,
 };
+use crate::rc::Rc;
 use crate::unparse::annotation_string;
 use crate::value::{Value, bytes_value, complex_value, float_value, tuple_value};
 use num_bigint::BigInt;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashSet, VecDeque};
-use std::rc::Rc;
 
 const MAX_STATIC_BLOCK_DEPTH: usize = 21;
 

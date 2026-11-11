@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "finally\n",
+    "caught ValueError boom\n"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "anext RuntimeError anext(): asynchronous generator is already running\n",
+    "anext main RuntimeError cannot reuse already awaited coroutine\n",
+    "athrow RuntimeError athrow(): asynchronous generator is already running\n",
+    "athrow main RuntimeError cannot reuse already awaited coroutine\n",
+    "aclose RuntimeError aclose(): asynchronous generator is already running\n",
+    "aclose main RuntimeError cannot reuse already awaited coroutine\n"
+  ]
+}

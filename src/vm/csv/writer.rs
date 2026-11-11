@@ -131,7 +131,7 @@ impl Vm {
         loop {
             let value = match self.advance_owned_iterator_capturing(&mut iterator)? {
                 Ok(IteratorAdvance::Yield(value)) => value,
-                Ok(IteratorAdvance::Complete(_)) | Ok(IteratorAdvance::Raised) => break,
+                Ok(IteratorAdvance::Complete(_)) => break,
                 Err(exception) => return Err(self.propagate_captured_exception(exception)),
             };
             let is_none = matches!(value, Value::None);

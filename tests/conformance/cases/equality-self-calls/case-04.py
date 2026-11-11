@@ -1,0 +1,5 @@
+value = lambda log: WrongType('wrong', log, True)
+log = CallLogger(); x = value(log)
+try: emit('result', result=x == x)
+except Exception as exc: emit_exception(exc)
+emit_calls(log)

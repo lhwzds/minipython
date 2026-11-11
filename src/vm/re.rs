@@ -858,7 +858,7 @@ fn regex_flag_class() -> Value {
             insert(
                 property,
                 Value::Property {
-                    fget: Some(Box::new(Value::Builtin(format!(
+                    fget: Some(Rc::new(Value::Builtin(format!(
                         "{RE_PREFIX}RegexFlag.{property}"
                     )))),
                     fset: None,
@@ -1501,7 +1501,7 @@ impl Vm {
             pos.map(|pos| Value::Number(pos as i64)),
         )?;
         let exception = exception_from_value(error)?;
-        Err(self.remember_runtime_exception_error(exception))
+        self.raise_exception(exception, true)
     }
 
     fn re_raise_error<T>(&mut self, error: ReError, pattern: &Value) -> Result<T, String> {
@@ -2011,7 +2011,7 @@ impl Vm {
                 if method == "scanner" {
                     return Ok(scanner);
                 }
-                Ok(Value::CallIterator {
+                Ok(shared_iterator(Value::CallIterator {
                     callable: Box::new(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("{RE_PREFIX}Scanner.search"))),
                         receiver: Box::new(scanner),
@@ -2019,7 +2019,7 @@ impl Vm {
                     }),
                     sentinel: Box::new(Value::None),
                     done: false,
-                })
+                }))
             }
             "split" => {
                 let values = bind_clinic(method, &["string", "maxsplit"], 1, args, keywords)?;
@@ -2885,7 +2885,7 @@ fn build_pattern_error(
         cause: None,
         context: None,
         suppress_context: false,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     })
 }
 
@@ -2964,7 +2964,7 @@ fn build_pattern_error_checked(
         cause: None,
         context: None,
         suppress_context: false,
-        identity: Rc::new(()),
+        identity: Rc::new(crate::value::ExceptionIdentity::default()),
     })
 }
 

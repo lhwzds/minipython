@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"eq failed\", \"type\": \"RuntimeError\"}\n"
+  ]
+}

@@ -16,6 +16,10 @@ Steps:
              match tests/release_gate/discovery-baseline.json exactly
   c          oracle corpora (tests/oracles/corpora.toml), 100% identical apart
              from documented exclusions
+  conformance  the layer-zero conformance corpus: the comparison against the
+             recorded CPython 3.14.6 observations, the conformance status block
+             of README.md, the oracle check of tests/conformance/cases, and the
+             unit tests of the corpus
   d          leak scan of tracked files and commit messages since the last tag
   licensing  licensing: SPDX headers, NOTICE, the licences of the Cargo
              dependencies, and the provenance of the MIT-only files
@@ -385,6 +389,63 @@ class Gate:
         record["details"]["scenarios"] = sum(c["scenarios"] for c in payload["corpora"])
         record["details"]["report"] = str((out / "oracles.md").relative_to(REPO))
 
+    # -- the conformance step ---------------------------------------------
+
+    def conformance(self, record: dict) -> None:
+        """The layer-zero conformance corpus: compare, status, oracle check."""
+        details = record["details"]
+        mnpy = self.release_binary()
+        out = REPORT_DIR / "conformance"
+        out.mkdir(parents=True, exist_ok=True)
+        report = out / "report.json"
+        compared = self.run(
+            [self.cpython, "tests/conformance/run.py", "--mnpy", str(mnpy), "--out", str(report)],
+            "conformance-compare.log",
+        )
+        details["report"] = str(report.relative_to(REPO))
+        details["comparison_exit"] = compared.returncode
+        if compared.returncode != 0:
+            record["failures"].append(
+                f"the conformance comparison failed (exit {compared.returncode}); the log lists the "
+                "cases that differ from the recorded CPython observations"
+            )
+        checked = self.run(
+            [self.cpython, "tests/conformance/status.py", "--report", str(report), "--check"],
+            "conformance-status.log",
+        )
+        details["status_exit"] = checked.returncode
+        if checked.returncode == 1:
+            record["failures"].append(
+                "the conformance status block of README.md is stale; regenerate it with "
+                "tests/conformance/status.py --report " + str(report.relative_to(REPO))
+            )
+        elif checked.returncode != 0:
+            record["failures"].append(
+                f"the conformance status check failed (exit {checked.returncode}); the log says why"
+            )
+        # The oracle check writes no oracle or report; the cases it executes are
+        # trusted, tracked code. Exit 1 means that the recorded observations
+        # differ from the oracle on this host, any other exit means that the check
+        # itself did not run.
+        oracle = self.run(
+            [self.cpython, "tests/conformance/run.py", "--check-oracle", "--cpython", self.cpython],
+            "conformance-oracle.log",
+        )
+        details["oracle_check_exit"] = oracle.returncode
+        details["oracle_drift"] = oracle.returncode == 1
+        if oracle.returncode == 1:
+            record["failures"].append(
+                "oracle drift: the recorded CPython observations of tests/conformance/cases differ from "
+                "the oracle on this host; regenerate them and commit them, or fix the case that differs "
+                "(see tests/conformance/README.md)"
+            )
+        elif oracle.returncode != 0:
+            record["failures"].append(
+                f"the oracle check failed (exit {oracle.returncode}); the log says why"
+            )
+        self.check([self.cpython, "-I", "-m", "unittest", "discover", "-s", "tests/conformance",
+                    "-p", "test_*.py"], "conformance-tests.log")
+
     # -- step d ----------------------------------------------------------
 
     def leaks(self, record: dict) -> None:
@@ -656,6 +717,7 @@ STEPS = [
     ("a", "cargo fmt and the full cargo test (release, all targets, no skips)"),
     ("b", "pipeline unit tests and the 1024-case discovery sweep vs the baseline"),
     ("c", "oracle corpora"),
+    ("conformance", "layer-zero conformance corpus: comparison, status block, oracle drift"),
     ("d", "leak scan of tracked files and commit messages"),
     ("licensing", "licensing: SPDX headers, NOTICE, dependency licences, provenance"),
     ("e", "packaging smoke: archive, npm, Homebrew"),
@@ -680,7 +742,8 @@ def main() -> int:
     (REPORT_DIR / "logs").mkdir(parents=True)
     gate = Gate(args)
     functions = {"preflight": gate.preflight, "a": gate.cargo, "b": gate.pipeline, "c": gate.oracles,
-                 "d": gate.leaks, "licensing": gate.licensing, "e": gate.packaging}
+                 "conformance": gate.conformance, "d": gate.leaks, "licensing": gate.licensing,
+                 "e": gate.packaging}
     for key, title in STEPS:
         if only and key not in only:
             continue

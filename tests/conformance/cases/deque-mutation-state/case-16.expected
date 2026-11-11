@@ -1,0 +1,12 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"has_address\": true, \"kind\": \"repr\", \"name\": \"iter\", \"text\": \"<collections._deque_iterator object\", \"type\": \"_deque_iterator\"}\n",
+    "{\"has_address\": true, \"kind\": \"str\", \"name\": \"iter\", \"text\": \"<collections._deque_iterator object\", \"type\": \"_deque_iterator\"}\n",
+    "{\"has_address\": true, \"kind\": \"repr\", \"name\": \"reversed\", \"text\": \"<collections._deque_reverse_iterator object\", \"type\": \"_deque_reverse_iterator\"}\n",
+    "{\"has_address\": true, \"kind\": \"str\", \"name\": \"reversed\", \"text\": \"<collections._deque_reverse_iterator object\", \"type\": \"_deque_reverse_iterator\"}\n",
+    "{\"has_address\": true, \"kind\": \"repr\", \"name\": \"dunder\", \"text\": \"<collections._deque_reverse_iterator object\", \"type\": \"_deque_reverse_iterator\"}\n",
+    "{\"has_address\": true, \"kind\": \"str\", \"name\": \"dunder\", \"text\": \"<collections._deque_reverse_iterator object\", \"type\": \"_deque_reverse_iterator\"}\n"
+  ]
+}

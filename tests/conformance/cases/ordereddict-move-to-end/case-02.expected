@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"keys\": [\"b\", \"a\", \"c\"], \"kind\": \"result\", \"unpacked\": [\"b\", \"a\", \"c\"]}\n"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"forward\": true, \"kind\": \"result\", \"name\": \"ChainMap\", \"reverse\": true}\n",
+    "{\"forward\": false, \"kind\": \"result\", \"name\": \"ChainMap\", \"reverse\": false}\n",
+    "{\"forward\": true, \"kind\": \"result\", \"name\": \"UserDict\", \"reverse\": true}\n",
+    "{\"forward\": false, \"kind\": \"result\", \"name\": \"UserDict\", \"reverse\": false}\n"
+  ]
+}

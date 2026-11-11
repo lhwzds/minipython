@@ -1,0 +1,11 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "ready\n",
+    "Custom throw True\n",
+    "handled\n",
+    "done\n",
+    "['finally']\n"
+  ]
+}

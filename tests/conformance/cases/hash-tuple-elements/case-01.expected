@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"calls\": [[\"__hash__\", \"a\"], [\"__hash__\", \"b\"]], \"kind\": \"calls\"}\n"
+  ]
+}

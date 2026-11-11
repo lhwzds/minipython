@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"identity\", \"same\": true, \"self_not\": false, \"separate\": false, \"separate_not\": true}\n",
+    "{\"kind\": \"exception\", \"message\": \"comparison failed\", \"type\": \"ValueError\"}\n",
+    "{\"calls\": [[\"__eq__\", \"raises\", \"other\"]], \"kind\": \"calls\"}\n"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"calls\": [[\"__hash__\", \"x\"]], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"lookup\", \"value\": 1}\n",
+    "{\"calls\": [[\"__hash__\", \"x\"]], \"kind\": \"calls\"}\n"
+  ]
+}

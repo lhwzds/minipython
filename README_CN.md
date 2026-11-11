@@ -67,6 +67,18 @@ echo "print(1)" | mnpy  # 管道输入
 mnpy --version          # mnpy 0.1.0
 ```
 
+`--status-file PATH` 会把本次运行的结果写成一个 JSON 对象加一个换行，落到 `PATH`
+并覆盖该路径上已有的文件：`{"status": S, "terminal": T}`。`S` 是本次运行的状态名
+（`Success`、`Error`、`TimeLimit`、`MemoryLimit` 或 `WorkerCrash`）；`T` 是结束本次
+运行的 terminal 条件名（`InstructionLimit`、`AllocationLimit`、`OutputLimit`、
+`NativeStackExhausted`、`TimeLimit`、`MemoryLimit` 或 `WorkerFailure`），当 sandbox
+没有结束本次运行时为 `null`：这包括程序自身结束，以及 mnpy 读不到源码的情况。
+选项解析完成之后的每一条退出路径都会写入该文件，因此调用方无需解析 stderr
+（程序输出与 mnpy 自己的报告共用 stderr）就能区分 worker 崩溃和普通 Python 错误。
+用法错误、`-h` 和 `-V` 在那之前就退出了，不写任何文件。如果文件写不进去，`mnpy`
+会打印 `mnpy: cannot write status file ...` 并退出 2，因为本次运行的结果没有别的方式可以汇报。
+不使用该参数时，`mnpy` 不写任何文件，行为与之前完全一致。
+
 与 CPython 一样，程序（`file`、`-c cmd` 或代表 stdin 的 `-`）之后的参数会成为
 `sys.argv`；未捕获的 `SystemExit`（例如 `sys.exit(2)`）决定进程退出码：`None` 退出 0，
 整数取低 8 位，其他值打印到 stderr 并退出 1。其他未捕获异常退出 1，并按 CPython 的
@@ -102,7 +114,7 @@ mnpy --max-memory-bytes 134217728 -c "print(1 + 2)"
 的公开参数。macOS 上由父进程监控 worker 的 physical footprint，其他 Unix 平台
 使用内核进程限制（`RLIMIT_AS` 和 `RLIMIT_DATA`），内存耗尽时内存分配失败、worker
 中止。两种情况都以内存限制结束（`ExecutionStatus::MemoryLimit`，
-`sandbox error: worker exceeded process limits or crashed`）。Linux 的限制按地址空间
+`sandbox error: worker memory limit exceeded`）。Linux 的限制按地址空间
 计算，包括整个解释器栈的预留，因此 worker 让 GNU libc 只使用一个 malloc arena，
 而不是为每个线程预留 64 MiB。执行文件时，脚本目录默认作为 sandbox module root；`-c` 和
 stdin 默认不暴露宿主模块目录，除非显式传入 `--root`。库 API 仍可用于 focused

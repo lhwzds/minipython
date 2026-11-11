@@ -110,6 +110,11 @@ REQUIRED_STDLIB_ROOT_CAUSES = {
 }
 
 
+# Marks a status the test did not choose, so a test can ask for no status
+# at all without the helper picking one.
+UNSET = object()
+
+
 def run_result(
     *,
     exit_code=0,
@@ -118,7 +123,11 @@ def run_result(
     timeout=False,
     exception_class=None,
     exception_message=None,
+    status=UNSET,
+    terminal=None,
 ):
+    if status is UNSET:
+        status = "Success" if exit_code == 0 else "Error"
     return gap.RunResult(
         exit_code=exit_code,
         stdout=stdout,
@@ -126,6 +135,8 @@ def run_result(
         timeout=timeout,
         exception_class=exception_class,
         exception_message=exception_message,
+        status=status,
+        terminal=terminal,
     )
 
 
@@ -219,16 +230,91 @@ class ClassifyTests(unittest.TestCase):
         mini = run_result(exit_code=None, stderr="exec failed")
         self.assertEqual(gap.classify(cpython, mini, None), "CRASH")
 
-    def test_worker_protocol_crash_is_a_crash_even_with_a_marker(self):
+    def test_a_worker_crash_status_is_a_crash_even_with_a_marker(self):
         cpython = run_result()
-        crashed = run_result(
+        crashed = run_result(exit_code=1, status="WorkerCrash")
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertEqual(gap.classify(cpython, crashed, marker), "CRASH")
+
+    def test_native_stack_exhaustion_is_a_crash(self):
+        cpython = run_result()
+        exhausted = run_result(
+            exit_code=1, status="Error", terminal="NativeStackExhausted"
+        )
+        self.assertTrue(gap.worker_crashed(exhausted))
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertEqual(gap.classify(cpython, exhausted, marker), "CRASH")
+
+        # The terminal condition decides, whatever status the run reported.
+        reported_success = run_result(
+            exit_code=1, status="Success", terminal="NativeStackExhausted"
+        )
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertEqual(
+                    gap.classify(cpython, reported_success, marker), "CRASH"
+                )
+
+        limited = run_result(
+            exit_code=1, status="Error", terminal="InstructionLimit"
+        )
+        self.assertFalse(gap.worker_crashed(limited))
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertNotEqual(gap.classify(cpython, limited, marker), "CRASH")
+
+    def test_a_run_without_a_status_is_a_crash(self):
+        cpython = run_result()
+        crashed = run_result(exit_code=101, status=None)
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertEqual(gap.classify(cpython, crashed, marker), "CRASH")
+
+    def test_a_run_that_died_from_a_signal_is_a_crash(self):
+        cpython = run_result()
+        crashed = run_result(exit_code=-11, status=None)
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertEqual(gap.classify(cpython, crashed, marker), "CRASH")
+
+    def test_program_output_cannot_forge_a_crash(self):
+        cpython = run_result()
+        finished = run_result(
             exit_code=1,
-            stderr="sandbox error: invalid worker response: cannot read frame header\n",
+            stderr="sandbox error: worker crashed (signal 11)\n",
+            status="Error",
         )
-        self.assertEqual(gap.classify(cpython, crashed, None), "CRASH")
-        self.assertEqual(
-            gap.classify(cpython, crashed, "unsupported_out_of_scope"), "CRASH"
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertNotEqual(gap.classify(cpython, finished, marker), "CRASH")
+
+    def test_a_sandbox_limit_is_not_a_crash(self):
+        cpython = run_result()
+        limited = run_result(
+            exit_code=1,
+            stderr="sandbox error: instruction limit exceeded\n",
+            status="Error",
         )
+        for marker in (None, "unsupported_out_of_scope"):
+            with self.subTest(marker=marker):
+                self.assertNotEqual(gap.classify(cpython, limited, marker), "CRASH")
+
+    def test_the_memory_and_time_limits_are_not_crashes(self):
+        cpython = run_result()
+        for status in ("MemoryLimit", "TimeLimit"):
+            limited = run_result(exit_code=1, status=status)
+            for marker in (None, "unsupported_out_of_scope"):
+                with self.subTest(status=status, marker=marker):
+                    self.assertNotEqual(
+                        gap.classify(cpython, limited, marker), "CRASH"
+                    )
+
+    def test_a_result_identical_to_cpython_matches_without_a_status(self):
+        cpython = run_result(stdout="ok\n")
+        mini = run_result(stdout="ok\n", status=None)
+        self.assertEqual(gap.classify(cpython, mini, None), "MATCH")
 
     def test_matching_result_breaks_an_expected_difference_contract(self):
         cpython = run_result(stdout="imported\n")
@@ -315,6 +401,260 @@ class ClassifyTests(unittest.TestCase):
 
         self.assertIn("exception_class 'ValueError' != 'TypeError'", diff)
         self.assertIn("exception_message 'ValueError: bad' != 'TypeError: bad'", diff)
+
+
+class StatusFileTests(unittest.TestCase):
+    def test_read_status_reads_the_status_mnpy_wrote(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "status.json"
+            path.write_text('{"status":"Error","terminal":"InstructionLimit"}\n')
+
+            self.assertEqual(gap.read_status_file(path)[0], "Error")
+
+    def test_read_status_reads_the_terminal_condition_mnpy_wrote(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "status.json"
+            path.write_text(
+                '{"status":"Error","terminal":"NativeStackExhausted"}\n'
+            )
+
+            self.assertEqual(
+                gap.read_status_file(path),
+                ("Error", "NativeStackExhausted"),
+            )
+            self.assertEqual(gap.read_status_file(path)[0], "Error")
+            self.assertEqual(gap.read_status_file(path)[1], "NativeStackExhausted")
+
+    def test_read_status_is_none_without_a_string_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.json"
+            broken = Path(tmp) / "broken.json"
+            broken.write_text("not json\n")
+            without_status = Path(tmp) / "without.json"
+            without_status.write_text('{"terminal":null}\n')
+            wrong_type = Path(tmp) / "wrong.json"
+            wrong_type.write_text('{"status":7}\n')
+
+            self.assertIsNone(gap.read_status_file(missing)[0])
+            self.assertIsNone(gap.read_status_file(broken)[0])
+            self.assertIsNone(gap.read_status_file(without_status)[0])
+            self.assertIsNone(gap.read_status_file(wrong_type)[0])
+            self.assertIsNone(gap.read_status_file(None)[0])
+
+    def test_read_terminal_is_none_without_a_string_terminal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.json"
+            broken = Path(tmp) / "broken.json"
+            broken.write_text("not json\n")
+            without_terminal = Path(tmp) / "without.json"
+            without_terminal.write_text('{"status":"Error"}\n')
+            wrong_type = Path(tmp) / "wrong.json"
+            wrong_type.write_text('{"terminal":7}\n')
+
+            self.assertIsNone(gap.read_status_file(missing)[1])
+            self.assertIsNone(gap.read_status_file(broken)[1])
+            self.assertIsNone(gap.read_status_file(without_terminal)[1])
+            self.assertIsNone(gap.read_status_file(wrong_type)[1])
+            self.assertIsNone(gap.read_status_file(None)[1])
+            self.assertEqual(gap.read_status_file(None), (None, None))
+
+    def test_run_command_asks_for_a_status_file_and_reads_it_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "fake_mnpy.sh"
+            script.write_text(
+                "#!/bin/sh\n"
+                "path=\"\"\n"
+                "while [ $# -gt 0 ]; do\n"
+                "  if [ \"$1\" = \"--status-file\" ]; then path=\"$2\"; fi\n"
+                "  shift\n"
+                "done\n"
+                "printf '{\"status\": \"WorkerCrash\", \"terminal\": null}\\n' > \"$path\"\n"
+            )
+            script.chmod(0o755)
+            status = Path(tmp) / "status.json"
+
+            result = gap.run_command(
+                [str(script)], "print('hi')\n", 30.0, status
+            )
+
+            self.assertEqual(result.exit_code, 0)
+            self.assertEqual(result.status, "WorkerCrash")
+            self.assertIsNone(result.terminal)
+
+    def test_run_command_reads_the_terminal_condition_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "fake_mnpy.sh"
+            script.write_text(
+                "#!/bin/sh\n"
+                "path=\"\"\n"
+                "while [ $# -gt 0 ]; do\n"
+                "  if [ \"$1\" = \"--status-file\" ]; then path=\"$2\"; fi\n"
+                "  shift\n"
+                "done\n"
+                "printf '{\"status\": \"Error\", \"terminal\":"
+                " \"NativeStackExhausted\"}\n' > \"$path\"\n"
+            )
+            script.chmod(0o755)
+            status = Path(tmp) / "status.json"
+
+            result = gap.run_command(
+                [str(script)], "print('hi')\n", 30.0, status
+            )
+
+            self.assertEqual(result.status, "Error")
+            self.assertEqual(result.terminal, "NativeStackExhausted")
+            self.assertTrue(gap.worker_crashed(result))
+
+
+class StatusFileSupportTests(unittest.TestCase):
+    """The sweep needs a binary that writes the status file it asks for.
+
+    A binary that ignores `--status-file` cannot be swept at all: every
+    case would look like a crash. A status file that cannot be written
+    is a harness failure, not a crash, so the sweep stops instead of
+    classifying the run.
+    """
+
+    def write_fake_binary(self, directory: Path, writes_status: bool) -> Path:
+        """Write a fake mnpy that ignores or honours `--status-file`."""
+        script = directory / "fake_mnpy.sh"
+        if writes_status:
+            script.write_text(
+                "#!/bin/sh\n"
+                "path=\"\"\n"
+                "while [ $# -gt 0 ]; do\n"
+                "  if [ \"$1\" = \"--status-file\" ]; then path=\"$2\"; fi\n"
+                "  shift\n"
+                "done\n"
+                "printf '{\"status\": \"Success\", \"terminal\": null}\\n' > \"$path\"\n"
+            )
+        else:
+            script.write_text("#!/bin/sh\nexit 0\n")
+        script.chmod(0o755)
+        return script
+
+    def test_a_binary_that_ignores_the_status_file_fails_the_preflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            script = self.write_fake_binary(directory, writes_status=False)
+            status = directory / "status.json"
+
+            with self.assertRaises(SystemExit) as caught:
+                gap.check_status_file_support(str(script), status, 30.0)
+
+            self.assertEqual(
+                str(caught.exception),
+                f"mnpy at {script} does not write --status-file; rebuild it",
+            )
+            self.assertFalse(status.exists())
+
+    def test_a_binary_that_cannot_be_run_fails_the_preflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            script = directory / "not_executable.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            script.chmod(0o644)
+            status = directory / "status.json"
+
+            with self.assertRaises(SystemExit) as caught:
+                gap.check_status_file_support(str(script), status, 30.0)
+
+            self.assertEqual(
+                str(caught.exception),
+                f"mnpy at {script} does not write --status-file; rebuild it",
+            )
+            self.assertFalse(status.exists())
+
+    def test_a_binary_that_writes_the_status_file_passes_the_preflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            script = self.write_fake_binary(directory, writes_status=True)
+            status = directory / "status.json"
+
+            gap.check_status_file_support(str(script), status, 30.0)
+
+            self.assertEqual(gap.read_status_file(status), ("Success", None))
+
+    def test_the_preflight_asks_the_binary_for_a_status_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            script = self.write_fake_binary(directory, writes_status=True)
+            status = directory / "status.json"
+            commands = []
+
+            def fake_run(command, source, timeout, status_path=None):
+                del timeout
+                commands.append((command, source, status_path))
+                # A binary that writes no status file reports no status.
+                return run_result(status=None)
+
+            with patch.object(gap, "run_command", side_effect=fake_run):
+                with self.assertRaises(SystemExit):
+                    gap.check_status_file_support(str(script), status, 30.0)
+
+            command, source, status_path = commands[0]
+            self.assertEqual(command, [str(script)])
+            # The preflight runs the binary the way the sweep runs a
+            # case: the program comes in on stdin, not as a -c argument.
+            self.assertEqual(source, "pass\n")
+            # run_command turns the status path into the --status-file
+            # option the binary is asked to honour.
+            self.assertEqual(status_path, status)
+
+    def test_a_run_that_cannot_write_its_status_file_stops_the_sweep(self):
+        # A run that lost its status file has no readable status: that
+        # is what tells a lost status file from a program that printed
+        # the failure message itself.
+        result = run_result(
+            exit_code=2,
+            stderr=(
+                "mnpy: cannot write status file /tmp/status-0001.json: "
+                "No such file or directory (os error 2)\n"
+            ),
+            status=None,
+        )
+
+        self.assertIsNotNone(gap.status_write_failure(result))
+        with self.assertRaises(SystemExit) as caught:
+            gap.check_status_write(result, "/mnpy")
+        self.assertIn("could not write its status file", str(caught.exception))
+
+        with patch.object(gap, "run_command", return_value=result):
+            with self.assertRaises(SystemExit):
+                gap.run_minipython(["/mnpy"], "", 30.0, Path("/tmp/status.json"))
+
+    def test_a_program_that_forges_a_status_write_failure_is_not_one(self):
+        # A program that prints the failure message and exits 2 has
+        # still written its status file, so the sweep keeps going.
+        result = run_result(
+            exit_code=2,
+            stderr=(
+                "mnpy: cannot write status file /tmp/status-0001.json: "
+                "No such file or directory (os error 2)\n"
+            ),
+            status="Error",
+        )
+
+        self.assertIsNone(gap.status_write_failure(result))
+        gap.check_status_write(result, "/mnpy")
+
+        with patch.object(gap, "run_command", return_value=result):
+            self.assertIs(
+                gap.run_minipython(["/mnpy"], "", 30.0, Path("/tmp/status.json")),
+                result,
+            )
+
+    def test_a_run_that_exits_two_for_another_reason_is_not_a_status_failure(self):
+        result = run_result(exit_code=2, stderr="usage: mnpy [options]\n")
+
+        self.assertIsNone(gap.status_write_failure(result))
+        gap.check_status_write(result, "/mnpy")
+
+    def test_a_run_that_writes_its_status_file_is_not_a_status_failure(self):
+        result = run_result(exit_code=0, stderr="")
+
+        self.assertIsNone(gap.status_write_failure(result))
+        gap.check_status_write(result, "/mnpy")
 
 
 class TriageTests(unittest.TestCase):
@@ -849,8 +1189,11 @@ class DiscoveryIntegrationTests(unittest.TestCase):
             "source": "unused = 100\nvalue = 43\nprint(value)\n",
         }
 
-        def fake_run(command, source, timeout):
+        commands = []
+
+        def fake_run(command, source, timeout, status_path=None):
             del timeout
+            commands.append((command, status_path))
             prefix = "cpython" if command[0] == "/cpython" else "minipython"
             return run_result(stdout=f"{prefix}:{len(source)}\n")
 
@@ -904,6 +1247,14 @@ class DiscoveryIntegrationTests(unittest.TestCase):
             self.assertEqual(meta["generated_cases_selected"], 2)
             self.assertEqual(meta["corpus_cases_selected"], 0)
             self.assertEqual(meta["seed"], 7)
+
+            # mnpy is asked for a status file; CPython is not.
+            mini_runs = [run for run in commands if run[0][0] != "/cpython"]
+            self.assertTrue(mini_runs)
+            for command, status_path in mini_runs:
+                self.assertIsNotNone(status_path)
+            for command, status_path in [run for run in commands if run[0][0] == "/cpython"]:
+                self.assertIsNone(status_path)
 
     def test_priority_filter_keeps_only_requested_open_roots(self):
         must_fix = gap.SweepResult(

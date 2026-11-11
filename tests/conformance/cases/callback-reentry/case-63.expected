@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "y s\n",
+    "caught True\n",
+    "end\n"
+  ]
+}

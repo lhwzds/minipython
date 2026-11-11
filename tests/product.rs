@@ -525,7 +525,7 @@ fn parent_side_terminal_conditions_are_typed() {
         assert_eq!(oversized.stdout, "", "{label}");
         assert_eq!(
             oversized.error_report(),
-            "sandbox error: worker exceeded process limits or crashed\n",
+            "sandbox error: worker memory limit exceeded\n",
             "{label}"
         );
     }

@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"comparison failed\", \"type\": \"ValueError\"}\n",
+    "{\"kind\": \"state\", \"length\": 1}\n",
+    "{\"calls\": [[\"__hash__\", \"a\"], [\"__hash__\", \"b\"], [\"__eq__\", \"a\", \"b\"]], \"kind\": \"calls\"}\n"
+  ]
+}

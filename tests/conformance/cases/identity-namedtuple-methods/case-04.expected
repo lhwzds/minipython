@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"identity\", \"self\": true, \"self_not\": false, \"separate\": false, \"separate_not\": true}\n",
+    "{\"kind\": \"method_result\", \"result\": 1}\n"
+  ]
+}

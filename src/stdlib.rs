@@ -3,6 +3,7 @@
 use crate::bytecode::Instruction;
 use crate::future::{FUTURE_COMPILER_FLAG_NAMES, FUTURE_FEATURES, ReleaseInfo};
 use crate::lexer::{get_int_max_str_digits, set_int_max_str_digits};
+use crate::rc::Rc;
 use crate::value::{
     CodeMode, DictRef, DictStorage, DictViewKind, INT_SUBCLASS_STORAGE_FIELD, NamedTupleType,
     Scope, Value, dict_value, float_value, list_value, tuple_value,
@@ -12,7 +13,6 @@ use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 pub(crate) const PYCF_ONLY_AST: i64 = 0x0400;
 pub(crate) const PYCF_ALLOW_TOP_LEVEL_AWAIT: i64 = 0x2000;
@@ -247,7 +247,6 @@ pub(crate) enum StdlibMethodCallResult {
 pub(crate) enum StdlibIteratorAdvance {
     Yield(Value),
     Complete,
-    Raised,
 }
 
 pub(crate) const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
@@ -1499,7 +1498,7 @@ pub(crate) fn call_any_builtin<C: StdlibContext + ?Sized>(
                     return Ok(Value::Bool(true));
                 }
             }
-            StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => {
+            StdlibIteratorAdvance::Complete => {
                 return Ok(Value::Bool(false));
             }
         }
@@ -1527,7 +1526,7 @@ pub(crate) fn call_all_builtin<C: StdlibContext + ?Sized>(
                     return Ok(Value::Bool(false));
                 }
             }
-            StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => {
+            StdlibIteratorAdvance::Complete => {
                 return Ok(Value::Bool(true));
             }
         }
@@ -1634,7 +1633,7 @@ fn minmax_iterable<C: StdlibContext + ?Sized>(
     let mut best_value = loop {
         match context.stdlib_advance_iterator(&mut iterator)? {
             StdlibIteratorAdvance::Yield(value) => break value,
-            StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => {
+            StdlibIteratorAdvance::Complete => {
                 return match options.default {
                     Some(default) => Ok(default),
                     None => Err(format!("ValueError: {name}() arg is an empty sequence")),
@@ -1653,7 +1652,7 @@ fn minmax_iterable<C: StdlibContext + ?Sized>(
                     best_key = candidate_key;
                 }
             }
-            StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => {
+            StdlibIteratorAdvance::Complete => {
                 return Ok(best_value);
             }
         }
@@ -1772,7 +1771,7 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
                 }
                 total = context.stdlib_add_values(total, value)?;
             }
-            StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => return Ok(total),
+            StdlibIteratorAdvance::Complete => return Ok(total),
         }
     }
 }
@@ -2304,7 +2303,7 @@ pub(crate) fn call_staticmethod_constructor(
     };
 
     Ok(Value::StaticMethod {
-        function: Box::new(function.clone()),
+        function: Rc::new(function.clone()),
         identity: Rc::new(()),
     })
 }
@@ -2324,7 +2323,7 @@ pub(crate) fn call_classmethod_constructor(
     };
 
     Ok(Value::ClassMethod {
-        function: Box::new(function.clone()),
+        function: Rc::new(function.clone()),
         identity: Rc::new(()),
     })
 }
@@ -2657,6 +2656,13 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::Range { .. } => "range",
         Value::Slice { .. } => "slice",
         Value::RangeIterator { .. } => "range_iterator",
+        Value::DequeIterator { reversed, .. } => {
+            if *reversed {
+                "_deque_reverse_iterator"
+            } else {
+                "_deque_iterator"
+            }
+        }
         Value::ListIterator { .. } => "list_iterator",
         Value::TupleIterator { .. } => "tuple_iterator",
         Value::TemplateIterator { .. } => "TemplateIter",
@@ -2715,7 +2721,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::GeneratorWrapper { .. } => "_GeneratorWrapper",
         Value::Coroutine(_) => "coroutine",
         Value::CoroutineAwait(_) => "coroutine_wrapper",
-        Value::AwaitIterator(_) => "await_iterator",
+        Value::AwaitIterator(..) => "await_iterator",
         Value::AsyncGenerator(_) => "async_generator",
         Value::AsyncGeneratorNext { .. } | Value::AsyncGeneratorThrow { .. } => {
             "async_generator_asend"
@@ -2785,6 +2791,13 @@ fn stdlib_type_name(value: &Value) -> &str {
 fn stdlib_iterator_type_name(iterator: &Value) -> &'static str {
     match iterator {
         Value::RangeIterator { .. } => "range_iterator",
+        Value::DequeIterator { reversed, .. } => {
+            if *reversed {
+                "_deque_reverse_iterator"
+            } else {
+                "_deque_iterator"
+            }
+        }
         Value::ListIterator { .. } => "list_iterator",
         Value::TupleIterator { .. } => "tuple_iterator",
         Value::TemplateIterator { .. } => "TemplateIter",
@@ -3323,6 +3336,7 @@ fn generic_alias_value(origin: Value, args: Vec<Value>) -> Value {
         origin: Box::new(origin),
         args,
         union_unhashable_count: 0,
+        identity: Rc::new(()),
     }
 }
 

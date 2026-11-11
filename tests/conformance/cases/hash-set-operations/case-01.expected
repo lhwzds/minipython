@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"integer_present\", \"result\": true, \"size\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"hash failed\", \"type\": \"ValueError\"}\n",
+    "{\"calls\": [[\"__hash__\", \"x\"]], \"kind\": \"calls\"}\n"
+  ]
+}

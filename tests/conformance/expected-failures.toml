@@ -1,0 +1,607 @@
+# Current observed MiniPython differences.
+
+[[failure]]
+leaf = "counter-eq-operand-order"
+case = "case-01.py"
+reason = "Counter comparison skips key equality"
+digest = "c781eb177cfbcb2910cdf159824bc2a9e76111a76dd35f7f7a11e0838c88fabe"
+
+[[failure]]
+leaf = "counter-eq-operand-order"
+case = "case-02.py"
+reason = "Counter comparison skips key equality"
+digest = "c781eb177cfbcb2910cdf159824bc2a9e76111a76dd35f7f7a11e0838c88fabe"
+
+[[failure]]
+leaf = "counter-eq-operand-order"
+case = "case-03.py"
+reason = "Counter comparison skips key equality"
+digest = "d5ae4d604c7e6c874ef1f5e9a579d86f7de613065299cbe1aa33da0ede43f848"
+
+[[failure]]
+leaf = "counter-eq-operand-order"
+case = "case-04.py"
+reason = "Counter comparison skips key equality"
+digest = "30b2210345c26f3dac286ff48023c0b16d359d67fc316dc4ec520c960657297f"
+
+[[failure]]
+leaf = "counter-eq-operand-order"
+case = "case-05.py"
+reason = "Counter comparison skips key equality"
+digest = "05093d626d4c57eb411b2c49d340507defaf4e02bad13a2ce95b05b5e3f689db"
+
+[[failure]]
+leaf = "dict-identity"
+case = "case-01.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "dict-identity"
+case = "case-02.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "dict-identity"
+case = "case-03.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "dict-identity"
+case = "case-04.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "dict-identity"
+case = "case-05.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "dict-insertion-equality-exception"
+case = "case-01.py"
+reason = "Dictionary insertion skips key equality exception"
+digest = "fbe9d0b177990f58cef0d88bc9741fe82357302490f32afb8c727ab6d498b78a"
+
+[[failure]]
+leaf = "dict-insertion-equality-exception"
+case = "case-02.py"
+reason = "Dictionary insertion skips key equality exception"
+digest = "fbe9d0b177990f58cef0d88bc9741fe82357302490f32afb8c727ab6d498b78a"
+
+[[failure]]
+leaf = "dict-insertion-equality-exception"
+case = "case-03.py"
+reason = "Dictionary insertion skips key equality exception"
+digest = "fbe9d0b177990f58cef0d88bc9741fe82357302490f32afb8c727ab6d498b78a"
+
+[[failure]]
+leaf = "dict-insertion-equality-exception"
+case = "case-04.py"
+reason = "Dictionary insertion skips key equality exception"
+digest = "fbe9d0b177990f58cef0d88bc9741fe82357302490f32afb8c727ab6d498b78a"
+
+[[failure]]
+leaf = "dict-insertion-equality-exception"
+case = "case-05.py"
+reason = "Dictionary insertion skips key equality exception"
+digest = "fbe9d0b177990f58cef0d88bc9741fe82357302490f32afb8c727ab6d498b78a"
+
+[[failure]]
+leaf = "dict-lookup-equality-exception"
+case = "case-01.py"
+reason = "Dictionary lookup skips key equality exception"
+digest = "6bd549ce58e72ec0c6c0521fa930293ddd1a7cc95ca3da9a6fdf28a0625f21d8"
+
+[[failure]]
+leaf = "dict-lookup-equality-exception"
+case = "case-02.py"
+reason = "Dictionary lookup skips key equality exception"
+digest = "6bd549ce58e72ec0c6c0521fa930293ddd1a7cc95ca3da9a6fdf28a0625f21d8"
+
+[[failure]]
+leaf = "dict-lookup-equality-exception"
+case = "case-03.py"
+reason = "Dictionary lookup skips key equality exception"
+digest = "6bd549ce58e72ec0c6c0521fa930293ddd1a7cc95ca3da9a6fdf28a0625f21d8"
+
+[[failure]]
+leaf = "dict-lookup-equality-exception"
+case = "case-04.py"
+reason = "Dictionary lookup skips key equality exception"
+digest = "6bd549ce58e72ec0c6c0521fa930293ddd1a7cc95ca3da9a6fdf28a0625f21d8"
+
+[[failure]]
+leaf = "dict-lookup-equality-exception"
+case = "case-05.py"
+reason = "Dictionary lookup skips key equality exception"
+digest = "6bd549ce58e72ec0c6c0521fa930293ddd1a7cc95ca3da9a6fdf28a0625f21d8"
+
+[[failure]]
+leaf = "dict-setitem-hash-once"
+case = "case-01.py"
+reason = "dict.__setitem__ skips user hash"
+digest = "9399c1f90e69d2a714cccf419a1af453823759308efac79fdd2df4f557072e69"
+
+[[failure]]
+leaf = "dict-setitem-hash-once"
+case = "case-02.py"
+reason = "dict.__setitem__ skips user hash"
+digest = "9399c1f90e69d2a714cccf419a1af453823759308efac79fdd2df4f557072e69"
+
+[[failure]]
+leaf = "dict-setitem-hash-once"
+case = "case-03.py"
+reason = "dict.__setitem__ skips user hash"
+digest = "9399c1f90e69d2a714cccf419a1af453823759308efac79fdd2df4f557072e69"
+
+[[failure]]
+leaf = "dict-setitem-hash-once"
+case = "case-04.py"
+reason = "dict.__setitem__ skips user hash"
+digest = "9399c1f90e69d2a714cccf419a1af453823759308efac79fdd2df4f557072e69"
+
+[[failure]]
+leaf = "dict-setitem-hash-once"
+case = "case-05.py"
+reason = "dict.__setitem__ skips user hash"
+digest = "9399c1f90e69d2a714cccf419a1af453823759308efac79fdd2df4f557072e69"
+
+[[failure]]
+leaf = "dict-setitem-user-eq"
+case = "case-01.py"
+reason = "dict.__setitem__ skips user equality"
+digest = "bf01b94515a072edc3d616addf06657b47f9ff9729b7ac5b5051ee042fb8a0a6"
+
+[[failure]]
+leaf = "dict-setitem-user-eq"
+case = "case-03.py"
+reason = "dict.__setitem__ skips user equality; union reads stored values and Counter construction is empty"
+digest = "12ee2e18176afecea744d64cea4d93b7494ba3cd70ad32d61b63d715e8508554"
+
+[[failure]]
+leaf = "dict-setitem-user-eq"
+case = "case-04.py"
+reason = "dict.__setitem__ skips subclass equality"
+digest = "64fcf64ecb9030f1afd6f3a5a4f4809656de8a78d3b3f0736c2ca98a6197bcf5"
+
+[[failure]]
+leaf = "dict-setitem-user-eq"
+case = "case-05.py"
+reason = "dict.__setitem__ skips user equality"
+digest = "8a51caa052a0b6b8286e041200eafaef77cc4f22e95021159cd0747918db0a2e"
+
+[[failure]]
+leaf = "hash-changes"
+case = "case-01.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-changes"
+case = "case-02.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-changes"
+case = "case-03.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-changes"
+case = "case-04.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-changes"
+case = "case-05.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-dict-insert-lookup"
+case = "case-01.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c5f544b8adc0f59b308b3b915ea9beeb510ea81b8ad3fab6870b131ef4fa240e"
+
+[[failure]]
+leaf = "hash-dict-insert-lookup"
+case = "case-02.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c5f544b8adc0f59b308b3b915ea9beeb510ea81b8ad3fab6870b131ef4fa240e"
+
+[[failure]]
+leaf = "hash-dict-insert-lookup"
+case = "case-03.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c5f544b8adc0f59b308b3b915ea9beeb510ea81b8ad3fab6870b131ef4fa240e"
+
+[[failure]]
+leaf = "hash-dict-insert-lookup"
+case = "case-04.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c5f544b8adc0f59b308b3b915ea9beeb510ea81b8ad3fab6870b131ef4fa240e"
+
+[[failure]]
+leaf = "hash-dict-insert-lookup"
+case = "case-05.py"
+reason = "Dictionary lookup skips key hashing"
+digest = "c5f544b8adc0f59b308b3b915ea9beeb510ea81b8ad3fab6870b131ef4fa240e"
+
+[[failure]]
+leaf = "hash-dict-setdefault"
+case = "case-01.py"
+reason = "setdefault skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-dict-setdefault"
+case = "case-02.py"
+reason = "setdefault skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-dict-setdefault"
+case = "case-03.py"
+reason = "setdefault skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-dict-setdefault"
+case = "case-04.py"
+reason = "setdefault skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-dict-setdefault"
+case = "case-05.py"
+reason = "setdefault skips key hashing"
+digest = "c9678ad3e3299fe06fec0c70ac1d3b03a77829bffcd9ae4a6ad0112d0eaa6da1"
+
+[[failure]]
+leaf = "hash-eq-disables"
+case = "case-01.py"
+reason = "Equality override does not disable hashing"
+digest = "a0598df2c5b4e848f729a2638dc608b16f8a2a89bfc9ea061aa278fddebde7eb"
+
+[[failure]]
+leaf = "hash-eq-disables"
+case = "case-02.py"
+reason = "Equality override does not disable hashing"
+digest = "27491c51fc5224ea5a8a7db1266337eb41081e1fd605caa9e68b093101e7fdea"
+
+[[failure]]
+leaf = "hash-eq-disables"
+case = "case-03.py"
+reason = "Equality override does not disable hashing"
+digest = "eb240699692f17a8478bd1f5b15aa8093a481085217fcd379d756114acf257da"
+
+[[failure]]
+leaf = "hash-eq-disables"
+case = "case-04.py"
+reason = "Equality override does not disable hashing"
+digest = "a0598df2c5b4e848f729a2638dc608b16f8a2a89bfc9ea061aa278fddebde7eb"
+
+[[failure]]
+leaf = "hash-eq-disables"
+case = "case-05.py"
+reason = "Equality override does not disable hashing"
+digest = "eb240699692f17a8478bd1f5b15aa8093a481085217fcd379d756114acf257da"
+
+[[failure]]
+leaf = "hash-none"
+case = "case-02.py"
+reason = "Unhashable key handling differs"
+digest = "27491c51fc5224ea5a8a7db1266337eb41081e1fd605caa9e68b093101e7fdea"
+
+[[failure]]
+leaf = "hash-none"
+case = "case-04.py"
+reason = "Unhashable key handling differs"
+digest = "a0598df2c5b4e848f729a2638dc608b16f8a2a89bfc9ea061aa278fddebde7eb"
+
+[[failure]]
+leaf = "hash-set-operations"
+case = "case-02.py"
+reason = "Set hash and equality hooks differ"
+digest = "a936bfdf276db550370608b76b3feadbe2dc8c87db1adf16d78b95e6ed20fff5"
+
+[[failure]]
+leaf = "hash-set-operations"
+case = "case-03.py"
+reason = "Set hash and equality hooks differ"
+digest = "0d613574354267c4b61319786257edc101f4061e503c62a02b6580ac5b42ebc2"
+
+[[failure]]
+leaf = "hash-set-operations"
+case = "case-04.py"
+reason = "Set hash and equality hooks differ"
+digest = "3853b80f49f1fd370474e438da583cc7fb65e100fd30505db4d1f98998b278cc"
+
+[[failure]]
+leaf = "hash-set-operations"
+case = "case-05.py"
+reason = "Set hash and equality hooks differ"
+digest = "0617ff2a03ab632779489db0248097fc9092454a6efff29cdec5fc03fd1ae87b"
+
+[[failure]]
+leaf = "hash-tuple-elements"
+case = "case-01.py"
+reason = "Tuple hash skips element hooks"
+digest = "4d9c23aaa38e0ef0e78ee55ccd4c786afe43a84fbad2701f0782490f66dcdaea"
+
+[[failure]]
+leaf = "hash-tuple-elements"
+case = "case-02.py"
+reason = "Tuple hash skips element hooks"
+digest = "4d9c23aaa38e0ef0e78ee55ccd4c786afe43a84fbad2701f0782490f66dcdaea"
+
+[[failure]]
+leaf = "hash-tuple-elements"
+case = "case-03.py"
+reason = "Tuple hash skips element hooks"
+digest = "4d9c23aaa38e0ef0e78ee55ccd4c786afe43a84fbad2701f0782490f66dcdaea"
+
+[[failure]]
+leaf = "hash-tuple-elements"
+case = "case-04.py"
+reason = "Tuple hash skips element hooks"
+digest = "4d9c23aaa38e0ef0e78ee55ccd4c786afe43a84fbad2701f0782490f66dcdaea"
+
+[[failure]]
+leaf = "hash-tuple-elements"
+case = "case-05.py"
+reason = "Tuple hash skips element hooks"
+digest = "4d9c23aaa38e0ef0e78ee55ccd4c786afe43a84fbad2701f0782490f66dcdaea"
+
+[[failure]]
+leaf = "identity-class-attribute-sets"
+case = "case-01.py"
+reason = "A class attribute that holds a frozenset is built again on every read"
+digest = "2923d3032604ea64ac95307148457fefb08e37e8b3e627f1b005724c2546777a"
+
+[[failure]]
+leaf = "identity-class-attribute-sets"
+case = "case-02.py"
+reason = "A class attribute that holds a frozenset is built again on every read"
+digest = "2923d3032604ea64ac95307148457fefb08e37e8b3e627f1b005724c2546777a"
+
+[[failure]]
+leaf = "identity-class-attribute-sets"
+case = "case-03.py"
+reason = "A class attribute that holds a frozenset is built again on every read"
+digest = "2923d3032604ea64ac95307148457fefb08e37e8b3e627f1b005724c2546777a"
+
+[[failure]]
+leaf = "identity-computed-scalars"
+case = "case-01.py"
+reason = "Integers are stored by value, so identity treats separately computed equal integers as identical"
+digest = "679fca0271d594c9569dde372d81fa9712754df2fe7f7455e971ea7ed628845c"
+
+[[failure]]
+leaf = "identity-computed-scalars"
+case = "case-02.py"
+reason = "Strings are stored by value, so identity treats separately computed equal strings as identical"
+digest = "679fca0271d594c9569dde372d81fa9712754df2fe7f7455e971ea7ed628845c"
+
+[[failure]]
+leaf = "identity-object-kinds"
+case = "case-01.py"
+reason = "The identity operator does not recognise a slice as the same object twice"
+digest = "ea7bb5e38c862f9084283d7769e9e1e3d590ae5066aac34e689d98ec5a0a2dbf"
+
+[[failure]]
+leaf = "identity-object-kinds"
+case = "case-02.py"
+reason = "The identity operator does not recognise a user string as the same object twice"
+digest = "c04f806f4a15803e04e669880cef0319a23f8f33a1b6b390fba283ca3b9a8397"
+
+[[failure]]
+leaf = "identity-object-kinds"
+case = "case-03.py"
+reason = "A chain map is built again on every read"
+digest = "a08d9ca954253cc259e490df46fc49b63caf4a66bd74536a342359dccf088730"
+
+[[failure]]
+leaf = "mapping-family-comparison"
+case = "case-02.py"
+reason = "UserDict equality with dict fails"
+digest = "5232993b480b42b744ec0074d136718aca21fcd3de9624d174940855bc77a8fd"
+
+[[failure]]
+leaf = "membership-identity"
+case = "case-03.py"
+reason = "Container membership hashes incorrectly"
+digest = "a548c04a2c96e4c6f7e83efc4d116a6fe31cf46efc18208ac09c1594c73f2824"
+
+[[failure]]
+leaf = "membership-identity"
+case = "case-04.py"
+reason = "Container membership hashes incorrectly"
+digest = "a548c04a2c96e4c6f7e83efc4d116a6fe31cf46efc18208ac09c1594c73f2824"
+
+[[failure]]
+leaf = "membership-identity"
+case = "case-05.py"
+reason = "Container membership hashes incorrectly"
+digest = "fbd4d8e83c283a98ca3e1e7459d68dabd9b9d2d7cd3e0673019c964acb7e17a7"
+
+[[failure]]
+leaf = "ordereddict-move-to-end"
+case = "case-01.py"
+reason = "OrderedDict unpack drops moved key"
+digest = "d009b59f57c17686c99b880880dbcadcd59d9e8729ea7317c4c236e0ca88dd06"
+
+[[failure]]
+leaf = "ordereddict-move-to-end"
+case = "case-03.py"
+reason = "OrderedDict unpack drops moved key"
+digest = "f88d4132a34132b3b7f41dbd612f00d421455c8e6f9617aed3292267054b3d85"
+
+[[failure]]
+leaf = "ordereddict-move-to-end"
+case = "case-05.py"
+reason = "OrderedDict unpack drops moved key"
+digest = "a1efe932b792731a1bf8be8ad1830e7aeb23475401c193c6f6280894dce2bfac"
+
+[[failure]]
+leaf = "userdict-popitem"
+case = "case-01.py"
+reason = "UserDict popitem corrupts stored hashes"
+digest = "b7d766aaafdd78d88a7fd2b119f06304d15269d1e835b21ec76541f41ffaaa72"
+
+[[failure]]
+leaf = "userdict-popitem"
+case = "case-02.py"
+reason = "UserDict popitem corrupts stored hashes"
+digest = "423f330e3facdfb7d63f0726a1f5cbcfb5f580e5c0c1e0d17dac36b1be35f136"
+
+[[failure]]
+leaf = "userdict-popitem"
+case = "case-03.py"
+reason = "UserDict popitem corrupts stored hashes"
+digest = "2986df5b5644ca9f28fbafe3cf077ba3c324fa2208e9e6a7cd408a883710229c"
+
+[[failure]]
+leaf = "userdict-popitem"
+case = "case-04.py"
+reason = "UserDict popitem corrupts stored hashes"
+digest = "6761a13e1f3332849bca0a3f2f200d7ceb0bcd40907f4dbaa46261e64624a8dd"
+
+[[failure]]
+leaf = "userdict-popitem"
+case = "case-05.py"
+reason = "UserDict popitem corrupts stored hashes"
+digest = "224874b3c68c8177627e4e07d5328592b3cd7bf51a2e243d44898ebc015fb9b8"
+
+[[failure]]
+leaf = "userdict-subclass-getitem"
+case = "case-01.py"
+reason = "Dictionary union reads stored values; Counter construction produces an empty mapping"
+digest = "a331cb1d8584c318ab5ba6949f23ef365e6368dabf9a8292e172e84afc6a12a0"
+
+[[failure]]
+leaf = "userdict-subclass-getitem"
+case = "case-02.py"
+reason = "Dictionary union reads stored values; Counter construction produces an empty mapping"
+digest = "a49796f5ebbb9bbc8530742b7429fbd83e2ea92f12649269c8cf6c93a5e7c18c"
+
+[[failure]]
+leaf = "userdict-subclass-getitem"
+case = "case-03.py"
+reason = "Dictionary union reads stored values; Counter construction produces an empty mapping"
+digest = "deff224e63c0a6fd642c10199531df4a1165b16c3c34042424062b01e0f71919"
+
+[[failure]]
+leaf = "userdict-subclass-getitem"
+case = "case-04.py"
+reason = "Dictionary union reads stored values; Counter construction produces an empty mapping"
+digest = "0fb570da9c1eb9639b0c37da32ca4296992e1b3388b93dcc25e334d1e70dc867"
+
+[[failure]]
+leaf = "userdict-subclass-getitem"
+case = "case-05.py"
+reason = "Dictionary union reads stored values; Counter construction produces an empty mapping"
+digest = "b178f24d8853ebe72b956d2094599ce0e57b1b32e80ce3daee8967168888ac5c"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-01.py"
+reason = "Enumerate advances an owned index alongside its shared source, so the detached-state gateway rejects nested next calls with RuntimeError instead of merging two index updates."
+digest = "9260bc7f60c7027a5c331366af85e43ec5103bd947ae8b38c706bf4b1520f2a0"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-02.py"
+reason = "Chain keeps its source position in an owned working state, so the detached-state gateway rejects nested advancement with RuntimeError."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-03.py"
+reason = "Chain.from_iterable keeps its active inner iterator in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-04.py"
+reason = "Accumulate keeps its running total in an owned working state, so nested advancement raises RuntimeError instead of merging competing totals."
+digest = "9f7052ff4d29781073e954001085fe3c4fe9a4f537e56fe2f19daa16b459286b"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-05.py"
+reason = "Cycle keeps its replay position in an owned working state while its saved items live in a shared buffer, so nested advancement raises RuntimeError while that state is detached."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-06.py"
+reason = "Takewhile keeps its termination flag in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-07.py"
+reason = "Dropwhile keeps its dropping flag in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-08.py"
+reason = "Zip_longest replaces exhausted source slots in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "8e6f2cf3cf7733793c61cdcba4d3777981e853341e3be095a8de33738e18d576"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-09.py"
+reason = "Islice keeps its consumed and next positions in an owned working state, so nested advancement raises RuntimeError instead of merging competing positions."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-10.py"
+reason = "Pairwise keeps its previous item and initialization flag in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "57195b7b8ac215efed4577013cea96261628379d358366552c314d9d36d83de7"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-11.py"
+reason = "Groupby keeps its current key, pending item and active group number in a detached working state, so nested advancement raises RuntimeError."
+digest = "5e4c7864b93493d0f65bddf2fd172182206b7dea9defa733ca6d8b96ae74962e"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-12.py"
+reason = "The sequence fallback for reversed keeps its index in an owned working state, so nested advancement raises RuntimeError while that state is detached."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-13.py"
+reason = "Count keeps its current value in an owned working state while calling user addition, so nested advancement raises RuntimeError instead of merging competing updates."
+digest = "1e722d726983529b5dab74fb819afb7cf20ed7c64b5aa43224d19ba489e44878"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-14.py"
+reason = "A group iterator advances the detached shared groupby state, so re-entry into the same group raises RuntimeError instead of advancing its shared source."
+digest = "8133e615ae72f5650510a09cd7b55a54d24a7be6a8e05e7f4460f2b874d1d69f"
+
+[[failure]]
+leaf = "iterator-reentry"
+case = "case-15.py"
+reason = "The forward sequence fallback keeps its next index in an owned working state, so nested advancement raises RuntimeError instead of merging competing index updates."
+digest = "0cef56afce21fc83f45ae3bf2680609cfd5164aca59aff21544296b0e1692fc9"
+
+[[failure]]
+leaf = "callback-reentry"
+case = "case-63.py"
+reason = "Exec writes the locals mapping back twice, so __setitem__ prints the assignment twice; the raised exception remains catchable."
+digest = "534b624f8035c6d2790b06ee09fa5a743d5894e24ac0cc3ba3ffdb6687ff9959"

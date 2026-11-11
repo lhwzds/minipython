@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"containers\", \"list_equal\": false, \"member\": false, \"tuple_equal\": false}\n",
+    "{\"count\": 0, \"kind\": \"search\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"list.index(x): x not in list\", \"type\": \"ValueError\"}\n"
+  ]
+}

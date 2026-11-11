@@ -10,6 +10,7 @@ mod host;
 mod lexer;
 mod parser;
 mod product;
+mod rc;
 mod stack;
 mod stdlib;
 mod syntax_report;
@@ -21,8 +22,9 @@ mod vm;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
-    rc::Rc,
 };
+
+use crate::rc::Rc;
 
 use compiler::{
     CompileOptions, compile, compile_eval, compile_interactive_with_options, compile_with_options,

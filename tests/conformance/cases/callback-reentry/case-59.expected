@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "AttributeError 'S' object has no attribute 'send'\n",
+    "1\n",
+    "END\n"
+  ]
+}

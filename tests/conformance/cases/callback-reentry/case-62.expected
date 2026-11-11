@@ -1,0 +1,23 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "2\n",
+    "clean\n",
+    "TypeError cannot convert 'BrokenIter' object to bytes\n",
+    "clean\n",
+    "ValueError other\n",
+    "clean\n",
+    "TypeError cannot convert 'BrokenIter' object to bytearray\n",
+    "clean\n",
+    "ValueError other\n",
+    "clean\n",
+    "TypeError reduce() arg 2 must support iteration\n",
+    "clean\n",
+    "ValueError other\n",
+    "clean\n",
+    "1-2-3\n",
+    "2\n",
+    "clean\n"
+  ]
+}

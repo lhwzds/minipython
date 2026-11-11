@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "list answer lt\n",
+    "tuple answer lt\n",
+    "UserList answer lt\n"
+  ]
+}

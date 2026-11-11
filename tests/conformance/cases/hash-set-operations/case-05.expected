@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"frozenset_present\": true, \"kind\": \"copy\"}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n",
+    "{\"kind\": \"update\", \"size\": 2}\n",
+    "{\"calls\": [], \"kind\": \"calls\"}\n"
+  ]
+}

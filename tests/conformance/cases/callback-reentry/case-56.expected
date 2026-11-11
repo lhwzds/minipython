@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "inner x\n",
+    "42\n",
+    "key 'p'\n",
+    "END\n"
+  ]
+}

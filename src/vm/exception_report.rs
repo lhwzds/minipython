@@ -39,10 +39,10 @@ pub(crate) struct VmUncaughtException {
 /// Indentation state shared while rendering nested exception groups.
 #[derive(Default)]
 struct ReportContext {
-    seen: Vec<*const ()>,
+    seen: Vec<*const ExceptionIdentity>,
     /// `str(exc)` of the uncaught exception, computed once so a `__str__`
     /// with side effects runs once, as in CPython.
-    top_message: Option<(*const (), Option<String>)>,
+    top_message: Option<(*const ExceptionIdentity, Option<String>)>,
     group_depth: usize,
     need_close: bool,
 }
@@ -74,13 +74,10 @@ impl Vm {
         &mut self,
         result: &Result<Value, String>,
     ) -> Option<VmUncaughtException> {
-        let Err(error) = result else {
+        let Err(message) = result else {
             return None;
         };
-        let exception = self
-            .current_exception
-            .clone()
-            .filter(|exception| format_exception_error(exception) == *error)?;
+        let exception = matching_exception(self.in_flight_exception.take(), message)?;
         let class = exception_type_value(&exception);
         let type_name = self
             .report_string_attribute(&class, "__name__")

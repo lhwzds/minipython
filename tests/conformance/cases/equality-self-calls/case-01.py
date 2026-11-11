@@ -1,0 +1,5 @@
+value = lambda log: Normal('normal', log, 0)
+log = CallLogger(); x = value(log)
+try: emit('result', result=x == x)
+except Exception as exc: emit_exception(exc)
+emit_calls(log)

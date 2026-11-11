@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"'<' not supported between instances of 'NotImplementedObject' and 'NotImplementedObject'\", \"type\": \"TypeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"'<' not supported between instances of 'NotImplementedObject' and 'str'\", \"type\": \"TypeError\"}\n",
+    "{\"calls\": [[\"__lt__\", \"a\", \"b\"], [\"__lt__\", \"a\", \"\\u975eASCII\"]], \"kind\": \"calls\"}\n"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "RuntimeError cannot re-enter the tee iterator\n",
+    "1 2\n",
+    "[1, 2]\n",
+    "RuntimeError cannot re-enter the tee iterator\n"
+  ]
+}

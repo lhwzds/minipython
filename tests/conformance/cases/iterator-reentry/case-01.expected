@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "enumerate\n",
+    "inner (0, 1)\n",
+    "outer (1, 0)\n"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": false, \"kind\": \"nan\", \"list_equal\": true, \"member\": true, \"other_equal\": false, \"other_unequal\": true, \"unequal\": true}\n"
+  ]
+}

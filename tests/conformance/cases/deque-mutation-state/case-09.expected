@@ -1,0 +1,18 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"method-copy\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n",
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"copy\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n",
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"deepcopy\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n",
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"add\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n",
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"mul\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n",
+    "{\"backward\": [3, 2, 1], \"forward\": [1, 2, 3], \"kind\": \"independent\", \"operation\": \"rmul\"}\n",
+    "{\"items\": [2, 3], \"kind\": \"original\", \"maxlen\": 3, \"other_maxlen\": 1}\n"
+  ]
+}

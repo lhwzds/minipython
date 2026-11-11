@@ -1,0 +1,32 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"kind\": \"exception\", \"message\": \"maxlen must be non-negative\", \"type\": \"ValueError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"an integer is required\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque() takes at most 2 arguments (3 given)\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"argument for deque() given by name ('iterable') and position (1)\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque() got an unexpected keyword argument 'unknown'\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque() takes at most 2 keyword arguments (3 given)\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [1, 2], \"kind\": \"state\", \"maxlen\": 3}\n",
+    "{\"kind\": \"next\", \"value\": 1}\n",
+    "{\"kind\": \"exception\", \"message\": \"'int' object is not iterable\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [], \"kind\": \"state\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"'NoneType' object is not iterable\", \"type\": \"TypeError\"}\n",
+    "{\"items\": [], \"kind\": \"state\", \"maxlen\": null}\n",
+    "{\"kind\": \"exception\", \"message\": \"deque mutated during iteration\", \"type\": \"RuntimeError\"}\n",
+    "{\"kind\": \"exception\", \"message\": \"broken iterable\", \"type\": \"ValueError\"}\n",
+    "{\"items\": [8], \"kind\": \"state\", \"maxlen\": 1}\n"
+  ]
+}

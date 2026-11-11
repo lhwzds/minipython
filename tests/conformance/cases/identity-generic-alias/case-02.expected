@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": true, \"kind\": \"identity\", \"same\": false}\n",
+    "{\"kind\": \"identity\", \"self\": true, \"self_not\": false, \"unequal\": false}\n"
+  ]
+}

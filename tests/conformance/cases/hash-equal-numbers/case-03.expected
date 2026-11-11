@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"bool_hash\": true, \"equal\": true, \"kind\": \"result\", \"same_hash\": true}\n"
+  ]
+}

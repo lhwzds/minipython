@@ -15,9 +15,9 @@
 //! authority, though. Tripping a condition latches its [`TerminalKind`] for
 //! the current interpreter thread, and while the latch is set:
 //!
-//! - the single exception dispatch point (`Vm::raise_exception`) and the
-//!   error-to-exception conversion (`runtime_result_or_raise`,
-//!   `runtime_exception_from_message`) refuse to produce a Python exception
+//! - the frame loop's exception dispatch (`Vm::run_frame`), raising API
+//!   (`Vm::raise_exception`), and error-to-exception conversion
+//!   (`runtime_exception_from_message`) refuse to produce a Python exception
 //!   and return the carrier instead, so wrapping the carrier in another
 //!   message (`TypeError: ...`) cannot make it catchable;
 //! - every instruction boundary stops, so native code that swallowed the
@@ -47,8 +47,7 @@ pub enum TerminalKind {
     NativeStackExhausted,
     /// The parent killed the worker at its wall-clock deadline.
     TimeLimit,
-    /// The parent killed the worker over its process-memory limit, or the
-    /// worker died from a resource signal.
+    /// The parent killed the worker over its process-memory limit.
     MemoryLimit,
     /// The worker could not be started, broke the protocol, or exited
     /// without a result.
@@ -65,7 +64,7 @@ impl TerminalKind {
             Self::OutputLimit => "output limit exceeded",
             Self::NativeStackExhausted => "native stack exhausted",
             Self::TimeLimit => "worker wall-clock limit exceeded",
-            Self::MemoryLimit => "worker exceeded process limits or crashed",
+            Self::MemoryLimit => "worker memory limit exceeded",
             Self::WorkerFailure => "worker failed",
         }
     }
@@ -168,7 +167,6 @@ pub(crate) fn reset() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
 
     use crate::compiler::compile_with_options;
     use crate::lexer::lex_with_spans_for_parse;
@@ -326,7 +324,7 @@ mod tests {
                 compile_with_options(&program, crate::compile_options_for_spanned_tokens(&tokens))
                     .expect("test source compiles");
             let handler: crate::vm::ExternalCallHandler =
-                Rc::new(|_, _, _| Err(crate::stack::stack_exhausted_error()));
+                std::rc::Rc::new(|_, _, _| Err(crate::stack::stack_exhausted_error()));
             let mut vm = Vm::new(instructions)
                 .with_runtime_options(options)
                 .with_external_call_handler(handler)
@@ -351,6 +349,23 @@ mod tests {
             }
         })
         .expect("VM thread starts")
+    }
+
+    #[test]
+    fn instruction_limit_after_exception_dispatch_stays_terminal() {
+        let source = "while True:\n    try: 1 / 0\n    except ZeroDivisionError: pass\n";
+        for limit in 1..=60 {
+            let execution = run(
+                source,
+                RuntimeOptions::default().with_max_instructions(limit),
+            );
+            assert_eq!(
+                execution.result,
+                Err(carrier(TerminalKind::InstructionLimit)),
+                "limit {limit}"
+            );
+            assert!(!execution.reported_exception, "limit {limit}");
+        }
     }
 
     #[test]

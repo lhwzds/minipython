@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"equal\": false, \"kind\": \"result\", \"unequal\": true}\n"
+  ]
+}

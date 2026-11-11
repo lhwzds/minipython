@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": [
+    "{\"distinct\": false, \"iterator\": true, \"iterator_not\": false, \"kind\": \"identity\", \"self\": true, \"self_not\": false}\n",
+    "{\"kind\": \"item\", \"result\": true}\n"
+  ]
+}

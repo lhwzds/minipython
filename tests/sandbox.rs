@@ -1140,7 +1140,7 @@ mod examples {
         assert!(!mnpy.status.success());
         assert!(
             String::from_utf8_lossy(&mnpy.stderr)
-                .contains("sandbox error: worker exceeded process limits or crashed")
+                .contains("sandbox error: worker memory limit exceeded")
         );
     }
 
@@ -1649,7 +1649,7 @@ mod process {
         assert!(!output.status.success());
         assert!(
             String::from_utf8_lossy(&output.stderr)
-                .contains("sandbox error: worker exceeded process limits or crashed"),
+                .contains("sandbox error: worker memory limit exceeded"),
             "unexpected stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
@@ -1745,8 +1745,8 @@ mod host_capability_lint {
         (
             "src/sandbox.rs",
             "fs::",
-            1,
-            "CLI: imports File for the script named on the command line",
+            2,
+            "CLI: imports File for the script named on the command line and writes the `--status-file` result",
         ),
         (
             "src/sandbox.rs",
@@ -1775,7 +1775,7 @@ mod host_capability_lint {
         (
             "src/sandbox.rs",
             "println!",
-            17,
+            18,
             "CLI: help text, `--version`, and the `-e` result",
         ),
         (
@@ -1787,8 +1787,8 @@ mod host_capability_lint {
         (
             "src/sandbox.rs",
             "eprintln!",
-            5,
-            "CLI: usage, option, and start-up errors",
+            6,
+            "CLI: usage, option, and start-up errors, and a status file that cannot be written",
         ),
         (
             "src/sandbox.rs",
@@ -1799,7 +1799,7 @@ mod host_capability_lint {
         (
             "src/sandbox.rs",
             "process::",
-            11,
+            10,
             "CLI: sets the process exit status",
         ),
         // Parent-side worker supervision.
@@ -1997,6 +1997,59 @@ mod host_capability_lint {
         assert_eq!(occurrences("subprocess::call", "process::"), 0);
         assert_eq!(occurrences("eprintln!(\"x\")", "println!"), 0);
         assert_eq!(occurrences("eprintln!(\"x\")", "eprintln!"), 1);
+    }
+}
+
+mod worker_exit_classification {
+    use minipython::{ExecutionStatus, Sandbox, SandboxLimits};
+
+    fn sandbox() -> Sandbox {
+        Sandbox::new(env!("CARGO_BIN_EXE_mnpy")).with_limits(SandboxLimits {
+            max_process_memory_bytes: 256 * 1_048_576,
+            ..SandboxLimits::default()
+        })
+    }
+
+    #[test]
+    fn program_output_cannot_forge_worker_allocation_failure() {
+        let result = sandbox().run(
+            "import sys\nprint('memory allocation of 10 bytes failed', file=sys.stderr)\nsys.stdout.write('memory allocation of 10 bytes failed\\n')\n",
+        );
+
+        assert_eq!(result.status, ExecutionStatus::Success, "{result:?}");
+        assert_eq!(result.terminal, None, "{result:?}");
+        assert_eq!(result.exception, None, "{result:?}");
+        assert_eq!(result.stdout, "memory allocation of 10 bytes failed\n");
+        assert_eq!(result.stderr, "memory allocation of 10 bytes failed\n");
+    }
+
+    #[test]
+    fn raw_fd_access_requires_revisiting_worker_exit_classification() {
+        // If any of these becomes available, revisit the worker exit classification rule.
+        for (source, exception) in [
+            ("import os", "ModuleNotFoundError"),
+            ("import subprocess", "ModuleNotFoundError"),
+            ("import _io", "ModuleNotFoundError"),
+            ("open('/dev/stderr', 'w')", "NameError"),
+            ("import io\nio.FileIO(2)", "AttributeError"),
+            ("import sys\nsys.stderr.buffer", "AttributeError"),
+        ] {
+            let result = sandbox().run(source);
+            assert_eq!(
+                result.status,
+                ExecutionStatus::Error,
+                "{source}: {result:?}"
+            );
+            assert_eq!(result.terminal, None, "{source}: {result:?}");
+            assert_eq!(
+                result
+                    .exception
+                    .as_ref()
+                    .map(|error| error.type_name.as_str()),
+                Some(exception),
+                "{source}: {result:?}"
+            );
+        }
     }
 }
 
@@ -3058,5 +3111,361 @@ mod capability_contract {
             "helper ['helper', 'pkg']\nModuleNotFoundError No module named 'secret'\nModuleNotFoundError No module named 'outside'\nModuleNotFoundError No module named 'env'\nModuleNotFoundError No module named '.env'\nModuleNotFoundError No module named '..outside'\n<virtual>/helper.py\n"
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+mod status_file {
+    use std::fs;
+    use std::io::{BufRead, BufReader, Read};
+    use std::path::{Path, PathBuf};
+    use std::process::{Child, Command, Output, Stdio};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    const PROCESS_TIMEOUT: Duration = Duration::from_secs(30);
+    static NEXT_SCRATCH_DIR: AtomicU64 = AtomicU64::new(0);
+
+    /// A scratch directory under the system temporary directory. The
+    /// directory is removed when the test ends, including when it panics.
+    struct ScratchDir {
+        path: PathBuf,
+    }
+
+    impl ScratchDir {
+        fn new(label: &str) -> Self {
+            let sequence = NEXT_SCRATCH_DIR.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "minipython-status-file-{label}-{}-{sequence}",
+                std::process::id()
+            ));
+            fs::create_dir_all(&path).expect("failed to create the status file test directory");
+            Self { path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+
+        fn join(&self, name: &str) -> PathBuf {
+            self.path.join(name)
+        }
+    }
+
+    impl Drop for ScratchDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn run(args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_mnpy"))
+            .args(args)
+            .output()
+            .expect("failed to run mnpy")
+    }
+
+    fn run_in(directory: &Path, args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_mnpy"))
+            .current_dir(directory)
+            .args(args)
+            .output()
+            .expect("failed to run mnpy")
+    }
+
+    fn status_path(path: &Path) -> &str {
+        path.to_str().expect("the status file path is valid UTF-8")
+    }
+
+    fn read_status(path: &Path) -> String {
+        fs::read_to_string(path).expect("mnpy did not write its status file")
+    }
+
+    #[test]
+    fn a_successful_run_records_success() {
+        let scratch = ScratchDir::new("success");
+        let status = scratch.join("status.json");
+        let output = run(&["--status-file", status_path(&status), "-c", "print('ok')"]);
+
+        assert_eq!(output.status.code(), Some(0));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Success\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn an_uncaught_exception_records_an_error() {
+        let scratch = ScratchDir::new("error");
+        let status = scratch.join("status.json");
+        let output = run(&[
+            "--status-file",
+            status_path(&status),
+            "-c",
+            "raise ValueError('boom')",
+        ]);
+
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn the_instruction_limit_records_its_terminal_condition() {
+        let scratch = ScratchDir::new("limit");
+        let status = scratch.join("status.json");
+        let output = run(&[
+            "--status-file",
+            status_path(&status),
+            "--max-steps",
+            "1000",
+            "-c",
+            "while True: pass",
+        ]);
+
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":\"InstructionLimit\"}\n"
+        );
+    }
+
+    #[test]
+    fn a_missing_source_file_records_an_error() {
+        let scratch = ScratchDir::new("missing-source");
+        let status = scratch.join("status.json");
+        let missing = scratch.join("missing.py");
+        let output = run(&["--status-file", status_path(&status), status_path(&missing)]);
+
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn a_sys_exit_records_the_exit_code_and_an_error() {
+        let scratch = ScratchDir::new("sys-exit");
+        let status = scratch.join("status.json");
+        let output = run(&[
+            "--status-file",
+            status_path(&status),
+            "-c",
+            "import sys; sys.exit(3)",
+        ]);
+
+        assert_eq!(output.status.code(), Some(3));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn a_raised_system_exit_records_success() {
+        let scratch = ScratchDir::new("raise-system-exit");
+        let status = scratch.join("status.json");
+        let output = run(&[
+            "--status-file",
+            status_path(&status),
+            "-c",
+            "raise SystemExit",
+        ]);
+
+        assert_eq!(output.status.code(), Some(0));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Success\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn a_source_that_is_not_utf8_records_an_error() {
+        let scratch = ScratchDir::new("non-utf8-source");
+        let status = scratch.join("status.json");
+        let source = scratch.join("latin1.py");
+        fs::write(&source, [0xff, 0xfe, b'x']).expect("failed to write the source file");
+        let output = run(&["--status-file", status_path(&status), status_path(&source)]);
+
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn a_source_over_the_size_limit_records_an_error() {
+        let scratch = ScratchDir::new("oversized-source");
+        let status = scratch.join("status.json");
+        let source = scratch.join("big.py");
+        fs::write(&source, "x = 1\n".repeat(8)).expect("failed to write the source file");
+        let output = run(&[
+            "--status-file",
+            status_path(&status),
+            "--max-source-bytes",
+            "16",
+            status_path(&source),
+        ]);
+
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n"
+        );
+    }
+
+    #[test]
+    fn no_status_file_is_written_without_the_option() {
+        let scratch = ScratchDir::new("no-option");
+        let output = run_in(scratch.path(), &["-c", "print('ok')"]);
+
+        assert_eq!(output.status.code(), Some(0));
+        let entries = fs::read_dir(scratch.path())
+            .expect("failed to read the status file test directory")
+            .collect::<Vec<_>>();
+        assert!(
+            entries.is_empty(),
+            "mnpy wrote files without --status-file: {:?}",
+            entries
+        );
+    }
+
+    #[test]
+    fn an_unwritable_status_file_path_fails_with_exit_two() {
+        let scratch = ScratchDir::new("unwritable");
+        let status = scratch.join("missing-directory").join("status.json");
+        let output = run(&["--status-file", status_path(&status), "-c", "print('ok')"]);
+
+        assert_eq!(output.status.code(), Some(2));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("mnpy: cannot write status file"),
+            "unexpected stderr: {stderr}"
+        );
+        assert!(
+            stderr.contains(status_path(&status)),
+            "the message does not name the status file: {stderr}"
+        );
+    }
+
+    /// Wait for a child that is still running, and kill it when it takes
+    /// too long. The child's stderr is read after it exits, so a child
+    /// that writes a lot to it cannot block the wait. A child whose
+    /// stderr was already taken has no stderr left to read.
+    fn wait_for(child: &mut Child) -> (std::process::ExitStatus, String) {
+        let mut stderr = child.stderr.take();
+        let started = Instant::now();
+        let status = loop {
+            match child.try_wait().expect("failed to poll mnpy") {
+                Some(status) => break status,
+                None => {
+                    if started.elapsed() >= PROCESS_TIMEOUT {
+                        let _ = child.kill();
+                        break child.wait().expect("failed to reap the timed-out mnpy");
+                    }
+                    thread::sleep(Duration::from_millis(5));
+                }
+            }
+        };
+        let mut text = String::new();
+        if let Some(stderr) = stderr.as_mut() {
+            let _ = stderr.read_to_string(&mut text);
+        }
+        (status, text)
+    }
+
+    #[test]
+    fn a_closed_stdout_pipe_still_leaves_the_status_file() {
+        let scratch = ScratchDir::new("closed-pipe");
+        let status = scratch.join("status.json");
+        let mut child = Command::new(env!("CARGO_BIN_EXE_mnpy"))
+            .args([
+                "--status-file",
+                status_path(&status),
+                "-c",
+                "for index in range(10000):\n    print('0123456789abcdef0123456789abcdef')",
+            ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("failed to start mnpy");
+
+        // Read the first line, then close the pipe. The run cannot print
+        // the rest of its output, and a print that fails must not cost
+        // the run its status file. The read happens in a thread, so a
+        // run that prints nothing cannot hang the test.
+        let stdout = child.stdout.take().expect("the child's stdout is piped");
+        let (sender, receiver) = mpsc::channel();
+        thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            let mut first_line = String::new();
+            let read = reader.read_line(&mut first_line);
+            drop(reader);
+            let _ = sender.send((read, first_line));
+        });
+        let (read, first_line) = match receiver.recv_timeout(PROCESS_TIMEOUT) {
+            Ok(received) => received,
+            Err(_) => {
+                // The run printed nothing at all: stop it before the
+                // test fails, so no mnpy is left behind.
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("mnpy printed no output line");
+            }
+        };
+        read.expect("failed to read the first output line");
+
+        let (_exit, stderr) = wait_for(&mut child);
+
+        assert!(
+            first_line.starts_with("0123456789abcdef"),
+            "unexpected first line: {first_line}"
+        );
+        // The exit code is whatever the failed print left behind, so it
+        // is not checked here: the status file is what the gap pipeline
+        // reads, and it must say the run itself succeeded.
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Success\",\"terminal\":null}\n",
+            "the status file is missing or wrong; stderr: {stderr}"
+        );
+    }
+
+    #[test]
+    fn a_closed_stderr_pipe_still_leaves_the_status_file_for_a_missing_source() {
+        let scratch = ScratchDir::new("closed-stderr-missing-source");
+        let status = scratch.join("status.json");
+        let missing = scratch.join("missing.py");
+        let mut child = Command::new(env!("CARGO_BIN_EXE_mnpy"))
+            .args(["--status-file", status_path(&status), status_path(&missing)])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("failed to start mnpy");
+
+        // The child's stderr is closed before it can report the missing
+        // source, so the report cannot be printed: a print that fails
+        // must not cost the run its status file.
+        drop(child.stderr.take().expect("the child's stderr is piped"));
+
+        let (_exit, stderr) = wait_for(&mut child);
+
+        // The exit code is whatever the failed print left behind, so it
+        // is not checked here: the status file is what the gap pipeline
+        // reads, and it must record the error.
+        assert!(
+            status.exists(),
+            "the status file is missing; stderr: {stderr}"
+        );
+        assert_eq!(
+            read_status(&status),
+            "{\"status\":\"Error\",\"terminal\":null}\n",
+            "the status file is missing or wrong; stderr: {stderr}"
+        );
     }
 }
