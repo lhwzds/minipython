@@ -6,7 +6,7 @@
 # (tests/release_gate/math_probe.py). Not fixed yet: the musl build takes these
 # functions from musl's libm, which is not GNU libc's (Linux CPython's). The
 # x86_64 musl build differs in the same functions plus acosh; its entries
-# were measured on GitHub Actions ubuntu-latest and are listed after the
+# were measured on GitHub Actions ubuntu-24.04 and are listed after the
 # aarch64 ones.
 linux-aarch64 log10:0x1.66545cc95db92p-1 -0x1.3d6a01b5ce6efp-3
 linux-aarch64 log10:0x1.4090666183c00p-4 -0x1.1b3ffcb02c887p+0

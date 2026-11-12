@@ -11,7 +11,7 @@ env:
 jobs:
   preflight:
     name: Release preflight
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -122,18 +122,18 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
-            os: macos-latest
+            os: macos-26
             native: true
           # Cross-compiled on the arm64 runner; it cannot run there.
           - target: x86_64-apple-darwin
-            os: macos-latest
+            os: macos-26
             native: false
           # musl: one static binary for every Linux distribution, including
           # Alpine. MiniPython has no C dependencies, so it needs only
           # musl-tools. musl's allocator is slower than glibc's; that is the
           # price of the static build.
           - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
+            os: ubuntu-24.04
             native: true
           - target: aarch64-unknown-linux-musl
             os: ubuntu-24.04-arm
@@ -182,7 +182,7 @@ jobs:
   github-release:
     name: GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
@@ -228,7 +228,7 @@ jobs:
     # The package downloads the release archives in postinstall, so it is
     # published only after they exist.
     needs: github-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write

@@ -450,6 +450,7 @@ class Gate:
 
     def leaks(self, record: dict) -> None:
         self.check([self.cpython, "tests/release_gate/test_leak_scan.py"], "d-leak-scan-tests.log")
+        self.check([self.cpython, "tests/release_gate/test_workflow_runners.py"], "d-workflow-runners-tests.log")
         out = REPORT_DIR / "leak-scan.json"
         completed = self.run([self.cpython, "tests/release_gate/leak_scan.py", "--json", str(out)], "d-leak-scan.log")
         payload = json.loads(out.read_text()) if out.exists() else {}

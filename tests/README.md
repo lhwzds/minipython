@@ -567,7 +567,7 @@ exclusions listed here.
   fails the gate, and a listed one that disappears is stale. On x86_64 musl
   differs from GNU libc in the same functions plus `acosh` (1), in 112
   inputs in all; those entries were measured on GitHub Actions
-  ubuntu-latest and are listed in the same file.
+  ubuntu-24.04 and are listed in the same file.
 
 ### Linux gate
 
